@@ -1,29 +1,20 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
-    "./public/index.html",
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
-      // Add your Anima tailwind config here
-      // This should include any custom colors, fonts, etc. from your Figma design
-      colors: {
-        blue: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          200: '#bae6fd',
-          300: '#7dd3fc',
-          400: '#38bdf8',
-          500: '#0ea5e9',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
-        },
-        // Add any other custom colors from your Anima export
+      fontFamily: {
+        'inter': ['Inter', 'sans-serif'],
       },
-      // Add any custom fonts, spacing, etc. from your Anima export
+      colors: {
+        'teal-light': '#dbfdff',
+        'teal-medium': '#6ea0a0',
+        'teal-dark': '#3a7c7c',
+      }
     },
   },
   plugins: [],
-}
+};
