@@ -1,6 +1,7 @@
 // src/components/Hero.jsx
 import React from "react";
-import IMIdeintidad from "../assets/IM-IDEINTIDAD-1-2.png";
+// Eliminamos la importación de la imagen
+// import IMIdeintidad from "../assets/IM-IDEINTIDAD-1-2.png";
 import { ContactForm } from "./ContactForm";
 
 export const Hero = () => {
@@ -8,11 +9,10 @@ export const Hero = () => {
     <div className="relative w-full bg-cover bg-center min-h-[988px]" style={{ backgroundImage: 'url(/rectangle-3.svg)' }}>
       {/* Logo */}
       <div className="container mx-auto px-4 pt-9">
-        <img 
-          className="w-[281px] h-[135px] object-cover" 
-          alt="BSE Logo" 
-          src={IMIdeintidad} 
-        />
+        {/* Reemplazamos la imagen por un div con texto */}
+        <div className="w-[281px] h-[135px] bg-white flex items-center justify-center font-bold text-2xl">
+          BSE Logo
+        </div>
       </div>
 
       {/* Hero Content */}

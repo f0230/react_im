@@ -1,16 +1,15 @@
 // src/components/ContactForm.jsx
 import React from "react";
+// Eliminamos la importación de la imagen
+// import vector4 from "../assets/vector-4.svg";
 
 export const ContactForm = () => {
   return (
     <div className="bg-black rounded-lg p-6 w-full max-w-[350px] mx-auto">
       <h3 className="text-white text-xl text-center mb-4">Contacto Rápido</h3>
       
-      <img 
-        className="w-full max-w-[299px] h-[3px] mx-auto mb-4" 
-        alt="Divider" 
-        src={vector4} 
-      />
+      {/* Reemplazamos la imagen por un hr */}
+      <hr className="w-full max-w-[299px] mx-auto mb-4 border-white" />
       
       <div className="space-y-6">
         <div className="text-center">

@@ -1,56 +1,51 @@
-// src/components/Hero.jsx
+// src/components/About.jsx
 import React from "react";
-import IMIdeintidad from "../assets/IM-IDEINTIDAD-1-2.png";
-import { ContactForm } from "./ContactForm";
 
-export const Hero = () => {
+export const About = () => {
   return (
-    <div className="relative w-full bg-cover bg-center min-h-[988px]" style={{ backgroundImage: 'url(/rectangle-3.svg)' }}>
-      {/* Logo */}
-      <div className="container mx-auto px-4 pt-9">
-        <img 
-          className="w-[281px] h-[135px] object-cover" 
-          alt="BSE Logo" 
-          src={IMIdeintidad} 
-        />
-      </div>
-
-      {/* Hero Content */}
-      <div className="container mx-auto px-4 pt-64 pb-16 flex flex-col md:flex-row gap-8">
-        <div className="w-full md:w-2/3">
-          <p className="text-white mb-8">
-            <span className="text-3xl">Renta Personal del </span>
-            <span className="text-3xl font-bold">BSE</span>
-            <br /><br />
-            <span className="text-6xl font-bold leading-tight">
-              Seguridad a largo <br />
-              plazo con respaldo estatal
-            </span>
+    <div className="container mx-auto px-4 py-16">
+      <h2 className="text-5xl font-bold mb-8">¿Qué es la Renta Personal del BSE?</h2>
+      
+      <div className="flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-1/2">
+          <p className="text-lg mb-6">
+            La Renta Personal del BSE es un producto diseñado para brindarte seguridad económica a largo plazo. Te permite asegurar una renta mensual fija para tu futuro, con el respaldo del Estado uruguayo.
           </p>
           
-          <p className="text-white text-2xl mb-12 max-w-[609px]">
-            Asegura tu futuro económico con un producto que te garantiza una
-            renta fija mensual. Respaldo, seguridad y tranquilidad para tu
-            jubilación.
+          <p className="text-lg mb-6">
+            Este producto es ideal para quienes desean complementar su jubilación o planificar su futuro financiero con tranquilidad, sabiendo que contarán con ingresos estables y seguros.
           </p>
           
-          <div className="h-px w-full max-w-[669px] bg-white mb-12"></div>
-          
-          <div className="flex flex-wrap gap-4">
-            <button className="bg-black text-white rounded-full px-7 py-3 text-lg">
-              Conocé más
-            </button>
-            <button className="bg-black text-white rounded-full px-7 py-3 text-lg">
-              Simula tu renta
-            </button>
-            <button className="bg-black text-white rounded-full px-7 py-3 text-lg">
-              Asesorate sin costo
-            </button>
-          </div>
+          <p className="text-lg">
+            Con la Renta Personal del BSE, inviertes hoy para recibir mañana, asegurando tu calidad de vida cuando más lo necesites.
+          </p>
         </div>
         
-        <div className="w-full md:w-1/3 mt-8 md:mt-0">
-          <ContactForm />
+        <div className="w-full md:w-1/2 bg-gray-100 rounded-lg p-6">
+          <h3 className="text-2xl font-bold mb-4">Características principales</h3>
+          
+          <ul className="space-y-3">
+            <li className="flex items-start">
+              <span className="mr-2 text-teal-dark font-bold">✓</span>
+              <span>Respaldo estatal que garantiza la seguridad de tu inversión</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-teal-dark font-bold">✓</span>
+              <span>Moneda en UI (Unidades Indexadas) para proteger contra la inflación</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-teal-dark font-bold">✓</span>
+              <span>Diferentes modalidades que se adaptan a tus necesidades</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-teal-dark font-bold">✓</span>
+              <span>Opción para proteger a tu familia en caso de fallecimiento</span>
+            </li>
+            <li className="flex items-start">
+              <span className="mr-2 text-teal-dark font-bold">✓</span>
+              <span>Asesoramiento personalizado sin costo adicional</span>
+            </li>
+          </ul>
         </div>
       </div>
     </div>
