@@ -1,63 +1,56 @@
-// src/components/About.jsx
+// src/components/Hero.jsx
 import React from "react";
+import IMIdeintidad from "../assets/IM-IDEINTIDAD-1-2.png";
+import { ContactForm } from "./ContactForm";
 
-export const About = () => {
+export const Hero = () => {
   return (
-    <div className="container mx-auto px-4 py-24">
-      <div className="flex flex-col md:flex-row gap-12">
-        <div className="w-full md:w-1/2">
-          <h2 className="text-6xl mb-12">
-            <span>¿Qué es </span>
-            <span className="font-bold">Renta<br />Personal</span>
-            <span>?</span>
-          </h2>
-          
-          <div className="bg-[#6ea0a0] border border-black p-8 text-white">
-            <h3 className="text-3xl font-bold mb-12">Renta Inmediata</h3>
-            <p className="text-2xl">
-              Comienza a recibir pagos mensuales inmediatamente después de
-              realizar tu inversión inicial.
-            </p>
-          </div>
-        </div>
-        
-        <div className="w-full md:w-1/2">
-          <p className="text-2xl mb-12">
-            <span>Es un producto de vida del </span>
-            <span className="font-bold">BSE</span>
-            <span> que asegura una renta mensual a partir de una edad determinada,
-            brindándote seguridad económica a largo plazo.</span>
+    <div className="relative w-full bg-cover bg-center min-h-[988px]" style={{ backgroundImage: 'url(/rectangle-3.svg)' }}>
+      {/* Logo */}
+      <div className="container mx-auto px-4 pt-9">
+        <img 
+          className="w-[281px] h-[135px] object-cover" 
+          alt="BSE Logo" 
+          src={IMIdeintidad} 
+        />
+      </div>
+
+      {/* Hero Content */}
+      <div className="container mx-auto px-4 pt-64 pb-16 flex flex-col md:flex-row gap-8">
+        <div className="w-full md:w-2/3">
+          <p className="text-white mb-8">
+            <span className="text-3xl">Renta Personal del </span>
+            <span className="text-3xl font-bold">BSE</span>
+            <br /><br />
+            <span className="text-6xl font-bold leading-tight">
+              Seguridad a largo <br />
+              plazo con respaldo estatal
+            </span>
           </p>
           
-          <div className="bg-[#e6fffd] border border-black p-8 mt-12">
-            <h3 className="text-3xl font-bold mb-12">Renta Diferida</h3>
-            <p className="text-2xl">
-              Programa tus pagos para comenzar en una fecha futura determinada,
-              ideal para planificar tu jubilación.
-            </p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex flex-col md:flex-row gap-12 mt-12">
-        <div className="w-full md:w-1/2">
-          <div className="bg-[#dbfdff] border border-black p-8">
-            <h3 className="text-3xl font-bold mb-12">Renta Garantizada</h3>
-            <p className="text-2xl">
-              Asegura un período mínimo de pagos para tus beneficiarios, incluso
-              en caso de fallecimiento.
-            </p>
+          <p className="text-white text-2xl mb-12 max-w-[609px]">
+            Asegura tu futuro económico con un producto que te garantiza una
+            renta fija mensual. Respaldo, seguridad y tranquilidad para tu
+            jubilación.
+          </p>
+          
+          <div className="h-px w-full max-w-[669px] bg-white mb-12"></div>
+          
+          <div className="flex flex-wrap gap-4">
+            <button className="bg-black text-white rounded-full px-7 py-3 text-lg">
+              Conocé más
+            </button>
+            <button className="bg-black text-white rounded-full px-7 py-3 text-lg">
+              Simula tu renta
+            </button>
+            <button className="bg-black text-white rounded-full px-7 py-3 text-lg">
+              Asesorate sin costo
+            </button>
           </div>
         </div>
         
-        <div className="w-full md:w-1/2">
-          <div className="bg-white border border-black p-8">
-            <h3 className="text-3xl font-bold mb-12">Condiciones Básicas</h3>
-            <p className="text-2xl">
-              Edad mínima/máxima según el plan elegido, moneda en UI, sin valor de
-              rescate.
-            </p>
-          </div>
+        <div className="w-full md:w-1/3 mt-8 md:mt-0">
+          <ContactForm />
         </div>
       </div>
     </div>
