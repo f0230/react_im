@@ -1,6 +1,5 @@
 // src/components/ContactForm.jsx
 import React from "react";
-import vector4 from "../assets/vector-4.svg";
 
 export const ContactForm = () => {
   return (
