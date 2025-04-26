@@ -4,6 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  base: './', // Esta línea es crucial para despliegues
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

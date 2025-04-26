@@ -1,15 +1,15 @@
 // src/App.jsx
 import React from "react";
-import { Hero } from "./components/Hero";
-import { About } from "./components/About";
-import { Benefits } from "./components/Benefits";
+import { Hero } from "./components/Hero.jsx"; // Añadir .jsx explícitamente
+import { About } from "./components/About.jsx";
+import { Benefits } from "./components/Benefits.jsx";
 
 function App() {
   return (
     <div className="bg-white">
       <Hero />
       <About />
-      <Benefits />
+      <Benefits />  
     </div>
   );
 }
