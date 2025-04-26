@@ -1,9 +1,13 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
 export default defineConfig({
   plugins: [react()],
-  base: './', // Añade esta línea para usar rutas relativas
+  base: './', // Rutas relativas
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
-})
+});

@@ -1,15 +1,14 @@
 // src/components/ContactForm.jsx
 import React from "react";
-// Eliminamos la importación de la imagen
-// import vector4 from "../assets/vector-4.svg";
+import vectorLine from "../assets/vector-4.svg";
 
 export const ContactForm = () => {
   return (
     <div className="bg-black rounded-lg p-6 w-full max-w-[350px] mx-auto">
       <h3 className="text-white text-xl text-center mb-4">Contacto Rápido</h3>
       
-      {/* Reemplazamos la imagen por un hr */}
-      <hr className="w-full max-w-[299px] mx-auto mb-4 border-white" />
+      {/* Usamos la imagen SVG para la línea */}
+      <img src={vectorLine} alt="separator" className="w-full max-w-[299px] mx-auto mb-4" />
       
       <div className="space-y-6">
         <div className="text-center">
