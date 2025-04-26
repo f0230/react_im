@@ -1,17 +1,20 @@
-<div id="root">
-  <noscript>You need to enable JavaScript to run this app.</noscript>
-  <div id="fallback" style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
-    Loading app...
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Renta Personal BSE</title>
+  <!-- Precargar la fuente Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="root">
+    <div id="fallback" style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Inter', sans-serif;">
+      Cargando aplicación...
+    </div>
   </div>
-</div>
-<script>
-  // Oculta el fallback cuando React se monte
-  window.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-      const fallback = document.getElementById('fallback');
-      if (fallback && fallback.parentNode === document.getElementById('root')) {
-        console.error('React app failed to mount properly');
-      }
-    }, 1000);
-  });
-</script>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

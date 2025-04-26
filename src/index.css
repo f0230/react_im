@@ -14,3 +14,10 @@ body {
   display: block;
   width: 100%;
 }
+
+/* Estilos adicionales para compatibilidad con Anima */
+@layer components {
+  .all-\[unset\] {
+    all: unset;
+  }
+}
