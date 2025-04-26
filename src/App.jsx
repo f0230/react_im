@@ -5,11 +5,12 @@ import { About } from "./components/About.jsx";
 import { Benefits } from "./components/Benefits.jsx";
 
 function App() {
+  console.log('App component rendered');
   return (
     <div className="bg-white">
       <Hero />
       <About />
-      <Benefits />  
+      <Benefits />
     </div>
   );
 }

@@ -1,21 +1,17 @@
-<!DOCTYPE html>
-<html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Renta Personal BSE</title>
-    <script>
-      window.onerror = function(message, source, lineno, colno, error) {
-        document.body.innerHTML = '<div style="padding: 20px; color: red;"><h1>Error de JavaScript</h1><p>' + 
-                                  message + '</p><p>Línea: ' + lineno + 
-                                  '</p><p>Columna: ' + colno + '</p></div>';
-        return true;
-      };
-    </script>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
+<div id="root">
+  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <div id="fallback" style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
+    Loading app...
+  </div>
+</div>
+<script>
+  // Oculta el fallback cuando React se monte
+  window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      const fallback = document.getElementById('fallback');
+      if (fallback && fallback.parentNode === document.getElementById('root')) {
+        console.error('React app failed to mount properly');
+      }
+    }, 1000);
+  });
+</script>
