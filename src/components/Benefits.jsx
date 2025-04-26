@@ -1,4 +1,4 @@
-/ src/components/Benefits.jsx
+// src/components/Benefits.jsx
 import React from "react";
 
 export const Benefits = () => {

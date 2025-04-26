@@ -1,7 +1,7 @@
-
 // src/components/Hero.jsx
 import React from "react";
 import IMIdeintidad from "../assets/IM-IDEINTIDAD-1-2.png";
+import { ContactForm } from "./ContactForm";
 
 export const Hero = () => {
   return (
