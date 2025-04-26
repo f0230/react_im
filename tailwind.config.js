@@ -5,10 +5,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // Add your Anima tailwind config here
+      // This should include any custom colors, fonts, etc. from your Figma design
       colors: {
-        green: {
-          500: '#00FF00', // This bright green can be adjusted to match the exact color
-        },
         blue: {
           50: '#f0f9ff',
           100: '#e0f2fe',
@@ -21,7 +20,9 @@ module.exports = {
           800: '#075985',
           900: '#0c4a6e',
         },
+        // Add any other custom colors from your Anima export
       },
+      // Add any custom fonts, spacing, etc. from your Anima export
     },
   },
   plugins: [],
