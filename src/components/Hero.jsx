@@ -14,9 +14,9 @@ const Hero = () => {
     <div className="relative flex flex-col items-center w-full h-full bg-white  ">   
       {/* Sección negra */}
       <motion.section
-  initial={{ opacity: 0 }}
-  whileInView={{ opacity: 1 }}
-  transition={{ duration: 1, ease: "easeOut" }}
+ initial={{ opacity: 0, y: 50 }}
+ whileInView={{ opacity: 1, y: 0 }}
+ transition={{ duration: 1, ease: "easeOut" }}
   viewport={{ once: true }}
   className="relative w-full min-h-[3000px] 
             -mt-[300px] md:-mt-[450px] 
@@ -75,8 +75,8 @@ const Hero = () => {
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 1, delay: 0.5 }}
-              viewport={{ once: true }}
-            >
+              viewport={{ once: true, amount: 0 }}
+              >
               {/* Fondo Mobile */}
               <div
                 className="absolute inset-0 bg-no-repeat bg-cover block md:hidden"

@@ -22,12 +22,11 @@ const HeroSection = () => {
     <div className="relative w-full overflow-hidden">
       <motion.section
         className="relative w-full flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10"
-        initial={{ opacity: 0, y: 100, scale: 0.95, filter: "blur(8px)" }}
-        whileInView={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+        initial={{ y: 50, scale: 0.95, filter: "blur(8px)" }}
+        whileInView={{y: 0, scale: 0.99, filter: "blur(0px)" }}
         transition={{
           duration: 1.2,
           y: { type: "spring", stiffness: 100, damping: 15 },
-          opacity: { duration: 0.8 },
           scale: { duration: 1, ease: [0.34, 1.56, 0.64, 1] },
           filter: { duration: 0.8 },
         }}
