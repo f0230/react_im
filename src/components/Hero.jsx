@@ -83,42 +83,7 @@ export const Hero = () => {
         </div>
       </div>
 
-      {/* Toast/tutorial abajo fijo */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 sm:flex sm:justify-center sm:px-6 sm:pb-5 lg:px-8">
-        <div className="pointer-events-auto flex w-full max-w-md divide-x divide-neutral-200 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
-          <div className="flex w-0 flex-1 items-center p-4">
-            <div className="w-full">
-              <p className="text-sm font-medium text-neutral-900">Tutorial</p>
-              <p className="mt-1 text-sm text-neutral-500">
-                How to create an adaptable navigation with Astro, Tailwind CSS, and Alpine.js
-              </p>
-              <p className="mt-2 text-xs text-orange-500 underline">
-                <a href="https://lexingtonthemes.com" target="_blank" rel="noopener noreferrer">
-                  by © Lexington Themes
-                </a>
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col divide-y divide-neutral-200">
-            <a
-              href="https://lexingtonthemes.com/tutorials/how-to-create-an-animated-navigation-with-alpine-js"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center px-4 py-3 text-sm font-medium text-orange-600 hover:text-orange-500"
-            >
-              Tutorial
-            </a>
-            <a
-              href="https://github.com/Lexington-Themes/lexington-tutorials/blob/main/src/pages/adaptable-navigation/index.astro"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center px-4 py-3 text-sm font-medium text-neutral-700 hover:text-neutral-500"
-            >
-              Get the code
-            </a>
-          </div>
-        </div>
-      </div>
+
     </section>
   );
 };
