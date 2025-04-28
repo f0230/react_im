@@ -62,27 +62,25 @@ const HeroSection = () => {
           {/* Popup animado */}
           {showPopup && (
             <motion.div
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 50 }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-              className="absolute bottom-2 transform -translate-x-1/2 w-[300px] h-[125px] bg-black rounded-2xl shadow-lg p-4 flex flex-col justify-between z-30 transition-all duration-300 ease-in-out
-                        md:left-4 md:bottom-4  md:w-[389px] md:h-[307px]"
+              initial={{ opacity: 0, backdropFilter: "blur(0px)", rotate: -2, y: 30 }}
+              animate={{ opacity: 1, backdropFilter: "blur(5px)", rotate: 0, y: 0 }}
+              exit={{ opacity: 0, backdropFilter: "blur(0px)", rotate: 2, y: 10 }}
+              transition={{ 
+                duration: 0.35,
+                ease: [0.16, 1, 0.3, 1] // Curva personalizada tipo cubica
+              }}
+              className="absolute bottom-2 transform -translate-x-1/2 w-[300px] h-[125px] bg-black rounded-2xl shadow-lg p-4 flex flex-col justify-between z-30
+                        md:left-4 md:bottom-4 md:w-[389px] md:h-[307px]"
             >
-
-
-            {/* Botón de cerrar */}
-            <button 
-              className="absolute top-1 right-1 text-white p-1 rounded-full hover:bg-white/20 transition"
-              onClick={() => setShowPopup(false)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-
-
+              {/* Contenido del popup y botón de cerrar */}
+              <button 
+                className="absolute top-1 right-1 text-white p-1 rounded-full hover:bg-white/20 transition"
+                onClick={() => setShowPopup(false)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </motion.div>
           )}
           {/* Fin del popup animado */}
