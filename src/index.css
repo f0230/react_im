@@ -9,6 +9,10 @@ body {
   margin: 0;
   padding: 0;
 }
+html {
+  scroll-behavior: smooth;
+}
+
 
 #root {
   display: block;
@@ -21,4 +25,11 @@ body {
     all: unset;
   }
 }
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 

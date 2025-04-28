@@ -38,6 +38,7 @@ export default {
       animation: {
         'slide-up': 'slide-up 1s ease-out',
         'fade-in': 'fade-in 1s ease-out',
+                  'spin-slow': 'spin 20s linear infinite',
         // --- AÑADIDO: Definición de la animación Ken Burns ---
         // 'kenburns 20s ease-in-out infinite alternate' significa:
         // - Usa los keyframes 'kenburns'
