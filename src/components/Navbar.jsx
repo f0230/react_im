@@ -118,91 +118,91 @@ const Navbar = () => {
 
     return (
         <>
-        {/* Navbar principal */}
+       {/* Navbar principal */}
         <motion.div
-    initial={{ y: 0 }}
-    animate={{ y: showNavbar ? 0 : "-100%" }}
-    transition={{ duration: 0.4, ease: "easeInOut" }}
-    className="fixed top-0 left-0 w-full bg-white z-50"
->
-        <motion.nav
-            className="relative w-full max-w-[1375px] mx-auto flex items-center justify-between
-            px-2 md:px-3
-            h-[50px] sm:h-[100px]
-            bg-white z-30"
-
-            variants={navAnimation}
-            initial="hidden"
-            animate="visible"
+            initial={{ y: 0 }}
+            animate={{ y: showNavbar ? 0 : "-100%" }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="fixed top-0 left-0 w-full bg-transparent bg-white/75 backdrop-blur-md z-50" // <--- cambiado aquí
         >
-            {/* Logo */}
-            <motion.div variants={childAnimation}>
-            <motion.img
-                src={logo}
-                alt="Logo DTE"
-                className="h-[20px] w-auto object-contain sm:h-[25px]"
-                whileHover={{ scale: 1.05 }}
-            />
-            </motion.div>
+            <motion.nav
+                className="relative w-full max-w-[1375px] mx-auto flex items-center justify-between
+                px-2 md:px-3
+                h-[50px] sm:h-[100px]
+                 z-30"  // <--- además agregué backdrop-blur-md, opcional
+                variants={navAnimation}
+                initial="hidden"
+                animate="visible"
+            >
 
-            {/* Íconos de contacto (desktop) */}
-            <motion.div 
-            className="hidden md:flex items-center space-x-4"
-            variants={childAnimation}
-            >
-            <motion.a
-                href="https://wa.me/59812345678"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="WhatsApp chat"
-                whileHover={{ scale: 1.2, rotate: 10 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                <img
-                src={wp}
-                alt="Icono WhatsApp"
-                className="h-[25px] w-[25px] object-contain sm:h-[20px] sm:w-[20px]"
-                />
-            </motion.a>
-            </motion.div>
+                    {/* Logo */}
+                    <motion.div variants={childAnimation}>
+                    <motion.img
+                        src={logo}
+                        alt="Logo DTE"
+                        className="h-[20px] w-auto object-contain sm:h-[25px]"
+                        whileHover={{ scale: 1.05 }}
+                    />
+                    </motion.div>
 
-            {/* Botón menú hamburguesa (mobile) */}
-            <motion.div
-            className="flex md:hidden"
-            variants={childAnimation}
-            initial="rest"
-            whileHover="hover"
-            whileTap={{ scale: 0.95 }}
-            >
-            <motion.button
-                className="relative w-[30px] h-[30px] flex flex-col justify-center items-center z-50"
-                onClick={toggleMenu}
-                variants={menuButtonHover}
-                aria-label="Menu"
-                aria-expanded={isMenuOpen}
-            >
-                <motion.span
-                className="block w-[24px] h-[2px] bg-black rounded-full mb-[6px]"
-                variants={topBarVariants}
-                animate={isMenuOpen ? "open" : "closed"}
-                transition={{ duration: 0.3 }}
-                />
-                <motion.span
-                className="block w-[24px] h-[2px] bg-black rounded-full mb-[6px]"
-                variants={middleBarVariants}
-                animate={isMenuOpen ? "open" : "closed"}
-                transition={{ duration: 0.3 }}
-                />
-                <motion.span
-                className="block w-[24px] h-[2px] bg-black rounded-full"
-                variants={bottomBarVariants}
-                animate={isMenuOpen ? "open" : "closed"}
-                transition={{ duration: 0.3 }}
-                />
-            </motion.button>
-            </motion.div>
-        </motion.nav>
-        </motion.div>
+                    {/* Íconos de contacto (desktop) */}
+                    <motion.div 
+                    className="hidden md:flex items-center space-x-4"
+                    variants={childAnimation}
+                    >
+                    <motion.a
+                        href="https://wa.me/59812345678"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="WhatsApp chat"
+                        whileHover={{ scale: 1.2, rotate: 10 }}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        <img
+                        src={wp}
+                        alt="Icono WhatsApp"
+                        className="h-[25px] w-[25px] object-contain sm:h-[20px] sm:w-[20px]"
+                        />
+                    </motion.a>
+                    </motion.div>
+
+                    {/* Botón menú hamburguesa (mobile) */}
+                    <motion.div
+                    className="flex md:hidden"
+                    variants={childAnimation}
+                    initial="rest"
+                    whileHover="hover"
+                    whileTap={{ scale: 0.95 }}
+                    >
+                    <motion.button
+                        className="relative w-[30px] h-[30px] flex flex-col justify-center items-center z-50"
+                        onClick={toggleMenu}
+                        variants={menuButtonHover}
+                        aria-label="Menu"
+                        aria-expanded={isMenuOpen}
+                    >
+                        <motion.span
+                        className="block w-[24px] h-[2px] bg-black rounded-full mb-[6px]"
+                        variants={topBarVariants}
+                        animate={isMenuOpen ? "open" : "closed"}
+                        transition={{ duration: 0.3 }}
+                        />
+                        <motion.span
+                        className="block w-[24px] h-[2px] bg-black rounded-full mb-[6px]"
+                        variants={middleBarVariants}
+                        animate={isMenuOpen ? "open" : "closed"}
+                        transition={{ duration: 0.3 }}
+                        />
+                        <motion.span
+                        className="block w-[24px] h-[2px] bg-black rounded-full"
+                        variants={bottomBarVariants}
+                        animate={isMenuOpen ? "open" : "closed"}
+                        transition={{ duration: 0.3 }}
+                        />
+                    </motion.button>
+                    </motion.div>
+                </motion.nav>
+                </motion.div>
 
         {/* Menú full screen (mobile) */}
         <AnimatePresence>

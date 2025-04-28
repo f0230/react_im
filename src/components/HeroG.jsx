@@ -5,23 +5,16 @@ import bgMobileImg from "../assets/bg-1m.jpg"; // mobile
 import bgDesktopImg from "../assets/bg-1-w.jpg"; // desktop
 
 const HeroSection = () => {
-  const [bgImage, setBgImage] = useState(bgMobileImg);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
-    const updateBackground = () => {
-      if (window.innerWidth >= 768) { // md breakpoint en Tailwind
-        setBgImage(bgDesktopImg);
-      } else {
-        setBgImage(bgMobileImg);
-      }
-    };
-
-    updateBackground(); // Ejecutar al cargar
-
-    window.addEventListener("resize", updateBackground); // Actualizar si cambia tamaño
+    // Mostrar el popup después de 3 segundos
+    const popupTimer = setTimeout(() => {
+      setShowPopup(true);
+    }, 3000);
 
     return () => {
-      window.removeEventListener("resize", updateBackground); // limpiar eventListener
+      clearTimeout(popupTimer); // limpiar timer si desmonta
     };
   }, []);
 
@@ -43,19 +36,60 @@ const HeroSection = () => {
         <div
           className="relative w-full max-w-[1372px] 
                       h-[500px] sm:h-[600px] md:h-[880px]
-                      bg-no-repeat bg-cover
                       rounded-2xl sm:rounded-2xl md:rounded-3xl
-                      bg-top sm:bg-top md:bg-center
                       overflow-hidden
                       shadow-2xl"
           style={{
-            backgroundImage: `url(${bgImage})`,
             position: "relative",
             zIndex: 20,
           }}
         >
-          {/* Contenido dentro del hero */}
-          
+          {/* Fondo Mobile */}
+          <div
+            className="absolute inset-0 bg-no-repeat bg-cover bg-top sm:bg-top md:bg-center block md:hidden"
+            style={{ backgroundImage: `url(${bgMobileImg})` }}
+          />
+
+          {/* Fondo Desktop */}
+          <div
+            className="absolute inset-0 bg-no-repeat bg-cover bg-center hidden md:block"
+            style={{ backgroundImage: `url(${bgDesktopImg})` }}
+          />
+
+          {/* Contenido encima del fondo */}
+          <div className="relative z-10 w-full max-w-[1375px] mx-auto h-full flex items-center justify-center">
+            {/* Aquí podrías poner el contenido principal del hero */}
+
+          {/* Popup animado */}
+          {showPopup && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="absolute bottom-2 transform -translate-x-1/2 w-[300px] h-[125px] bg-black rounded-2xl shadow-lg p-4 flex flex-col justify-between z-30 transition-all duration-300 ease-in-out
+                        md:left-4 md:bottom-4  md:w-[389px] md:h-[307px]"
+            >
+
+
+            {/* Botón de cerrar */}
+            <button 
+              className="absolute top-1 right-1 text-white p-1 rounded-full hover:bg-white/20 transition"
+              onClick={() => setShowPopup(false)}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+
+
+            </motion.div>
+          )}
+          {/* Fin del popup animado */}
+
+
+          </div>
         </div>
       </motion.section>
     </div>
