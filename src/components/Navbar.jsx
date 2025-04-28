@@ -163,11 +163,7 @@ const Navbar = () => {
                         alt="Icono WhatsApp"
                         className="h-[25px] w-[25px] object-contain sm:h-[20px] sm:w-[20px]"
                         />
-                                                <img
-                        src={wp}
-                        alt="Icono WhatsApp"
-                        className="h-[25px] w-[25px] object-contain sm:h-[20px] sm:w-[20px]"
-                        />
+                        
                     </motion.a>
                     </motion.div>
 
