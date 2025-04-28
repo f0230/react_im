@@ -13,12 +13,23 @@ const Hero = () => {
   return (
     <div className="relative flex flex-col items-center w-full h-full bg-white  ">   
       {/* Sección negra */}
+      <motion.section
+  initial={{ opacity: 0 }}
+  whileInView={{ opacity: 1 }}
+  transition={{ duration: 1, ease: "easeOut" }}
+  viewport={{ once: true }}
+  className="relative w-full min-h-[3000px] 
+            -mt-[300px] md:-mt-[450px] 
+            pt-[300px] md:pt-[450px] 
+            bg-black 
+            z-0"
+>
       <section 
   className="relative w-full min-h-[3000px] 
-             -mt-[300px] md:-mt-[450px] 
-             pt-[300px] md:pt-[450px] 
-             bg-black 
-             z-0"
+            -mt-[300px] md:-mt-[450px] 
+            pt-[300px] md:pt-[450px] 
+            bg-black 
+            z-0"
 >
 
         {/* Contenedor de contenido separado */}
@@ -89,7 +100,9 @@ const Hero = () => {
         </div>
 
       </section>
+      </motion.section>
     </div>
+    
   );
 };
 
