@@ -34,11 +34,11 @@ const Hero = () => {
                           bg-black 
                           z-0">
                             {/* Seccion 1 dentro de fondo negro */}
-                                <div className="relative w-full px-2 sm:px-2 lg:px-2  mx-auto">
+                                <div className="relative w-full px-2 sm:px-2 lg:px-2  mx-auto mt-8 ">
                                   <div className="flex flex-col md:flex-row items-center justify-between  md:min-h-[500px]  mt-2 md:mt-0 gap-6 md:gap-6">
                                     {/* Circle animado */}
                                                           <motion.div 
-                                                            className="relative hidden md:block w-[40%] max-w-[408px] aspect-square"
+                                                            className="relative hidden md:block w-[40%] md:max-w-[408px] aspect-square"
                                                             initial={{ scale: 0 }}
                                                             whileInView={{ scale: 1 }}
                                                             animate={{ rotate: 360 }}
@@ -57,9 +57,9 @@ const Hero = () => {
                                                           </motion.div>
                                     {/* + profesional */}
                                                           <motion.div 
-                                                                          className="relative w-full md:w-[100%] max-w-[950px] h-auto 
+                                                                          className="relative w-full md:w-[100%] h-auto 
                                                                                     min-h-[235px] md:min-h-[478px] 
-                                                                                    rounded-10 flex flex-col justify-between 
+                                                                                    rounded-10px flex flex-col justify-between 
                                                                                     p-6 sm:p-8 md:p-10 overflow-hidden"
                                                                           initial={{ opacity: 0, y: 25}}
                                                                           whileInView={{ opacity: 1, y: 0 }}
