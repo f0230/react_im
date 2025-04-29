@@ -7,8 +7,8 @@ import HeroG from "./HeroG";
 export const AnimaComponent = () => {
   return (
     <div className="w-full overflow-x-hidden">
-      <div className="w-full max-w-[1920px] mx-auto relative"> {/* <= ACA, relative */}
-        <main className="pt-[50px] sm:pt-[100px]">
+      <div className="w-full mx-auto relative"> {/* <= ACA, relative */}
+        <main className="pt-[35px] sm:pt-[50px]">
           <Navbar />
         </main>
 

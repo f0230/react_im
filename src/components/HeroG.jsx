@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import bgMobileImg from "../assets/bg-1m.jpg"; // mobile
 import bgDesktopImg from "../assets/bg-1-w.jpg"; // desktop
 
+
 const HeroSection = () => {
   const [showPopup, setShowPopup] = useState(false);
 

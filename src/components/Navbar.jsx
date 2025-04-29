@@ -126,10 +126,10 @@ const Navbar = () => {
             className="fixed top-0 left-0 w-full bg-transparent bg-white/75 backdrop-blur-md z-50" // <--- cambiado aquí
         >
             <motion.nav
-                className="relative w-full max-w-[1375px] mx-auto flex items-center justify-between
+                className="relative w-full max-w-[1920px] mx-auto flex items-center justify-between
                 px-2 md:px-3
-                h-[50px] sm:h-[100px]
-                 z-30"  // <--- además agregué backdrop-blur-md, opcional
+                h-[35px] sm:h-[50px]
+                z-30"  
                 variants={navAnimation}
                 initial="hidden"
                 animate="visible"
@@ -140,7 +140,7 @@ const Navbar = () => {
                     <motion.img
                         src={logo}
                         alt="Logo DTE"
-                        className="h-[20px] w-auto object-contain sm:h-[25px]"
+                        className="h-[12px] w-auto object-contain sm:h-[17px]"
                         whileHover={{ scale: 1.05 }}
                     />
                     </motion.div>
@@ -161,7 +161,7 @@ const Navbar = () => {
                         <img
                         src={wp}
                         alt="Icono WhatsApp"
-                        className="h-[25px] w-[25px] object-contain sm:h-[20px] sm:w-[20px]"
+                        className="h-[12px] w-[12px] object-contain sm:h-[17px] sm:w-[17px]"
                         />
                         
                     </motion.a>
@@ -176,7 +176,7 @@ const Navbar = () => {
                     whileTap={{ scale: 0.95 }}
                     >
                     <motion.button
-                        className="relative w-[30px] h-[30px] flex flex-col justify-center items-center z-50"
+                        className="relative w-[20px] h-[20px] flex flex-col justify-center items-center z-50"
                         onClick={toggleMenu}
                         variants={menuButtonHover}
                         aria-label="Menu"
