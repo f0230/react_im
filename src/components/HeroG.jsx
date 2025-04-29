@@ -21,22 +21,22 @@ const HeroSection = () => {
 
   return (
     <div className="relative w-full overflow-hidden">
-      <motion.section
-        className="relative w-full flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10"
-        initial={{ y: 50, scale: 0.95, filter: "blur(8px)" }}
-        whileInView={{y: 0, scale: 0.99, filter: "blur(0px)" }}
-        transition={{
-          duration: 1.2,
-          y: { type: "spring", stiffness: 100, damping: 15 },
-          scale: { duration: 1, ease: [0.34, 1.56, 0.64, 1] },
-          filter: { duration: 0.8 },
-        }}
-        viewport={{ once: true, amount: 0.3 }}
-      >
+        <motion.section
+            className="relative w-full flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10"
+            initial={{ y: 30, scale: 0.95, filter: "blur(4px)" }}
+            whileInView={{ y: 0, scale: 1, filter: "blur(0px)" }}
+            transition={{
+              y: { type: "spring", stiffness: 80, damping: 16 },
+              scale: { duration: 0.6, ease: [0.4, 0, 0.2, 1] },
+              filter: { duration: 0.5, ease: "easeOut" },
+              delay: 0.2,
+            }}
+            viewport={{ once: true, amount: 0.3 }}
+          >
         <div
-          className="relative w-full max-w-[1372px] 
-                      h-[500px] sm:h-[600px] md:h-[880px]
-                      rounded-2xl sm:rounded-2xl md:rounded-3xl
+          className="relative w-full 
+                      h-[600px] sm:h-[600px] md:h-[880px]
+                      rounded-10px
                       overflow-hidden
                       shadow-2xl"
           style={{
@@ -57,7 +57,7 @@ const HeroSection = () => {
           />
 
           {/* Contenido encima del fondo */}
-          <div className="relative z-10 w-full max-w-[1375px] mx-auto h-full flex items-center justify-center">
+          <div className="relative z-10 w-full mx-auto h-full flex items-center justify-center">
             {/* Aquí podrías poner el contenido principal del hero */}
 
           {/* Popup animado */}
@@ -67,10 +67,10 @@ const HeroSection = () => {
               animate={{ opacity: 1, backdropFilter: "blur(5px)", rotate: 0, y: 0 }}
               exit={{ opacity: 0, backdropFilter: "blur(0px)", rotate: 2, y: 10 }}
               transition={{ 
-                duration: 0.35,
+                duration: 1.65,
                 ease: [0.16, 1, 0.3, 1] // Curva personalizada tipo cubica
               }}
-              className="absolute bottom-2 transform -translate-x-1/2 w-[300px] h-[125px] bg-black rounded-2xl shadow-lg p-4 flex flex-col justify-between z-30
+              className="absolute bottom-2 transform -translate-x-1/2 w-[300px] h-[125px] bg-black rounded-10px shadow-lg p-4 flex flex-col justify-between z-30
                         md:left-4 md:bottom-4 md:w-[389px] md:h-[307px]"
             >
               {/* Contenido del popup y botón de cerrar */}

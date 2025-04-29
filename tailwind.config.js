@@ -6,6 +6,9 @@ export default {
   ],
   theme: {
     extend: {
+      borderRadius: {
+        '10px': '10px',
+      },
       fontFamily: {
         'inter': ['Inter', 'sans-serif'],
       },

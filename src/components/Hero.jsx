@@ -34,7 +34,7 @@ const Hero = () => {
                           bg-black 
                           z-0">
                             {/* Seccion 1 dentro de fondo negro */}
-                                <div className="relative w-full px-2 sm:px-2 lg:px-2 max-w-[1372px] mx-auto">
+                                <div className="relative w-full px-2 sm:px-2 lg:px-2  mx-auto">
                                   <div className="flex flex-col md:flex-row items-center justify-between  md:min-h-[500px]  mt-2 md:mt-0 gap-6 md:gap-6">
                                     {/* Circle animado */}
                                                           <motion.div 
@@ -59,7 +59,7 @@ const Hero = () => {
                                                           <motion.div 
                                                                           className="relative w-full md:w-[100%] max-w-[950px] h-auto 
                                                                                     min-h-[235px] md:min-h-[478px] 
-                                                                                    rounded-2xl flex flex-col justify-between 
+                                                                                    rounded-10 flex flex-col justify-between 
                                                                                     p-6 sm:p-8 md:p-10 overflow-hidden"
                                                                           initial={{ opacity: 0, y: 25}}
                                                                           whileInView={{ opacity: 1, y: 0 }}
@@ -87,14 +87,14 @@ const Hero = () => {
                                 </div>
                                     {/* Fin de seccion 1 */}
                             {/* Seccion 2 dentro de fondo negro */}
-                            <div className="relative w-full px-2 sm:px-2 lg:px-2 max-w-[1372px] mx-auto">
+                            <div className="relative w-full px-2 sm:px-2 lg:px-2 mx-auto">
                                   <div className="flex flex-col md:flex-row items-center justify-between md:min-h-[500px] mt-2 md:mt-0 gap-2 md:gap-6">
                                     
                                     {/* + equipo */}
                                                       <motion.div 
                                                         className="relative w-full md:w-[100%] max-w-[940px] h-auto 
                                                                   min-h-[235px] md:min-h-[478px] 
-                                                                  rounded-2xl flex flex-col justify-between 
+                                                                  rounded-10px flex flex-col justify-between 
                                                                   p-6 sm:p-8 md:p-10 overflow-hidden bg-white"
                                                         initial={{ opacity: 0, y: 50}}
                                                         whileInView={{ opacity: 1, y: 0 }}
@@ -109,9 +109,9 @@ const Hero = () => {
                                                       </motion.div>
                                     {/* + ventas */}
                                                       <motion.div 
-                                                        className="relative w-full md:w-[100%] max-w-[399px] h-auto 
+                                                        className="relative w-full md:w-[100%]  h-auto 
                                                             min-h-[235px] md:min-h-[478px] 
-                                                            rounded-2xl flex flex-col justify-between 
+                                                            rounded-10px flex flex-col justify-between 
                                                             p-6 sm:p-8 md:p-10 overflow-hidden"
                                                         initial={{ opacity: 0, y: 25}}
                                                         whileInView={{ opacity: 1, y: 0 }}

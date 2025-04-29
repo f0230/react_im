@@ -140,7 +140,7 @@ const Navbar = () => {
                     <motion.img
                         src={logo}
                         alt="Logo DTE"
-                        className="h-[12px] w-auto object-contain sm:h-[17px]"
+                        className="h-[12px] w-auto object-contain sm:h-[20px]"
                         whileHover={{ scale: 1.05 }}
                     />
                     </motion.div>
@@ -161,7 +161,7 @@ const Navbar = () => {
                         <img
                         src={wp}
                         alt="Icono WhatsApp"
-                        className="h-[12px] w-[12px] object-contain sm:h-[17px] sm:w-[17px]"
+                        className="h-[12px] w-[12px] object-contain sm:h-[17px] sm:w-[18px]"
                         />
                         
                     </motion.a>
@@ -176,7 +176,7 @@ const Navbar = () => {
                     whileTap={{ scale: 0.95 }}
                     >
                     <motion.button
-                        className="relative w-[20px] h-[20px] flex flex-col justify-center items-center z-50"
+                        className="relative w-[30px] h-[30px] flex flex-col justify-center items-center z-50"
                         onClick={toggleMenu}
                         variants={menuButtonHover}
                         aria-label="Menu"
