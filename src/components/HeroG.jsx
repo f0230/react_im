@@ -62,19 +62,25 @@ const HeroSection = () => {
           {/* Contenido encima del fondo */}
           <div className="relative z-10 w-full mx-auto h-full flex items-center justify-center">
             {/* Aquí podrías poner el contenido principal del hero */}
-
+            {/* Contenido dentro del hero principal*/}
             <div className=" m-auto text-center text-black">
               <img src={grupodte} alt="Logo" className="mx-auto w-[150px] sm:w-[200px] md:w-[250px] lg:w-[300px] xl:w-[350px]" />
               <h1 className="mx-auto font-product font-normal text-[30px] sm:text-5xl md:text-6xl lg:text-7xl leading-none lg:leading-[1.2]">
                 impulsamos tu<br />
                 <span className="font-bold inline-block">negocio</span>
               </h1>
-              <p className="mt-4 sm:text-xl md:text-2xl lg:text-3xl">
+              <p className="text-[12px] md:text-[17px] mt-4 ">
               Desarrollamos soluciones estratégicas
               </p>
-              <button className="mt-6 px-6 py-3 bg-teal-light text-teal-dark rounded-full shadow-lg hover:bg-teal-medium transition duration-300">
-                ¡Comienza Ahora!
+              <div className="mt-4 md:mt-8 inline-block space-x-1 md:space-x-2 lg:space-x-3">
+              <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] shadow-lg hover:bg-skyblue/95 hover:text-white transition duration-300">
+                Contactanos
               </button>
+              <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] shadow-lg hover:bg-white/95 hover:text-skyblue transition duration-300">
+                Servicios
+              </button>
+              </div>
+             
             </div>
           
 
