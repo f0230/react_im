@@ -11,11 +11,15 @@ export default {
       },
       fontFamily: {
         'inter': ['Inter', 'sans-serif'],
+        'product': ['ProductSans', 'sans-serif'],
+
       },
       colors: {
         'teal-light': '#dbfdff',
         'teal-medium': '#6ea0a0',
         'teal-dark': '#3a7c7c',
+        'greyburger': '#d9d9d9',
+
       },
       keyframes: {
         'slide-up': {

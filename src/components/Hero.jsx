@@ -92,7 +92,7 @@ const Hero = () => {
                                     
                                     {/* + equipo */}
                                                       <motion.div 
-                                                        className="relative w-full md:w-[100%] max-w-[940px] h-auto 
+                                                        className="relative w-full md:w-[100%] h-auto 
                                                                   min-h-[235px] md:min-h-[478px] 
                                                                   rounded-10px flex flex-col justify-between 
                                                                   p-6 sm:p-8 md:p-10 overflow-hidden bg-white"
@@ -109,7 +109,7 @@ const Hero = () => {
                                                       </motion.div>
                                     {/* + ventas */}
                                                       <motion.div 
-                                                        className="relative w-full md:w-[100%]  h-auto 
+                                                        className="relative md:max-w-[399px] w-full md:w-[100%]  h-auto 
                                                             min-h-[235px] md:min-h-[478px] 
                                                             rounded-10px flex flex-col justify-between 
                                                             p-6 sm:p-8 md:p-10 overflow-hidden"

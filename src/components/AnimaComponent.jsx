@@ -6,23 +6,19 @@ import HeroG from "./HeroG";
 
 export const AnimaComponent = () => {
   return (
-    <div className="w-full overflow-x-hidden">
-      <div className="w-full mx-auto relative"> {/* <= ACA, relative */}
-        <main className="pt-[35px] sm:pt-[50px]">
+      <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative"> 
+        
+        <main className="pt-[45x] sm:pt-[45px]">
           <Navbar />
         </main>
-
-        <div className="relative z-10"> {/* HeroG arriba */}
+        <div className="relative w-full">
           <HeroG />
         </div>
 
-        <div className="relative z-0"> {/* Hero debajo */}
-          <Hero />
-        </div>
+
 
         <ScrollToTopButton />
       </div>
-    </div>
   );
 };
 

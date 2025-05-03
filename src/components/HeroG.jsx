@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 
-import bgMobileImg from "../assets/bg-1m.jpg"; // mobile
-import bgDesktopImg from "../assets/bg-1-w.jpg"; // desktop
+import bgMobileImg from "../assets/banner-movil.png"; // mobile
+import bgDesktopImg from "../assets/banner-web.jpg"; // desktop
+import grupodte  from "../assets/LOGODTE.png"; // logo 
+
+
 
 
 const HeroSection = () => {
@@ -34,11 +37,11 @@ const HeroSection = () => {
             viewport={{ once: true, amount: 0.3 }}
           >
         <div
-          className="relative w-full 
-                      h-[600px] sm:h-[600px] md:h-[880px]
-                      rounded-10px
+          className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px]
+                      h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] xl:h-[1000px] 2xl:h-[1000px]
+                      rounded-10px mt-[45px] sm:mt-[0px] 
                       overflow-hidden
-                      shadow-2xl"
+                      "
           style={{
             position: "relative",
             zIndex: 20,
@@ -60,6 +63,25 @@ const HeroSection = () => {
           <div className="relative z-10 w-full mx-auto h-full flex items-center justify-center">
             {/* Aquí podrías poner el contenido principal del hero */}
 
+            <div className=" m-auto text-center text-black">
+              <img src={grupodte} alt="Logo" className="mx-auto w-[150px] sm:w-[200px] md:w-[250px] lg:w-[300px] xl:w-[350px]" />
+              <h1 className="mx-auto font-product font-normal text-[30px] sm:text-5xl md:text-6xl lg:text-7xl leading-none lg:leading-[1.2]">
+                impulsamos tu<br />
+                <span className="font-bold inline-block">negocio</span>
+              </h1>
+              <p className="mt-4 sm:text-xl md:text-2xl lg:text-3xl">
+              Desarrollamos soluciones estratégicas
+              </p>
+              <button className="mt-6 px-6 py-3 bg-teal-light text-teal-dark rounded-full shadow-lg hover:bg-teal-medium transition duration-300">
+                ¡Comienza Ahora!
+              </button>
+            </div>
+          
+
+
+
+
+
           {/* Popup animado */}
           {showPopup && (
             <motion.div
@@ -70,8 +92,8 @@ const HeroSection = () => {
                 duration: 1.65,
                 ease: [0.16, 1, 0.3, 1] // Curva personalizada tipo cubica
               }}
-              className="absolute bottom-2 transform -translate-x-1/2 w-[300px] h-[125px] bg-black rounded-10px shadow-lg p-4 flex flex-col justify-between z-30
-                        md:left-4 md:bottom-4 md:w-[389px] md:h-[307px]"
+              className="absolute bottom-2 lg:top-2 transform -translate-x-1/2 w-[250px] h-[100px] bg-black rounded-10px shadow-lg p-4 flex flex-col justify-between z-30
+                        md:right-4 md:top-4 md:w-[389px] md:h-[150px]"
             >
               {/* Contenido del popup y botón de cerrar */}
               <button 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "../assets/logo-dte.svg";
+import logo from "../assets/iconodte.svg";
 import wp from "../assets/whatsapp-icon.svg";
 
 
@@ -64,7 +64,7 @@ const Navbar = () => {
 
     const topBarVariants = {
         closed: { rotate: 0, y: 0 },
-        open: { rotate: 45, y: 8 }
+        open: { rotate: 45, y: 6 }
     };
     
     const middleBarVariants = {
@@ -74,7 +74,7 @@ const Navbar = () => {
     
     const bottomBarVariants = {
         closed: { rotate: 0, y: 0 },
-        open: { rotate: -45, y: -8 }
+        open: { rotate: -45, y: -2 }
     };
 
     const menuVariants = {
@@ -126,9 +126,9 @@ const Navbar = () => {
             className="fixed top-0 left-0 w-full bg-transparent bg-white/75 backdrop-blur-md z-50" // <--- cambiado aquí
         >
             <motion.nav
-                className="relative w-full max-w-[1920px] mx-auto flex items-center justify-between
-                px-2 md:px-3
-                h-[35px] sm:h-[50px]
+                className="relative w-full sm:w-[600px] md:w-[700px] lg:w-[980px] xl:w-[1080px] 2xl:w-[1440px] mx-auto flex items-center justify-between
+                px-4 sm:px-6 lg:px-8 py-2
+                h-[45px]
                 z-30"  
                 variants={navAnimation}
                 initial="hidden"
@@ -140,7 +140,7 @@ const Navbar = () => {
                     <motion.img
                         src={logo}
                         alt="Logo DTE"
-                        className="h-[12px] w-auto object-contain sm:h-[20px]"
+                        className="h-[17.5px] w-auto object-contain sm:h-[20px]"
                         whileHover={{ scale: 1.05 }}
                     />
                     </motion.div>
@@ -173,7 +173,7 @@ const Navbar = () => {
                     variants={childAnimation}
                     initial="rest"
                     whileHover="hover"
-                    whileTap={{ scale: 0.95 }}
+                    whileTap={{ scale: 0.75 }}
                     >
                     <motion.button
                         className="relative w-[30px] h-[30px] flex flex-col justify-center items-center z-50"
@@ -183,22 +183,17 @@ const Navbar = () => {
                         aria-expanded={isMenuOpen}
                     >
                         <motion.span
-                        className="block w-[24px] h-[2px] bg-black rounded-full mb-[6px]"
+                        className="block w-[30px] h-[3px] bg-greyburger rounded-full mb-[4px]"
                         variants={topBarVariants}
                         animate={isMenuOpen ? "open" : "closed"}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.5 }}
                         />
+
                         <motion.span
-                        className="block w-[24px] h-[2px] bg-black rounded-full mb-[6px]"
-                        variants={middleBarVariants}
-                        animate={isMenuOpen ? "open" : "closed"}
-                        transition={{ duration: 0.3 }}
-                        />
-                        <motion.span
-                        className="block w-[24px] h-[2px] bg-black rounded-full"
+                        className="block w-[30px] h-[3px] bg-greyburger rounded-full "
                         variants={bottomBarVariants}
                         animate={isMenuOpen ? "open" : "closed"}
-                        transition={{ duration: 0.3 }}
+                        transition={{ duration: 0.5 }}
                         />
                     </motion.button>
                     </motion.div>
@@ -209,7 +204,7 @@ const Navbar = () => {
         <AnimatePresence>
             {isMenuOpen && (
             <motion.div
-            className="fixed inset-0 bg-white/30 backdrop-blur-md flex flex-col justify-center items-center z-20"
+            className="fixed inset-0 bg-white/70 backdrop-blur-md flex flex-col justify-center items-center z-20"
             variants={menuVariants}
                 initial="closed"
                 animate="open"
