@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 
 import bgMobileImg from "../assets/banner-movil.png"; // mobile
 import bgDesktopImg from "../assets/banner-web.jpg"; // desktop
-import grupodte  from "../assets/LOGODTE.png"; // logo 
+import grupodte  from "../assets/LOGODTE.svg"; // logo 
 
 
 
