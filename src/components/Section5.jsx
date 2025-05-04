@@ -61,7 +61,7 @@ const SimultaneousWords = () => {
             
             <div
                 ref={containerRef}
-                className="w-full w-[1080px] h-auto  mt-1 sm:mt-0 overflow-hidden bg-white flex flex-col justify-center "
+                className="w-full md:w-[1080px] h-auto  mt-1 sm:mt-0 overflow-hidden bg-white flex flex-col justify-center "
             >
                 <h2 className="text-[30px] md:text-3xl font-bold font-product flex flex-wrap gap-2 mb-4">
                     {titleWords.map((word, index) => (

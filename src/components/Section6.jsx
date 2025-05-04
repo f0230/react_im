@@ -62,7 +62,7 @@ const InfiniteCarousel = () => {
   }, [width]);
 
   return (
-    <div className='w-full h-[580px] md:h-[980px] flex justify-center items-center px-4'>
+    <div className='m-auto w-full md:w-[1440px] h-[580px] md:h-[980px] flex justify-center items-center px-4'>
       <div className="w-full h-[350px] sm:h-[550px] overflow-hidden">
         <motion.div
           ref={carouselRef}

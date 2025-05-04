@@ -33,7 +33,7 @@ export const AnimaComponent = () => {
         <div className="relative w-full">
           <Section5 />
         </div>
-      <div className=" relative w-full">    
+      <div className="relative w-full">    
               <SimultaneousWords />   
         </div>
         <div className="relative w-full">
