@@ -20,6 +20,7 @@ export default {
         'teal-dark': '#3a7c7c',
         'greyburger': '#d9d9d9',
         'skyblue': '#0071E3',
+        'green': '#0DD122',
 
       },
       keyframes: {

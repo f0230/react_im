@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import bgMobileImg from "../assets/banner-movil.png"; // mobile
 import bgDesktopImg from "../assets/banner-web.jpg"; // desktop
 import grupodte  from "../assets/LOGODTE.svg"; // logo 
-
+import xclose  from "../assets/x-close.svg"; // logo 
 
 
 
@@ -38,8 +38,7 @@ const HeroSection = () => {
           >
         <div
           className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px]
-                      h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] xl:h-[1000px] 2xl:h-[1000px]
-                      rounded-10px mt-[45px] sm:mt-[0px] 
+                      h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] 
                       overflow-hidden
                       "
           style={{
@@ -64,7 +63,7 @@ const HeroSection = () => {
             {/* Aquí podrías poner el contenido principal del hero */}
             {/* Contenido dentro del hero principal*/}
             <div className=" m-auto text-center text-black">
-              <img src={grupodte} alt="Logo" className="mx-auto w-[150px] sm:w-[200px] md:w-[250px] lg:w-[300px] xl:w-[350px]" />
+              <img src={grupodte} alt="Logo" className="mx-auto w-[150px] sm:w-[175px] md:w-[200px]" />
               <h1 className="mx-auto font-product font-normal text-[30px] sm:text-5xl md:text-6xl lg:text-7xl leading-none lg:leading-[1.2]">
                 impulsamos tu<br />
                 <span className="font-bold inline-block">negocio</span>
@@ -84,10 +83,6 @@ const HeroSection = () => {
             </div>
           
 
-
-
-
-
           {/* Popup animado */}
           {showPopup && (
             <motion.div
@@ -98,17 +93,27 @@ const HeroSection = () => {
                 duration: 1.65,
                 ease: [0.16, 1, 0.3, 1] // Curva personalizada tipo cubica
               }}
-              className="absolute bottom-2 lg:top-2 transform -translate-x-1/2 w-[250px] h-[100px] bg-black rounded-10px shadow-lg p-4 flex flex-col justify-between z-30
+              className="absolute bottom-2 lg:top-2 transform -translate-x-1/2 w-[250px] h-[100px] bg-black shadow-lg p-4 flex flex-col justify-between z-30
                         md:right-4 md:top-4 md:w-[389px] md:h-[150px]"
             >
               {/* Contenido del popup y botón de cerrar */}
+              <div className="text-white font-product text-[12px] md:text-[17px]">
+              <h2 className="font-normal text-[20px] lg:text-[40px] leading-[1] lg:leading-[1.-1]">
+                  Hola! <br />
+                  <span className="inline-block -mt-2">Bienvenido</span>
+                </h2>
+
+                <p className="mt-1">si tiene alguna cunsulta contactenos</p>
+              
+              </div>
+              
+
               <button 
                 className="absolute top-1 right-1 text-white p-1 rounded-full hover:bg-white/20 transition"
                 onClick={() => setShowPopup(false)}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <img src={xclose} alt="Cerrar" className="w-4 h-4" />
+
               </button>
             </motion.div>
           )}
