@@ -126,11 +126,11 @@ const InfiniteCarousel = () => {
     // Crear una timeline simple para avanzar un slide a la vez
     const timeline = gsap.timeline({
       repeat: -1,
-      repeatDelay: 0.2, // Pequeña pausa entre ciclos completos
+      repeatDelay: 0.5, // Pequeña pausa entre ciclos completos
     });
 
     // Duración total que queremos que cada slide sea visible
-    const totalSlideDuration = 10; // 5 segundos por slide
+    const totalSlideDuration = 7; // 5 segundos por slide
 
     // Construimos un ciclo completo a través de todos los slides
     for (let i = 0; i < slides.length; i++) {
@@ -142,7 +142,7 @@ const InfiniteCarousel = () => {
         timeline.to(sliderTrackRef.current, {
           x: calculateSlidePosition(nextSlideIndex),
           duration: totalSlideDuration,
-          ease: "none", // Movimiento constante
+          ease: "power2.inOut", // Movimiento constante
           onStart: () => setActiveIndex(currentIndex),
           onComplete: () => setActiveIndex(nextSlideIndex)
         });
@@ -153,7 +153,7 @@ const InfiniteCarousel = () => {
         timeline.to(sliderTrackRef.current, {
           x: calculateSlidePosition(nextSlideIndex),
           duration: totalSlideDuration,
-          ease: "none", // Movimiento constante
+          ease: "power2.inOut", // Movimiento constante
           onStart: () => setActiveIndex(thisSlideIndex),
           onComplete: () => setActiveIndex(nextSlideIndex)
         });
@@ -184,17 +184,17 @@ const InfiniteCarousel = () => {
     }
   }, []);
 
-  // Ir a un slide específico
+   /*//* Ir a un slide específico
   const goToSlide = useCallback((index) => {
     if (!sliderTrackRef.current || index < 0 || index >= slides.length) return;
 
-    // Pausar animación actual
+   // Pausar animación actual
     pauseAutoSlide();
 
     // Animar al slide seleccionado con una transición suave y constante
     gsap.to(sliderTrackRef.current, {
       x: calculateSlidePosition(index),
-      duration: 0.8,
+      duration: 1,
       ease: "power1.inOut", // Una curva de easing suave
       onComplete: () => {
         setActiveIndex(index);
@@ -203,10 +203,10 @@ const InfiniteCarousel = () => {
         // para que el usuario pueda ver completamente el slide seleccionado
         setTimeout(() => {
           startAutoSlide();
-        }, 1000); // Esperar 1 segundo antes de reanudar
+        }, 0); // Esperar 1 segundo antes de reanudar
       }
     });
-  }, [calculateSlidePosition, pauseAutoSlide, slides.length, startAutoSlide]);
+  }, [calculateSlidePosition, pauseAutoSlide, slides.length, startAutoSlide]); */
 
   // Manejadores para mouse
   const handleMouseEnter = useCallback(() => {
