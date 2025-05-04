@@ -3,8 +3,8 @@ import { gsap } from 'gsap';
 import Slider1 from "../assets/fondo-slider1.png";
 import Slider2 from "../assets/fondo-slider2.png";
 
-// Optimizado con memo para evitar renderizados innecesarios
-const CarouselSlide = memo(({ slide, index, activeIndex, onClick, carouselWidth }) => {
+// Componente de slide optimizado con memo
+const CarouselSlide = memo(({ slide, index, activeIndex, onClick }) => {
   const isActive = index === activeIndex;
 
   return (
@@ -31,12 +31,10 @@ const InfiniteCarousel = () => {
       content: (
         <div className="text-white text-center grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            {/* Contenido de la columna 1 */}
             <h3 className="text-xl md:text-2xl font-bold mb-2">Empresas</h3>
             <p className="text-sm md:text-base">Que buscan potenciar su presencia digital</p>
           </div>
           <div>
-            {/* Contenido de la columna 2 */}
             <h3 className="text-xl md:text-2xl font-bold mb-2">Startups</h3>
             <p className="text-sm md:text-base">Con necesidades de rápido crecimiento</p>
           </div>
@@ -63,29 +61,28 @@ const InfiniteCarousel = () => {
     },
   ];
 
-  // Refs y state
+  // Refs y state más limpios
   const carouselRef = useRef(null);
   const sliderTrackRef = useRef(null);
   const animationRef = useRef(null);
-  const pausedPositionRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(0);
   const [touchStartX, setTouchStartX] = useState(0);
+  const [touchMoveX, setTouchMoveX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [autoPlayEnabled, setAutoPlayEnabled] = useState(true);
 
-  // Función para calcular la posición de un slide específico
+  // Función para calcular posición del slide
   const calculateSlidePosition = useCallback((index) => {
     return -(index * carouselWidth);
   }, [carouselWidth]);
 
-  // Optimizada para memoizar la función de actualización de dimensiones
+  // Función para actualizar dimensiones
   const updateDimensions = useCallback(() => {
     if (carouselRef.current) {
       const width = carouselRef.current.clientWidth;
       setCarouselWidth(width);
 
-      // Ajustar la posición del track basado en el índice activo
+      // Ajustar la posición del track según el índice actual
       if (sliderTrackRef.current && width > 0) {
         gsap.set(sliderTrackRef.current, {
           x: calculateSlidePosition(activeIndex)
@@ -94,7 +91,7 @@ const InfiniteCarousel = () => {
     }
   }, [activeIndex, calculateSlidePosition]);
 
-  // Inicializar dimensiones y configurar listener de resize
+  // Efecto para manejar dimensiones iniciales y resize
   useEffect(() => {
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
@@ -103,83 +100,89 @@ const InfiniteCarousel = () => {
       window.removeEventListener('resize', updateDimensions);
       if (animationRef.current) {
         animationRef.current.kill();
-        animationRef.current = null;
       }
     };
   }, [updateDimensions]);
 
-  // Función para iniciar la animación automática
+  // Iniciar el auto-slide
   const startAutoSlide = useCallback(() => {
-    if (!sliderTrackRef.current || !autoPlayEnabled || carouselWidth <= 0) return;
+    if (!sliderTrackRef.current || carouselWidth <= 0) return;
 
     // Detener cualquier animación previa
     if (animationRef.current) {
       animationRef.current.kill();
     }
 
-    // Duración completa del ciclo (todo el carrusel)
-    const totalDuration = slides.length * 4; // 4 segundos por slide
+    // Obtener la posición actual exacta
+    const currentPosition = gsap.getProperty(sliderTrackRef.current, "x");
 
-    // Crear secuencia infinita que se repite
-    const timeline = gsap.timeline({ repeat: -1 });
+    // Determinar el índice actual basado en la posición
+    const currentIndex = Math.round(Math.abs(currentPosition) / carouselWidth);
+    setActiveIndex(currentIndex);
 
-    // Animar a través de todos los slides
-    slides.forEach((_, index) => {
-      if (index !== 0) { // Saltamos el primer slide ya que comenzamos desde ahí
+    // Primero, asegurarse de que estamos exactamente en un slide
+    gsap.set(sliderTrackRef.current, { x: calculateSlidePosition(currentIndex) });
+
+    // Crear una timeline simple para avanzar un slide a la vez
+    const timeline = gsap.timeline({
+      repeat: -1,
+      repeatDelay: 0.2, // Pequeña pausa entre ciclos completos
+    });
+
+    // Duración total que queremos que cada slide sea visible
+    const totalSlideDuration = 10; // 5 segundos por slide
+
+    // Construimos un ciclo completo a través de todos los slides
+    for (let i = 0; i < slides.length; i++) {
+      // Calculamos el índice del siguiente slide, desde donde estamos actualmente
+      const nextSlideIndex = (currentIndex + i + 1) % slides.length;
+
+      if (i === 0) {
+        // Para el primer movimiento, empezamos inmediatamente (desde el slide actual al siguiente)
         timeline.to(sliderTrackRef.current, {
-          x: calculateSlidePosition(index),
-          duration: 4, // duración por slide
-          ease: "none",
-          onUpdate: () => {
-            // Actualizar el índice activo basado en la posición actual
-            const currentPos = gsap.getProperty(sliderTrackRef.current, "x");
-            const closestIndex = Math.round(Math.abs(currentPos) / carouselWidth);
-            if (closestIndex !== activeIndex && closestIndex < slides.length) {
-              setActiveIndex(closestIndex);
-            }
-          }
+          x: calculateSlidePosition(nextSlideIndex),
+          duration: totalSlideDuration,
+          ease: "none", // Movimiento constante
+          onStart: () => setActiveIndex(currentIndex),
+          onComplete: () => setActiveIndex(nextSlideIndex)
+        });
+      } else {
+        // Para los siguientes movimientos
+        const thisSlideIndex = (currentIndex + i) % slides.length;
+
+        timeline.to(sliderTrackRef.current, {
+          x: calculateSlidePosition(nextSlideIndex),
+          duration: totalSlideDuration,
+          ease: "none", // Movimiento constante
+          onStart: () => setActiveIndex(thisSlideIndex),
+          onComplete: () => setActiveIndex(nextSlideIndex)
         });
       }
-    });
-
-    // Volver al primer slide para completar el ciclo
-    timeline.to(sliderTrackRef.current, {
-      x: calculateSlidePosition(0),
-      duration: 4,
-      ease: "none",
-      onUpdate: () => {
-        const currentPos = gsap.getProperty(sliderTrackRef.current, "x");
-        const closestIndex = Math.round(Math.abs(currentPos) / carouselWidth);
-        if (closestIndex !== activeIndex && closestIndex < slides.length) {
-          setActiveIndex(closestIndex);
-        }
-      }
-    });
+    }
 
     animationRef.current = timeline;
-  }, [autoPlayEnabled, carouselWidth, calculateSlidePosition, activeIndex, slides.length]);
+  }, [carouselWidth, calculateSlidePosition, activeIndex, slides.length]);
 
-  // Iniciar animación cuando cambia el ancho o el autoplay
+  // Iniciar animación cuando cambia el ancho
   useEffect(() => {
-    if (carouselWidth > 0 && autoPlayEnabled) {
+    if (carouselWidth > 0) {
       startAutoSlide();
     }
-  }, [carouselWidth, autoPlayEnabled, startAutoSlide]);
+  }, [carouselWidth, startAutoSlide]);
 
   // Pausar la animación
   const pauseAutoSlide = useCallback(() => {
     if (animationRef.current) {
-      pausedPositionRef.current = animationRef.current.time();
       animationRef.current.pause();
     }
   }, []);
 
   // Reanudar la animación
   const resumeAutoSlide = useCallback(() => {
-    if (animationRef.current && autoPlayEnabled) {
+    if (animationRef.current) {
       animationRef.current.play();
     }
-  }, [autoPlayEnabled]);
+  }, []);
 
   // Ir a un slide específico
   const goToSlide = useCallback((index) => {
@@ -188,40 +191,38 @@ const InfiniteCarousel = () => {
     // Pausar animación actual
     pauseAutoSlide();
 
-    // Animar al slide seleccionado
+    // Animar al slide seleccionado con una transición suave y constante
     gsap.to(sliderTrackRef.current, {
       x: calculateSlidePosition(index),
       duration: 0.8,
-      ease: "power2.out",
+      ease: "power1.inOut", // Una curva de easing suave
       onComplete: () => {
         setActiveIndex(index);
 
         // Reanudar la animación automática después de un breve retraso
-        if (autoPlayEnabled) {
-          // Creamos una nueva animación partiendo desde este slide
-          setTimeout(() => {
-            if (animationRef.current) {
-              animationRef.current.kill();
-            }
-            startAutoSlide();
-          }, 2000);
-        }
+        // para que el usuario pueda ver completamente el slide seleccionado
+        setTimeout(() => {
+          startAutoSlide();
+        }, 1000); // Esperar 1 segundo antes de reanudar
       }
     });
-  }, [calculateSlidePosition, pauseAutoSlide, slides.length, autoPlayEnabled, startAutoSlide]);
+  }, [calculateSlidePosition, pauseAutoSlide, slides.length, startAutoSlide]);
 
-  // Manejadores de eventos del mouse
+  // Manejadores para mouse
   const handleMouseEnter = useCallback(() => {
     pauseAutoSlide();
   }, [pauseAutoSlide]);
 
   const handleMouseLeave = useCallback(() => {
-    resumeAutoSlide();
-  }, [resumeAutoSlide]);
+    if (!isDragging) {
+      resumeAutoSlide();
+    }
+  }, [resumeAutoSlide, isDragging]);
 
-  // Optimización de manejadores de eventos táctiles
+  // Manejadores para touch
   const handleTouchStart = useCallback((e) => {
     setTouchStartX(e.touches[0].clientX);
+    setTouchMoveX(e.touches[0].clientX);
     setIsDragging(true);
     pauseAutoSlide();
   }, [pauseAutoSlide]);
@@ -230,25 +231,35 @@ const InfiniteCarousel = () => {
     if (!isDragging || !sliderTrackRef.current) return;
 
     const touchCurrentX = e.touches[0].clientX;
+    setTouchMoveX(touchCurrentX);
+
     const diffX = touchStartX - touchCurrentX;
 
-    // Calcular nueva posición con resistencia en los extremos
+    // Obtener posición actual y calcular nueva posición
     const currentPosition = gsap.getProperty(sliderTrackRef.current, "x");
-    const minPosition = calculateSlidePosition(slides.length - 1);
+    let newPosition = currentPosition - diffX * 0.8; // Respuesta más directa al movimiento
 
-    let newPosition = currentPosition - diffX * 0.8;
+    // Aplicar resistencia en los extremos para un efecto más suave
+    const minPosition = -((slides.length - 1) * carouselWidth);
 
-    // Aplicar resistencia en los extremos
     if (newPosition > 0) {
-      newPosition = newPosition * 0.3; // Resistencia al principio
+      // Resistencia al inicio (primer slide)
+      newPosition = newPosition * 0.3;
     } else if (newPosition < minPosition) {
+      // Resistencia al final (último slide)
       const overscroll = minPosition - newPosition;
-      newPosition = minPosition - (overscroll * 0.3); // Resistencia al final
+      newPosition = minPosition - (overscroll * 0.3);
     }
 
-    gsap.set(sliderTrackRef.current, { x: newPosition });
+    gsap.to(sliderTrackRef.current, {
+      x: newPosition,
+      duration: 0.1, // Transición muy corta para seguir el dedo pero suavizada
+      ease: "power1.out",
+      overwrite: true
+    });
+
     setTouchStartX(touchCurrentX);
-  }, [isDragging, touchStartX, calculateSlidePosition, slides.length]);
+  }, [isDragging, touchStartX, carouselWidth, slides.length]);
 
   const handleTouchEnd = useCallback(() => {
     if (!isDragging || !sliderTrackRef.current) {
@@ -257,25 +268,55 @@ const InfiniteCarousel = () => {
       return;
     }
 
-    // Calcular el slide más cercano basado en la posición actual
+    // Calcular dirección y velocidad del swipe
+    const swipeDistance = touchStartX - touchMoveX;
+    const swipeThreshold = carouselWidth * 0.1; // 10% del ancho para activar swipe
+
+    // Obtener posición actual
     const currentPosition = gsap.getProperty(sliderTrackRef.current, "x");
-    const slideIndex = Math.min(
-      slides.length - 1,
-      Math.max(0, Math.round(Math.abs(currentPosition) / carouselWidth))
-    );
 
-    // Ir al slide calculado
-    goToSlide(slideIndex);
+    // Calcular el índice más cercano basado en la posición actual
+    // Usamos floor o ceil según la dirección del swipe para una mejor experiencia
+    const rawIndex = Math.abs(currentPosition) / carouselWidth;
+    let targetIndex;
+
+    if (Math.abs(swipeDistance) > swipeThreshold) {
+      // Si hay suficiente movimiento para considerar un swipe
+      if (swipeDistance > 0) {
+        // Swipe izquierda - siguiente slide
+        targetIndex = Math.ceil(rawIndex);
+        if (targetIndex > slides.length - 1) targetIndex = slides.length - 1;
+      } else {
+        // Swipe derecha - slide anterior
+        targetIndex = Math.floor(rawIndex);
+        if (targetIndex < 0) targetIndex = 0;
+      }
+    } else {
+      // No hubo suficiente movimiento, ir al slide más cercano
+      targetIndex = Math.round(rawIndex);
+    }
+
+    // Asegurar que el índice está dentro de los límites
+    targetIndex = Math.max(0, Math.min(slides.length - 1, targetIndex));
+
+    // Animar al slide calculado con una transición suave
+    gsap.to(sliderTrackRef.current, {
+      x: calculateSlidePosition(targetIndex),
+      duration: 0.5,
+      ease: "power1.out",
+      onComplete: () => {
+        setActiveIndex(targetIndex);
+        setTimeout(() => {
+          startAutoSlide();
+        }, 500);
+      }
+    });
+
+    // Resetear estado
     setIsDragging(false);
-  }, [isDragging, carouselWidth, goToSlide, resumeAutoSlide, slides.length]);
-
-  // Función para manejar los indicadores de navegación
-  const handleIndicatorClick = useCallback((index) => {
-    goToSlide(index);
-  }, [goToSlide]);
-
-  // Creamos un array de indicadores basado en el número de slides
-  const indicators = Array.from({ length: slides.length });
+    setTouchStartX(0);
+    setTouchMoveX(0);
+  }, [isDragging, touchStartX, touchMoveX, carouselWidth, calculateSlidePosition, startAutoSlide, slides.length, resumeAutoSlide]);
 
   return (
     <div className="m-auto w-full md:w-[1440px] h-[580px] md:h-[980px] flex flex-col justify-evenly items-center px-2 md:px-4">
@@ -308,28 +349,11 @@ const InfiniteCarousel = () => {
               slide={slide}
               index={i}
               activeIndex={activeIndex}
-              onClick={handleSlideClick => goToSlide(i)}
-              carouselWidth={carouselWidth}
+              onClick={(index) => goToSlide(index)}
             />
           ))}
         </div>
-
-        {/* Overlay para mostrar el progreso de swipe en móvil */}
-        {isDragging && (
-          <div className="absolute top-0 left-0 w-full h-1 bg-gray-200">
-            <div
-              className="h-full bg-blue-500 transition-all duration-200"
-              style={{
-                width: `${(activeIndex / (slides.length - 1)) * 100}%`
-              }}
-            />
-          </div>
-        )}
       </div>
-
-
-
-
     </div>
   );
 };
