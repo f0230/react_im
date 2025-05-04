@@ -9,7 +9,7 @@ const Section2 = () => {
                     h-auto rounded-lg mt-1 sm:mt-0 overflow-hidden">
 
         {/* Contenedor flexible que cambia de dirección según el viewport */}
-        <div className="flex flex-col md:flex-row w-full">
+        <div className="flex flex-col md:flex-row w-full gap-2">
 
 
           {/* Primera sección - Fondo blanco */}

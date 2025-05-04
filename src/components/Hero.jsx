@@ -59,7 +59,7 @@ const Hero = () => {
                                                           <motion.div 
                                                                           className="relative w-full md:w-[100%] h-auto 
                                                                                     min-h-[235px] md:min-h-[478px] 
-                                                                                    rounded-10px flex flex-col justify-between 
+                                                                                    flex flex-col justify-between 
                                                                                     p-6 sm:p-8 md:p-10 overflow-hidden"
                                                                           initial={{ opacity: 0, y: 25}}
                                                                           whileInView={{ opacity: 1, y: 0 }}
@@ -94,7 +94,7 @@ const Hero = () => {
                                                       <motion.div 
                                                         className="relative w-full md:w-[100%] h-auto 
                                                                   min-h-[235px] md:min-h-[478px] 
-                                                                  rounded-10px flex flex-col justify-between 
+                                                                 flex flex-col justify-between 
                                                                   p-6 sm:p-8 md:p-10 overflow-hidden bg-white"
                                                         initial={{ opacity: 0, y: 50}}
                                                         whileInView={{ opacity: 1, y: 0 }}
@@ -111,7 +111,7 @@ const Hero = () => {
                                                       <motion.div 
                                                         className="relative md:max-w-[399px] w-full md:w-[100%]  h-auto 
                                                             min-h-[235px] md:min-h-[478px] 
-                                                            rounded-10px flex flex-col justify-between 
+                                                             flex flex-col justify-between 
                                                             p-6 sm:p-8 md:p-10 overflow-hidden"
                                                         initial={{ opacity: 0, y: 25}}
                                                         whileInView={{ opacity: 1, y: 0 }}
