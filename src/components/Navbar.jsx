@@ -63,18 +63,13 @@ const Navbar = () => {
     };
 
     const topBarVariants = {
-        closed: { rotate: 0, y: 0 },
-        open: { rotate: 45, y: 6 }
+        closed: { rotate: 0 },
+        open: { rotate: 45 }
     };
-    
-    const middleBarVariants = {
-        closed: { opacity: 1 },
-        open: { opacity: 0 }
-    };
-    
+
     const bottomBarVariants = {
-        closed: { rotate: 0, y: 0 },
-        open: { rotate: -45, y: -2 }
+        closed: { rotate: 0 },
+        open: { rotate: -45 }
     };
 
     const menuVariants = {
@@ -140,7 +135,7 @@ const Navbar = () => {
                     <motion.img
                         src={logo}
                         alt="Logo DTE"
-                        className="h-[17.5px] w-auto object-contain sm:h-[20px]"
+                        className="h-[17.5px] w-auto object-contain sm:h-[20px] "
                         whileHover={{ scale: 1.05 }}
                     />
                     </motion.div>
@@ -169,34 +164,42 @@ const Navbar = () => {
 
                     {/* Botón menú hamburguesa (mobile) */}
                     <motion.div
-                    className="flex md:hidden"
-                    variants={childAnimation}
-                    initial="rest"
-                    whileHover="hover"
-                    whileTap={{ scale: 0.75 }}
+                        className="flex md:hidden"
+                        variants={childAnimation}
+                        initial="rest"
+                        whileHover="hover"
+                        whileTap={{ scale: 0.75 }}
                     >
-                    <motion.button
-                        className="relative w-[30px] h-[30px] flex flex-col justify-center items-center z-50"
-                        onClick={toggleMenu}
-                        variants={menuButtonHover}
-                        aria-label="Menu"
-                        aria-expanded={isMenuOpen}
-                    >
-                        <motion.span
-                        className="block w-[30px] h-[3px] bg-greyburger rounded-full mb-[4px]"
-                        variants={topBarVariants}
-                        animate={isMenuOpen ? "open" : "closed"}
-                        transition={{ duration: 0.5 }}
-                        />
+                        <motion.button
+                            className="relative w-[30px] h-[30px] z-50 " // Quitamos flex y flex-col
+                            onClick={toggleMenu}
+                            variants={menuButtonHover}
+                            aria-label="Menu"
+                            aria-expanded={isMenuOpen}
+                        >
+                            <motion.span
+                                className="absolute top-1/2 left-1 -translate-x-1/2 -translate-y-1/2 block w-[30px] h-[3px] bg-greyburger rounded-full"
+                                variants={{
+                                    closed: { rotate: 0, translateY: '-5px' }, // Ajustamos translateY para la posición inicial
+                                    open: { rotate: 45 },
+                                }}
+                                animate={isMenuOpen ? "open" : "closed"}
+                                transition={{ duration: 0.5 }}
+                            />
 
-                        <motion.span
-                        className="block w-[30px] h-[3px] bg-greyburger rounded-full "
-                        variants={bottomBarVariants}
-                        animate={isMenuOpen ? "open" : "closed"}
-                        transition={{ duration: 0.5 }}
-                        />
-                    </motion.button>
+                            <motion.span
+                                className="absolute top-1/2 left-1 -translate-x-1/2 -translate-y-1/2 block w-[30px] h-[3px] bg-greyburger rounded-full"
+                                variants={{
+                                    closed: { rotate: 0, translateY: '5px' }, // Ajustamos translateY para la posición inicial
+                                    open: { rotate: -45 },
+                                }}
+                                animate={isMenuOpen ? "open" : "closed"}
+                                transition={{ duration: 0.5 }}
+                            />
+                        </motion.button>
                     </motion.div>
+
+                    
                 </motion.nav>
                 </motion.div>
 

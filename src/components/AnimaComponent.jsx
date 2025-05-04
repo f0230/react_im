@@ -4,6 +4,7 @@ import ScrollToTopButton from "./ScrollToTopButton";
 import Navbar from './Navbar';
 import HeroG from "./HeroG";
 import Section2 from "./Section2";
+import Section3 from "./Section3";
 
 export const AnimaComponent = () => {
   return (
@@ -17,6 +18,9 @@ export const AnimaComponent = () => {
         </div>
         <div className="relative w-full">
           <Section2 />
+        </div>
+        <div className="relative w-full">
+          <Section3 />
         </div>
 
 
