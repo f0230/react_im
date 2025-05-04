@@ -1,5 +1,4 @@
 import React from "react";
-import Hero from "./Hero";
 import ScrollToTopButton from "./ScrollToTopButton";
 import Navbar from './Navbar';
 import HeroG from "./HeroG";
