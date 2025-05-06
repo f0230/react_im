@@ -7,7 +7,7 @@ import Section3 from "./Section3";
 import Section4 from "./Section4";  
 import Section5 from "./Section5_1";
 import SimultaneousWords from "./Section5";
-import InfiniteHorizontalCarousel from "./Section6";
+import InfiniteCarousel from "./Section6_v2";
 
 
 export const AnimaComponent = () => {
@@ -36,7 +36,7 @@ export const AnimaComponent = () => {
               <SimultaneousWords />   
         </div>
         <div className="relative w-full">
-        <InfiniteHorizontalCarousel />  
+        <InfiniteCarousel />  
         </div>
 
 
