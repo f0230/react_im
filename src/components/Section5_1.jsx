@@ -16,7 +16,7 @@ const Section5 = () => {
                   </div>
 
                   {/* Columna derecha */}
-                  <div className="w-full md:w-1/2 h-[150x] md:h-[325px] flex flex-col justify-center items-center text-center">
+                  <div className="w-full md:w-1/2 h-[15*0x] md:h-[325px] flex flex-col justify-center items-center text-center">
                       <p className="md:text-[37px]  max-w-[500px] hidden md:block font-normal leading-none">
                           Arquitectura, económica, asesoramiento legal, logística...
                       </p>

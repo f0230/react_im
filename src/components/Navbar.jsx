@@ -207,14 +207,14 @@ const Navbar = () => {
         <AnimatePresence>
             {isMenuOpen && (
             <motion.div
-            className="fixed inset-0 bg-white/70 backdrop-blur-md flex flex-col justify-center items-center z-20"
+                        className="fixed inset-0 bg-greyburger/50 backdrop-blur-md flex flex-col justify-center items-center z-20"
             variants={menuVariants}
                 initial="closed"
                 animate="open"
                 exit="closed"
             >
                 <nav className="w-full max-w-md">
-                <ul className="flex flex-col items-center space-y-6">
+                <ul className="flex flex-col items-center space-y-2">
                     {menuItems.map((item, i) => (
                     <motion.li 
                         key={i} 
@@ -227,7 +227,7 @@ const Navbar = () => {
                     >
                         <motion.a
                         href={item.url}
-                        className="text-white text-3xl font-bold tracking-wider block py-3"
+                        className="text-black text-[16px] font-product font-bold tracking-wider block "
                         whileHover={{ scale: 1.1, x: 10 }}
                         whileTap={{ scale: 0.95 }}
                         onClick={toggleMenu}
@@ -251,14 +251,14 @@ const Navbar = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="WhatsApp"
-                        className="bg-white p-3 rounded-full"
+                        className=" rounded-full"
                         whileHover={{ scale: 1.2, rotate: 10 }}
                         whileTap={{ scale: 0.9 }}
                     >
                         <img
                         src={wp}
                         alt="WhatsApp"
-                        className="h-[25px] w-[25px] object-contain"
+                        className="h-[17px] w-[17px] object-contain"
                         />
                     </motion.a>
                     </motion.div>
