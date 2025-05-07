@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@types/gsap": "^3.0.0",
-    "framer-motion": "^12.9.2",
+    "framer-motion": "^12.10.0",
     "gsap": "^3.12.7",
     "ogl": "^1.0.11",
     "react": "^18.2.0",

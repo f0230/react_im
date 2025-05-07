@@ -1,28 +1,25 @@
-import React from "react";
+import React, { useState } from "react";
+import ScrollVelocity from './ScrollVelocity'; // Asegúrate de que la ruta sea correcta
 
 const Section7 = () => {
-    const sectionStyle = {
-        backgroundColor: "black",
-        width: "100%",
-        height: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-    };
 
-    const containerStyle = {
-        width: "100%",
-        maxWidth: "1080px",
-        margin: "0 auto",
-        color: "white",
-        textAlign: "center",
-    };
+
+    const [velocity, setVelocity] = useState(80); // Define la velocidad para el componente ScrollVelocity
 
     return (
-        <div style={sectionStyle}>
-            <div style={containerStyle}>
-                <h1>Responsive Section</h1>
-                <p>This section is fully responsive.</p>
+        <div className="w-full h-[300px] md:h-[500px] bg-white flex justify-center items-center">
+            <div className="w-full md:w-[1080px] h-auto mt-1 sm:mt-0 overflow-hidden bg-white flex flex-col justify-center">
+                <ScrollVelocity
+                    texts={['Crecimiento', 'Desarrollo', 'Creatividad', 'Tecnologia', 'Estrategia']}
+                    velocity={velocity}
+          
+                    numCopies={5} // Puedes ajustar el número de copias
+                    damping={50}
+                    stiffness={300} //
+                    velocityMapping={{ input: [-300, 300], output: [-1, 1] }} // Ajusta el mapeo de velocidad si lo deseas
+                />
+    
+               
             </div>
         </div>
     );
