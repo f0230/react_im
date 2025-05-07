@@ -8,7 +8,7 @@ import Section4 from "./Section4";
 import Section5 from "./Section5_1";
 import SimultaneousWords from "./Section5";
 import InfiniteCarousel from "./Section6";
-import Section7 from "./Section7"; // Import the new section
+import Section7 from "./Section7";  
 
 export const AnimaComponent = () => {
   return (
@@ -41,6 +41,7 @@ export const AnimaComponent = () => {
         <div className="relative w-full">
           <Section7 />
         </div>
+        
 
 
         <ScrollToTopButton />

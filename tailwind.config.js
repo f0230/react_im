@@ -21,6 +21,7 @@ export default {
         'greyburger': '#d9d9d9',
         'skyblue': '#0071E3',
         'green': '#0DD122',
+        'crem': '#ACACAC'
 
       },
       keyframes: {

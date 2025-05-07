@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import RotatingText from "./RotatingText"; // Asegúrate de ajustar la ruta según tu estructura de archivos
 
-import bgMobileImg from "../assets/banner-movil.png"; // mobile
-import bgDesktopImg from "../assets/banner-web.jpg"; // desktop
+import bgMobileImg from "../assets/PORTADA_1_MOVIL.webp"; // mobile
+import bgDesktopImg from "../assets/PORTADA_1.webp"; // desktop
 import grupodte from "../assets/LOGODTE.svg"; // logo 
 import xclose from "../assets/x-close.svg"; // logo 
 
@@ -65,7 +65,7 @@ const HeroSection = () => {
             {/* Contenido dentro del hero principal*/}
             <div className="m-auto text-center text-black">
               <img src={grupodte} alt="Logo" className="mx-auto w-[150px] sm:w-[175px] md:w-[200px]" />
-              <h1 className="mx-auto font-product font-normal text-[30px] sm:text-5xl md:text-6xl lg:text-7xl leading-none">
+              <h1 className="mx-auto font-product font-normal text-[30px] sm:text-5xl md:text-45px lg:text-60px leading-none">
                 impulsamos tu<br />
                 <span className="font-bold inline-block">
                   <RotatingText

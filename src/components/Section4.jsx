@@ -1,8 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import ContImg from "../assets/content.png";
-import SpaceImg from "../assets/space.png";
+import ContImg from "../assets/BANNER_ESPACIOS-1.webp";
+import MContImg from "../assets/BANNER_ESPACIOS_M-1.webp";
+
+
+import SpaceImg from "../assets/BANNER_ESPACIOS_M.webp";
+import MSpaceImg from "../assets/BANNER_ESPACIOS_M.webp";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -78,7 +82,7 @@ const Section2 = () => {
               ref={spaceMobileRef}
               className="absolute top-0 left-0 w-full h-full block sm:hidden z-10 opacity-0 translate-y-10 transition-opacity duration-500 ease-out transform"
               style={{
-                backgroundImage: `url(${SpaceImg})`,
+                backgroundImage: `url(${MSpaceImg})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
@@ -111,7 +115,7 @@ const Section2 = () => {
               ref={contMobileRef}
               className="absolute top-0 left-0 w-full h-full block sm:hidden z-10 opacity-0 translate-y-10 transition-opacity duration-500 ease-out transform"
               style={{
-                backgroundImage: `url(${ContImg})`,
+                backgroundImage: `url(${MContImg})`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}

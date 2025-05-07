@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import BannerWeb from "../assets/banner-ads-web.png";
-import BannerMovil from "../assets/banner-ads-movil.png";
+import BannerWeb from "../assets/BANNER_CAMPAÑA.webp";
+import BannerMovil from "../assets/BANNER_CAMPAÑA_MOVIL.webp";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -47,13 +47,13 @@ const Section2 = () => {
       className="font-product relative w-full flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10 mt-2"
     >
       <div className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px]
-                    h-auto rounded-lg mt-1 sm:mt-0 overflow-hidden">
+                    h-auto  mt-1 sm:mt-0 overflow-hidden">
 
         {/* Contenedor flexible que cambia de dirección según el viewport */}
         <div className="flex flex-col md:flex-row w-full gap-2">
 
           {/* Primera sección - Fondo blanco */}
-          <div className="w-full md:w-1/2 h-[510px] sm:h-[600px] md:h-[625px] bg-white p-6 ">
+          <div className="w-full md:w-1/2 h-[510px] sm:h-[600px] md:h-[625px] bg-crem/10 p-6 ">
             <div className="h-full flex flex-col justify-center items-center">
               <h2 className="font-normal text-[40px] md:text-[60px]">DTE lo <span className="px-3 bg-green">hace</span></h2>
               <h3 className="mt-[-10px] md:mt-[-20px] mb-[20px] text-greyburger font-normal text-[20px] md:text-[40px]">proyectos + ideas</h3>
