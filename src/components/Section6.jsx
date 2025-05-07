@@ -24,13 +24,13 @@ const ScrollSnapCarousel = () => {
       content: (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <h3 className="text-xl md:text-2xl font-bold mb-2">Empresas</h3>
+            <h3 className="text-xl md:text-2xl font-product font-bold mb-2">Empresas</h3>
             <p className="text-sm md:text-base">
               Que buscan potenciar su presencia digital
             </p>
           </div>
           <div>
-            <h3 className="text-xl md:text-2xl font-bold mb-2">Startups</h3>
+            <h3 className="text-xl md:text-2xl font-product font-bold  mb-2">Startups</h3>
             <p className="text-sm md:text-base">
               Con necesidades de rápido crecimiento
             </p>
@@ -42,7 +42,7 @@ const ScrollSnapCarousel = () => {
       background: Slider2,
       content: (
         <div>
-          <h3 className="text-xl md:text-2xl font-bold mb-2">Profesionales</h3>
+          <h3 className="text-xl md:text-2xl font-product font-bold mb-2">Profesionales</h3>
           <p className="text-sm md:text-base">
             Que desean destacar en el mundo digital
           </p>
@@ -53,7 +53,7 @@ const ScrollSnapCarousel = () => {
       background: Slider2,
       content: (
         <div>
-          <h3 className="text-xl md:text-2xl font-bold mb-2">
+          <h3 className="text-xl md:text-2xlfont-product font-bold mb-2">
             Proyectos innovadores
           </h3>
           <p className="text-sm md:text-base">
