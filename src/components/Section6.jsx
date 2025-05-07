@@ -1,40 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion, useMotionValue, useTransform } from "framer-motion";
+import { gsap } from "gsap";
 import Slider1 from "../assets/fondo-slider1.png";
 import Slider2 from "../assets/fondo-slider2.png";
 
-const DRAG_BUFFER = 0;
-const VELOCITY_THRESHOLD = 500;
-const GAP = 16;
-const SPRING_OPTIONS = { type: "spring", stiffness: 300, damping: 30 };
-
-// Individual Slide Component
-const CarouselSlide = ({ slide, itemWidth, currentIndex, index, x }) => {
-  const range = [
-    -(index + 1) * (itemWidth + GAP),
-    -index * (itemWidth + GAP),
-    -(index - 1) * (itemWidth + GAP),
-  ];
-  const outputRange = [90, 0, -90];
-  const rotateY = useTransform(x, range, outputRange, { clamp: false });
-
+// Slide individual
+const CarouselSlide = ({ slide }) => {
   return (
-    <motion.div
-      className="snap-center flex-shrink-0 rounded-xl mx-2 flex items-center justify-center"
-      style={{
-        width: itemWidth,
-        height: "100%",
-        backgroundImage: `url(${slide.background})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        rotateY: rotateY,
-      }}
-      transition={SPRING_OPTIONS}
+    <div
+      className="snap-center flex-shrink-0 w-full h-full bg-cover bg-center rounded-xl mx-2 flex items-center justify-center"
+      style={{ backgroundImage: `url(${slide.background})` }}
     >
       <div className="bg-black/50 p-4 md:p-8 rounded-xl w-[85%] md:w-3/4 max-w-lg text-white text-center">
         {slide.content}
       </div>
-    </motion.div>
+    </div>
   );
 };
 
@@ -85,95 +64,29 @@ const ScrollSnapCarousel = () => {
     },
   ];
 
-  // For looping functionality
-  const carouselItems = [...slides, slides[0]];
-
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isResetting, setIsResetting] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const x = useMotionValue(0);
-  const containerRef = useRef(null);
+  const carouselRef = useRef(null);
 
-  // Container and item dimensions
-  const containerPadding = 16;
-  const baseWidth = window.innerWidth >= 1536 ? 1440 :
-    window.innerWidth >= 1280 ? 1200 :
-      window.innerWidth >= 1024 ? 1080 :
-        window.innerWidth >= 640 ? 620 :
-          window.innerWidth;
-  const itemWidth = baseWidth - containerPadding * 2;
-  const trackItemOffset = itemWidth + GAP;
-
-  // Auto-advance slides
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!isHovered) {
-        setCurrentIndex((prev) => {
-          if (prev === slides.length - 1) {
-            return prev + 1; // Animate to clone for smooth loop
-          }
-          if (prev === carouselItems.length - 1) {
-            return 0;
-          }
-          return prev + 1;
-        });
-      }
-    }, 4000);
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
+    }, 4000); // Se cambia la slide cada 4 segundos
     return () => clearInterval(interval);
-  }, [slides.length, carouselItems.length, isHovered]);
+  }, [slides.length]);
 
-  // Handle hover state
   useEffect(() => {
-    if (containerRef.current) {
-      const container = containerRef.current;
-      const handleMouseEnter = () => setIsHovered(true);
-      const handleMouseLeave = () => setIsHovered(false);
-      container.addEventListener("mouseenter", handleMouseEnter);
-      container.addEventListener("mouseleave", handleMouseLeave);
-      return () => {
-        container.removeEventListener("mouseenter", handleMouseEnter);
-        container.removeEventListener("mouseleave", handleMouseLeave);
-      };
+    if (carouselRef.current) {
+      // Se anima el scroll horizontal del contenedor a la posición del slide correspondiente
+      gsap.to(carouselRef.current, {
+        duration: 1,
+        scrollLeft: carouselRef.current.offsetWidth * currentIndex,
+        ease: "power2.out",
+      });
     }
-  }, []);
-
-  const effectiveTransition = isResetting ? { duration: 0 } : SPRING_OPTIONS;
-
-  // Handle animation complete (loop back to start)
-  const handleAnimationComplete = () => {
-    if (currentIndex === carouselItems.length - 1) {
-      setIsResetting(true);
-      x.set(0);
-      setCurrentIndex(0);
-      setTimeout(() => setIsResetting(false), 50);
-    }
-  };
-
-  // Handle drag end gesture
-  const handleDragEnd = (_, info) => {
-    const offset = info.offset.x;
-    const velocity = info.velocity.x;
-
-    if (offset < -DRAG_BUFFER || velocity < -VELOCITY_THRESHOLD) {
-      if (currentIndex === slides.length - 1) {
-        setCurrentIndex(currentIndex + 1);
-      } else {
-        setCurrentIndex((prev) => Math.min(prev + 1, carouselItems.length - 1));
-      }
-    } else if (offset > DRAG_BUFFER || velocity > VELOCITY_THRESHOLD) {
-      if (currentIndex === 0) {
-        setCurrentIndex(slides.length - 1);
-      } else {
-        setCurrentIndex((prev) => Math.max(prev - 1, 0));
-      }
-    }
-  };
+  }, [currentIndex]);
 
   return (
-    <div
-      ref={containerRef}
-      className="m-auto w-full md:w-[780px] sm:w-[620px] lg:w-[1080px] xl:w-[1200px] 2xl:w-[1440px] h-[580px] md:h-[980px] flex flex-col justify-evenly items-center px-2 md:px-4"
-    >
+    <div className="m-auto w-full md:w-[780px] sm:w-[620px] lg:w-[1080px] xl:w-[1200px] 2xl:w-[1440px] h-[580px] md:h-[980px] flex flex-col justify-evenly items-center px-2 md:px-4">
       <div>
         <h2 className="text-[35px] md:text-[37px] text-black font-product font-normal leading-none">
           <span className="md:inline mr-2">Somos</span>
@@ -182,55 +95,13 @@ const ScrollSnapCarousel = () => {
         </h2>
       </div>
 
-      <div className="w-full h-[320px] sm:h-[400px] md:h-[550px] lg:h-[650px] overflow-hidden rounded-lg relative">
-        <motion.div
-          className="flex h-full"
-          drag="x"
-          dragConstraints={{
-            left: -trackItemOffset * (carouselItems.length - 1),
-            right: 0,
-          }}
-          style={{
-            width: itemWidth,
-            gap: `${GAP}px`,
-            perspective: 1000,
-            perspectiveOrigin: `${currentIndex * trackItemOffset + itemWidth / 2}px 50%`,
-            x,
-          }}
-          onDragEnd={handleDragEnd}
-          animate={{ x: -(currentIndex * trackItemOffset) }}
-          transition={effectiveTransition}
-          onAnimationComplete={handleAnimationComplete}
-        >
-          {carouselItems.map((slide, index) => (
-            <CarouselSlide
-              key={index}
-              slide={slide}
-              itemWidth={itemWidth}
-              currentIndex={currentIndex}
-              index={index}
-              x={x}
-            />
-          ))}
-        </motion.div>
-
-        {/* Pagination dots */}
-        <div className="flex w-full justify-center absolute bottom-4 left-1/2 transform -translate-x-1/2">
-          <div className="flex space-x-2">
-            {slides.map((_, index) => (
-              <motion.div
-                key={index}
-                className={`h-2 w-2 rounded-full cursor-pointer transition-colors duration-150 ${currentIndex % slides.length === index ? "bg-white" : "bg-white/40"
-                  }`}
-                animate={{
-                  scale: currentIndex % slides.length === index ? 1.2 : 1,
-                }}
-                onClick={() => setCurrentIndex(index)}
-                transition={{ duration: 0.15 }}
-              />
-            ))}
-          </div>
-        </div>
+      <div
+        ref={carouselRef}
+        className="w-full h-[320px] sm:h-[400px] md:h-[550px] lg:h-[650px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar"
+      >
+        {slides.map((slide, index) => (
+          <CarouselSlide key={index} slide={slide} />
+        ))}
       </div>
     </div>
   );
