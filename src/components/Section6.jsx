@@ -142,7 +142,7 @@ const ScrollSnapCarousel = () => {
         gsap.to(carouselRef.current, {
           duration: 1.2,
           scrollLeft: carouselRef.current.offsetWidth * currentIndex,
-          ease: "power3.out",
+          ease: "power1.inOut", // Cambiado a un ease más fluido
           onComplete: () => {
             const targetScroll = carouselRef.current.offsetWidth * currentIndex;
             if (Math.abs(carouselRef.current.scrollLeft - targetScroll) > 1) {
