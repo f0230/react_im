@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { gsap } from "gsap";
 import Slider1 from "../assets/PYMES.webp";
 import Slider2 from "../assets/EMPRESAS.webp";
@@ -11,7 +11,7 @@ import MSlider3 from "../assets/EM_ESTABLAECIDAS_M.webp";
 const CarouselSlide = ({ slide }) => {
   return (
     <div
-      className="snap-center flex-shrink-0 w-full h-full bg-cover bg-center rounded-xl mx-2 flex items-center justify-center"
+      className="snap-center w-full h-full bg-cover bg-center rounded-xl flex items-center justify-center"
       style={{ backgroundImage: `url(${slide.background})` }}
     >
       <div className="flex flex-row justify-center items-center p-4 md:p-8 w-[100%] font-product font-normal">
@@ -22,10 +22,13 @@ const CarouselSlide = ({ slide }) => {
 };
 
 const ScrollSnapCarousel = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(1); // Iniciamos en el slide 2 (índice 1)
   const [isMobile, setIsMobile] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const carouselRef = useRef(null);
+  const intervalRef = useRef(null);
 
+  // Detectar tamaño de pantalla para imágenes responsive
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
@@ -47,7 +50,6 @@ const ScrollSnapCarousel = () => {
             </p>
           </div>
         </div>
-
       ),
     },
     {
@@ -55,7 +57,7 @@ const ScrollSnapCarousel = () => {
       content: (
         <div className="item-content flex flex-col md:flex-row justify-center items-center w-full sm:w-[500px] md:w-[620px] lg:w-[800px]">
           <div className="flex items-center w-full md:w-1/2 mb-4 md:mb-0">
-            <h3 className="text-black text-[37px]">Pymes</h3>
+            <h3 className="text-black text-[37px]">Empresas</h3>
           </div>
           <div className="flex items-center w-full md:w-1/2">
             <p className="text-black text-[12px] md:text-[17px]">
@@ -70,7 +72,7 @@ const ScrollSnapCarousel = () => {
       content: (
         <div className="item-content flex flex-col md:flex-row justify-center items-center w-full sm:w-[500px] md:w-[620px] lg:w-[800px]">
           <div className="flex items-center w-full md:w-1/2 mb-4 md:mb-0">
-            <h3 className="text-black text-[37px]">Pymes</h3>
+            <h3 className="text-black text-[37px]">Empresas Establecidas</h3>
           </div>
           <div className="flex items-center w-full md:w-1/2">
             <p className="text-black text-[12px] md:text-[17px]">
@@ -82,29 +84,108 @@ const ScrollSnapCarousel = () => {
     },
   ];
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
-    }, 4000);
-    return () => clearInterval(interval);
+  // Función para avanzar al siguiente slide
+  const goToNextSlide = useCallback(() => {
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
   }, [slides.length]);
 
+  // Función para configurar el intervalo de cambio automático
+  const startCarouselInterval = useCallback(() => {
+    // Limpiar cualquier intervalo existente
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Crear nuevo intervalo solo si no está pausado
+    if (!isPaused) {
+      intervalRef.current = setInterval(goToNextSlide, 4000);
+    }
+  }, [goToNextSlide, isPaused]);
+
+  // Iniciar/reiniciar el intervalo cuando cambia isPaused o slides
+  useEffect(() => {
+    startCarouselInterval();
+
+    // Limpiar el intervalo al desmontar
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [startCarouselInterval, slides.length, isPaused]);
+
+  // Detectar si la página está visible para pausar el carrusel cuando no se ve
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // La página no está visible, pausar
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      } else {
+        // La página es visible nuevamente, reanudar si no está pausado manualmente
+        if (!isPaused) {
+          startCarouselInterval();
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [isPaused, startCarouselInterval]);
+
+  // Animar el desplazamiento cuando cambia el índice
   useEffect(() => {
     if (carouselRef.current) {
-      gsap.to(carouselRef.current, {
-        duration: 1,
-        scrollLeft: carouselRef.current.offsetWidth * currentIndex,
-        ease: "power2.out",
-      });
+      // En móvil, mostrar un slide completo a la vez
+      if (isMobile) {
+        gsap.to(carouselRef.current, {
+          duration: 1.2,
+          scrollLeft: carouselRef.current.offsetWidth * currentIndex,
+          ease: "power3.out",
+          onComplete: () => {
+            const targetScroll = carouselRef.current.offsetWidth * currentIndex;
+            if (Math.abs(carouselRef.current.scrollLeft - targetScroll) > 1) {
+              carouselRef.current.scrollLeft = targetScroll;
+            }
+          }
+        });
+      } else {
+        // En desktop, calcular el desplazamiento para centrar el slide actual
+        const slideWidth = 1200; // Ancho fijo de 1200px para slides en desktop
+        const slideGap = 20; // Espacio entre slides
+
+        // Posición para centrar el slide actual y mostrar parcialmente los adyacentes
+        const centerPosition = (currentIndex * (slideWidth + slideGap)) - ((carouselRef.current.offsetWidth - slideWidth) / 2);
+
+        gsap.to(carouselRef.current, {
+          duration: 1.2,
+          scrollLeft: centerPosition,
+          ease: "power3.out",
+          onComplete: () => {
+            if (Math.abs(carouselRef.current.scrollLeft - centerPosition) > 1) {
+              carouselRef.current.scrollLeft = centerPosition;
+            }
+          }
+        });
+      }
     }
-  }, [currentIndex]);
+  }, [currentIndex, isMobile]);
+
+  // Funciones para controlar manualmente el carrusel
+  const handleMouseEnter = () => setIsPaused(true);
+  const handleMouseLeave = () => setIsPaused(false);
+
+  // Navegación manual
+  const goToSlide = (index) => {
+    setCurrentIndex(index);
+  };
 
   return (
-  
-
-  
-      <div className="m-auto w-full sm:w-[650px] md:w-[720px] lg:w-[1080px] xl:w-[1200px] h-[520px] md:h-[720px] lg:h-[950px] flex flex-col justify-evenly items-center ">
-      <div>
+    <div className="w-full h-[520px] md:h-[720px] lg:h-[950px] flex flex-col justify-evenly items-center">
+      <div className="w-full max-w-screen px-4 mx-auto items-center flex flex-col">
         <h2 className="text-[35px] md:text-[37px] text-black font-product font-normal leading-none">
           <span className="md:inline mr-2">Somos</span>
           <span className="font-bold mr-2">ideal</span>
@@ -112,16 +193,42 @@ const ScrollSnapCarousel = () => {
         </h2>
       </div>
 
-      <div
-        ref={carouselRef}
-        className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar p-2 md:p-0"
-      >
-        {slides.map((slide, index) => (
-          <CarouselSlide key={index} slide={slide} />
-        ))}
+      <div className="w-full overflow-hidden relative px-4">
+        <div
+          ref={carouselRef}
+          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar relative"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          style={{ padding: isMobile ? "0" : "0 10%" }} /* Espacio extra solo en desktop */
+        >
+          {slides.map((slide, index) => (
+            <div
+              key={index}
+              className={`px-2 ${isMobile ? "w-full flex-shrink-0" : "flex-shrink-0"}`}
+              style={{
+                width: isMobile ? "100%" : "1200px", // Ancho fijo de 1200px en desktop
+                maxWidth: isMobile ? "100%" : "1200px" // Asegurar que no exceda 1200px
+              }}
+            >
+              <CarouselSlide slide={slide} />
+            </div>
+          ))}
+        </div>
+
+        {/* Indicadores de navegación - ahora dentro del contenedor */}
+        <div className="flex justify-center mt-4 space-x-2 absolute bottom-4 left-0 right-0">
+          {slides.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => goToSlide(index)}
+              className={`h-2 w-2 lg:h-3 lg:w-3 rounded-full transition-all duration-300 ${currentIndex === index ? "bg-black w-4 lg:w-6" : "bg-gray-300"
+                }`}
+              aria-label={`Ir a slide ${index + 1}`}
+            />
+          ))}
+        </div>
       </div>
     </div>
-   
   );
 };
 
