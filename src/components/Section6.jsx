@@ -57,12 +57,11 @@ const ScrollSnapCarousel = () => {
       content: (
         <div className="item-content flex flex-col md:flex-row justify-center items-center w-full sm:w-[500px] md:w-[620px] lg:w-[800px]">
           <div className="flex items-center w-full md:w-1/2 mb-4 md:mb-0">
-            <h3 className="text-black text-[37px]">Empresas</h3>
+            <h3 className="text-white text-[37px]">Empresas</h3>
           </div>
           <div className="flex items-center w-full md:w-1/2">
-            <p className="text-black text-[12px] md:text-[17px]">
-              Sabemos lo que cuesta hacer crecer una empresa. Por eso trabajamos con pymes que quieren profesionalizar su marca, ordenar su comunicación y mejorar su presencia. Te ayudamos a dar ese salto que hace falta para destacarte en tu rubro y competir con solidez, sin perder tu esencia.
-            </p>
+            <p className="text-white text-[12px] md:text-[17px]">
+              Si tu marca ya está posicionada pero sentís que es momento de evolucionar, estamos para acompañarte. Te ayudamos a renovar tu identidad, actualizar tu comunicación y alinearte a los desafíos actuales del mercado, sin perder lo que te hace valioso. Porque crecer también implica adaptarse, y hacerlo con estrategia marca la diferencia.            </p>
           </div>
         </div>
       ),
@@ -72,12 +71,11 @@ const ScrollSnapCarousel = () => {
       content: (
         <div className="item-content flex flex-col md:flex-row justify-center items-center w-full sm:w-[500px] md:w-[620px] lg:w-[800px]">
           <div className="flex items-center w-full md:w-1/2 mb-4 md:mb-0">
-            <h3 className="text-black text-[37px]">Empresas Establecidas</h3>
+            <h3 className="text-white text-[37px]">Emprendedores </h3>
           </div>
           <div className="flex items-center w-full md:w-1/2">
-            <p className="text-black text-[12px] md:text-[17px]">
-              Sabemos lo que cuesta hacer crecer una empresa. Por eso trabajamos con pymes que quieren profesionalizar su marca, ordenar su comunicación y mejorar su presencia. Te ayudamos a dar ese salto que hace falta para destacarte en tu rubro y competir con solidez, sin perder tu esencia.
-            </p>
+            <p className="text-white text-[12px] md:text-[17px]">
+              Si estás empezando, tenés una idea clara pero no sabés por dónde arrancar con tu marca, somos el equipo que necesitás. Te ayudamos a construir tu identidad desde cero, con una estrategia que te diferencie desde el principio. Te acompañamos en cada paso, para que tu marca arranque bien y con fuerza.            </p>
           </div>
         </div>
       ),
@@ -193,7 +191,7 @@ const ScrollSnapCarousel = () => {
         </h2>
       </div>
 
-      <div className="w-full overflow-hidden relative px-4">
+      <div className="w-full overflow-hidden relative">
         <div
           ref={carouselRef}
           className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar relative"
@@ -216,17 +214,25 @@ const ScrollSnapCarousel = () => {
         </div>
 
         {/* Indicadores de navegación - ahora dentro del contenedor */}
-        <div className="flex justify-center mt-4 space-x-2 absolute bottom-4 left-0 right-0">
+        <div className="flex justify-center items-center gap-2 absolute bottom-4 left-0 right-0">
           {slides.map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index)}
-              className={`h-2 w-2 lg:h-3 lg:w-3 rounded-full transition-all duration-300 ${currentIndex === index ? "bg-black w-4 lg:w-6" : "bg-gray-300"
-                }`}
+              className={`
+        h-2 w-2 lg:h-3 lg:w-3 
+        rounded-full 
+        transition-all duration-300 
+        ease-in-out transform
+        ${currentIndex === index
+                  ? "bg-white/60 scale-125 lg:scale-150 shadow-md"
+                  : "bg-black/20 hover:bg-black/35 opacity-70 hover:opacity-100"}
+      `}
               aria-label={`Ir a slide ${index + 1}`}
             />
           ))}
         </div>
+
       </div>
     </div>
   );
