@@ -1,6 +1,4 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -66,12 +64,3 @@ img {
   scrollbar-width: none;
 }
 
-
-
-section canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 10;
-}

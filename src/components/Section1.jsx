@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import RotatingText from "./ui/RotatingText"; // Asegúrate de ajustar la ruta según tu estructura de archivos
-
-
-import AnimatedContent from './ui/AnimatedContent'
-
+import RotatingText from "./ui/RotatingText";
+import AnimatedContent from './ui/AnimatedContent';
+import FadeContent from './ui/FadeContent';
 
 import bgMobileImg from "../assets/PORTADA_1_MOVIL.webp"; // mobile
 import bgDesktopImg from "../assets/PORTADA_1.webp"; // desktop
@@ -29,7 +27,7 @@ const HeroSection = () => {
   }, []);
 
   return (
-    <div className="relative w-full overflow-hidden flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10" >
+    <div className="relative w-full overflow-hidden flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10">
       <AnimatedContent
         distance={150}
         direction="vertical"
@@ -38,13 +36,14 @@ const HeroSection = () => {
         initialOpacity={0.2}
         animateOpacity
         scale={1}
+        className="w-full flex justify-center"
       >
-      
         <div
-          className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px]
+          className="relative xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px] w-full
                     h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] 
                     overflow-hidden
-                    mt-[45px] sm:mt-[0px]"
+                    mt-[45px] sm:mt-[0px]
+                    mx-auto"
           style={{
             position: "relative",
             zIndex: 20,
@@ -66,35 +65,71 @@ const HeroSection = () => {
           <div className="relative z-10 w-full mx-auto h-full flex items-center justify-center">
             {/* Contenido dentro del hero principal*/}
             <div className="m-auto text-center text-black">
-              <img src={grupodte} alt="Logo" className="mx-auto w-[150px] sm:w-[175px] md:w-[200px]" />
-              <h1 className="mx-auto font-product font-normal text-[30px] sm:text-5xl md:text-45px lg:text-60px leading-none">
-                impulsamos tu<br />
-                <span className="font-bold inline-block">
-                  <RotatingText
-                    texts={rotatingWords}
-                    rotationInterval={2500}
-                    splitBy= "words"
-                    staggerDuration={0.03}
-                    transition={{
-                      type: "spring",
-                      damping: 20,
-                      stiffness: 300
-                    }}
-                    mainClassName="font-bold"
-                  />
-                </span>
-              </h1>
-              <p className="text-[12px] md:text-[17px] mt-4">
-                Desarrollamos soluciones estratégicas
-              </p>
-              <div className="mt-4 md:mt-8 inline-block space-x-1 md:space-x-2 lg:space-x-3">
-                <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px]  hover:bg-skyblue/95 hover:text-white transition duration-300">
-                  Contactanos
-                </button>
-                <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
-                  Servicios
-                </button>
-              </div>
+              {/* Logo con FadeContent */}
+              <FadeContent blur={true} duration={800} easing="ease-out" initialOpacity={0} delay={200}>
+                <img src={grupodte} alt="Logo" className="mx-auto w-[150px] sm:w-[175px] md:w-[200px]" />
+              </FadeContent>
+
+              {/* Título con AnimatedContent */}
+              <AnimatedContent
+                distance={40}
+                direction="vertical"
+                reverse={true}
+                config={{ tension: 120, friction: 14 }}
+                initialOpacity={0}
+                animateOpacity
+                delay={400}
+              >
+                <h1 className="mx-auto font-product font-normal text-[30px] sm:text-5xl md:text-45px lg:text-60px leading-none">
+                  impulsamos tu<br />
+                  <span className="font-bold inline-block">
+                    <RotatingText
+                      texts={rotatingWords}
+                      rotationInterval={2500}
+                      splitBy="words"
+                      staggerDuration={0.03}
+                      transition={{
+                        type: "spring",
+                        damping: 20,
+                        stiffness: 300
+                      }}
+                      mainClassName="font-bold"
+                    />
+                  </span>
+                </h1>
+              </AnimatedContent>
+
+              {/* Subtítulo con FadeContent */}
+              <FadeContent
+                duration={1000}
+                easing="ease-in-out"
+                initialOpacity={0}
+                delay={700}
+              >
+                <p className="text-[12px] md:text-[17px] mt-16">
+                  Desarrollamos soluciones estratégicas
+                </p>
+              </FadeContent>
+
+              {/* Botones con animación del contenedor completo */}
+              <AnimatedContent
+                distance={50}
+                direction="vertical"
+                reverse={true}
+                config={{ tension: 90, friction: 16 }}
+                initialOpacity={0}
+                animateOpacity
+                delay={900}
+              >
+                <div className="mt-4 md:mt-8 inline-block space-x-1 md:space-x-2 lg:space-x-3">
+                  <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 hover:text-white transition duration-300">
+                    Contactanos
+                  </button>
+                  <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
+                    Servicios
+                  </button>
+                </div>
+              </AnimatedContent>
             </div>
 
             {/* Popup animado */}
@@ -105,19 +140,27 @@ const HeroSection = () => {
                 exit={{ opacity: 0, backdropFilter: "blur(0px)", rotate: 2, y: 10 }}
                 transition={{
                   duration: 1.65,
-                  ease: [0.16, 1, 0.3, 1] // Curva personalizada tipo cubica
+                  ease: [0.16, 1, 0.3, 1] // Curva personalizada tipo cúbica
                 }}
-                className="absolute bottom-2 lg:top-2 transform -translate-x-1/2 w-[250px] h-[100px] bg-black shadow-lg p-4 flex flex-col justify-between z-30
-                        md:right-4 md:top-4 md:w-[389px] md:h-[150px]"
+                className="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-[250px] h-[100px] bg-black shadow-lg p-4 flex flex-col justify-between z-30
+                        md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:h-[150px]"
               >
-                {/* Contenido del popup y botón de cerrar */}
-                <div className="text-white font-product text-[12px] md:text-[17px]">
-                  <h2 className="font-normal text-[20px] lg:text-[40px] leading-[1] lg:leading-[1.-1]">
-                    Hola! <br />
-                    <span className="inline-block -mt-2">Bienvenido</span>
-                  </h2>
-                  <p className="mt-1">si tiene alguna cunsulta contactenos</p>
-                </div>
+                {/* Contenido del popup con animación interna */}
+                <FadeContent
+                  blur={true}
+                  duration={600}
+                  easing="ease-out"
+                  initialOpacity={0}
+                  delay={300}
+                >
+                  <div className="text-white font-product text-[12px] md:text-[17px]">
+                    <h2 className="font-normal text-[20px] lg:text-[40px] leading-[1] lg:leading-[1.1]">
+                      Hola! <br />
+                      <span className="inline-block -mt-2">Bienvenido</span>
+                    </h2>
+                    <p className="mt-1">si tiene alguna consulta contáctenos</p>
+                  </div>
+                </FadeContent>
 
                 <button
                   className="absolute top-1 right-1 text-white p-1 rounded-full hover:bg-white/20 transition"
@@ -131,7 +174,6 @@ const HeroSection = () => {
           </div>
         </div>
       </AnimatedContent>
-
     </div>
   );
 };
