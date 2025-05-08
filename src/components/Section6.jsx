@@ -82,48 +82,89 @@ const ScrollSnapCarousel = () => {
     },
   ];
 
-  // Función para avanzar al siguiente slide
+  // Estado adicional para controlar la dirección del carrusel
+  const [direction, setDirection] = useState("forward"); // "forward" | "backward"
+
+  // Función para avanzar al siguiente slide con efecto ping-pong
   const goToNextSlide = useCallback(() => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
-  }, [slides.length]);
+    setCurrentIndex((prevIndex) => {
+      if (direction === "forward") {
+        // Si llegamos al final, cambiar dirección a backward
+        if (prevIndex >= slides.length - 1) {
+          setDirection("backward");
+          return prevIndex - 1;
+        }
+        return prevIndex + 1;
+      } else {
+        // Si llegamos al inicio, cambiar dirección a forward
+        if (prevIndex <= 0) {
+          setDirection("forward");
+          return prevIndex + 1;
+        }
+        return prevIndex - 1;
+      }
+    });
+  }, [slides.length, direction]);
 
   // Función para configurar el intervalo de cambio automático
   const startCarouselInterval = useCallback(() => {
     // Limpiar cualquier intervalo existente
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
 
     // Crear nuevo intervalo solo si no está pausado
     if (!isPaused) {
-      intervalRef.current = setInterval(goToNextSlide, 4000);
+      // Asegurar que se cree un nuevo intervalo y se guarde la referencia
+      console.log("Iniciando intervalo de autoplay");
+      intervalRef.current = setInterval(() => {
+        console.log("Avanzando slide automáticamente");
+        goToNextSlide();
+      }, 4000);
     }
   }, [goToNextSlide, isPaused]);
 
   // Iniciar/reiniciar el intervalo cuando cambia isPaused o slides
   useEffect(() => {
+    console.log("Configurando autoplay inicial, isPaused:", isPaused);
+
+    // Iniciar el intervalo inmediatamente al montar el componente
     startCarouselInterval();
 
-    // Limpiar el intervalo al desmontar
+    // Limpiar el intervalo al desmontar o cuando cambien las dependencias
     return () => {
+      console.log("Limpiando intervalo existente");
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
     };
   }, [startCarouselInterval, slides.length, isPaused]);
 
   // Detectar si la página está visible para pausar el carrusel cuando no se ve
+  // Con retraso de 2 segundos para reanudar
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // La página no está visible, pausar
+        console.log("Página oculta, pausando carrusel");
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
+          intervalRef.current = null;
         }
       } else {
-        // La página es visible nuevamente, reanudar si no está pausado manualmente
+        // La página es visible nuevamente, reanudar con retraso de 2 segundos si no está pausado manualmente
+        console.log("Página visible, preparando para reanudar en 2 segundos");
         if (!isPaused) {
-          startCarouselInterval();
+          // Usar un ID para el timeout para poder cancelarlo si es necesario
+          const timeoutId = setTimeout(() => {
+            console.log("Reanudando carrusel después de 2 segundos");
+            startCarouselInterval();
+          }, 2000);
+
+          // Almacenar el ID del timeout para limpieza
+          return () => clearTimeout(timeoutId);
         }
       }
     };
@@ -140,9 +181,9 @@ const ScrollSnapCarousel = () => {
       // En móvil, mostrar un slide completo a la vez
       if (isMobile) {
         gsap.to(carouselRef.current, {
-          duration: 1.2,
+          duration: 1.5,
           scrollLeft: carouselRef.current.offsetWidth * currentIndex,
-          ease: "power3.out",
+          ease: "linear",
           onComplete: () => {
             const targetScroll = carouselRef.current.offsetWidth * currentIndex;
             if (Math.abs(carouselRef.current.scrollLeft - targetScroll) > 1) {
@@ -161,10 +202,11 @@ const ScrollSnapCarousel = () => {
         gsap.to(carouselRef.current, {
           duration: 1.2,
           scrollLeft: centerPosition,
-          ease: "bounce.in",
+          ease: "power3.out",
           onComplete: () => {
-            if (Math.abs(carouselRef.current.scrollLeft - centerPosition) > 1) {
-              carouselRef.current.scrollLeft = centerPosition;
+            const targetScroll = centerPosition;
+            if (Math.abs(carouselRef.current.scrollLeft - targetScroll) > 1) {
+              carouselRef.current.scrollLeft = targetScroll;
             }
           }
         });
@@ -173,14 +215,29 @@ const ScrollSnapCarousel = () => {
   }, [currentIndex, isMobile]);
 
   // Funciones para controlar manualmente el carrusel
-  const handleMouseEnter = () => setIsPaused(true);
-  const handleMouseLeave = () => setIsPaused(false);
+  const handleMouseEnter = () => {
+    console.log("Mouse entró, pausando carrusel");
+    setIsPaused(true);
+
+    // Asegurar que se detenga el intervalo inmediatamente
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  const handleMouseLeave = () => {
+    console.log("Mouse salió, reanudando carrusel");
+    setIsPaused(false);
+
+    // Reanudar el carrusel inmediatamente al salir el mouse
+    startCarouselInterval();
+  };
 
   // Navegación manual
   const goToSlide = (index) => {
     setCurrentIndex(index);
   };
-
   return (
     <div className="w-full h-[520px] md:h-[720px] lg:h-[950px] flex flex-col justify-evenly items-center">
       <div className="w-full max-w-screen px-4 mx-auto items-center flex flex-col">
