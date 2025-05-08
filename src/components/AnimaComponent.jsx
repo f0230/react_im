@@ -1,15 +1,15 @@
 import React from "react";
-import ScrollToTopButton from "./ScrollToTopButton";
+import ScrollToTopButton from "./ui/ScrollToTopButton";
 import Navbar from './Navbar';
 import HeroG from "./Section1";
 import Section2 from "./Section2";
 import Section3 from "./Section3";
 import Section4 from "./Section4";  
-import Section5 from "./Section5_1";
-import SimultaneousWords from "./Section5";
-import InfiniteCarousel from "./Section6";
-import Section7 from "./Section7";  
-import Footer from "./footer";
+import Section5 from "./Section5";
+import SimultaneousWords from "./Section6";
+import InfiniteCarousel from "./Section7";
+import Section7 from "./Section8";  
+import Footer from "./Footer";
 
 
 import SplashCursor from './ui/SplashCursor'

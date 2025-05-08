@@ -27,10 +27,10 @@ const Section2 = () => {
       </p>
 
       <div className="mt-4 md:mt-8 inline-block space-x-1 md:space-x-2 lg:space-x-3">
-        <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] shadow-lg hover:bg-skyblue/95 hover:text-white transition duration-300">
+        <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px]  hover:bg-skyblue/95 hover:text-white transition duration-300">
           Contactanos
         </button>
-        <button className="z-100 text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] shadow-lg hover:bg-white/95 hover:text-skyblue transition duration-300">
+        <button className="z-100 text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
           Servicios
         </button>
       </div>

@@ -63,7 +63,7 @@ const Section2 = () => {
               <p className="mb-10 w-[250px] text-[12px] md:text-[17px] text-white text-center leading-none">
                 Diseñamos espacios físicos que traducen la identidad de tu marca.
               </p>
-              <button className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-400 transition duration-300 mb-6">
+              <button className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full  hover:bg-blue-400 transition duration-300 mb-6">
                 Ver más
               </button>
             </div>
@@ -96,7 +96,7 @@ const Section2 = () => {
               <p className="mb-10 w-[250px] text-[12px] md:text-[17px] text-white text-center leading-none">
                 Creativos y estratégicos que conectan con tu público
               </p>
-              <button className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-400 transition duration-300 mb-6">
+              <button className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full  hover:bg-blue-400 transition duration-300 mb-6">
                 Ver más
               </button>
             </div>

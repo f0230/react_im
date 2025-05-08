@@ -2,6 +2,10 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import RotatingText from "./ui/RotatingText"; // Asegúrate de ajustar la ruta según tu estructura de archivos
 
+
+import AnimatedContent from './ui/AnimatedContent'
+
+
 import bgMobileImg from "../assets/PORTADA_1_MOVIL.webp"; // mobile
 import bgDesktopImg from "../assets/PORTADA_1.webp"; // desktop
 import grupodte from "../assets/LOGODTE.svg"; // logo 
@@ -25,19 +29,17 @@ const HeroSection = () => {
   }, []);
 
   return (
-    <div className="relative w-full overflow-hidden">
-      <motion.section
-        className="relative w-full flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10"
-        initial={{ y: 30, opacity:0.2 }}
-        whileInView={{ y: 0, opacity: 1}}
-        transition={{
-          y: { type: "spring", stiffness: 80, damping: 16 },
-          scale: { duration: 0.6, ease: [0.4, 0, 0.2, 1] },
-          filter: { duration: 0.5, ease: "easeOut" },
-          delay: 0.6,
-        }}
-        viewport={{ once: true, amount: 0.3 }}
+    <div className="relative w-full overflow-hidden flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10" >
+      <AnimatedContent
+        distance={150}
+        direction="vertical"
+        reverse={false}
+        config={{ tension: 80, friction: 20 }}
+        initialOpacity={0.2}
+        animateOpacity
+        scale={1}
       >
+      
         <div
           className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px]
                     h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] 
@@ -86,10 +88,10 @@ const HeroSection = () => {
                 Desarrollamos soluciones estratégicas
               </p>
               <div className="mt-4 md:mt-8 inline-block space-x-1 md:space-x-2 lg:space-x-3">
-                <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] shadow-lg hover:bg-skyblue/95 hover:text-white transition duration-300">
+                <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px]  hover:bg-skyblue/95 hover:text-white transition duration-300">
                   Contactanos
                 </button>
-                <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] shadow-lg hover:bg-white/95 hover:text-skyblue transition duration-300">
+                <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
                   Servicios
                 </button>
               </div>
@@ -128,7 +130,8 @@ const HeroSection = () => {
             {/* Fin del popup animado */}
           </div>
         </div>
-      </motion.section>
+      </AnimatedContent>
+
     </div>
   );
 };
