@@ -181,7 +181,7 @@ const ScrollSnapCarousel = () => {
       // En móvil, mostrar un slide completo a la vez
       if (isMobile) {
         gsap.to(carouselRef.current, {
-          duration: 1.5,
+          duration: 1,
           scrollLeft: carouselRef.current.offsetWidth * currentIndex,
           ease: "linear",
           onComplete: () => {
