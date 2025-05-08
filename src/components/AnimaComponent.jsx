@@ -1,7 +1,7 @@
 import React from "react";
 import ScrollToTopButton from "./ScrollToTopButton";
 import Navbar from './Navbar';
-import HeroG from "./HeroG";
+import HeroG from "./Section1";
 import Section2 from "./Section2";
 import Section3 from "./Section3";
 import Section4 from "./Section4";  
@@ -11,8 +11,13 @@ import InfiniteCarousel from "./Section6";
 import Section7 from "./Section7";  
 import Footer from "./footer";
 
+
+import SplashCursor from './ui/SplashCursor'
+
+
 export const AnimaComponent = () => {
   return (
+    
       <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative"> 
         
         <main className="pt-[45x] sm:pt-[45px]">
@@ -51,6 +56,7 @@ export const AnimaComponent = () => {
 
         <ScrollToTopButton />
 
+      <SplashCursor />
 
 
       </div>

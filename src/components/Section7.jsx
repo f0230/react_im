@@ -1,10 +1,25 @@
 import React from "react";
+import Noise from './ui/Noise';
+
+
 
 const Section7 = () => {
     return (
+        
         <div className="bg-black text-white flex flex-col justify-center items-center w-full h-screen mx-auto">
+
+            <Noise
+                patternSize={250}
+                patternScaleX={1}
+                patternScaleY={1}
+                patternRefreshInterval={2}
+                patternAlpha={35}
+            /> 
             <div className="jrelative z-10 w-full mx-auto h-full flex items-center justify-center">
+
+               
                 <div className="m-auto text-center w-[320px] md:w-[600px]">
+                    
                 <h1 className="x-auto font-product font-normal text-[30px] sm:text-5xl md:text-60px leading-none mb-8">Planes que se adaptan</h1>
                 
                 <p className="font-product font-normal leading-[1.2]">  Nos adaptamos a tus necesidades y presupuesto. Creemos que, sin importar el alcance del proyecto, siempre podemos trabajar juntos para obtener resultados excepcionales. Nuestro enfoque flexible y comprometido garantiza que cada detalle se ajuste a tus expectativas, asegurando que logremos el mejor resultado, sin comprometer la calidad ni la innovación</p>
@@ -17,6 +32,9 @@ const Section7 = () => {
                         </button>
                     </div>         
            </div>
+            </div>
+            <div style={{ width: '600px', height: '400px', position: 'relative', overflow: 'hidden' }}>
+           
             </div>
        
             </div>

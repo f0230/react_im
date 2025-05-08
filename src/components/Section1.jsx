@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import RotatingText from "./RotatingText"; // Asegúrate de ajustar la ruta según tu estructura de archivos
+import RotatingText from "./ui/RotatingText"; // Asegúrate de ajustar la ruta según tu estructura de archivos
 
 import bgMobileImg from "../assets/PORTADA_1_MOVIL.webp"; // mobile
 import bgDesktopImg from "../assets/PORTADA_1.webp"; // desktop

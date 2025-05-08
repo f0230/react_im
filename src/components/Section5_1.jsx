@@ -3,7 +3,7 @@ import React from "react";
 
 const Section5 = () => {
   return (
-      <section className="font-product relative w-full flex h-[550px] md:h-[350px]  justify-between items-center px-2 sm:px-2 lg:px-2 z-10 mt-2">
+      <section className="font-product relative w-full flex h-[550px] md:h-[350px]  justify-between items-center z-10">
          
               {/* Contenedor flexible que cambia de dirección según el viewport */}
               <div className="flex flex-col md:flex-row w-full gap-10 ">
