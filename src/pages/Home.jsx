@@ -1,15 +1,15 @@
 import React from "react";
-import ScrollToTopButton from "./ui/ScrollToTopButton";
-import Navbar from './Navbar';
-import HeroG from "./Section1";
-import Section2 from "./Section2";
-import Section3 from "./Section3";
-import Section4 from "./Section4";  
-import Section5 from "./Section5";
-import SimultaneousWords from "./Section6";
-import InfiniteCarousel from "./Section7";
-import Section7 from "./Section8";  
-import Footer from "./Footer";
+import ScrollToTopButton from "../components/ui/ScrollToTopButton";
+import Navbar from '../components/Navbar';
+import HeroG from "../components/Section1";
+import Section2 from "../components/Section2";
+import Section3 from "../components/Section3";
+import Section4 from "../components/Section4";  
+import Section5 from "../components/Section5";
+import SimultaneousWords from "../components/Section6";
+import InfiniteCarousel from "../components/Section7";
+import Section7 from "../components/Section8";  
+import Footer from "../components/Footer";
 
 
 
@@ -20,10 +20,7 @@ export const AnimaComponent = () => {
     
       <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative"> 
         
-        <main className="pt-[45x] sm:pt-[45px]">
-          <Navbar />
-          
-        </main>
+   
         <div className="relative w-full">
           <HeroG />
 

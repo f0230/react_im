@@ -6,16 +6,21 @@ import Noise from './ui/Noise';
 const Section7 = () => {
     return (
         
-        <div className="bg-black text-white flex flex-col justify-center items-center w-full h-screen mx-auto">
+        <div className="bg-black text-white flex flex-col justify-center items-center w-full h-screen mx-auto"
+        
+            style={{
+                backgroundImage: "url('/src/assets/compu_fondo.webp')",
+            }}>
 
             <Noise
                 patternSize={250}
                 patternScaleX={1}
                 patternScaleY={1}
-                patternRefreshInterval={2}
-                patternAlpha={20}
+                patternRefreshInterval={4}
+                patternAlpha={40}
             /> 
-            <div className="jrelative z-10 w-full mx-auto h-full flex items-center justify-center">
+            
+            <div className="relative z-10 w-full mx-auto h-full flex items-center justify-center">
 
                
                 <div className="m-auto text-center w-[320px] md:w-[600px]">
@@ -33,10 +38,7 @@ const Section7 = () => {
                     </div>         
            </div>
             </div>
-            <div style={{ width: '600px', height: '400px', position: 'relative', overflow: 'hidden' }}>
            
-            </div>
-       
             </div>
         
     );

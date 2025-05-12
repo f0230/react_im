@@ -1,6 +1,3 @@
-
-
-
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -20,7 +17,6 @@ const SimultaneousWords = () => {
                 start: 'top 80%',
                 end: 'bottom 20%',
                 toggleActions: 'play none none reverse',
-                // markers: true, // puedes descomentar esto si querés debuggear
             },
         });
 
@@ -44,12 +40,10 @@ const SimultaneousWords = () => {
                 ease: 'power3.out',
                 duration: 0.6,
             },
-            '-=0.3' // empieza antes de que termine el título
+            '-=0.3'
         );
 
-        return () => {
-            tl.kill();
-        };
+        return () => tl.kill();
     }, []);
 
     const title = 'en DTE';
@@ -60,30 +54,28 @@ const SimultaneousWords = () => {
     const paragraphWords = paragraph.split(' ');
 
     return (
-        <div className="w-full px-4 sm:px-6 md:px-8 lg:px-10 xl:px-20 flex justify-center h-[600px] md:h-[500px]  sm:h-[400px] border-y-2 border-black  relative overflow-hidden">
-
-            <div
+        <section className="relative w-full flex justify-center items-center border-y-2 border-black overflow-hidden py-10 md:py-16">
+            <article
                 ref={containerRef}
-                className="w-full md:w-[680px] sm:w-[540px] lg:w-[1100px] h-auto  mt-1 sm:mt-0 overflow-hidden bg-white flex flex-col justify-center "
+                className="w-full max-w-[1100px] px-4 md:px-6 flex flex-col justify-center items-start"
             >
                 <h2 className="text-[30px] md:text-3xl font-bold font-product flex flex-wrap gap-2 mb-4">
-                    {titleWords.map((word, index) => (
-                        <span key={index} className="title-word inline-block whitespace-nowrap">
+                    {titleWords.map((word, i) => (
+                        <span key={i} className="title-word inline-block whitespace-nowrap">
                             {word}
                         </span>
                     ))}
                 </h2>
-                <p className="text-[13px] md:text-[17px] font-product font-normal flex flex-wrap gap-1 leading-none mt-4">
-                    {paragraphWords.map((word, index) => (
-                        <span key={index} className="paragraph-word inline-block whitespace-nowrap">
+                <p className="text-[13px] md:text-[17px] font-product font-normal flex flex-wrap gap-1 leading-snug">
+                    {paragraphWords.map((word, i) => (
+                        <span key={i} className="paragraph-word inline-block whitespace-nowrap">
                             {word}
                         </span>
                     ))}
                 </p>
-            </div>
-        </div>
+            </article>
+        </section>
     );
-
 };
 
 export default SimultaneousWords;
