@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import RotatingText from "./ui/RotatingText";
 import AnimatedContent from './ui/AnimatedContent';
 import FadeContent from './ui/FadeContent';
-import SplashCursor from './ui/SplashCursor';
+
 
 import OptimizedImage from "@/components/OptimizedImage"; // <== Lazy loader
 
@@ -35,7 +35,6 @@ const HeroSection = () => {
           animateOpacity
           scale={1}
         >
-          <SplashCursor />
 
           <div
             className="relative w-full 

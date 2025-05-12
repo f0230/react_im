@@ -1,30 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-export const OptimizedImage = ({
-    src,
-    mobileSrc,
-    alt,
-    className = '',
-    width,
-    height
-}) => {
+const isMobileDevice = () => typeof window !== 'undefined' && window.innerWidth < 768;
+
+export const OptimizedImage = ({ src, mobileSrc, alt, className = '', width, height }) => {
     const [imageSrc, setImageSrc] = useState('/placeholder.png');
-    const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
-
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
-    useEffect(() => {
-        const imgToLoad = isMobile && mobileSrc ? mobileSrc : src;
-        const img = new Image();
-        img.src = imgToLoad;
-        img.onload = () => setImageSrc(imgToLoad);
-    }, [src, mobileSrc, isMobile]);
+        const selectedSrc = isMobileDevice() && mobileSrc ? mobileSrc : src;
+        setImageSrc(selectedSrc);
+    }, [src, mobileSrc]);
 
     return (
         <img
@@ -33,6 +17,7 @@ export const OptimizedImage = ({
             loading="lazy"
             width={width}
             height={height}
+            decoding="async"
             className={`${className} object-cover`}
         />
     );
