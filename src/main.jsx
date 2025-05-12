@@ -3,25 +3,24 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import './index.css';
+import { SpeedInsights } from '@vercel/speed-insights/react'; // ✅ para apps que no usan Next.js
 
-// Esperar a que el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', () => {
   const rootElement = document.getElementById('root');
-  
-  // Asegurarnos de que el elemento root existe
+
   if (rootElement) {
-    // Eliminar el fallback
     const fallback = document.getElementById('fallback');
     if (fallback) {
       fallback.style.display = 'none';
     }
-    
+
     try {
       const root = createRoot(rootElement);
       root.render(
         <React.StrictMode>
           <ErrorBoundary>
             <App />
+            <SpeedInsights /> {/* ✅ insertado aquí */}
           </ErrorBoundary>
         </React.StrictMode>
       );
