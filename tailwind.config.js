@@ -18,6 +18,7 @@ export default {
         'teal-light': '#dbfdff',
         'teal-medium': '#6ea0a0',
         'teal-dark': '#3a7c7c',
+        
         'greyburger': '#d9d9d9',
         'skyblue': '#0071E3',
         'green': '#0DD122',

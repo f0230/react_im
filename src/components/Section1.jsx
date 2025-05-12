@@ -9,6 +9,11 @@ import bgDesktopImg from "../assets/PORTADA_1.webp"; // desktop
 import grupodte from "../assets/LOGODTE.svg"; // logo 
 import xclose from "../assets/x-close.svg"; // logo 
 
+
+
+import SplashCursor from './ui/SplashCursor'
+
+
 const HeroSection = () => {
   const [showPopup, setShowPopup] = useState(false);
 
@@ -28,6 +33,7 @@ const HeroSection = () => {
 
   return (
     <div className="font-product relative w-full flex justify-center items-start px-2 z-10">
+
       <div className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px]
                 sm:h-[600px] md:h-[700px] lg:h-[700px]  overflow-hidden mx-auto">
         <AnimatedContent
@@ -39,6 +45,8 @@ const HeroSection = () => {
           animateOpacity
           scale={1}
         >
+          <SplashCursor />
+
           <div
             className="relative w-full 
                   h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] 

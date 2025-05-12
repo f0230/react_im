@@ -12,7 +12,7 @@ import Section7 from "./Section8";
 import Footer from "./Footer";
 
 
-import SplashCursor from './ui/SplashCursor'
+
 
 
 export const AnimaComponent = () => {
@@ -22,9 +22,11 @@ export const AnimaComponent = () => {
         
         <main className="pt-[45x] sm:pt-[45px]">
           <Navbar />
+          
         </main>
         <div className="relative w-full">
           <HeroG />
+
         </div>
         <div className="relative w-full">
           <Section2 />
@@ -56,7 +58,6 @@ export const AnimaComponent = () => {
 
         <ScrollToTopButton />
 
-      <SplashCursor />
 
 
       </div>
