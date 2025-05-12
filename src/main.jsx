@@ -3,7 +3,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import './index.css';
-import { SpeedInsights } from '@vercel/speed-insights/react'; 
+import { SpeedInsights } from "@vercel/speed-insights/react";
+
 
 document.addEventListener('DOMContentLoaded', () => {
   const rootElement = document.getElementById('root');
@@ -18,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const root = createRoot(rootElement);
       root.render(
         <React.StrictMode>
-          <ErrorBoundary>
+          <ErrorBoundary> 
             <App />
             <SpeedInsights /> {/* ✅ insertado aquí */}
           </ErrorBoundary>
