@@ -101,7 +101,7 @@ const servicios = [
 
 const Servicios = () => {
     return (
-        <main className="py-16 px-4 md:px-20 bg-white text-black font-product w-full max-w-5xl mx-auto">
+        <main className="py-16 px-4 md:px-20 bg-animated text-black font-product w-full max-w-5xl mx-auto">
             {servicios.map((servicio, index) => (
                 <FadeContent
                     key={index}
