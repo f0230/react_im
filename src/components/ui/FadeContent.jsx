@@ -3,10 +3,10 @@ import { useRef, useEffect, useState } from 'react';
 const FadeContent = ({
     children,
     blur = false,
-    duration = 1000,
+    duration = 800,
     easing = 'ease-out',
     delay = 0,
-    threshold = 0.1,
+    threshold = 0.25,
     initialOpacity = 0,
     className = ''
 }) => {
@@ -14,33 +14,36 @@ const FadeContent = ({
     const ref = useRef(null);
 
     useEffect(() => {
-        if (!ref.current) return;
+        const el = ref.current;
+        if (!el) return;
 
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
-                    observer.unobserve(ref.current);
-                    setTimeout(() => {
-                        setInView(true);
-                    }, delay);
+                    observer.unobserve(el);
+                    setTimeout(() => setInView(true), delay);
                 }
             },
-            { threshold }
+            {
+                threshold,
+                rootMargin: '0px 0px -10% 0px', // activa más “tarde” para que se vea más
+            }
         );
 
-        observer.observe(ref.current);
-
+        observer.observe(el);
         return () => observer.disconnect();
     }, [threshold, delay]);
 
     return (
         <div
             ref={ref}
-            className={className}
+            className={`${className} transition-all duration-[${duration}ms] ease-[${easing}]`}
             style={{
                 opacity: inView ? 1 : initialOpacity,
-                transition: `opacity ${duration}ms ${easing}, filter ${duration}ms ${easing}`,
-                filter: blur ? (inView ? 'blur(0px)' : 'blur(10px)') : 'none',
+                transform: inView ? 'translateY(0px)' : 'translateY(50px)',
+                filter: blur ? (inView ? 'blur(0px)' : 'blur(12px)') : 'none',
+                transition: `opacity ${duration}ms ${easing}, transform ${duration}ms ${easing}, filter ${duration}ms ${easing}`,
+                willChange: 'opacity, transform, filter'
             }}
         >
             {children}

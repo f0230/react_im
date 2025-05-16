@@ -62,7 +62,7 @@ const Footer = () => {
 
                 {/* Derecha: solo visible en mobile */}
                 <div className="block md:invisible text-right">
-                    <p className="text-[10px] text-neutral-500">Montevideo, Uruguay</p>
+                    <p className="text-[10px] text-neutral-500">Uruguay</p>
                 </div>
             </div>
 
