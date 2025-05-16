@@ -14,7 +14,7 @@ const Section6 = () => {
   const carouselRef = useRef(null);
   const slideRefs = useRef([]);
 
-  // Detectar dispositivo
+  // Detectar si es mobile
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
@@ -22,7 +22,7 @@ const Section6 = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Detectar slide activo por scroll horizontal
+  // Slide activo por scroll
   useEffect(() => {
     const handleScroll = () => {
       const scrollX = carouselRef.current.scrollLeft;
@@ -31,12 +31,59 @@ const Section6 = () => {
       setActiveIndex(index);
     };
 
-    const ref = carouselRef.current;
-    ref?.addEventListener('scroll', handleScroll);
-    return () => ref?.removeEventListener('scroll', handleScroll);
+    const el = carouselRef.current;
+    el?.addEventListener('scroll', handleScroll);
+    return () => el?.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Slides con imágenes y contenido adaptado
+  // Scroll horizontal con clic y arrastre
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    const handleMouseDown = (e) => {
+      isDown = true;
+      el.classList.add('active');
+      startX = e.pageX - el.offsetLeft;
+      scrollLeft = el.scrollLeft;
+    };
+
+    const handleMouseLeave = () => {
+      isDown = false;
+      el.classList.remove('active');
+    };
+
+    const handleMouseUp = () => {
+      isDown = false;
+      el.classList.remove('active');
+    };
+
+    const handleMouseMove = (e) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - el.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      el.scrollLeft = scrollLeft - walk;
+    };
+
+    el.addEventListener('mousedown', handleMouseDown);
+    el.addEventListener('mouseleave', handleMouseLeave);
+    el.addEventListener('mouseup', handleMouseUp);
+    el.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      el.removeEventListener('mousedown', handleMouseDown);
+      el.removeEventListener('mouseleave', handleMouseLeave);
+      el.removeEventListener('mouseup', handleMouseUp);
+      el.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, []);
+
+  // Slides
   const slides = useMemo(() => [
     {
       background: isMobile ? MSlider1 : Slider1,
@@ -85,7 +132,7 @@ const Section6 = () => {
       <div className="w-full overflow-hidden relative px-2">
         <div
           ref={carouselRef}
-          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar relative cursor-grab active:cursor-grabbing"
+          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar cursor-grab active:cursor-grabbing"
         >
           {slides.map((slide, index) => (
             <div

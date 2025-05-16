@@ -49,7 +49,14 @@ const Section7 = () => {
             
         </div>
 
-            <GaleriaScroll />
+            <div className="relative w-full overflow-hidden">
+                {/* Otras secciones o contenido arriba si los hay */}
+
+                <GaleriaScroll />
+
+                {/* Otras secciones o contenido abajo si los hay */}
+            </div>
+
 
         </div>
         

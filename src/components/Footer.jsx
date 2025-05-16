@@ -1,43 +1,47 @@
+import logoDTE from '../assets/dte_lohace.webp';
+
+
 const Footer = () => {
     return (
-        <footer className="bg-white text-black px-6 md:px-12 py-16 font-sans border-t border-neutral-200">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-                {/* Columna izquierda: Contacto */}
-                <div className="space-y-3">
-                    <p className="text-sm text-neutral-500">Contáctanos</p>
-                    <h2 className="text-2xl md:text-3xl font-semibold">Trabajemos juntos</h2>
-                    <p className="text-sm text-neutral-500">y llegá más lejos</p>
+        <footer className="bg-white text-black px-6 md:px-12 py-2 font-product border-t border-neutral-200 ">
+            <div className="max-w-[1080px] mx-auto flex flex-col md:flex-row justify-between items-center  h-[300px]  md:h-[500px] px-8">
 
-                    <div className="mt-6 space-y-1 text-sm">
-                        <p className="text-black">info@grupodte.com</p>
-                        <p className="text-black">092 174 188</p>
+                {/* Columna izquierda: Contacto (solo visible en md+) */}
+                <div className="hidden md:flex flex-col justify-between w-full md:w-1/2 h-full py-8">
+                    <div className=" ">
+                        <p className="text-[34px] text-neutral-500">Contáctanos</p>
+                        <h2 className="text-[45px] md:text-[60px] leading-none">Trabajemos juntos</h2>
+                        <p className="md:text-[30px] text-normal">y llegá más lejos</p>
+                    </div>
+                    <div className="text-[30px]">
+                        <p className="text-black">grupo@grupodte.com</p>
+                        <p className="text-black">096 219 905</p>
+                    </div>
+                    <div className=" text-[17px]">
+                        <p>Uruguay</p>
+                        <p>2020 – 2025</p>
                     </div>
                 </div>
 
                 {/* Columna derecha: Logo + botones */}
-                <div className="flex flex-col md:items-end gap-6">
-                    {/* Logo combinado */}
-                    <div className="flex items-center gap-2">
-                        <img src="/logoDTE.svg" alt="Grupo DTE" className="h-6" />
-                        <span className="text-black text-lg font-medium">lo</span>
-                        <span className="bg-green-500 text-black text-lg font-semibold px-2 py-1 rounded-sm">hace</span>
+                <div className="flex flex-col md:justify-center justify-between items-center w-[350px] h-full py-8 gap-8">
+                    <div className="flex items-center w-[300px] px-2">
+                        <img src={logoDTE} alt="Grupo DTE" />
                     </div>
-
-                    {/* Botones de acción */}
-                    <div className="flex flex-col sm:flex-row gap-3 mt-4">
+                    <div className="flex flex-col px-4 gap-3 w-[350px]">
                         <a
-                            href="https://calendly.com/tu-reunion"
+                            href="#"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-black text-white text-sm px-5 py-2 rounded-full text-center hover:opacity-80 transition"
+                            className="bg-black text-white text-[22px]  h-[42px]  rounded-full text-center font-product hover:opacity-80 transition"
                         >
                             Agenda una reunión
                         </a>
                         <a
-                            href="https://wa.me/59892174188"
+                            href="https://wa.me/59896219905"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-black text-white text-sm px-5 py-2 rounded-full text-center hover:opacity-80 transition"
+                            className="bg-black text-white text-[22px]   h-[42px] rounded-full text-center font-product hover:opacity-80 transition"
                         >
                             Hablemos por Whatsapp
                         </a>
@@ -45,15 +49,27 @@ const Footer = () => {
                 </div>
             </div>
 
-            {/* Línea base */}
-            <div className="mt-12 border-t border-neutral-200 pt-4 text-center text-xs text-neutral-500 space-y-1">
-                <p>Peñarol, Uruguay</p>
-                <p>2020 – 2025</p>
-                <p className="text-[10px] text-red-500">
-                    Site web diseñado y desarrollado por DTE
-                </p>
+            <div className="grid grid-cols-3 items-center w-full max-w-[1080px] mx-auto px-4">
+                {/* Izquierda: solo visible en mobile */}
+                <div className="block md:invisible text-left">
+                    <p className="text-[10px] text-neutral-500">© 2025</p>
+                </div>
+
+                {/* Centro: siempre visible y perfectamente centrado */}
+                <div className="text-center">
+                    <p className="text-[10px] text-neutral-500">Desarrollado por DTE</p>
+                </div>
+
+                {/* Derecha: solo visible en mobile */}
+                <div className="block md:invisible text-right">
+                    <p className="text-[10px] text-neutral-500">Montevideo, Uruguay</p>
+                </div>
             </div>
+
+
         </footer>
+
+
     );
 };
 

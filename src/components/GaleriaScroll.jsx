@@ -1,4 +1,5 @@
 // src/components/GaleriaScroll.jsx
+import { motion } from 'framer-motion';
 import WorkCard from './WorkCard';
 import wc1 from '../assets/wc1.webp';
 import wc2 from '../assets/wc2.webp';
@@ -14,14 +15,21 @@ const works = [
 
 const GaleriaScroll = () => {
     return (
-        <section className="py-6 px-4">
-            <div className="overflow-x-auto no-scrollbar">
-                <div className="flex gap-6 w-max transition-all duration-300">
+        <section className="w-full overflow-hidden flex items-center bg-white">
+            <motion.div
+                className="cursor-grab active:cursor-grabbing w-full overflow-x-hidden"
+                whileTap={{ cursor: 'grabbing' }}
+            >
+                <motion.div
+                    className="flex gap-2 w-max px-2 py-2"
+                    drag="x"
+                    dragConstraints={{ left: -500, right: 0 }} // Puedes ajustar el valor de 'left' según el ancho real
+                >
                     {works.map((work, i) => (
                         <WorkCard key={i} imageSrc={work.src} altText={work.alt} />
                     ))}
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
         </section>
     );
 };

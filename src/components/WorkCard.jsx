@@ -1,5 +1,6 @@
 // src/components/WorkCard.jsx
 import { motion } from 'framer-motion';
+import OptimizeImage from './OptimizedImage'; // Asegúrate de tener este componente
 
 const WorkCard = ({ imageSrc, altText }) => {
     return (
@@ -10,11 +11,10 @@ const WorkCard = ({ imageSrc, altText }) => {
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
         >
-            <img
+            <OptimizeImage
                 src={imageSrc}
                 alt={altText}
-                loading="lazy"
-                className="object-cover w-[480px] h-[275px] md:w-[480px] md:h-[275px] w-[350px] h-[200px]"
+                className="object-cover w-[480px] h-[275px] md:w-[480px] md:h-[275px] w-[350px]"
             />
         </motion.div>
     );
