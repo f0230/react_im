@@ -66,7 +66,7 @@ const SimultaneousWords = () => {
                         </span>
                     ))}
                 </h2>
-                <p className="text-[13px] md:text-[17px] font-product font-normal flex flex-wrap gap-1 leading-snug">
+                <p className="text-[17px] md:text-[17px] font-product font-normal flex flex-wrap gap-1 leading-none">
                     {paragraphWords.map((word, i) => (
                         <span key={i} className="paragraph-word inline-block whitespace-nowrap">
                             {word}

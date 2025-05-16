@@ -12,16 +12,12 @@ const Section5 = () => {
                 </div>
 
                 {/* Columna derecha */}
-                <div className="w-full md:w-1/2 flex flex-col items-center text-center">
-                    <p className="hidden md:block text-[37px] max-w-[500px] font-normal leading-none">
+                <div className="w-full md:w-1/2 flex flex-col items-center text-center mt-8 md:mt-0">
+                    <p className=" block text-[25px] md:text-[37px]  max-w-[250px] md:max-w-[500px] font-normal leading-none">
                         Arquitectura, económica, asesoramiento legal, logística...
                     </p>
-                    <p className="md:hidden text-[35px] max-w-[179px] font-normal leading-none">
-                        ECO. ARQ. DES. MKT. LEG.
-                    </p>
-                    <button className="mt-6 w-[176px] h-[36px] text-[13px] md:text-[17px] bg-greyburger text-white rounded-full hover:bg-blue-400 transition duration-300">
-                        más información
-                    </button>
+                  
+               
                 </div>
 
             </div>

@@ -24,8 +24,8 @@ function App() {
             </Routes>
           </Suspense>
         </main>
+          <Footer />
 
-        <Footer />
       </div>
     </Router>
   );

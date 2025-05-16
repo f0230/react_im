@@ -1,13 +1,12 @@
 import React from "react";
 import ScrollToTopButton from "../components/ui/ScrollToTopButton";
-import Navbar from '../components/Navbar';
 import HeroG from "../components/Section1";
 import Section2 from "../components/Section2";
 import Section3 from "../components/Section3";
 import Section4 from "../components/Section4";  
 import Section5 from "../components/Section5";
-import SimultaneousWords from "../components/Section6";
-import InfiniteCarousel from "../components/Section7";
+import SimultaneousWords from "../components/TextEnDTE";
+import InfiniteCarousel from "../components/Slide";
 import Section7 from "../components/Section8";  
 import Footer from "../components/Footer";
 
@@ -49,10 +48,7 @@ export const AnimaComponent = () => {
 
 
 
-        <footer className="relative w-full">
-          <Footer />
-        </footer>
-
+    
         <ScrollToTopButton />
 
 
