@@ -9,6 +9,7 @@ const FadeContent = ({
     className = '',
     delay = 0,
     blur = false,
+    initialOpacity = 0, // ✅ interceptamos initialOpacity
     ...props
 }) => {
     const ref = useRef();
@@ -17,7 +18,7 @@ const FadeContent = ({
         gsap.fromTo(
             ref.current,
             {
-                opacity: 0,
+                opacity: initialOpacity, // ✅ lo usamos si querés animar desde un valor distinto a 0
                 y: 40,
                 filter: blur ? 'blur(12px)' : 'none',
             },
@@ -35,13 +36,20 @@ const FadeContent = ({
                 },
             }
         );
-    }, [delay, blur]);
+    }, [delay, blur, initialOpacity]);
+
+    // ✅ filtramos props personalizados para que NO lleguen al DOM
+    const safeProps = { ...props };
+    delete safeProps.blur;
+    delete safeProps.delay;
+    delete safeProps.stagger;
+    delete safeProps.initialOpacity;
 
     return (
         <div
             ref={ref}
             className={`${className} ${blur ? 'backdrop-blur-sm' : ''}`}
-            {...props}
+            {...safeProps}
         >
             {children}
         </div>

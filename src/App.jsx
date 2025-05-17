@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 
 import Navbar from "@/components/Navbar";
+import StepperModal from "@/components/Form/StepperModal"; // ✅ importamos el modal
 
 // Lazy load de Footer y páginas
 const LazyFooter = lazy(() => import("@/components/Footer"));
@@ -14,6 +15,7 @@ const Services = lazy(() => import("@/pages/Services"));
 function App() {
   const { ref, inView } = useInView({ triggerOnce: true });
   const [footerVisible, setFooterVisible] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // ✅ estado del modal
 
   useEffect(() => {
     if (inView) {
@@ -42,9 +44,12 @@ function App() {
 
         {footerVisible && (
           <Suspense fallback={null}>
-            <LazyFooter />
+            <LazyFooter setIsModalOpen={setIsModalOpen} /> {/* ✅ pasamos función al Footer */}
           </Suspense>
         )}
+
+        {/* ✅ Modal montado globalmente */}
+        <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       </div>
     </Router>
   );
