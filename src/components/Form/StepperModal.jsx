@@ -121,23 +121,23 @@ const StepperModal = ({ isOpen, onClose }) => {
                     </button>
 
                     <motion.div
-                        className="bg-white/85 text-bold rounded-2xl shadow-xl w-full max-w-xl p-8 z-40"
+                        className="bg-white/90 text-bold rounded-2xl shadow-xl w-full max-w-[95vw] sm:max-w-[90vw] md:max-w-xl p-3 sm:p-4 md:p-8 z-40"
                         initial={{ scale: 0.95, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 0.95, opacity: 0 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
                     >
-                        <h2 className="text-2xl font-bold mb-6 text-center">
+                        <h2 className="text-base sm:text-lg md:text-2xl font-bold mb-6 text-center">
                             Agendá tu cita
                         </h2>
 
                         {!isAuthenticated ? (
                             <GoogleLoginWrapper onLoginSuccess={() => setIsAuthenticated(true)} />
                         ) : (
-                                <Stepper onFinalStepCompleted={handleFinalSubmit}>
-                                    <Step>
-                                        <div className="min-h-[200px] flex flex-col justify-start">
-                                            <label className="block text-sm font-semibold mb-1">Seleccioná día y hora</label>
+                            <Stepper onFinalStepCompleted={handleFinalSubmit}>
+                                <Step>
+                                    <div className="min-h-[320px] flex flex-col justify-start gap-0 text-[11px] ">
+                                        <label className="font-semibold">Seleccioná día y hora</label>
                                             <DatePicker
                                                 selected={formData.datetime}
                                                 onChange={(date) => setFormData((prev) => ({ ...prev, datetime: date }))}
@@ -145,36 +145,40 @@ const StepperModal = ({ isOpen, onClose }) => {
                                                 timeIntervals={30}
                                                 dateFormat="Pp"
                                                 excludeTimes={busySlots}
-                                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition"
+                                                className="w-full text-[10px] sm:text-xs p-1 sm:p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
                                                 placeholderText="Elegí fecha y hora"
-                                                required
+                                                calendarClassName="dark-calendar"
+                                                popperClassName="dark-datepicker-popper"                                         
+                                                   required
                                             />
-                                        </div>
-                                    </Step>
 
+                                    </div>
+                                </Step>
                                 <Step>
-                                    <label className="block text-sm font-semibold mb-1">Mensaje</label>
-                                    <textarea
-                                        placeholder="Contanos en qué te podemos ayudar..."
-                                        value={formData.message}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({ ...prev, message: e.target.value }))
-                                        }
-                                        className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition min-h-[120px]"
-                                        required
-                                    />
+                                    <div className="flex flex-col gap-4">
+                                        <label className="text-sm font-semibold">Mensaje</label>
+                                        <textarea
+                                            placeholder="Contanos en qué te podemos ayudar..."
+                                            value={formData.message}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({ ...prev, message: e.target.value }))
+                                            }
+                                            className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black min-h-[120px]"
+                                            required
+                                        />
 
-                                    <label className="block text-sm font-semibold mt-6 mb-1">Teléfono</label>
-                                    <input
-                                        type="tel"
-                                        placeholder="Ej: +598 99 123 456"
-                                        value={formData.phone}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                                        }
-                                        className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition"
-                                        required
-                                    />
+                                        <label className="text-sm font-semibold">Teléfono</label>
+                                        <input
+                                            type="tel"
+                                            placeholder="Ej: +598 99 123 456"
+                                            value={formData.phone}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                                            }
+                                            className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
+                                            required
+                                        />
+                                    </div>
                                 </Step>
                             </Stepper>
                         )}
