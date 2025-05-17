@@ -7,6 +7,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Falta el parámetro `code` en la URL' });
   }
 
+  console.log('🌍 Código recibido:', code);
+  console.log('📦 GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID);
+  console.log('📦 GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET);
+  console.log('📦 GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI);
+
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -14,19 +19,17 @@ export default async function handler(req, res) {
   );
 
   try {
-    const { tokens } = await oauth2Client.getToken(code);
-
-    if (!tokens.refresh_token) {
-      console.warn('⚠️ No se recibió refresh_token. ¿Ya autorizaste esta cuenta antes sin prompt=consent?');
-    }
+    const { tokens } = await oauth2Client.getToken({
+      code,
+      redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+    });
 
     console.log('✅ REFRESH TOKEN:', tokens.refresh_token || 'No recibido');
     console.log('✅ ACCESS TOKEN:', tokens.access_token);
 
-    // Opcional: podrías redirigir a la home con un mensaje
-    return res.redirect('/?oauth=success'); // o usar res.send() como antes
+    res.send('Token recibido correctamente. Revisá logs.');
   } catch (err) {
-    console.error('❌ Error intercambiando el code:', err.response?.data || err.message || err);
-    return res.status(500).json({ error: 'Error en el intercambio del código', detail: err.message });
+    console.error('❌ Error en getToken:', err.response?.data || err.message || err);
+    res.status(500).json({ error: 'Error en el intercambio del código', detail: err.message });
   }
 }
