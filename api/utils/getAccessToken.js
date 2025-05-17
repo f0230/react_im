@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 
 export async function getAccessTokenFromRefresh() {
   const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
+    process.env.VITE_GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET
   );
 

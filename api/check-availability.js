@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { getAccessTokenFromRefresh } from './utils/getAccessToken';
+import { getAccessTokenFromRefresh } from './utils/getAccessToken.js'; // ← ¡IMPORTANTE! incluye `.js`
 
 export default async function handler(req, res) {
   try {
