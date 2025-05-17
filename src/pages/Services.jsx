@@ -41,7 +41,7 @@ const Servicios = () => {
     return (
         <main
             ref={containerRef}
-            className="relative min-h-screen transition-colors duration-[1500ms] ease-in-out flex flex-col items-center font-product text-black bg-[#d0f0f9] w-full"
+            className="bg-skysoft relative min-h-screen transition-colors duration-[1500ms] ease-in-out flex flex-col items-center font-product text-black bg-[#d0f0f9] w-full"
         >
             {/* 🏷️ Título principal */}
             <div className="relative z-10 mt-[80px] px-4 md:px-20 w-full md:max-w-[1080px] text-center">
