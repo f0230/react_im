@@ -22,6 +22,7 @@ const Navbar = () => {
     const [lastScrollY, setLastScrollY] = useState(0);
     const [hasScrolled, setHasScrolled] = useState(false);
     const menuRef = useRef();
+    const glowRef = useRef();
 
     const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 
@@ -66,6 +67,7 @@ const Navbar = () => {
                         opacity: 0,
                         scale: 0.75,
                         rotateZ: -8,
+                        boxShadow: "0px 0px 0px rgba(0,0,0,0)",
                         transformOrigin: "top left",
                         filter: "blur(24px)",
                     },
@@ -75,8 +77,9 @@ const Navbar = () => {
                         opacity: 1,
                         scale: 1,
                         rotateZ: 0,
+                        boxShadow: "0 50px 120px rgba(0,0,0,0.2)",
                         filter: "blur(0px)",
-                        duration: 1.2,
+                        duration: 1.3,
                         ease: "power4.out",
                     }
                 );
@@ -98,6 +101,17 @@ const Navbar = () => {
                         ease: "power3.out",
                     }
                 );
+
+                // ✨ Loop de brillo sutil
+                if (glowRef.current) {
+                    gsap.to(glowRef.current, {
+                        boxShadow: "0 0 40px rgba(255, 255, 255, 0.4)",
+                        duration: 2,
+                        repeat: -1,
+                        yoyo: true,
+                        ease: "sine.inOut",
+                    });
+                }
             }, menuRef);
 
             return () => ctx.revert();
@@ -114,8 +128,9 @@ const Navbar = () => {
                 opacity: 0,
                 scale: 0.75,
                 rotateZ: -10,
+                boxShadow: "0px 0px 0px rgba(0,0,0,0)",
                 filter: "blur(12px)",
-                duration: 0.6,
+                duration: 0.7,
                 ease: "power2.inOut",
             });
         }
@@ -169,6 +184,7 @@ const Navbar = () => {
                     id="mobile-menu"
                     className="fixed inset-0 bg-white/80 backdrop-blur-lg flex justify-start items-end flex-col p-6 pt-20 z-40"
                 >
+                    <div ref={glowRef} className="absolute inset-0 pointer-events-none rounded-2xl" />
                     <nav className="w-full max-w-md">
                         <ul className="flex flex-col items-start space-y-4">
                             {menuItems.map((item, i) => (

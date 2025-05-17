@@ -1,5 +1,5 @@
-// src/components/GaleriaScroll.jsx
 import { motion } from 'framer-motion';
+import { useRef, useEffect, useState } from 'react';
 import WorkCard from './WorkCard';
 import wc1 from '../assets/wc1.webp';
 import wc2 from '../assets/wc2.webp';
@@ -14,16 +14,39 @@ const works = [
 ];
 
 const GaleriaScroll = () => {
+    const carouselRef = useRef();
+    const innerRef = useRef();
+    const [constraints, setConstraints] = useState({ left: 0, right: 0 });
+
+    useEffect(() => {
+        const updateConstraints = () => {
+            if (carouselRef.current && innerRef.current) {
+                const containerWidth = carouselRef.current.offsetWidth;
+                const contentWidth = innerRef.current.scrollWidth;
+                setConstraints({
+                    left: -(contentWidth - containerWidth),
+                    right: 0,
+                });
+            }
+        };
+
+        updateConstraints();
+        window.addEventListener('resize', updateConstraints);
+        return () => window.removeEventListener('resize', updateConstraints);
+    }, []);
+
     return (
-        <section className="w-full overflow-hidden flex items-center bg-white">
+        <section className="w-full bg-white py-4">
             <motion.div
-                className="cursor-grab active:cursor-grabbing w-full overflow-x-hidden"
+                ref={carouselRef}
+                className="w-full overflow-x-hidden overflow-y-hidden no-scrollbar"
                 whileTap={{ cursor: 'grabbing' }}
             >
                 <motion.div
-                    className="flex gap-2 w-max px-2 py-2"
+                    ref={innerRef}
+                    className="flex gap-4 w-max px-4"
                     drag="x"
-                    dragConstraints={{ left: -500, right: 0 }} // Puedes ajustar el valor de 'left' según el ancho real
+                    dragConstraints={constraints}
                 >
                     {works.map((work, i) => (
                         <WorkCard key={i} imageSrc={work.src} altText={work.alt} />
