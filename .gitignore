@@ -27,3 +27,5 @@ yarn-error.log*
 # Output de tests o builds
 coverage/
 *.log
+.env.local
+.env.local
