@@ -43,10 +43,7 @@ const App = () => {
         </main>
 
         {/* 🔻 Trigger invisible para activar el Footer */}
-        <div
-          ref={ref}
-          className="absolute bottom-0 w-full h-10 pointer-events-none"
-        />
+  
 
         {/* ✅ Footer lazy cargado al estar en viewport */}
         {footerVisible && (

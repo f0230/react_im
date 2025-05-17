@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     visualizer({
       filename: './dist/stats.html',
-      open: false, // Puedes poner true si quieres que se abra automáticamente al build
+      open: false,
       gzipSize: true,
       brotliSize: true,
     }),
@@ -20,7 +20,7 @@ export default defineConfig({
     },
   },
   build: {
-    target: 'esnext', // Mejor compatibilidad moderna
+    target: 'esnext',
     outDir: 'dist',
     assetsDir: 'assets',
     chunkSizeWarningLimit: 1000,
