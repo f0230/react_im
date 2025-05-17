@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 
 import Navbar from "@/components/Navbar";
-import StepperModal from "@/components/Form/StepperModal"; // ✅ Modal global
+import StepperModal from "@/components/StepperModal"; // ✅ Modal global
 
 // Lazy loaded components
 const LazyFooter = lazy(() => import('./components/Footer'));

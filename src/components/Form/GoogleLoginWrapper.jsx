@@ -1,27 +1,25 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
 const GoogleLoginWrapper = ({ onLoginSuccess }) => {
-    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("google_token"));
-
     const handleSuccess = (response) => {
         const token = response.credential;
         localStorage.setItem("google_token", token);
-        setIsLoggedIn(true);
-        onLoginSuccess(); // notifica al padre que ya está logueado
+        onLoginSuccess(); // Notifica al componente padre (StepperModal)
+    };
+
+    const handleError = () => {
+        console.error("❌ Error al iniciar sesión con Google");
     };
 
     return (
         <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
-            {!isLoggedIn && (
-                <div className="flex flex-col items-center space-y-4">
-                    <p className="text-lg font-medium">Iniciá sesión con Google para continuar</p>
-                    <GoogleLogin
-                        onSuccess={handleSuccess}
-                        onError={() => console.log("Fallo el login")}
-                    />
-                </div>
-            )}
+            <div className="flex flex-col items-center justify-center gap-4 text-center px-4 py-6">
+                <p className="text-base sm:text-lg font-semibold text-gray-800">
+                    Iniciá sesión con Google para continuar
+                </p>
+                <GoogleLogin onSuccess={handleSuccess} onError={handleError} />
+            </div>
         </GoogleOAuthProvider>
     );
 };

@@ -1,3 +1,4 @@
+// Stepper.jsx actualizado con validación por paso real y protección contra undefined
 import React, { useState, Children, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -6,13 +7,15 @@ export default function Stepper({
     initialStep = 1,
     onStepChange = () => { },
     onFinalStepCompleted = () => { },
+    formData,
+    setFieldErrors,
     stepCircleContainerClassName = "",
     stepContainerClassName = "",
     contentClassName = "",
     footerClassName = "",
     backButtonProps = {},
     nextButtonProps = {},
-    backButtonText = "Atras",
+    backButtonText = "Atrás",
     nextButtonText = "Continuar",
     disableStepIndicators = false,
     renderStepIndicator,
@@ -31,6 +34,18 @@ export default function Stepper({
         else onStepChange(newStep);
     };
 
+    const validateFields = () => {
+        if (!formData) return false;
+        const errors = {};
+        if (currentStep === 1 && !formData?.datetime) errors.datetime = true;
+        if (currentStep === 2) {
+            if (!formData?.phone?.trim()) errors.phone = true;
+            if (!formData?.message?.trim()) errors.message = true;
+        }
+        setFieldErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
     const handleBack = () => {
         if (currentStep > 1) {
             setDirection(-1);
@@ -39,26 +54,19 @@ export default function Stepper({
     };
 
     const handleNext = () => {
-        if (!isLastStep) {
-            setDirection(1);
-            updateStep(currentStep + 1);
-        }
-    };
+        const isValid = validateFields();
+        if (!isValid) return;
 
-    const handleComplete = () => {
         setDirection(1);
-        updateStep(totalSteps + 1);
+        updateStep(currentStep + 1);
     };
 
     return (
         <div
-            className="flex min-h-full flex-1 flex-col items-center justify-center p-2 "
+            className="flex min-h-full flex-1 flex-col items-center justify-center p-2"
             {...rest}
         >
-            <div
-                className={`mx-auto w-full rounded-4xl  ${stepCircleContainerClassName}`}
-                style={{ border: "" }}
-            >
+            <div className={`mx-auto w-full rounded-4xl ${stepCircleContainerClassName}`}>
                 <div className={`${stepContainerClassName} flex w-full items-center p-8`}>
                     {stepsArray.map((_, index) => {
                         const stepNumber = index + 1;
@@ -102,28 +110,24 @@ export default function Stepper({
                 </StepContentWrapper>
                 {!isCompleted && (
                     <div className={`px-8 pb-8 ${footerClassName}`}>
-                        <div
-                            className={`mt-10 flex ${currentStep !== 1 ? "justify-between" : "justify-end"
-                                }`}
-                        >
+                        <div className={`mt-10 flex ${currentStep !== 1 ? "justify-between" : "justify-end"}`}>
                             {currentStep !== 1 && (
                                 <button
                                     onClick={handleBack}
                                     className={`duration-350 rounded px-2 py-1 transition ${currentStep === 1
                                         ? "pointer-events-none opacity-50 text-neutral-400"
-                                        : "text-neutral-400 hover:text-neutral-700"
-                                        }`}
+                                        : "text-neutral-400 hover:text-neutral-700"}`}
                                     {...backButtonProps}
                                 >
                                     {backButtonText}
                                 </button>
                             )}
                             <button
-                                onClick={isLastStep ? handleComplete : handleNext}
+                                onClick={handleNext}
                                 className="duration-350 flex items-center justify-center rounded-full bg-green-500 py-1.5 px-3.5 font-medium tracking-tight text-black transition hover:bg-green-600 active:bg-green-700"
                                 {...nextButtonProps}
                             >
-                                {isLastStep ? "Complete" : nextButtonText}
+                                {isLastStep ? "Enviar" : nextButtonText}
                             </button>
                         </div>
                     </div>
@@ -182,18 +186,9 @@ function SlideTransition({ children, direction, onHeightReady }) {
 }
 
 const stepVariants = {
-    enter: (dir) => ({
-        x: dir >= 0 ? "-100%" : "100%",
-        opacity: 0,
-    }),
-    center: {
-        x: "0%",
-        opacity: 1,
-    },
-    exit: (dir) => ({
-        x: dir >= 0 ? "50%" : "-50%",
-        opacity: 0,
-    }),
+    enter: (dir) => ({ x: dir >= 0 ? "-100%" : "100%", opacity: 0 }),
+    center: { x: "0%", opacity: 1 },
+    exit: (dir) => ({ x: dir >= 0 ? "50%" : "-50%", opacity: 0 }),
 };
 
 export function Step({ children }) {

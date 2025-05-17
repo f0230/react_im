@@ -1,112 +1,93 @@
 import React, { useState, useEffect } from "react";
-import Stepper, { Step } from "./Stepper";
+import Stepper, { Step } from "./Form/Stepper";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
-import GoogleLoginWrapper from "./GoogleLoginWrapper";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-hot-toast";
 
+import GoogleLoginWrapper from "./Form/GoogleLoginWrapper";
+import { useAuthUser } from "../hooks/useAuthUser";
+import { useCalendarAvailability } from "../hooks/useCalendarAvailability";
+import { createCalendarEvent } from "../services/calendar";
+import { createHubspotLead } from "../services/hubspot";
+
 const StepperModal = ({ isOpen, onClose }) => {
+    const { user, token, isAuthenticated, setToken } = useAuthUser();
+    const { busySlots, fetchBusy, checkAvailability } = useCalendarAvailability();
+
     const [formData, setFormData] = useState({
         name: "",
         email: "",
-        message: "",
         phone: "",
+        message: "",
         datetime: null,
     });
 
-    const [isAuthenticated, setIsAuthenticated] = useState(
-        !!localStorage.getItem("google_token")
-    );
+    const [fieldErrors, setFieldErrors] = useState({});
     const [isLoading, setIsLoading] = useState(false);
-    const [busySlots, setBusySlots] = useState([]);
     const [showConfirmation, setShowConfirmation] = useState(false);
 
     useEffect(() => {
-        const token = localStorage.getItem("google_token");
-        if (token) {
-            const payload = JSON.parse(atob(token.split(".")[1]));
+        if (user && token) {
             setFormData((prev) => ({
                 ...prev,
-                name: payload.name,
-                email: payload.email,
+                name: user.name,
+                email: user.email,
             }));
-            fetchBusySlots(token);
+            fetchBusy(token);
         }
-    }, [isAuthenticated]);
+    }, [user, token]);
 
-    const fetchBusySlots = async (token) => {
-        try {
-            const now = new Date();
-            const future = new Date();
-            future.setDate(future.getDate() + 14);
-
-            const response = await axios.post("/api/check-availability", {
-                range: {
-                    timeMin: now.toISOString(),
-                    timeMax: future.toISOString(),
-                },
-                token,
-                allBusy: true,
-            });
-
-            if (response.data.busy) {
-                const slots = response.data.busy.map((b) => new Date(b.start));
-                setBusySlots(slots);
-            }
-        } catch (error) {
-            console.error("Error obteniendo horarios ocupados:", error);
-        }
-    };
-
-    const checkAvailability = async () => {
-        const res = await axios.post("/api/check-availability", {
-            datetime: formData.datetime,
-            token: localStorage.getItem("google_token"),
-        });
-        return res.data.available;
+    const validateFields = () => {
+        const errors = {};
+        if (!formData.datetime) errors.datetime = true;
+        if (!formData.phone.trim()) errors.phone = true;
+        if (!formData.message.trim()) errors.message = true;
+        setFieldErrors(errors);
+        return errors;
     };
 
     const handleFinalSubmit = async () => {
-        const { datetime, phone, message } = formData;
+        const errors = validateFields();
+        if (Object.keys(errors).length > 0) {
+            if (errors.datetime) toast.error("Seleccioná una fecha y hora para continuar.");
+            if (errors.phone) toast.error("El teléfono es obligatorio.");
+            if (errors.message) toast.error("El mensaje es obligatorio.");
+            return;
+        }
 
-        if (!datetime || !phone.trim() || !message.trim()) {
-            toast.error("Todos los campos son obligatorios.");
+        const { datetime, phone, message, name, email } = formData;
+
+        if (!token) {
+            toast.error("No hay sesión activa. Iniciá sesión.");
+            return;
+        }
+
+        setIsLoading(true);
+        const available = await checkAvailability(datetime, token);
+        if (!available) {
+            toast.error("Ese horario ya está ocupado. Elegí otro.");
+            setIsLoading(false);
             return;
         }
 
         try {
-            const token = localStorage.getItem("google_token");
-            if (!token) {
-                toast.error("Token no encontrado. Iniciá sesión.");
-                return;
-            }
-
-            setIsLoading(true);
-            const available = await checkAvailability();
-            if (!available) {
-                toast.error("Ese horario ya está ocupado. Elegí otro.");
-                setIsLoading(false);
-                return;
-            }
-
-            await axios.post("/api/create-event", {
-                summary: `Reunión con ${formData.name}`,
-                description: formData.message,
-                startTime: formData.datetime.toISOString(),
-                endTime: new Date(formData.datetime.getTime() + 60 * 60 * 1000).toISOString(),
-                email: formData.email,
+            await createCalendarEvent({
+                summary: `Reunión con ${name}`,
+                description: message,
+                startTime: datetime.toISOString(),
+                endTime: new Date(datetime.getTime() + 60 * 60 * 1000).toISOString(),
+                email,
             });
 
-            await axios.post("/api/hubspot-lead", formData);
+            await createHubspotLead(formData);
 
             toast.success("✅ Reunión agendada con éxito");
-            setIsLoading(false);
             setShowConfirmation(true);
         } catch (error) {
-            console.error("Error en el envío:", error);
-            toast.error("❌ Ocurrió un error. Revisá consola.");
+            console.error("❌ Error al agendar:", error);
+            toast.error("Ocurrió un error al enviar el formulario.");
+        } finally {
             setIsLoading(false);
         }
     };
@@ -142,11 +123,11 @@ const StepperModal = ({ isOpen, onClose }) => {
                         </h2>
 
                         {!isAuthenticated ? (
-                            <GoogleLoginWrapper onLoginSuccess={() => setIsAuthenticated(true)} />
+                            <GoogleLoginWrapper onLoginSuccess={() => setToken(localStorage.getItem("google_token"))} />
                         ) : (
                             <Stepper onFinalStepCompleted={handleFinalSubmit}>
                                 <Step>
-                                    <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-0 text-[11px] ">
+                                    <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-0 text-[11px]">
                                         <label className="font-semibold">Seleccioná día y hora</label>
                                         <DatePicker
                                             selected={formData.datetime}
@@ -155,7 +136,8 @@ const StepperModal = ({ isOpen, onClose }) => {
                                             timeIntervals={30}
                                             dateFormat="Pp"
                                             excludeTimes={busySlots}
-                                            className="w-full text-[10px] sm:text-xs p-1 sm:p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
+                                            withPortal={typeof window !== 'undefined' && window.innerWidth < 640}
+                                            className={`w-full text-[10px] sm:text-xs p-1 sm:p-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black ${fieldErrors.datetime ? "border-red-500" : "border-gray-300"}`}
                                             placeholderText="Elegí fecha y hora"
                                             calendarClassName="dark-calendar"
                                             popperClassName="dark-datepicker-popper"
@@ -163,6 +145,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                                         />
                                     </div>
                                 </Step>
+
                                 <Step>
                                     <div className="min-h-[320px] flex flex-col gap-4">
                                         <label className="text-sm font-semibold">Teléfono</label>
@@ -170,10 +153,8 @@ const StepperModal = ({ isOpen, onClose }) => {
                                             type="tel"
                                             placeholder="Ej: +598 99 123 456"
                                             value={formData.phone}
-                                            onChange={(e) =>
-                                                setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                                            }
-                                            className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                                            className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black ${fieldErrors.phone ? "border-red-500" : "border-gray-300"}`}
                                             required
                                         />
 
@@ -181,10 +162,8 @@ const StepperModal = ({ isOpen, onClose }) => {
                                         <textarea
                                             placeholder="Contanos en qué te podemos ayudar..."
                                             value={formData.message}
-                                            onChange={(e) =>
-                                                setFormData((prev) => ({ ...prev, message: e.target.value }))
-                                            }
-                                            className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black min-h-[120px]"
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
+                                            className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black min-h-[120px] ${fieldErrors.message ? "border-red-500" : "border-gray-300"}`}
                                             required
                                         />
                                     </div>
@@ -201,7 +180,7 @@ const StepperModal = ({ isOpen, onClose }) => {
 
                     {showConfirmation && (
                         <motion.div
-                            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
+                            className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
