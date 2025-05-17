@@ -169,7 +169,7 @@ const Servicios = () => {
             </div>
 
             {/* 🧠 Fondo Aurora base con grilla + luces suaves */}
-            <div className="absolute inset-0 z-0 before:absolute before:inset-0 before:content-[''] before:bg-[radial-gradient(circle_at_30%_40%,rgba(255,255,255,0.3),transparent_70%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.2),transparent_70%)] before:animate-auroraMotion before:blur-2xl before:opacity-50 after:absolute after:inset-0 after:content-[''] after:bg-[radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] after:bg-[length:20px_20px] after:opacity-40" />
+            <div className="absolute inset-0 z-1000 before:absolute before:inset-0 before:content-[''] before:bg-[radial-gradient(circle_at_30%_40%,rgba(255,255,255,0.3),transparent_70%),radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.2),transparent_70%)] before:animate-auroraMotion before:blur-2xl before:opacity-50 after:absolute after:inset-0 after:content-[''] after:bg-[radial-gradient(circle,rgba(255,255,255,0.07)_1px,transparent_1px)] after:bg-[length:20px_20px] after:opacity-40" />
 
             {/* 📦 Contenido de los servicios */}
             <div className="relative z-10 mt-[50px] flex flex-col px-4 md:px-20 w-full md:max-w-[1080px]">

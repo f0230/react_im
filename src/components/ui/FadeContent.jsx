@@ -1,41 +1,47 @@
-import { useRef, useEffect } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
+import { useRef, useEffect, useState } from 'react';
 
 const FadeContent = ({
     children,
-    className = '',
-    delay = 0,
     blur = false,
-    ...props // ✅ capturamos el resto de los props
+    duration = 1000,
+    easing = 'ease-out',
+    delay = 0,
+    threshold = 0.1,
+    initialOpacity = 0,
+    className = ''
 }) => {
-    const ref = useRef();
+    const [inView, setInView] = useState(false);
+    const ref = useRef(null);
 
     useEffect(() => {
-        gsap.fromTo(
-            ref.current,
-            { opacity: 0, y: 40 },
-            {
-                opacity: 1,
-                y: 0,
-                delay: delay / 1000,
-                duration: 0.8,
-                ease: 'power2.out',
-                scrollTrigger: {
-                    trigger: ref.current,
-                    start: 'top 90%',
-                },
-            }
+        if (!ref.current) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    observer.unobserve(ref.current);
+                    setTimeout(() => {
+                        setInView(true);
+                    }, delay);
+                }
+            },
+            { threshold }
         );
-    }, [delay]);
+
+        observer.observe(ref.current);
+
+        return () => observer.disconnect();
+    }, [threshold, delay]);
 
     return (
         <div
             ref={ref}
-            className={`${className} ${blur ? 'backdrop-blur-sm' : ''}`}
-            {...props} // ✅ pasamos todos los props aquí
+            className={className}
+            style={{
+                opacity: inView ? 1 : initialOpacity,
+                transition: `opacity ${duration}ms ${easing}, filter ${duration}ms ${easing}`,
+                filter: blur ? (inView ? 'blur(0px)' : 'blur(10px)') : 'none',
+            }}
         >
             {children}
         </div>
