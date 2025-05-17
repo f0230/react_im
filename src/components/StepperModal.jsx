@@ -1,3 +1,4 @@
+// StepperModal.jsx con mensajes de error visuales añadidos
 import React, { useState, useEffect } from "react";
 import Stepper, { Step } from "./Form/Stepper";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,30 +39,8 @@ const StepperModal = ({ isOpen, onClose }) => {
         }
     }, [user, token]);
 
-    const validateFields = () => {
-        const errors = {};
-        if (!formData.datetime) errors.datetime = true;
-        if (!formData.phone.trim()) errors.phone = true;
-        if (!formData.message.trim()) errors.message = true;
-        setFieldErrors(errors);
-        return errors;
-    };
-
     const handleFinalSubmit = async () => {
-        const errors = validateFields();
-        if (Object.keys(errors).length > 0) {
-            if (errors.datetime) toast.error("Seleccioná una fecha y hora para continuar.");
-            if (errors.phone) toast.error("El teléfono es obligatorio.");
-            if (errors.message) toast.error("El mensaje es obligatorio.");
-            return;
-        }
-
         const { datetime, phone, message, name, email } = formData;
-
-        if (!token) {
-            toast.error("No hay sesión activa. Iniciá sesión.");
-            return;
-        }
 
         setIsLoading(true);
         const available = await checkAvailability(datetime, token);
@@ -125,9 +104,13 @@ const StepperModal = ({ isOpen, onClose }) => {
                         {!isAuthenticated ? (
                             <GoogleLoginWrapper onLoginSuccess={() => setToken(localStorage.getItem("google_token"))} />
                         ) : (
-                            <Stepper onFinalStepCompleted={handleFinalSubmit}>
+                            <Stepper
+                                formData={formData}
+                                setFieldErrors={setFieldErrors}
+                                onFinalStepCompleted={handleFinalSubmit}
+                            >
                                 <Step>
-                                    <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-0 text-[11px]">
+                                    <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-1 text-[11px]">
                                         <label className="font-semibold">Seleccioná día y hora</label>
                                         <DatePicker
                                             selected={formData.datetime}
@@ -136,36 +119,49 @@ const StepperModal = ({ isOpen, onClose }) => {
                                             timeIntervals={30}
                                             dateFormat="Pp"
                                             excludeTimes={busySlots}
-                                            withPortal={typeof window !== 'undefined' && window.innerWidth < 640}
+                                            withPortal={window.innerWidth < 640}
                                             className={`w-full text-[10px] sm:text-xs p-1 sm:p-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black ${fieldErrors.datetime ? "border-red-500" : "border-gray-300"}`}
                                             placeholderText="Elegí fecha y hora"
                                             calendarClassName="dark-calendar"
                                             popperClassName="dark-datepicker-popper"
                                             required
                                         />
+                                        {fieldErrors.datetime && (
+                                            <p className="text-red-500 text-xs mt-1">{fieldErrors.datetime}</p>
+                                        )}
                                     </div>
                                 </Step>
 
                                 <Step>
                                     <div className="min-h-[320px] flex flex-col gap-4">
-                                        <label className="text-sm font-semibold">Teléfono</label>
-                                        <input
-                                            type="tel"
-                                            placeholder="Ej: +598 99 123 456"
-                                            value={formData.phone}
-                                            onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
-                                            className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black ${fieldErrors.phone ? "border-red-500" : "border-gray-300"}`}
-                                            required
-                                        />
+                                        <div>
+                                            <label className="text-sm font-semibold">Teléfono</label>
+                                            <input
+                                                type="tel"
+                                                placeholder="Ej: +598 99 123 456"
+                                                value={formData.phone}
+                                                onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                                                className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black ${fieldErrors.phone ? "border-red-500" : "border-gray-300"}`}
+                                                required
+                                            />
+                                            {fieldErrors.phone && (
+                                                <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>
+                                            )}
+                                        </div>
 
-                                        <label className="text-sm font-semibold">Mensaje</label>
-                                        <textarea
-                                            placeholder="Contanos en qué te podemos ayudar..."
-                                            value={formData.message}
-                                            onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
-                                            className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black min-h-[120px] ${fieldErrors.message ? "border-red-500" : "border-gray-300"}`}
-                                            required
-                                        />
+                                        <div>
+                                            <label className="text-sm font-semibold">Mensaje</label>
+                                            <textarea
+                                                placeholder="Contanos en qué te podemos ayudar..."
+                                                value={formData.message}
+                                                onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
+                                                className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black min-h-[120px] ${fieldErrors.message ? "border-red-500" : "border-gray-300"}`}
+                                                required
+                                            />
+                                            {fieldErrors.message && (
+                                                <p className="text-red-500 text-xs mt-1">{fieldErrors.message}</p>
+                                            )}
+                                        </div>
                                     </div>
                                 </Step>
                             </Stepper>

@@ -1,4 +1,4 @@
-// Stepper.jsx actualizado con validación por paso real y protección contra undefined
+// Stepper.jsx actualizado con validación en el paso final, mensajes de error visibles y validación de teléfono
 import React, { useState, Children, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -28,22 +28,36 @@ export default function Stepper({
     const isCompleted = currentStep > totalSteps;
     const isLastStep = currentStep === totalSteps;
 
-    const updateStep = (newStep) => {
-        setCurrentStep(newStep);
-        if (newStep > totalSteps) onFinalStepCompleted();
-        else onStepChange(newStep);
+    const isValidPhone = (phone) => {
+        const phoneRegex = /^\+?[0-9]{6,15}$/;
+        return phoneRegex.test(phone);
     };
 
     const validateFields = () => {
         if (!formData) return false;
         const errors = {};
-        if (currentStep === 1 && !formData?.datetime) errors.datetime = true;
+        if (currentStep === 1 && !formData?.datetime) errors.datetime = "Seleccioná una fecha y hora.";
         if (currentStep === 2) {
-            if (!formData?.phone?.trim()) errors.phone = true;
-            if (!formData?.message?.trim()) errors.message = true;
+            if (!formData?.phone?.trim()) {
+                errors.phone = "El teléfono es obligatorio.";
+            } else if (!isValidPhone(formData.phone.trim())) {
+                errors.phone = "Ingresá un número de teléfono válido.";
+            }
+            if (!formData?.message?.trim()) errors.message = "El mensaje es obligatorio.";
         }
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
+    };
+
+    const updateStep = (newStep) => {
+        if (newStep > totalSteps) {
+            const isValid = validateFields();
+            if (!isValid) return;
+            onFinalStepCompleted();
+        } else {
+            setCurrentStep(newStep);
+            onStepChange(newStep);
+        }
     };
 
     const handleBack = () => {
@@ -136,6 +150,9 @@ export default function Stepper({
         </div>
     );
 }
+
+// ... (resto del código sin cambios) ...
+
 
 function StepContentWrapper({ isCompleted, currentStep, direction, children, className }) {
     const [parentHeight, setParentHeight] = useState(0);
