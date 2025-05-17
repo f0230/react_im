@@ -1,50 +1,41 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const FadeContent = ({
     children,
-    blur = false,
-    duration = 800,
-    easing = 'ease-out',
+    className = '',
     delay = 0,
-    threshold = 0.25,
-    initialOpacity = 0,
-    className = ''
+    blur = false,
+    ...props // ✅ capturamos el resto de los props
 }) => {
-    const [inView, setInView] = useState(false);
-    const ref = useRef(null);
+    const ref = useRef();
 
     useEffect(() => {
-        const el = ref.current;
-        if (!el) return;
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    observer.unobserve(el);
-                    setTimeout(() => setInView(true), delay);
-                }
-            },
+        gsap.fromTo(
+            ref.current,
+            { opacity: 0, y: 40 },
             {
-                threshold,
-                rootMargin: '0px 0px -10% 0px', // activa más “tarde” para que se vea más
+                opacity: 1,
+                y: 0,
+                delay: delay / 1000,
+                duration: 0.8,
+                ease: 'power2.out',
+                scrollTrigger: {
+                    trigger: ref.current,
+                    start: 'top 90%',
+                },
             }
         );
-
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, [threshold, delay]);
+    }, [delay]);
 
     return (
         <div
             ref={ref}
-            className={`${className} transition-all duration-[${duration}ms] ease-[${easing}]`}
-            style={{
-                opacity: inView ? 1 : initialOpacity,
-                transform: inView ? 'translateY(0px)' : 'translateY(50px)',
-                filter: blur ? (inView ? 'blur(0px)' : 'blur(12px)') : 'none',
-                transition: `opacity ${duration}ms ${easing}, transform ${duration}ms ${easing}, filter ${duration}ms ${easing}`,
-                willChange: 'opacity, transform, filter'
-            }}
+            className={`${className} ${blur ? 'backdrop-blur-sm' : ''}`}
+            {...props} // ✅ pasamos todos los props aquí
         >
             {children}
         </div>

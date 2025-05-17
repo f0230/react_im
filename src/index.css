@@ -8,19 +8,17 @@ body {
   margin: 0;
   padding: 0;
   @apply select-none;
-
 }
+
 html {
   scroll-behavior: smooth;
 }
-
 
 #root {
   display: block;
   width: 100%;
 }
 
-/* Estilos adicionales para compatibilidad con Anima */
 @layer components {
   .all-\[unset\] {
     all: unset;
@@ -33,12 +31,10 @@ html {
   box-sizing: border-box;
 }
 
-
 img {
   pointer-events: none;
   user-select: none;
 }
-
 
 @font-face {
   font-family: 'ProductSans';
@@ -54,9 +50,6 @@ img {
   font-style: normal;
 }
 
-
-
-/* En tu archivo CSS global si usás Tailwind */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -66,28 +59,3 @@ img {
   scrollbar-width: none;
 }
 
-
-
-
-
-/* css de bg servicios */
-
-.animated-gradient-bg {
-  background: linear-gradient(-45deg, #fce4ec, #e0f7fa, #fff8e1, #ede7f6);
-  background-size: 400% 400%;
-  animation: gradientScroll 15s ease infinite;
-}
-
-@keyframes gradientScroll {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
