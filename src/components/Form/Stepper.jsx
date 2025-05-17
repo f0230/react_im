@@ -12,8 +12,8 @@ export default function Stepper({
     footerClassName = "",
     backButtonProps = {},
     nextButtonProps = {},
-    backButtonText = "Back",
-    nextButtonText = "Continue",
+    backButtonText = "Atras",
+    nextButtonText = "Continuar",
     disableStepIndicators = false,
     renderStepIndicator,
     ...rest
@@ -52,12 +52,12 @@ export default function Stepper({
 
     return (
         <div
-            className="flex min-h-full flex-1 flex-col items-center justify-center p-4 sm:aspect-[4/3] md:aspect-[2/1]"
+            className="flex min-h-full flex-1 flex-col items-center justify-center p-2 "
             {...rest}
         >
             <div
-                className={`mx-auto w-full max-w-md rounded-4xl shadow-xl ${stepCircleContainerClassName}`}
-                style={{ border: "1px solid #222" }}
+                className={`mx-auto w-full rounded-4xl  ${stepCircleContainerClassName}`}
+                style={{ border: "" }}
             >
                 <div className={`${stepContainerClassName} flex w-full items-center p-8`}>
                     {stepsArray.map((_, index) => {
@@ -120,7 +120,7 @@ export default function Stepper({
                             )}
                             <button
                                 onClick={isLastStep ? handleComplete : handleNext}
-                                className="duration-350 flex items-center justify-center rounded-full bg-green-500 py-1.5 px-3.5 font-medium tracking-tight text-white transition hover:bg-green-600 active:bg-green-700"
+                                className="duration-350 flex items-center justify-center rounded-full bg-green-500 py-1.5 px-3.5 font-medium tracking-tight text-black transition hover:bg-green-600 active:bg-green-700"
                                 {...nextButtonProps}
                             >
                                 {isLastStep ? "Complete" : nextButtonText}
