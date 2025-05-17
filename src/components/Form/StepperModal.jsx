@@ -134,21 +134,24 @@ const StepperModal = ({ isOpen, onClose }) => {
                         {!isAuthenticated ? (
                             <GoogleLoginWrapper onLoginSuccess={() => setIsAuthenticated(true)} />
                         ) : (
-                            <Stepper onFinalStepCompleted={handleFinalSubmit}>
-                                <Step>
-                                    <label className="block text-sm font-semibold mb-1">Seleccioná día y hora</label>
-                                    <DatePicker
-                                        selected={formData.datetime}
-                                        onChange={(date) => setFormData((prev) => ({ ...prev, datetime: date }))}
-                                        showTimeSelect
-                                        timeIntervals={30}
-                                        dateFormat="Pp"
-                                        excludeTimes={busySlots}
-                                        className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition"
-                                        placeholderText="Elegí fecha y hora"
-                                        required
-                                    />
-                                </Step>
+                                <Stepper onFinalStepCompleted={handleFinalSubmit}>
+                                    <Step>
+                                        <div className="min-h-[200px] flex flex-col justify-start">
+                                            <label className="block text-sm font-semibold mb-1">Seleccioná día y hora</label>
+                                            <DatePicker
+                                                selected={formData.datetime}
+                                                onChange={(date) => setFormData((prev) => ({ ...prev, datetime: date }))}
+                                                showTimeSelect
+                                                timeIntervals={30}
+                                                dateFormat="Pp"
+                                                excludeTimes={busySlots}
+                                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition"
+                                                placeholderText="Elegí fecha y hora"
+                                                required
+                                            />
+                                        </div>
+                                    </Step>
+
                                 <Step>
                                     <label className="block text-sm font-semibold mb-1">Mensaje</label>
                                     <textarea
