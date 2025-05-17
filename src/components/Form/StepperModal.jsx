@@ -21,6 +21,7 @@ const StepperModal = ({ isOpen, onClose }) => {
     );
     const [isLoading, setIsLoading] = useState(false);
     const [busySlots, setBusySlots] = useState([]);
+    const [showConfirmation, setShowConfirmation] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("google_token");
@@ -51,7 +52,7 @@ const StepperModal = ({ isOpen, onClose }) => {
             });
 
             if (response.data.busy) {
-                const slots = response.data.busy.map(b => new Date(b.start));
+                const slots = response.data.busy.map((b) => new Date(b.start));
                 setBusySlots(slots);
             }
         } catch (error) {
@@ -68,6 +69,13 @@ const StepperModal = ({ isOpen, onClose }) => {
     };
 
     const handleFinalSubmit = async () => {
+        const { datetime, phone, message } = formData;
+
+        if (!datetime || !phone.trim() || !message.trim()) {
+            toast.error("Todos los campos son obligatorios.");
+            return;
+        }
+
         try {
             const token = localStorage.getItem("google_token");
             if (!token) {
@@ -90,13 +98,12 @@ const StepperModal = ({ isOpen, onClose }) => {
                 endTime: new Date(formData.datetime.getTime() + 60 * 60 * 1000).toISOString(),
                 email: formData.email,
             });
-            
 
             await axios.post("/api/hubspot-lead", formData);
 
             toast.success("✅ Reunión agendada con éxito");
             setIsLoading(false);
-            onClose();
+            setShowConfirmation(true);
         } catch (error) {
             console.error("Error en el envío:", error);
             toast.error("❌ Ocurrió un error. Revisá consola.");
@@ -141,40 +148,34 @@ const StepperModal = ({ isOpen, onClose }) => {
                                 <Step>
                                     <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-0 text-[11px] ">
                                         <label className="font-semibold">Seleccioná día y hora</label>
-                                            <DatePicker
-                                                selected={formData.datetime}
-                                                onChange={(date) => setFormData((prev) => ({ ...prev, datetime: date }))}
-                                                showTimeSelect
-                                                timeIntervals={30}
-                                                dateFormat="Pp"
-                                                excludeTimes={busySlots}
-                                                className="w-full text-[10px] sm:text-xs p-1 sm:p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
-                                                placeholderText="Elegí fecha y hora"
-                                                calendarClassName="dark-calendar"
-                                                popperClassName="dark-datepicker-popper"                                         
-                                                   required
-                                            />
-
-                                            
-
+                                        <DatePicker
+                                            selected={formData.datetime}
+                                            onChange={(date) => setFormData((prev) => ({ ...prev, datetime: date }))}
+                                            showTimeSelect
+                                            timeIntervals={30}
+                                            dateFormat="Pp"
+                                            excludeTimes={busySlots}
+                                            className="w-full text-[10px] sm:text-xs p-1 sm:p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
+                                            placeholderText="Elegí fecha y hora"
+                                            calendarClassName="dark-calendar"
+                                            popperClassName="dark-datepicker-popper"
+                                            required
+                                        />
                                     </div>
                                 </Step>
                                 <Step>
-                                        <div className="min-h-[320px] flex flex-col gap-4">
-
-
-                                            <label className="text-sm font-semibold">Teléfono</label>
-                                            <input
-                                                type="tel"
-                                                placeholder="Ej: +598 99 123 456"
-                                                value={formData.phone}
-                                                onChange={(e) =>
-                                                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                                                }
-                                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
-                                                required
-                                            />
-
+                                    <div className="min-h-[320px] flex flex-col gap-4">
+                                        <label className="text-sm font-semibold">Teléfono</label>
+                                        <input
+                                            type="tel"
+                                            placeholder="Ej: +598 99 123 456"
+                                            value={formData.phone}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                                            }
+                                            className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
+                                            required
+                                        />
 
                                         <label className="text-sm font-semibold">Mensaje</label>
                                         <textarea
@@ -186,8 +187,6 @@ const StepperModal = ({ isOpen, onClose }) => {
                                             className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black min-h-[120px]"
                                             required
                                         />
-
-                              
                                     </div>
                                 </Step>
                             </Stepper>
@@ -199,6 +198,29 @@ const StepperModal = ({ isOpen, onClose }) => {
                             </p>
                         )}
                     </motion.div>
+
+                    {showConfirmation && (
+                        <motion.div
+                            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                        >
+                            <div className="bg-white rounded-xl shadow-lg p-6 text-center max-w-sm">
+                                <h3 className="text-xl font-semibold mb-2">¡Cita confirmada!</h3>
+                                <p className="text-gray-700 mb-4">Gracias por agendar con nosotros. Te esperamos en el horario elegido.</p>
+                                <button
+                                    className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900"
+                                    onClick={() => {
+                                        setShowConfirmation(false);
+                                        onClose();
+                                    }}
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
                 </motion.div>
             )}
         </AnimatePresence>
