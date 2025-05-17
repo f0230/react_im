@@ -1,48 +1,55 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 
 const FadeContent = ({
     children,
     blur = false,
-    duration = 1000,
-    easing = 'ease-out',
+    duration = 1,
+    ease = 'power2.out',
     delay = 0,
-    threshold = 0.1,
-    initialOpacity = 0,
-    className = ''
+    stagger = 0.15,
+    className = '',
 }) => {
-    const [inView, setInView] = useState(false);
-    const ref = useRef(null);
+    const containerRef = useRef(null);
 
     useEffect(() => {
-        if (!ref.current) return;
+        if (!containerRef.current) return;
 
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    observer.unobserve(ref.current);
-                    setTimeout(() => {
-                        setInView(true);
-                    }, delay);
+        const targets = containerRef.current.children;
+
+        const ctx = gsap.context(() => {
+            gsap.fromTo(
+                targets,
+                {
+                    y: 50,
+                    opacity: 0,
+                    filter: blur ? 'blur(10px)' : 'none',
+                },
+                {
+                    y: 0,
+                    opacity: 1,
+                    filter: blur ? 'blur(0px)' : 'none',
+                    duration,
+                    ease,
+                    stagger,
+                    delay: delay / 1000,
+                    scrollTrigger: {
+                        trigger: containerRef.current,
+                        start: 'top 90%',
+                        toggleActions: 'play none none none',
+                    },
                 }
-            },
-            { threshold }
-        );
+            );
+        }, containerRef);
 
-        observer.observe(ref.current);
-
-        return () => observer.disconnect();
-    }, [threshold, delay]);
+        return () => ctx.revert();
+    }, [blur, duration, ease, delay, stagger]);
 
     return (
-        <div
-            ref={ref}
-            className={className}
-            style={{
-                opacity: inView ? 1 : initialOpacity,
-                transition: `opacity ${duration}ms ${easing}, filter ${duration}ms ${easing}`,
-                filter: blur ? (inView ? 'blur(0px)' : 'blur(10px)') : 'none',
-            }}
-        >
+        <div ref={containerRef} className={className}>
             {children}
         </div>
     );
