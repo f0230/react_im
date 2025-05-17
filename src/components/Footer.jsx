@@ -1,14 +1,42 @@
+import { useLayoutEffect, useRef } from 'react';
+import gsap from 'gsap';
 import logoDTE from '../assets/dte_lohace.webp';
 
-
 const Footer = () => {
-    return (
-        <footer className="bg-white text-black px-6 md:px-12 py-2 font-product border-t border-neutral-200 ">
-            <div className="max-w-[1080px] mx-auto flex flex-col md:flex-row justify-between items-center  h-[300px]  md:h-[500px] px-8">
+    const footerRef = useRef();
 
+    useLayoutEffect(() => {
+        const ctx = gsap.context(() => {
+            gsap.fromTo(
+                footerRef.current,
+                {
+                    opacity: 0,
+                    y: 50,
+                    filter: 'blur(10px)',
+                },
+                {
+                    opacity: 1,
+                    y: 0,
+                    filter: 'blur(0px)',
+                    duration: 1,
+                    delay: 0.3, // ⏱️ Delay antes de comenzar animación
+                    ease: 'power3.out',
+                }
+            );
+        }, footerRef);
+
+        return () => ctx.revert();
+    }, []);
+
+    return (
+        <footer
+            ref={footerRef}
+            className="bg-white text-black px-6 md:px-12 py-2 font-product border-t border-neutral-200"
+        >
+            <div className="max-w-[1080px] mx-auto flex flex-col md:flex-row justify-between items-center h-[300px] md:h-[500px] px-8">
                 {/* Columna izquierda: Contacto (solo visible en md+) */}
                 <div className="hidden md:flex flex-col justify-between w-full md:w-1/2 h-full py-8">
-                    <div className=" ">
+                    <div>
                         <p className="text-[34px] text-neutral-500">Contáctanos</p>
                         <h2 className="text-[45px] md:text-[60px] leading-none">Trabajemos juntos</h2>
                         <p className="md:text-[30px] text-normal">y llegá más lejos</p>
@@ -17,7 +45,7 @@ const Footer = () => {
                         <p className="text-black">grupo@grupodte.com</p>
                         <p className="text-black">096 219 905</p>
                     </div>
-                    <div className=" text-[17px]">
+                    <div className="text-[17px]">
                         <p>Uruguay</p>
                         <p>2020 – 2025</p>
                     </div>
@@ -33,7 +61,7 @@ const Footer = () => {
                             href="#"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-black text-white text-[22px]  h-[42px]  rounded-full text-center font-product hover:opacity-80 transition"
+                            className="bg-black text-white text-[22px] h-[42px] rounded-full text-center font-product hover:opacity-80 transition"
                         >
                             Agenda una reunión
                         </a>
@@ -41,7 +69,7 @@ const Footer = () => {
                             href="https://wa.me/59896219905"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-black text-white text-[22px]   h-[42px] rounded-full text-center font-product hover:opacity-80 transition"
+                            className="bg-black text-white text-[22px] h-[42px] rounded-full text-center font-product hover:opacity-80 transition"
                         >
                             Hablemos por Whatsapp
                         </a>
@@ -65,11 +93,7 @@ const Footer = () => {
                     <p className="text-[10px] text-neutral-500">Uruguay</p>
                 </div>
             </div>
-
-
         </footer>
-
-
     );
 };
 

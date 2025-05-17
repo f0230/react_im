@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 
@@ -12,10 +12,14 @@ const Contact = lazy(() => import("@/pages/Contact"));
 const Services = lazy(() => import("@/pages/Services"));
 
 function App() {
-  const { ref, inView } = useInView({
-    triggerOnce: true,
-    rootMargin: "500px 0px", // activa el Footer solo cuando falta 500px para entrar al viewport
-  });
+  const { ref, inView } = useInView({ triggerOnce: true });
+  const [footerVisible, setFooterVisible] = useState(false);
+
+  useEffect(() => {
+    if (inView) {
+      setFooterVisible(true);
+    }
+  }, [inView]);
 
   return (
     <Router>
@@ -33,9 +37,10 @@ function App() {
           </Suspense>
         </main>
 
+        {/* 🔻 Trigger visual para activar footer */}
         <div ref={ref} className="w-full h-10" />
 
-        {inView && (
+        {footerVisible && (
           <Suspense fallback={null}>
             <LazyFooter />
           </Suspense>

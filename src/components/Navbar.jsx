@@ -10,7 +10,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 gsap.registerPlugin(ScrollTrigger);
 
 const menuItems = [
-    { text: "Servicios", url: "#services" },
+    { text: "Servicios", url: "/servicios" },
     { text: "Nosotros", url: "#about" },
     { text: "Contacto", url: "#contact" },
 ];
