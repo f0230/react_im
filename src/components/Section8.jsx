@@ -1,6 +1,7 @@
 import React from "react";
 import Noise from './ui/Noise';
 import GaleriaScroll from '../components/GaleriaScroll';
+import CompuFondo from '../assets/compu_fondo.webp';
 
 const Section7 = () => {
     return (
@@ -9,7 +10,7 @@ const Section7 = () => {
             <div
                 className="relative flex flex-col items-center justify-center h-[600px] md:h-[900px] w-full overflow-hidden"
                 style={{
-                    backgroundImage: "url('/src/assets/compu_fondo.webp')",
+                    backgroundImage: `url(${CompuFondo})`,
                     backgroundSize: "cover",
                     backgroundPosition: "center",
                 }}
