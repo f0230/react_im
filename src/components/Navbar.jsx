@@ -115,25 +115,7 @@ const Navbar = () => {
                         />
                     </motion.div>
 
-                    {/* Íconos de contacto (desktop) */}
-                    <motion.div className="hidden md:flex items-center space-x-4" variants={childAnimation}>
-                        <motion.a
-                            href="https://wa.me/59812345678"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="WhatsApp chat"
-                            whileHover={{ scale: 1.2, rotate: 10 }}
-                            whileTap={{ scale: 0.9 }}
-                        >
-                            <OptimizedImage
-                                src={wp}
-                                alt="Icono WhatsApp"
-                                width={18}
-                                height={18}
-                                className="h-[12px] sm:h-[17px] w-[12px] sm:w-[18px]"
-                            />
-                        </motion.a>
-                    </motion.div>
+                    
 
                     {/* Botón hamburguesa (mobile) */}
                     <motion.div
