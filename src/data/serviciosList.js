@@ -1,6 +1,6 @@
 export const servicios = [
   {
-    title: 'Servicios',
+
     text: 'En DTE trabajamos junto a empresas que buscan profesionalizarse, crecer y consolidar su identidad. Lo hacemos desde un enfoque integral, creativo y estratégico, acompañando proyectos desde la idea hasta la ejecución.',
   },
 

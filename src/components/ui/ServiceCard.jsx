@@ -12,8 +12,10 @@ const ServiceCard = ({ title, text, index = 0, bg = '#ffffff' }) => {
       blur
       delay={index * 80}
       stagger={0.15}
-      className="md:mb-6 mb-4 service-block backdrop-contrast-100 snap-start p-5"
-      data-bg={bg} // ✅ ahora usa el color como atributo
+        className="md:mb-6 mb-4 service-block snap-start p-5 bg-white/30 backdrop-blur-xl 
+                    rounded-xl border border-white/35 animate-borderPulse transition-all duration-700 ease-in-out hover:border-white/30
+                    shadow-md md:hover:shadow-xl
+"
     >
       <h2 className={`${titleClass} tracking-tight leading-tight`}>
         {title}
