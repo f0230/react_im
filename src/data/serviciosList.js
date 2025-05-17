@@ -3,10 +3,7 @@ export const servicios = [
     title: 'Servicios',
     text: 'En DTE trabajamos junto a empresas que buscan profesionalizarse, crecer y consolidar su identidad. Lo hacemos desde un enfoque integral, creativo y estratégico, acompañando proyectos desde la idea hasta la ejecución.',
   },
-  {
-    title: 'Nuestros Servicios:',
-    text: '',
-  },
+
   {
     title: 'Desarrollo de Proyectos',
     text: 'Acompañamos a empresas en el diseño, planificación y ejecución de proyectos específicos que impulsan su crecimiento y consolidación.',

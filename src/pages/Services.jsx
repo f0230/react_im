@@ -47,26 +47,29 @@ const Servicios = () => {
     return (
         <main
             ref={containerRef}
-            className="relative min-h-screen w-full overflow-hidden flex flex-col items-center font-product text-black transition-colors duration-1000 ease-in-out"
+            className="relative overflow-hidden transition-colors duration-[1500ms] ease-in-out min-h-screen flex flex-col items-center font-product text-black bg-gradient-to-tl from-[#e0e7ff] via-[#f0f4ff] to-[#ffffff]"
+            style={{ width: '100%' }}
         >
-            {/* Fondo visual dinámico */}
-            <div className="absolute inset-0 z-0 before:absolute before:inset-0 before:content-[''] before:bg-black before:opacity-10 after:absolute after:inset-0 after:content-[''] after:bg-[radial-gradient(#ffffff11_1px,transparent_1px)] after:bg-[length:24px_24px] after:opacity-30" />
-            <div ref={auroraRef} className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-radial from-pink-300/20 via-blue-300/10 to-transparent animate-auroraBreath mix-blend-lighten backdrop-blur-xl" />
+            {/* Patrón visual decorativo */}
+            <div className="absolute inset-0 z-0 pointer-events-none before:absolute before:inset-0 before:content-[''] before:bg-black before:opacity-5 after:bg-[radial-gradient(#ffffff0c_1px,transparent_1px)] after:bg-[length:24px_24px] after:opacity-20 after:content-['']" />
 
-            {/* Contenido de servicios */}
-            <div className="relative z-10 mt-[60px] flex flex-col px-4 md:px-20 w-full md:max-w-[1080px]">
+            {/* Aurora animada */}
+            <div className="absolute -top-1/2 -left-1/2 w-[200%] h-[200%] bg-gradient-radial from-indigo-300/20 via-purple-300/10 to-transparent animate-auroraBreath mix-blend-lighten backdrop-blur-xl z-0" />
+
+            {/* Contenido */}
+            <div className="relative z-10 mt-[50px] flex flex-col px-4 md:px-20 w-full md:max-w-[1080px]">
                 {servicios.map((servicio, index) => (
                     <ServiceCard
                         key={index}
                         title={servicio.title}
                         text={servicio.text}
                         index={index}
-                        data-bg={bgColors[index % bgColors.length]}
                     />
                 ))}
-
             </div>
         </main>
+
+
     );
 };
 
