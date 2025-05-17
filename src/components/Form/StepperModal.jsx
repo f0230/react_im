@@ -83,11 +83,14 @@ const StepperModal = ({ isOpen, onClose }) => {
                 return;
             }
 
-            await axios.post("/api/google-calendar", {
-                ...formData,
-                datetime: formData.datetime.toISOString(),
-                token,
+            await axios.post("/api/create-event", {
+                summary: `Reunión con ${formData.name}`,
+                description: formData.message,
+                startTime: formData.datetime.toISOString(),
+                endTime: new Date(formData.datetime.getTime() + 60 * 60 * 1000).toISOString(),
+                email: formData.email,
             });
+            
 
             await axios.post("/api/hubspot-lead", formData);
 

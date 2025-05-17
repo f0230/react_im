@@ -3,13 +3,8 @@ import { google } from 'googleapis';
 export default async function handler(req, res) {
   const { code } = req.query;
 
-  console.log('🌍 Código recibido:', code);
-  console.log('📦 GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID || '❌ NO CARGADO');
-  console.log('📦 GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET || '❌ NO CARGADO');
-  console.log('📦 GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI || '❌ NO CARGADO');
-
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
-    return res.status(500).json({ error: 'Alguna variable de entorno no está cargada correctamente en Vercel.' });
+  if (!code || !process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+    return res.status(500).json({ error: 'Faltan parámetros o variables de entorno requeridas.' });
   }
 
   const oauth2Client = new google.auth.OAuth2(
@@ -24,10 +19,12 @@ export default async function handler(req, res) {
       redirect_uri: process.env.GOOGLE_REDIRECT_URI
     });
 
-    console.log('✅ REFRESH TOKEN:', tokens.refresh_token || 'No recibido');
-    console.log('✅ ACCESS TOKEN:', tokens.access_token);
+    // Aquí podrías guardar el refresh_token en una base de datos si quisieras.
+    if (!tokens.refresh_token) {
+      console.warn('⚠️ No se recibió refresh_token (es posible que ya se haya autorizado este usuario antes)');
+    }
 
-    res.send('Token recibido correctamente. Revisá logs.');
+    res.send('Token recibido correctamente. Ya podés usar el API de Google Calendar.');
   } catch (err) {
     console.error('❌ Error en getToken:', err.response?.data || err.message || err);
     res.status(500).json({
