@@ -1,16 +1,19 @@
 import FadeContent from './FadeContent';
 
-const ServiceCard = ({ title, text, index = 0 }) => {
+const ServiceCard = ({ title, text, index = 0, bg = '#ffffff' }) => {
   const titleClass = index === 0
     ? 'text-4xl md:text-5xl font-bold'
     : 'text-2xl md:text-3xl font-semibold';
 
-  return (
+
+    
+    return (
     <FadeContent
       blur
       delay={index * 80}
       stagger={0.15}
-      className="mb-16 service-block snap-start"
+      className="md:mb-6 mb-4 service-block backdrop-contrast-100 snap-start p-5"
+      data-bg={bg} // ✅ ahora usa el color como atributo
     >
       <h2 className={`${titleClass} tracking-tight leading-tight`}>
         {title}
