@@ -3,19 +3,22 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 
 import Navbar from "@/components/Navbar";
-import StepperModal from "@/components/Form/StepperModal"; // ✅ importamos el modal
+import StepperModal from "@/components/Form/StepperModal"; // ✅ Modal global
 
-// Lazy load de Footer y páginas
-const LazyFooter = lazy(() => import("@/components/Footer"));
+// Lazy loaded components
+const LazyFooter = lazy(() => import('./components/Footer'));
 const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Services = lazy(() => import("@/pages/Services"));
 
-function App() {
-  const { ref, inView } = useInView({ triggerOnce: true });
+const App = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.1,
+  });
   const [footerVisible, setFooterVisible] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false); // ✅ estado del modal
 
   useEffect(() => {
     if (inView) {
@@ -25,10 +28,10 @@ function App() {
 
   return (
     <Router>
-      <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative">
+      <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative min-h-screen flex flex-col">
         <Navbar />
 
-        <main className="md:pt-[45px]">
+        <main className="flex-grow md:pt-[45px]">
           <Suspense>
             <Routes>
               <Route path="/" element={<Home />} />
@@ -39,20 +42,27 @@ function App() {
           </Suspense>
         </main>
 
-        {/* 🔻 Trigger visual para activar footer */}
-        <div ref={ref} className="w-full h-10" />
+        {/* 🔻 Trigger invisible para activar el Footer */}
+        <div
+          ref={ref}
+          className="absolute bottom-0 w-full h-10 pointer-events-none"
+        />
 
+        {/* ✅ Footer lazy cargado al estar en viewport */}
         {footerVisible && (
           <Suspense fallback={null}>
-            <LazyFooter setIsModalOpen={setIsModalOpen} /> {/* ✅ pasamos función al Footer */}
+            <LazyFooter setIsModalOpen={setIsModalOpen} />
           </Suspense>
         )}
 
         {/* ✅ Modal montado globalmente */}
-        <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        <StepperModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
       </div>
     </Router>
   );
-}
+};
 
 export default App;

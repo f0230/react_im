@@ -1,42 +1,103 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Stepper, { Step } from "./Stepper";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import GoogleLoginWrapper from "./GoogleLoginWrapper";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { toast } from "react-hot-toast";
 
 const StepperModal = ({ isOpen, onClose }) => {
     const [formData, setFormData] = useState({
         name: "",
         email: "",
         message: "",
+        phone: "",
+        datetime: null,
     });
 
     const [isAuthenticated, setIsAuthenticated] = useState(
         !!localStorage.getItem("google_token")
     );
+    const [isLoading, setIsLoading] = useState(false);
+    const [busySlots, setBusySlots] = useState([]);
+
+    useEffect(() => {
+        const token = localStorage.getItem("google_token");
+        if (token) {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            setFormData((prev) => ({
+                ...prev,
+                name: payload.name,
+                email: payload.email,
+            }));
+            fetchBusySlots(token);
+        }
+    }, [isAuthenticated]);
+
+    const fetchBusySlots = async (token) => {
+        try {
+            const now = new Date();
+            const future = new Date();
+            future.setDate(future.getDate() + 14);
+
+            const response = await axios.post("/api/check-availability", {
+                range: {
+                    timeMin: now.toISOString(),
+                    timeMax: future.toISOString(),
+                },
+                token,
+                allBusy: true,
+            });
+
+            if (response.data.busy) {
+                const slots = response.data.busy.map(b => new Date(b.start));
+                setBusySlots(slots);
+            }
+        } catch (error) {
+            console.error("Error obteniendo horarios ocupados:", error);
+        }
+    };
+
+    const checkAvailability = async () => {
+        const res = await axios.post("/api/check-availability", {
+            datetime: formData.datetime,
+            token: localStorage.getItem("google_token"),
+        });
+        return res.data.available;
+    };
 
     const handleFinalSubmit = async () => {
         try {
             const token = localStorage.getItem("google_token");
             if (!token) {
-                alert("Token no encontrado. Por favor, iniciá sesión.");
+                toast.error("Token no encontrado. Iniciá sesión.");
                 return;
             }
 
-            // 🔁 Enviar a Google Calendar
+            setIsLoading(true);
+            const available = await checkAvailability();
+            if (!available) {
+                toast.error("Ese horario ya está ocupado. Elegí otro.");
+                setIsLoading(false);
+                return;
+            }
+
             await axios.post("/api/google-calendar", {
                 ...formData,
+                datetime: formData.datetime.toISOString(),
                 token,
             });
 
-            // 🔁 Enviar a HubSpot
             await axios.post("/api/hubspot-lead", formData);
 
-            alert("✅ Reunión agendada y contacto registrado con éxito.");
+            toast.success("✅ Reunión agendada con éxito");
+            setIsLoading(false);
             onClose();
         } catch (error) {
             console.error("Error en el envío:", error);
-            alert("❌ Ocurrió un error. Revisá consola.");
+            toast.error("❌ Ocurrió un error. Revisá consola.");
+            setIsLoading(false);
         }
     };
 
@@ -44,12 +105,11 @@ const StepperModal = ({ isOpen, onClose }) => {
         <AnimatePresence>
             {isOpen && (
                 <motion.div
-                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md overflow-y-auto flex items-start justify-center p-4"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
-                    {/* Botón cerrar */}
                     <button
                         className="absolute top-6 right-6 text-white hover:scale-110 transition-transform duration-200 z-50"
                         onClick={onClose}
@@ -60,7 +120,6 @@ const StepperModal = ({ isOpen, onClose }) => {
                         </svg>
                     </button>
 
-                    {/* Contenido del modal */}
                     <motion.div
                         className="bg-white/85 text-bold rounded-2xl shadow-xl w-full max-w-xl p-8 z-40"
                         initial={{ scale: 0.95, opacity: 0 }}
@@ -69,42 +128,27 @@ const StepperModal = ({ isOpen, onClose }) => {
                         transition={{ duration: 0.25, ease: "easeOut" }}
                     >
                         <h2 className="text-2xl font-bold mb-6 text-center">
-                            Formulario de Contacto
+                            Agendá tu cita
                         </h2>
 
-                        {/* Si no está logueado, mostrar Google Login */}
                         {!isAuthenticated ? (
                             <GoogleLoginWrapper onLoginSuccess={() => setIsAuthenticated(true)} />
                         ) : (
                             <Stepper onFinalStepCompleted={handleFinalSubmit}>
                                 <Step>
-                                    <label className="block text-sm font-semibold mb-1">Nombre</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Ej: Juan Pérez"
-                                        value={formData.name}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({ ...prev, name: e.target.value }))
-                                        }
+                                    <label className="block text-sm font-semibold mb-1">Seleccioná día y hora</label>
+                                    <DatePicker
+                                        selected={formData.datetime}
+                                        onChange={(date) => setFormData((prev) => ({ ...prev, datetime: date }))}
+                                        showTimeSelect
+                                        timeIntervals={30}
+                                        dateFormat="Pp"
+                                        excludeTimes={busySlots}
                                         className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition"
+                                        placeholderText="Elegí fecha y hora"
                                         required
                                     />
                                 </Step>
-
-                                <Step>
-                                    <label className="block text-sm font-semibold mb-1">Email</label>
-                                    <input
-                                        type="email"
-                                        placeholder="Ej: juan@email.com"
-                                        value={formData.email}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({ ...prev, email: e.target.value }))
-                                        }
-                                        className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition"
-                                        required
-                                    />
-                                </Step>
-
                                 <Step>
                                     <label className="block text-sm font-semibold mb-1">Mensaje</label>
                                     <textarea
@@ -116,8 +160,26 @@ const StepperModal = ({ isOpen, onClose }) => {
                                         className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition min-h-[120px]"
                                         required
                                     />
+
+                                    <label className="block text-sm font-semibold mt-6 mb-1">Teléfono</label>
+                                    <input
+                                        type="tel"
+                                        placeholder="Ej: +598 99 123 456"
+                                        value={formData.phone}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                                        }
+                                        className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black transition"
+                                        required
+                                    />
                                 </Step>
                             </Stepper>
+                        )}
+
+                        {isLoading && (
+                            <p className="text-center text-sm mt-4 text-gray-600 animate-pulse">
+                                Verificando disponibilidad y agendando...
+                            </p>
                         )}
                     </motion.div>
                 </motion.div>
