@@ -6,50 +6,43 @@ gsap.registerPlugin(ScrollTrigger);
 
 const FadeContent = ({
     children,
-    blur = false,
-    duration = 1,
-    ease = 'power2.out',
-    delay = 0,
-    stagger = 0.15,
     className = '',
+    delay = 0,
+    blur = false,
+    ...props
 }) => {
-    const containerRef = useRef(null);
+    const ref = useRef();
 
     useEffect(() => {
-        if (!containerRef.current) return;
-
-        const targets = containerRef.current.children;
-
-        const ctx = gsap.context(() => {
-            gsap.fromTo(
-                targets,
-                {
-                    y: 50,
-                    opacity: 0,
-                    filter: blur ? 'blur(10px)' : 'none',
+        gsap.fromTo(
+            ref.current,
+            {
+                opacity: 0,
+                y: 40,
+                filter: blur ? 'blur(12px)' : 'none',
+            },
+            {
+                opacity: 1,
+                y: 0,
+                filter: 'blur(0px)',
+                delay: delay / 1000,
+                duration: 0.9,
+                ease: 'power3.out',
+                scrollTrigger: {
+                    trigger: ref.current,
+                    start: 'top 85%',
+                    toggleActions: 'play none none reverse',
                 },
-                {
-                    y: 0,
-                    opacity: 1,
-                    filter: blur ? 'blur(0px)' : 'none',
-                    duration,
-                    ease,
-                    stagger,
-                    delay: delay / 1000,
-                    scrollTrigger: {
-                        trigger: containerRef.current,
-                        start: 'top 90%',
-                        toggleActions: 'play none none none',
-                    },
-                }
-            );
-        }, containerRef);
-
-        return () => ctx.revert();
-    }, [blur, duration, ease, delay, stagger]);
+            }
+        );
+    }, [delay, blur]);
 
     return (
-        <div ref={containerRef} className={className}>
+        <div
+            ref={ref}
+            className={`${className} ${blur ? 'backdrop-blur-sm' : ''}`}
+            {...props}
+        >
             {children}
         </div>
     );
