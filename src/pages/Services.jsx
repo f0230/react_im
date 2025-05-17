@@ -1,4 +1,12 @@
+import { useEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import FadeContent from '../components/ui/FadeContent';
+
+gsap.registerPlugin(ScrollTrigger);
+
+const bgColors = ['#fce4ec', '#e0f7fa', '#fff8e1', '#e8f5e9', '#ede7f6'];
+
 
 const servicios = [
   {
@@ -100,30 +108,58 @@ const servicios = [
 ];
 
 const Servicios = () => {
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        const sections = gsap.utils.toArray('.service-block');
+
+        let ctx = gsap.context(() => {
+            sections.forEach((section, index) => {
+                const color = section.dataset.bg;
+                gsap.to(containerRef.current, {
+                    backgroundColor: color,
+                    duration: 1,
+                    ease: 'power2.out',
+                    scrollTrigger: {
+                        trigger: section,
+                        start: 'top center',
+                        end: 'bottom center',
+                        scrub: true,
+                    },
+                });
+            });
+        }, containerRef);
+
+        return () => ctx.revert();
+    }, []);
+
     return (
-        <main className="py-16 px-4 md:px-20 bg-animated text-black font-product w-full max-w-5xl mx-auto">
-            {servicios.map((servicio, index) => (
-                <FadeContent
-                    key={index}
-                    blur
-                    delay={index * 80}
-                    className="mb-8 group transition-all duration-300"
-                >
-                    <div className="bg-[#f9f9f9] hover:bg-white transition-colors duration-300 rounded-2xl p-6 shadow-md hover:shadow-xl transform group-hover:scale-[1.015]">
-                        <h2
-                            className={`text-xl md:text-2xl font-bold mb-2 text-gray-800 ${index === 0 ? 'text-3xl md:text-4xl' : ''
-                                }`}
-                        >
-                            {servicio.title}
-                        </h2>
-                        {servicio.text && (
-                            <p className="text-base font-normal text-gray-600 leading-relaxed whitespace-pre-line">
-                                {servicio.text}
-                            </p>
-                        )}
-                    </div>
-                </FadeContent>
-            ))}
+        <main
+            ref={containerRef}
+            className="min-h-screen flex flex-col items-center font-product text-black transition-colors duration-[1500ms] ease-in-out animated-gradient-bg"
+            style={{ width: '100%' }}
+        >
+
+            <div className="mt-[50px] flex flex-col px-4 md:px-20 w-full md:max-w-[1080px]">
+                {servicios.map((servicio, index) => (
+                    <FadeContent
+                        key={index}
+                        blur
+                        delay={index * 80}
+                        className="mb-16 service-block"
+                        data-bg={bgColors[index % bgColors.length]}
+                    >
+                        <div className="rounded-2xl p-6 shadow-md bg-white/60 backdrop-blur-md transition-transform hover:scale-[1.01] hover:shadow-xl">
+                            <h2 className="text-xl md:text-2xl font-bold mb-2 leading-tight">{servicio.title}</h2>
+                            {servicio.text && (
+                                <p className="text-base font-normal text-gray-800 leading-relaxed whitespace-pre-line">
+                                    {servicio.text}
+                                </p>
+                            )}
+                        </div>
+                    </FadeContent>
+                ))}
+            </div>
         </main>
     );
 };

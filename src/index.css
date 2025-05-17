@@ -72,7 +72,13 @@ img {
 
 /* css de bg servicios */
 
-@keyframes scrollFade {
+.animated-gradient-bg {
+  background: linear-gradient(-45deg, #fce4ec, #e0f7fa, #fff8e1, #ede7f6);
+  background-size: 400% 400%;
+  animation: gradientScroll 15s ease infinite;
+}
+
+@keyframes gradientScroll {
   0% {
     background-position: 0% 50%;
   }
@@ -84,10 +90,4 @@ img {
   100% {
     background-position: 0% 50%;
   }
-}
-
-.bg-animated {
-  background: linear-gradient(120deg, #f0f4f8, #e0f7fa, #fce4ec);
-  background-size: 300% 300%;
-  animation: scrollFade 15s ease infinite;
 }
