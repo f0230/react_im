@@ -105,7 +105,7 @@ const StepperModal = ({ isOpen, onClose }) => {
         <AnimatePresence>
             {isOpen && (
                 <motion.div
-                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md overflow-y-auto flex items-start justify-center p-4"
+                    className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md overflow-y-auto flex items-center justify-center p-4"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -136,7 +136,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                         ) : (
                             <Stepper onFinalStepCompleted={handleFinalSubmit}>
                                 <Step>
-                                    <div className="min-h-[320px] flex flex-col justify-start gap-0 text-[11px] ">
+                                    <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-0 text-[11px] ">
                                         <label className="font-semibold">Seleccioná día y hora</label>
                                             <DatePicker
                                                 selected={formData.datetime}
@@ -152,10 +152,27 @@ const StepperModal = ({ isOpen, onClose }) => {
                                                    required
                                             />
 
+                                            
+
                                     </div>
                                 </Step>
                                 <Step>
-                                    <div className="flex flex-col gap-4">
+                                        <div className="min-h-[320px] flex flex-col gap-4">
+
+
+                                            <label className="text-sm font-semibold">Teléfono</label>
+                                            <input
+                                                type="tel"
+                                                placeholder="Ej: +598 99 123 456"
+                                                value={formData.phone}
+                                                onChange={(e) =>
+                                                    setFormData((prev) => ({ ...prev, phone: e.target.value }))
+                                                }
+                                                className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
+                                                required
+                                            />
+
+
                                         <label className="text-sm font-semibold">Mensaje</label>
                                         <textarea
                                             placeholder="Contanos en qué te podemos ayudar..."
@@ -167,17 +184,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                                             required
                                         />
 
-                                        <label className="text-sm font-semibold">Teléfono</label>
-                                        <input
-                                            type="tel"
-                                            placeholder="Ej: +598 99 123 456"
-                                            value={formData.phone}
-                                            onChange={(e) =>
-                                                setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                                            }
-                                            className="w-full p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
-                                            required
-                                        />
+                              
                                     </div>
                                 </Step>
                             </Stepper>
