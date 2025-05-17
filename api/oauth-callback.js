@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
     // Aquí podrías guardar el refresh_token en una base de datos si quisieras.
     if (!tokens.refresh_token) {
-      console.warn('⚠️ No se recibió refresh_token (es posible que ya se haya autorizado este usuario antes)');
+      console.warn('No se recibió refresh_token (es posible que ya se haya autorizado este usuario antes)');
     }
 
     res.send('Token recibido correctamente. Ya podés usar el API de Google Calendar.');
