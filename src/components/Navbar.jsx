@@ -1,111 +1,137 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import OptimizedImage from "./OptimizedImage"; // Asegúrate de que la ruta sea correcta
+import React, { useState, useEffect, useRef } from "react";
 
+import OptimizedImage from "./OptimizedImage";
+import HamburgerButton from "./ui/HamburgerButton";
 import logo from "../assets/iconodte.svg";
-import wp from "../assets/whatsapp-icon.svg";
+import { Link } from "react-router-dom";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
+
+const menuItems = [
+    { text: "Servicios", url: "#services" },
+    { text: "Nosotros", url: "#about" },
+    { text: "Contacto", url: "#contact" },
+];
 
 const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isMenuVisible, setIsMenuVisible] = useState(false);
     const [showNavbar, setShowNavbar] = useState(true);
     const [lastScrollY, setLastScrollY] = useState(0);
+    const [hasScrolled, setHasScrolled] = useState(false);
+    const menuRef = useRef();
+
+    const toggleMenu = () => setIsMenuOpen((prev) => !prev);
 
     useEffect(() => {
         const handleScroll = () => {
             const currentScrollY = window.scrollY;
-            if (currentScrollY > lastScrollY && currentScrollY > 100) {
-                setShowNavbar(false);
-            } else {
-                setShowNavbar(true);
-            }
+            setShowNavbar(currentScrollY < lastScrollY || currentScrollY < 100);
             setLastScrollY(currentScrollY);
+            setIsMenuOpen(false);
         };
 
+        const onScroll = () => setHasScrolled(window.scrollY > 10);
+
         window.addEventListener("scroll", handleScroll);
-        return () => window.removeEventListener("scroll", handleScroll);
+        window.addEventListener("scroll", onScroll);
+
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+            window.removeEventListener("scroll", onScroll);
+        };
     }, [lastScrollY]);
 
-    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+    useEffect(() => {
+        document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
+        return () => (document.body.style.overflow = "auto");
+    }, [isMenuOpen]);
 
-    const navAnimation = {
-        hidden: { y: -50, opacity: 0 },
-        visible: {
-            y: 0,
-            opacity: 1,
-            transition: {
-                duration: 0.8,
-                ease: "easeOut",
-                when: "beforeChildren",
-                staggerChildren: 0.1
-            }
+    useEffect(() => {
+        if (isMenuOpen) {
+            setIsMenuVisible(true);
         }
-    };
+    }, [isMenuOpen]);
 
-    const childAnimation = {
-        hidden: { opacity: 0, y: -20 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: { duration: 0.5 }
+    useEffect(() => {
+        if (isMenuOpen && isMenuVisible) {
+            const ctx = gsap.context(() => {
+                gsap.fromTo(
+                    "#mobile-menu",
+                    {
+                        x: "-120%",
+                        y: "-120%",
+                        opacity: 0,
+                        scale: 0.75,
+                        rotateZ: -8,
+                        transformOrigin: "top left",
+                        filter: "blur(24px)",
+                    },
+                    {
+                        x: "0%",
+                        y: "0%",
+                        opacity: 1,
+                        scale: 1,
+                        rotateZ: 0,
+                        filter: "blur(0px)",
+                        duration: 1.2,
+                        ease: "power4.out",
+                    }
+                );
+
+                const items = gsap.utils.toArray(".menu-item");
+                gsap.fromTo(
+                    items,
+                    {
+                        y: 30,
+                        opacity: 0,
+                        filter: "blur(6px)",
+                    },
+                    {
+                        y: 0,
+                        opacity: 1,
+                        filter: "blur(0px)",
+                        stagger: 0.12,
+                        duration: 0.7,
+                        ease: "power3.out",
+                    }
+                );
+            }, menuRef);
+
+            return () => ctx.revert();
         }
-    };
 
-    const menuVariants = {
-        closed: {
-            opacity: 0,
-            clipPath: "circle(0% at calc(100% - 35px) 35px)",
-            transition: {
-                duration: 0.7,
-                ease: [0.4, 0, 0.2, 1],
-                delay: 0.1
-            }
-        },
-        open: {
-            opacity: 1,
-            clipPath: "circle(150% at calc(100% - 35px) 35px)",
-            transition: {
-                duration: 0.7,
-                ease: [0.4, 0, 0.2, 1]
-            }
+        if (!isMenuOpen && isMenuVisible) {
+            const tl = gsap.timeline({
+                onComplete: () => setIsMenuVisible(false),
+            });
+
+            tl.to("#mobile-menu", {
+                x: "-120%",
+                y: "-120%",
+                opacity: 0,
+                scale: 0.75,
+                rotateZ: -10,
+                filter: "blur(12px)",
+                duration: 0.6,
+                ease: "power2.inOut",
+            });
         }
-    };
-
-    const menuItemVariants = {
-        closed: { opacity: 0, y: 20 },
-        open: i => ({
-            opacity: 1,
-            y: 0,
-            transition: {
-                delay: i * 0.1,
-                duration: 0.5
-            }
-        })
-    };
-
-    const menuItems = [
-        { text: "Home", url: "#" },
-        { text: "About", url: "#about" },
-        { text: "Services", url: "#services" },
-        { text: "Contact", url: "#contact" }
-    ];
+    }, [isMenuOpen, isMenuVisible]);
 
     return (
         <>
-            {/* Navbar principal */}
-            <motion.div
-                initial={{ y: 0 }}
-                animate={{ y: showNavbar ? 0 : "-100%" }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-                className="fixed top-0 left-0 w-full bg-white/75 backdrop-blur-md z-50"
+            <div
+                className={`fixed top-0 left-0 w-full bg-white/75 backdrop-blur-md z-50 transition-shadow duration-300 ${hasScrolled ? "shadow-md" : ""}`}
             >
-                <motion.nav
+                <nav
                     className="relative w-full max-w-[1440px] mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2 h-[45px] z-30"
-                    variants={navAnimation}
-                    initial="hidden"
-                    animate="visible"
+                    aria-controls="mobile-menu"
                 >
                     {/* Logo */}
-                    <motion.div variants={childAnimation}>
+                    <Link to="/">
                         <OptimizedImage
                             src={logo}
                             alt="Logo DTE"
@@ -113,104 +139,56 @@ const Navbar = () => {
                             height={25}
                             className="h-[17.5px] sm:h-[20px] w-auto"
                         />
-                    </motion.div>
+                    </Link>
 
-                    
-
-                    {/* Botón hamburguesa (mobile) */}
-                    <motion.div
-                        className="flex md:hidden"
-                        variants={childAnimation}
-                        initial="rest"
-                        whileHover="hover"
-                        whileTap={{ scale: 0.75 }}
-                    >
-                        <motion.button
-                            className="relative w-[30px] h-[30px] z-50"
-                            onClick={toggleMenu}
-                            aria-label="Menú móvil"
-                            aria-expanded={isMenuOpen}
-                        >
-                            <motion.span
-                                className="absolute top-[9px] left-1 block w-[30px] h-[3px] bg-greyburger rounded-full"
-                                animate={isMenuOpen ? { rotate: 45, y: 6 } : { rotate: 0, y: 0 }}
-                                transition={{ duration: 0.5 }}
-                            />
-                            <motion.span
-                                className="absolute top-[18px] left-1 block w-[30px] h-[3px] bg-greyburger rounded-full"
-                                animate={isMenuOpen ? { rotate: -45, y: -6 } : { rotate: 0, y: 0 }}
-                                transition={{ duration: 0.5 }}
-                            />
-                        </motion.button>
-                    </motion.div>
-                </motion.nav>
-            </motion.div>
-
-            {/* Menú mobile fullscreen */}
-            <AnimatePresence>
-                {isMenuOpen && (
-                    <motion.div
-                        className="fixed inset-0 bg-greyburger/50 backdrop-blur-md flex flex-col justify-center items-center z-20"
-                        variants={menuVariants}
-                        initial="closed"
-                        animate="open"
-                        exit="closed"
-                    >
-                        <nav className="w-full max-w-md">
-                            <ul className="flex flex-col items-center space-y-2">
-                                {menuItems.map((item, i) => (
-                                    <motion.li
-                                        key={i}
-                                        className="w-full text-center"
-                                        custom={i}
-                                        variants={menuItemVariants}
-                                        initial="closed"
-                                        animate="open"
-                                        exit="closed"
-                                    >
-                                        <motion.a
-                                            href={item.url}
-                                            className="text-black text-[16px] font-product font-bold tracking-wider block"
-                                            whileHover={{ scale: 1.1, x: 10 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            onClick={toggleMenu}
-                                        >
-                                            {item.text}
-                                        </motion.a>
-                                    </motion.li>
-                                ))}
-
-                                {/* Ícono WhatsApp en menú mobile */}
-                                <motion.div
-                                    className="flex items-center space-x-8 mt-12"
-                                    custom={menuItems.length}
-                                    variants={menuItemVariants}
-                                    initial="closed"
-                                    animate="open"
-                                    exit="closed"
+                    {/* Ítems desktop */}
+                    <ul className="hidden md:flex items-center gap-6">
+                        {menuItems.map((item, i) => (
+                            <li key={i}>
+                                <a
+                                    href={item.url}
+                                    className="text-black text-sm font-bold hover:underline"
                                 >
-                                    <motion.a
-                                        href="https://wa.me/59812345678"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        aria-label="WhatsApp"
-                                        whileHover={{ scale: 1.2, rotate: 10 }}
-                                        whileTap={{ scale: 0.9 }}
+                                    {item.text}
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+
+                    {/* Botón hamburguesa */}
+                    <div className="flex md:hidden">
+                        <HamburgerButton isOpen={isMenuOpen} toggle={toggleMenu} />
+                    </div>
+                </nav>
+            </div>
+
+            {/* Menú móvil con animación desde arriba a la izquierda */}
+            {isMenuVisible && (
+                <div
+                    ref={menuRef}
+                    id="mobile-menu"
+                    className="fixed inset-0 bg-white/80 backdrop-blur-lg flex justify-start items-end flex-col p-6 pt-20 z-40"
+                >
+                    <nav className="w-full max-w-md">
+                        <ul className="flex flex-col items-start space-y-4">
+                            {menuItems.map((item, i) => (
+                                <li
+                                    key={i}
+                                    className="menu-item text-right opacity-0 transform"
+                                >
+                                    <a
+                                        href={item.url}
+                                        className="text-black text-[18px] leading-tight font-product font-normal tracking-wide block hover:scale-105 transition-transform duration-300"
+                                        onClick={toggleMenu}
                                     >
-                                        <OptimizedImage
-                                            src={wp}
-                                            alt="WhatsApp"
-                                            width={17}
-                                            height={17}
-                                            className="h-[17px] w-[17px]"
-                                        />
-                                    </motion.a>
-                                </motion.div>
-                            </ul>
-                        </nav>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                        {item.text}
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </nav>
+                </div>
+            )}
         </>
     );
 };
