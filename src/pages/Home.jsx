@@ -8,7 +8,6 @@ import Section5 from "../components/Section5";
 import SimultaneousWords from "../components/TextEnDTE";
 import InfiniteCarousel from "../components/Slide";
 import Section7 from "../components/Section8";  
-import Footer from "../components/Footer";
 
 
 

@@ -23,8 +23,9 @@ export const checkAvailability = async (date) => {
 };
 
 // 🔹 3. Crear evento en Google Calendar (token se gestiona en el backend)
-export const createCalendarEvent = async ({ summary, description, startTime, endTime, email }) => {
+export const createCalendarEvent = async ({ name, summary, description, startTime, endTime, email }) => {
     const response = await axios.post("/api/create-event", {
+        name,
         summary,
         description,
         startTime,
