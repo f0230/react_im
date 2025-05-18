@@ -1,10 +1,16 @@
 import { google } from 'googleapis';
 import { Resend } from 'resend';
-import { render } from '@react-email/render';
-import ConfirmationEmail from '@/emails/ConfirmationEmail';
+import fs from 'fs';
+import path from 'path';
 import { getAccessTokenFromRefresh } from './utils/getAccessToken.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Función para reemplazar {{variable}} en el HTML
+const renderTemplate = (templatePath, data) => {
+    const raw = fs.readFileSync(templatePath, 'utf8');
+    return raw.replace(/{{(.*?)}}/g, (_, key) => data[key.trim()] || '');
+};
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
@@ -36,22 +42,24 @@ export default async function handler(req, res) {
             resource: event,
         });
 
-        // 2. Preparar HTML dinámico con react-email
+        // 2. Leer y procesar plantilla HTML
         const formattedDate = new Date(startTime).toLocaleString('es-UY', {
             dateStyle: 'full',
             timeStyle: 'short',
         });
 
-        const html = render(
-            <ConfirmationEmail
-                name={name}
-                summary={summary}
-                description={description}
-                formattedDate={formattedDate}
-            />
+        const html = renderTemplate(
+            path.resolve(process.cwd(), 'emails/confirmation.html'),
+            {
+                name,
+                summary,
+                description,
+                formattedDate,
+                year: new Date().getFullYear(),
+            }
         );
 
-        // 3. Enviar el mail con Resend
+        // 3. Enviar el email con Resend
         await resend.emails.send({
             from: `Grupo DTE <${process.env.RESEND_FROM}>`,
             to: email,
@@ -61,7 +69,7 @@ export default async function handler(req, res) {
 
         res.status(200).json({ ok: true, event: insertedEvent.data });
     } catch (err) {
-        console.error('❌ Error:', err);
+        console.error('❌ Error al crear evento o enviar email:', err);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 }
