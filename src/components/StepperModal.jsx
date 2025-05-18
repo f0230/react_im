@@ -39,18 +39,20 @@ const StepperModal = ({ isOpen, onClose }) => {
     } = useAppointmentForm({ user, token });
 
     useEffect(() => {
-        if (showConfirmation) {
-            const timer = setTimeout(() => {
-                setShowConfirmation(false); // cierra popup
-                setTimeout(() => {
-                    onClose(); // luego cierra modal
-                }, 200); // deja que el fade se complete
-            }, 3000);
-            return () => clearTimeout(timer);
-        }
+        console.log("🎯 showConfirmation:", showConfirmation);
+
+        if (!showConfirmation) return;
+
+        const timer = setTimeout(() => {
+            console.log("⏱️ Auto cerrando modal...");
+            setShowConfirmation(false);
+            onClose();
+        }, 3000);
+
+        return () => clearTimeout(timer);
     }, [showConfirmation, onClose]);
-
-
+      
+    
     return (
         <AnimatePresence>
             {isOpen && (
@@ -172,28 +174,20 @@ const StepperModal = ({ isOpen, onClose }) => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                         >
-                            <motion.div
-                                className="bg-white text-center rounded-2xl shadow-2xl px-8 py-6 max-w-sm w-full"
-                                initial={{ opacity: 0, scale: 0.8, y: 50 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.8, y: 50 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                            >
-                                <img src="https://grupodte.com/LOGODTE.svg" alt="Logo DTE" className="mx-auto h-10 mb-4" />
-                                <h3 className="text-2xl font-bold text-black mb-2">¡Cita confirmada!</h3>
-                                <p className="text-gray-700 text-sm mb-6">
-                                    Gracias <strong>{formData.name?.split(" ")[0] || ""}</strong>, tu reunión fue registrada con éxito.
+                            <div className="bg-white rounded-xl shadow-lg p-6 text-center max-w-sm">
+                                <h3 className="text-xl font-semibold mb-2">¡Cita confirmada!</h3>
+                                <p className="text-gray-700 mb-4">
+                                    Gracias {formData.name?.split(" ")[0] || ""}, te esperamos en el horario elegido.
                                 </p>
                                 <button
+                                    className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900"
                                     onClick={onClose}
-                                    className="bg-black text-white text-sm px-5 py-2 rounded-full hover:bg-gray-900 transition-colors"
                                 >
                                     Cerrar
                                 </button>
-                            </motion.div>
+                            </div>
                         </motion.div>
                     )}
-
                 </motion.div>
             )}
         </AnimatePresence>

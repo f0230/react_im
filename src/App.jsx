@@ -58,7 +58,10 @@ const App = () => {
         {/* ✅ Modal montado globalmente */}
         <StepperModal
           isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
+          onClose={() => {
+            console.log("🔒 setIsModalOpen(false)");
+            setIsModalOpen(false);
+          }}
         />
       </div>
     </Router>

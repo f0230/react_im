@@ -21,16 +21,16 @@ export default async function handler(req, res) {
     }
 
     try {
+        // Crear evento en el calendario interno de Grupo DTE
         const token = await getAccessTokenFromRefresh();
         const auth = new google.auth.OAuth2();
         auth.setCredentials({ access_token: token });
 
         const calendar = google.calendar({ version: 'v3', auth });
-
         const calendarId = 'aae871d62f645bd35cd19dd60165006f7128898b9dda88151a24648d531bee2d@group.calendar.google.com';
 
         const event = {
-            summary: summary || `#Landing #LeadConsulta Consulta de ${name}`,
+            summary: summary || `Consulta de ${name}`,
             description: description || '',
             start: {
                 dateTime: startTime,
@@ -44,15 +44,18 @@ export default async function handler(req, res) {
             reminders: { useDefault: true },
         };
 
-        const response = await calendar.events.insert({
+        await calendar.events.insert({
             calendarId,
             requestBody: event,
-            sendUpdates: 'all', // Notifica al usuario
+            sendUpdates: 'none', // no notifica al cliente
         });
 
-        console.log("✅ Evento creado con éxito:", response.data.htmlLink);
+        // 📅 Generar link dinámico al archivo ICS
+        const date = startTime.slice(0, 10); // YYYY-MM-DD
+        const hour = new Date(startTime).toTimeString().slice(0, 5); // HH:mm
 
-        // Email HTML personalizado con Resend
+        const icsLink = `https://grupodte.com/api/ics?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&date=${date}&hour=${hour}&summary=${encodeURIComponent(summary)}&description=${encodeURIComponent(description || '')}`;
+
         const formattedDate = new Date(startTime).toLocaleString('es-UY', {
             dateStyle: 'full',
             timeStyle: 'short',
@@ -66,6 +69,7 @@ export default async function handler(req, res) {
                 description,
                 formattedDate,
                 year: new Date().getFullYear(),
+                icsLink
             }
         );
 
@@ -77,7 +81,7 @@ export default async function handler(req, res) {
             reply_to: "grupo@grupodte.com"
         });
 
-        res.status(200).json({ ok: true, calendarEventLink: response.data.htmlLink });
+        res.status(200).json({ ok: true });
     } catch (err) {
         console.error('❌ Error creando evento o enviando email:', err.response?.data || err);
         res.status(500).json({ error: 'Error interno del servidor' });
