@@ -9,3 +9,4 @@ export const isValidPhone = (phone) => {
 
     return phoneRegex.test(phone) && hasMinimumDigits;
 };
+    
