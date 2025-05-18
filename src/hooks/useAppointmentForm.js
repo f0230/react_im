@@ -54,7 +54,7 @@ export const useAppointmentForm = ({ user, token }) => {
 
         if (token) {
             setIsDateValidating(true);
-            const available = await checkAvailability(date);
+            const available = await checkAvailability(date, token); 
             setIsDateValidating(false);
 
             if (!available) {
@@ -114,7 +114,7 @@ export const useAppointmentForm = ({ user, token }) => {
         }
 
         setIsLoading(true);
-        const available = await checkAvailability(datetime);
+        const available = await checkAvailability(datetime, token); 
         if (!available) {
             toast.error("Ese horario ya está ocupado. Elegí otro.");
             setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
@@ -129,6 +129,7 @@ export const useAppointmentForm = ({ user, token }) => {
                 startTime: datetime.toISOString(),
                 endTime: new Date(datetime.getTime() + 60 * 60 * 1000).toISOString(),
                 email,
+                token, // 👈 agregar esto
             });
 
             await createHubspotLead(formData);

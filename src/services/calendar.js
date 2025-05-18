@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// Retorna un array de Date con los slots ocupados
+// 🔹 1. Obtener slots ocupados para renderizar en DatePicker
 export const getBusySlots = async (start, end) => {
     const response = await axios.post("/api/check-availability", {
         range: {
@@ -13,7 +13,7 @@ export const getBusySlots = async (start, end) => {
     return response.data.busy.map(b => new Date(b.start));
 };
 
-// Retorna true si el datetime está disponible
+// 🔹 2. Verificar si un datetime está libre (sin token)
 export const isSlotAvailable = async (datetime) => {
     const response = await axios.post("/api/check-availability", {
         datetime,
@@ -22,14 +22,24 @@ export const isSlotAvailable = async (datetime) => {
     return response.data.available;
 };
 
-// Crea un evento y devuelve el response del backend
-export const createCalendarEvent = async ({ summary, description, startTime, endTime, email }) => {
+// 🔹 3. Verificar disponibilidad con token (usado por el form)
+export const checkAvailability = async (date, token) => {
+    const response = await axios.post("/api/check-availability", {
+        datetime: date,
+        token,
+    });
+    return response.data.available;
+};
+
+// 🔹 4. Crear evento en Google Calendar, pasando el token
+export const createCalendarEvent = async ({ summary, description, startTime, endTime, email, token }) => {
     const response = await axios.post("/api/create-event", {
         summary,
         description,
         startTime,
         endTime,
-        email,s
+        email,
+        token,
     });
 
     return response.data;
