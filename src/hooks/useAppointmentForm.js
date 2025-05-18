@@ -77,7 +77,10 @@ export const useAppointmentForm = ({ user, token }) => {
                     if (!available) {
                         setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
                         toast.error("Ese horario ya está ocupado. Por favor, elegí otro.");
+                    } else {
+                        toast.success("✅ Este horario está disponible");
                     }
+                      
                 } catch (err) {
                     toast.error("Error al verificar disponibilidad.");
                     console.error(err);
@@ -96,15 +99,18 @@ export const useAppointmentForm = ({ user, token }) => {
             errors.datetime = "Seleccioná una fecha y hora.";
             hasErrors = true;
         } else {
+            toast.error("No puedes seleccionar una fecha pasada.");
             const now = new Date();
-            const hours = datetime.getHours();
-            const minutes = datetime.getMinutes();
             if (datetime < now) {
                 errors.datetime = "No puedes seleccionar una fecha pasada.";
                 hasErrors = true;
-            } else if (hours < 9 || (hours === 18 && minutes > 0) || hours > 18) {
-                errors.datetime = "Solo horarios entre 9:00 y 18:00.";
-                hasErrors = true;
+            } else {
+                const hours = datetime.getHours();
+                const minutes = datetime.getMinutes();
+                if (hours < 10 || (hours === 18 && minutes > 0) || hours > 18) {
+                    errors.datetime = "Solo se permiten horarios entre 10:00 y 18:00.";
+                    hasErrors = true;
+                }
             }
         }
 

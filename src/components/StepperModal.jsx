@@ -89,12 +89,10 @@ const StepperModal = ({ isOpen, onClose }) => {
                                 <Step>
                                     <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-1 text-sm sm:text-base">
                                         <label className="font-semibold mb-1">Seleccioná día y hora</label>
-                                        // ✅ Fragmento de DatePicker optimizado
                                             <DatePicker
                                                 selected={formData.datetime}
                                                 onChange={handleDateChange}
                                                 showTimeSelect
-                                                showTimeSelectOnly
                                                 timeIntervals={60}
                                                 timeCaption="Horario"
                                                 dateFormat="HH:mm, eeee d MMMM"
@@ -109,6 +107,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                                                 popperClassName="dark-datepicker-popper"
                                                 required
                                             />
+
 
                                         {isDateValidating && (
                                             <p className="text-blue-500 text-xs mt-1 animate-pulse flex items-center gap-1">

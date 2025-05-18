@@ -1,13 +1,15 @@
+// ✅ calendar.js actualizado con token
 import axios from "axios";
 
 // 🔹 1. Obtener slots ocupados para renderizar en DatePicker
-export const getBusySlots = async (start, end) => {
+export const getBusySlots = async (start, end, token) => {
     const response = await axios.post("/api/check-availability", {
         range: {
             timeMin: start.toISOString(),
             timeMax: end.toISOString(),
         },
         allBusy: true,
+        token,
     });
 
     return response.data.busy.map(b => new Date(b.start));
