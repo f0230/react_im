@@ -1,14 +1,25 @@
-// StepperModal.jsx usando useAppointmentForm
 import React from "react";
 import Stepper, { Step } from "@/components/Form/Stepper";
 import { motion, AnimatePresence } from "framer-motion";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { toast } from "react-hot-toast";
 
 import GoogleLoginWrapper from "@/components/Form/GoogleLoginWrapper";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useAppointmentForm } from "@/hooks/useAppointmentForm";
+
+// ✅ Componente visual de errores
+const ErrorMessage = ({ message }) => {
+    if (!message) return null;
+    return (
+        <div className="flex items-center mt-1 text-xs text-red-500">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{message}</span>
+        </div>
+    );
+};
 
 const StepperModal = ({ isOpen, onClose }) => {
     const { user, token, isAuthenticated, setToken } = useAuthUser();
@@ -64,6 +75,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                                 setFieldErrors={setFieldErrors}
                                 onFinalStepCompleted={handleFinalSubmit}
                             >
+                                {/* Paso 1: Fecha y hora */}
                                 <Step>
                                     <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-1 text-[11px]">
                                         <label className="font-semibold">Seleccioná día y hora</label>
@@ -86,12 +98,11 @@ const StepperModal = ({ isOpen, onClose }) => {
                                                 Verificando disponibilidad...
                                             </p>
                                         )}
-                                        {fieldErrors.datetime && (
-                                            <p className="text-red-500 text-xs mt-1">{fieldErrors.datetime}</p>
-                                        )}
+                                        <ErrorMessage message={fieldErrors.datetime} />
                                     </div>
                                 </Step>
 
+                                {/* Paso 2: Teléfono y mensaje */}
                                 <Step>
                                     <div className="min-h-[320px] flex flex-col gap-4">
                                         <div>
@@ -104,9 +115,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                                                 className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black ${fieldErrors.phone ? "border-red-500" : "border-gray-300"}`}
                                                 required
                                             />
-                                            {fieldErrors.phone && (
-                                                <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>
-                                            )}
+                                            <ErrorMessage message={fieldErrors.phone} />
                                         </div>
 
                                         <div>
@@ -118,9 +127,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                                                 className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black min-h-[120px] ${fieldErrors.message ? "border-red-500" : "border-gray-300"}`}
                                                 required
                                             />
-                                            {fieldErrors.message && (
-                                                <p className="text-red-500 text-xs mt-1">{fieldErrors.message}</p>
-                                            )}
+                                            <ErrorMessage message={fieldErrors.message} />
                                         </div>
                                     </div>
                                 </Step>

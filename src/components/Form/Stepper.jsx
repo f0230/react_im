@@ -1,6 +1,7 @@
-// Stepper.jsx actualizado con validación en el paso final, mensajes de error visibles y validación de teléfono
+// Stepper.jsx actualizado
 import React, { useState, Children, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { isValidPhone } from "@/utils/phone-validation"; // Ajusta la ruta según tu estructura
 
 export default function Stepper({
     children,
@@ -28,23 +29,38 @@ export default function Stepper({
     const isCompleted = currentStep > totalSteps;
     const isLastStep = currentStep === totalSteps;
 
-    const isValidPhone = (phone) => {
-        const phoneRegex = /^\+?[0-9]{6,15}$/;
-        return phoneRegex.test(phone);
-    };
-
     const validateFields = () => {
         if (!formData) return false;
         const errors = {};
-        if (currentStep === 1 && !formData?.datetime) errors.datetime = "Seleccioná una fecha y hora.";
-        if (currentStep === 2) {
+
+        if (currentStep === 1) {
+            if (!formData?.datetime) {
+                errors.datetime = "Seleccioná una fecha y hora.";
+            } else {
+                const now = new Date();
+                if (formData.datetime < now) {
+                    errors.datetime = "No puedes seleccionar una fecha pasada.";
+                }
+                const hours = formData.datetime.getHours();
+                const minutes = formData.datetime.getMinutes();
+                if (hours < 9 || (hours === 18 && minutes > 0) || hours > 18) {
+                    errors.datetime = "Solo horarios de 9:00 a 18:00.";
+                }
+            }
+        } else if (currentStep === 2) {
             if (!formData?.phone?.trim()) {
                 errors.phone = "El teléfono es obligatorio.";
             } else if (!isValidPhone(formData.phone.trim())) {
                 errors.phone = "Ingresá un número de teléfono válido.";
             }
-            if (!formData?.message?.trim()) errors.message = "El mensaje es obligatorio.";
+
+            if (!formData?.message?.trim()) {
+                errors.message = "El mensaje es obligatorio.";
+            } else if (formData.message.trim().length < 10) {
+                errors.message = "El mensaje debe tener al menos 10 caracteres.";
+            }
         }
+
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -76,10 +92,8 @@ export default function Stepper({
     };
 
     return (
-        <div
-            className="flex min-h-full flex-1 flex-col items-center justify-center p-2"
-            {...rest}
-        >
+        <div className="flex min-h-full flex-1 flex-col items-center justify-center p-2" {...rest}>
+            {/* (resto del contenido sin cambios) */}
             <div className={`mx-auto w-full rounded-4xl ${stepCircleContainerClassName}`}>
                 <div className={`${stepContainerClassName} flex w-full items-center p-8`}>
                     {stepsArray.map((_, index) => {

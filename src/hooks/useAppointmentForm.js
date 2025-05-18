@@ -64,11 +64,52 @@ export const useAppointmentForm = ({ user, token }) => {
         }
     };
 
+    // useAppointmentForm.js actualizado (solo reemplazo de handleFinalSubmit)
     const handleFinalSubmit = async () => {
         const { datetime, phone, message, name, email } = formData;
+        let hasErrors = false;
+        const errors = {};
 
+        // Validación completa
         if (!datetime) {
-            setFieldErrors((prev) => ({ ...prev, datetime: "Seleccioná una fecha y hora." }));
+            errors.datetime = "Seleccioná una fecha y hora.";
+            hasErrors = true;
+        } else {
+            const now = new Date();
+            if (datetime < now) {
+                errors.datetime = "No puedes seleccionar una fecha pasada.";
+                hasErrors = true;
+            }
+            const hours = datetime.getHours();
+            const minutes = datetime.getMinutes();
+            if (hours < 9 || (hours === 18 && minutes > 0) || hours > 18) {
+                errors.datetime = "Solo horarios entre 9:00 y 18:00.";
+                hasErrors = true;
+            }
+        }
+
+        const phoneRegex = /^(\+?[0-9]{1,4})?[-\s]?([0-9]{3,4})[-\s]?([0-9]{3,4})[-\s]?([0-9]{0,4})$/;
+        const digitsOnly = phone?.replace(/[\s\-()]/g, '');
+        const hasMinimumDigits = digitsOnly?.length >= 8;
+
+        if (!phone?.trim()) {
+            errors.phone = "El teléfono es obligatorio.";
+            hasErrors = true;
+        } else if (!(phoneRegex.test(phone) && hasMinimumDigits)) {
+            errors.phone = "Ingresá un número de teléfono válido.";
+            hasErrors = true;
+        }
+
+        if (!message?.trim()) {
+            errors.message = "El mensaje es obligatorio.";
+            hasErrors = true;
+        } else if (message.trim().length < 10) {
+            errors.message = "El mensaje debe tener al menos 10 caracteres.";
+            hasErrors = true;
+        }
+
+        if (hasErrors) {
+            setFieldErrors(errors);
             return;
         }
 
@@ -99,7 +140,21 @@ export const useAppointmentForm = ({ user, token }) => {
         } finally {
             setIsLoading(false);
         }
+
+        setTimeout(() => {
+            setShowConfirmation(false);
+            setFormData({
+                name: user?.name || "",
+                email: user?.email || "",
+                phone: "",
+                message: "",
+                datetime: null,
+            });
+            onClose && onClose(); // Cierra el modal si la función está disponible
+        }, 3000);
+        
     };
+
 
     return {
         formData,
