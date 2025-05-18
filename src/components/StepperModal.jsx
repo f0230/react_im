@@ -89,25 +89,27 @@ const StepperModal = ({ isOpen, onClose }) => {
                                 <Step>
                                     <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-1 text-sm sm:text-base">
                                         <label className="font-semibold mb-1">Seleccioná día y hora</label>
-                                        <DatePicker
-                                            selected={formData.datetime}
-                                            onChange={handleDateChange}
-                                            showTimeSelect
-                                            timeFormat="HH:mm"
-                                            timeIntervals={30}
-                                            minDate={new Date()}
-                                            minTime={new Date().setHours(9, 0)}
-                                            maxTime={new Date().setHours(18, 0)}
-                                            dateFormat="eeee d MMMM, HH:mm"
-                                            placeholderText="Ej: lunes 20 mayo, 14:00"
-                                            excludeTimes={busySlots}
-                                            withPortal={window.innerWidth < 640}
-                                            className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black transition-colors duration-150 ${fieldErrors.datetime ? "border-red-500" : "border-gray-300"
-                                                }`}
-                                            calendarClassName="dark-calendar"
-                                            popperClassName="dark-datepicker-popper"
-                                            required
-                                        />
+                                        // ✅ Fragmento de DatePicker optimizado
+                                            <DatePicker
+                                                selected={formData.datetime}
+                                                onChange={handleDateChange}
+                                                showTimeSelect
+                                                showTimeSelectOnly
+                                                timeIntervals={60}
+                                                timeCaption="Horario"
+                                                dateFormat="HH:mm, eeee d MMMM"
+                                                minDate={new Date()}
+                                                minTime={new Date(new Date().setHours(10, 0, 0, 0))}
+                                                maxTime={new Date(new Date().setHours(18, 0, 0, 0))}
+                                                placeholderText="Ej: 10:00, lunes 20 mayo"
+                                                excludeTimes={busySlots}
+                                                withPortal={window.innerWidth < 640}
+                                                className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black transition-colors duration-150 ${fieldErrors.datetime ? "border-red-500" : "border-gray-300"}`}
+                                                calendarClassName="dark-calendar"
+                                                popperClassName="dark-datepicker-popper"
+                                                required
+                                            />
+
                                         {isDateValidating && (
                                             <p className="text-blue-500 text-xs mt-1 animate-pulse flex items-center gap-1">
                                                 <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

@@ -1,3 +1,4 @@
+// ✅ useAppointmentForm.js
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useCalendarAvailability } from "./useCalendarAvailability";
@@ -27,14 +28,29 @@ export const useAppointmentForm = ({ user, token }) => {
                 name: user.name,
                 email: user.email,
             }));
-            fetchBusy();
+            // carga inicial genérica
+            fetchBusy(new Date(), new Date(new Date().setDate(new Date().getDate() + 3)), token);
         }
     }, [user, token]);
+
+    useEffect(() => {
+        const selectedDate = formData.datetime;
+        if (!selectedDate || !token) return;
+
+        const startOfDay = new Date(selectedDate);
+        startOfDay.setHours(10, 0, 0, 0);
+
+        const endOfDay = new Date(selectedDate);
+        endOfDay.setHours(18, 0, 0, 0);
+
+        fetchBusy(startOfDay, endOfDay, token);
+    }, [formData.datetime, token]);
 
     const handleDateChange = (date) => {
         clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(async () => {
             setFieldErrors((prev) => ({ ...prev, datetime: null }));
+
             if (!date) {
                 setFormData((prev) => ({ ...prev, datetime: null }));
                 return;
@@ -47,8 +63,8 @@ export const useAppointmentForm = ({ user, token }) => {
             }
 
             const hours = date.getHours();
-            if (hours < 9 || hours >= 18) {
-                setFieldErrors((prev) => ({ ...prev, datetime: "Solo horarios de 9:00 a 18:00" }));
+            if (hours < 10 || hours >= 18) {
+                setFieldErrors((prev) => ({ ...prev, datetime: "Solo horarios de 10:00 a 18:00" }));
                 return;
             }
 
@@ -69,9 +85,8 @@ export const useAppointmentForm = ({ user, token }) => {
                     setIsDateValidating(false);
                 }
             }
-        }, 500);
+        }, 400);
     };
-
     const handleFinalSubmit = async () => {
         const { datetime, phone, message, name, email } = formData;
         let hasErrors = false;
@@ -177,3 +192,4 @@ export const useAppointmentForm = ({ user, token }) => {
         handleFinalSubmit,
     };
 };
+    

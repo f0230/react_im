@@ -1,35 +1,38 @@
-// useCalendarAvailability.js actualizado
+// ✅ useCalendarAvailability.js
 import { useState } from "react";
-import { getBusySlots, isSlotAvailable } from "../services/calendar";
+import axios from "axios";
 
 export const useCalendarAvailability = () => {
     const [busySlots, setBusySlots] = useState([]);
 
-    const fetchBusy = async () => {
+    const fetchBusy = async (start, end, token) => {
         try {
-            const now = new Date();
-            const future = new Date();
-            future.setDate(now.getDate() + 14);
-
-            const slots = await getBusySlots(now, future);
-            setBusySlots(slots);
+            const response = await axios.post("/api/check-availability", {
+                range: {
+                    timeMin: start.toISOString(),
+                    timeMax: end.toISOString(),
+                },
+                allBusy: true,
+                token,
+            });
+            setBusySlots(response.data.busy.map((b) => new Date(b.start)));
         } catch (error) {
-            console.error("Error al obtener horarios ocupados:", error);
+            console.error("❌ Error al obtener slots ocupados:", error);
         }
     };
 
-    const checkAvailability = async (datetime) => {
+    const checkAvailability = async (datetime, token) => {
         try {
-            return await isSlotAvailable(datetime);
+            const response = await axios.post("/api/check-availability", {
+                datetime,
+                token,
+            });
+            return response.data.available;
         } catch (error) {
-            console.error("Error al verificar disponibilidad:", error);
+            console.error("❌ Error verificando disponibilidad:", error);
             return false;
         }
     };
 
-    return {
-        busySlots,
-        fetchBusy,
-        checkAvailability,
-    };
+    return { busySlots, fetchBusy, checkAvailability };
 };

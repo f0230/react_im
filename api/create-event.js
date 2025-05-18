@@ -6,7 +6,7 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Método no permitido' });
     }
 
-    const { summary, description, startTime, endTime, email } = req.body;
+    const { summary, description, startTime, endTime, email, name } = req.body;
 
     if (!summary || !startTime || !endTime) {
         return res.status(400).json({ error: 'Faltan datos requeridos' });
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
         const calendarId = 'aae871d62f645bd35cd19dd60165006f7128898b9dda88151a24648d531bee2d@group.calendar.google.com';
 
         const event = {
-            summary: `#Landing #LeadConsulta Consulta de ${formData.name}`,
+            summary: `#Landing #LeadConsulta Consulta de ${name}`,
             description: description || '',
             start: {
                 dateTime: startTime,
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
                 dateTime: endTime,
                 timeZone: 'America/Montevideo',
             },
-            attendees: email ? [{ email }] : [], // 👈 le llega invitación por Gmail
+            attendees: email ? [{ email }] : [],
             reminders: {
                 useDefault: true,
             },
