@@ -150,7 +150,9 @@ const StepperModal = ({ isOpen, onClose }) => {
                         >
                             <div className="bg-white rounded-xl shadow-lg p-6 text-center max-w-sm">
                                 <h3 className="text-xl font-semibold mb-2">¡Cita confirmada!</h3>
-                                <p className="text-gray-700 mb-4">Gracias por agendar con nosotros. Te esperamos en el horario elegido.</p>
+                                <p className="text-gray-700 mb-4">
+                                    Gracias <strong>{formData?.name?.split(" ")[0]}</strong> por agendar con nosotros. Te esperamos en el horario elegido.
+                                </p>
                                 <button
                                     className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900"
                                     onClick={() => {
@@ -163,6 +165,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                             </div>
                         </motion.div>
                     )}
+
                 </motion.div>
             )}
         </AnimatePresence>
