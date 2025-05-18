@@ -1,11 +1,12 @@
-// ✅ useAppointmentForm.js
+// ✅ useAppointmentForm.js simplificado sin uso de token
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useCalendarAvailability } from "./useCalendarAvailability";
 import { createCalendarEvent } from "../services/calendar";
 import { createHubspotLead } from "../services/hubspot";
+import { isValidPhone } from "@/utils/phone-validation";
 
-export const useAppointmentForm = ({ user, token }) => {
+export const useAppointmentForm = ({ user }) => {
     const { busySlots, fetchBusy, checkAvailability } = useCalendarAvailability();
 
     const [formData, setFormData] = useState({
@@ -22,20 +23,19 @@ export const useAppointmentForm = ({ user, token }) => {
     const debounceRef = useRef(null);
 
     useEffect(() => {
-        if (user && token) {
+        if (user) {
             setFormData((prev) => ({
                 ...prev,
                 name: user.name,
                 email: user.email,
             }));
-            // carga inicial genérica
-            fetchBusy(new Date(), new Date(new Date().setDate(new Date().getDate() + 3)), token);
+            fetchBusy(new Date(), new Date(new Date().setDate(new Date().getDate() + 3)));
         }
-    }, [user, token]);
+    }, [user]);
 
     useEffect(() => {
         const selectedDate = formData.datetime;
-        if (!selectedDate || !token) return;
+        if (!selectedDate) return;
 
         const startOfDay = new Date(selectedDate);
         startOfDay.setHours(10, 0, 0, 0);
@@ -43,8 +43,8 @@ export const useAppointmentForm = ({ user, token }) => {
         const endOfDay = new Date(selectedDate);
         endOfDay.setHours(18, 0, 0, 0);
 
-        fetchBusy(startOfDay, endOfDay, token);
-    }, [formData.datetime, token]);
+        fetchBusy(startOfDay, endOfDay);
+    }, [formData.datetime]);
 
     const handleDateChange = (date) => {
         clearTimeout(debounceRef.current);
@@ -70,26 +70,24 @@ export const useAppointmentForm = ({ user, token }) => {
 
             setFormData((prev) => ({ ...prev, datetime: date }));
 
-            if (token) {
-                setIsDateValidating(true);
-                try {
-                    const available = await checkAvailability(date, token);
-                    if (!available) {
-                        setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
-                        toast.error("Ese horario ya está ocupado. Por favor, elegí otro.");
-                    } else {
-                        toast.success("✅ Este horario está disponible");
-                    }
-                      
-                } catch (err) {
-                    toast.error("Error al verificar disponibilidad.");
-                    console.error(err);
-                } finally {
-                    setIsDateValidating(false);
+            setIsDateValidating(true);
+            try {
+                const available = await checkAvailability(date);
+                if (!available) {
+                    setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
+                    toast.error("Ese horario ya está ocupado. Por favor, elegí otro.");
+                } else {
+                    toast.success("✅ Este horario está disponible");
                 }
+            } catch (err) {
+                toast.error("Error al verificar disponibilidad.");
+                console.error(err);
+            } finally {
+                setIsDateValidating(false);
             }
         }, 400);
     };
+
     const handleFinalSubmit = async () => {
         const { datetime, phone, message, name, email } = formData;
         let hasErrors = false;
@@ -99,7 +97,6 @@ export const useAppointmentForm = ({ user, token }) => {
             errors.datetime = "Seleccioná una fecha y hora.";
             hasErrors = true;
         } else {
-            toast.error("No puedes seleccionar una fecha pasada.");
             const now = new Date();
             if (datetime < now) {
                 errors.datetime = "No puedes seleccionar una fecha pasada.";
@@ -110,18 +107,16 @@ export const useAppointmentForm = ({ user, token }) => {
                 if (hours < 10 || (hours === 18 && minutes > 0) || hours > 18) {
                     errors.datetime = "Solo se permiten horarios entre 10:00 y 18:00.";
                     hasErrors = true;
+                } else {
+                    toast.success("✅ Este horario está disponible");
                 }
             }
         }
 
-        const phoneRegex = /^(\+?[0-9]{1,4})?[-\s]?([0-9]{3,4})[-\s]?([0-9]{3,4})[-\s]?([0-9]{0,4})$/;
-        const digitsOnly = phone?.replace(/[\s\-()]/g, '');
-        const hasMinimumDigits = digitsOnly?.length >= 8;
-
         if (!phone?.trim()) {
             errors.phone = "El teléfono es obligatorio.";
             hasErrors = true;
-        } else if (!(phoneRegex.test(phone) && hasMinimumDigits)) {
+        } else if (!isValidPhone(phone)) {
             errors.phone = "Ingresá un número de teléfono válido.";
             hasErrors = true;
         }
@@ -141,7 +136,7 @@ export const useAppointmentForm = ({ user, token }) => {
 
         setIsLoading(true);
         try {
-            const available = await checkAvailability(datetime, token);
+            const available = await checkAvailability(datetime);
             if (!available) {
                 toast.error("Ese horario ya está ocupado. Elegí otro.");
                 setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
@@ -154,7 +149,6 @@ export const useAppointmentForm = ({ user, token }) => {
                 startTime: datetime.toISOString(),
                 endTime: new Date(datetime.getTime() + 60 * 60 * 1000).toISOString(),
                 email,
-                token,
             });
 
             try {
@@ -198,4 +192,3 @@ export const useAppointmentForm = ({ user, token }) => {
         handleFinalSubmit,
     };
 };
-    
