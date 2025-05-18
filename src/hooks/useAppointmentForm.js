@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useCalendarAvailability } from "./useCalendarAvailability";
 import { createCalendarEvent } from "../services/calendar";
@@ -18,6 +18,7 @@ export const useAppointmentForm = ({ user, token }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [isDateValidating, setIsDateValidating] = useState(false);
     const [showConfirmation, setShowConfirmation] = useState(false);
+    const debounceRef = useRef(null);
 
     useEffect(() => {
         if (user && token) {
@@ -30,59 +31,63 @@ export const useAppointmentForm = ({ user, token }) => {
         }
     }, [user, token]);
 
-    const handleDateChange = async (date) => {
-        setFieldErrors((prev) => ({ ...prev, datetime: null }));
-
-        if (!date) {
-            setFormData((prev) => ({ ...prev, datetime: null }));
-            return;
-        }
-
-        const now = new Date();
-        if (date < now) {
-            setFieldErrors((prev) => ({ ...prev, datetime: "No puedes seleccionar una fecha pasada" }));
-            return;
-        }
-
-        const hours = date.getHours();
-        if (hours < 9 || hours >= 18) {
-            setFieldErrors((prev) => ({ ...prev, datetime: "Solo horarios de 9:00 a 18:00" }));
-            return;
-        }
-
-        setFormData((prev) => ({ ...prev, datetime: date }));
-
-        if (token) {
-            setIsDateValidating(true);
-            const available = await checkAvailability(date, token); 
-            setIsDateValidating(false);
-
-            if (!available) {
-                setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
-                toast.error("Ese horario ya está ocupado. Por favor, elige otro.");
+    const handleDateChange = (date) => {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(async () => {
+            setFieldErrors((prev) => ({ ...prev, datetime: null }));
+            if (!date) {
+                setFormData((prev) => ({ ...prev, datetime: null }));
+                return;
             }
-        }
+
+            const now = new Date();
+            if (date < now) {
+                setFieldErrors((prev) => ({ ...prev, datetime: "No puedes seleccionar una fecha pasada" }));
+                return;
+            }
+
+            const hours = date.getHours();
+            if (hours < 9 || hours >= 18) {
+                setFieldErrors((prev) => ({ ...prev, datetime: "Solo horarios de 9:00 a 18:00" }));
+                return;
+            }
+
+            setFormData((prev) => ({ ...prev, datetime: date }));
+
+            if (token) {
+                setIsDateValidating(true);
+                try {
+                    const available = await checkAvailability(date, token);
+                    if (!available) {
+                        setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
+                        toast.error("Ese horario ya está ocupado. Por favor, elegí otro.");
+                    }
+                } catch (err) {
+                    toast.error("Error al verificar disponibilidad.");
+                    console.error(err);
+                } finally {
+                    setIsDateValidating(false);
+                }
+            }
+        }, 500);
     };
 
-    // useAppointmentForm.js actualizado (solo reemplazo de handleFinalSubmit)
     const handleFinalSubmit = async () => {
         const { datetime, phone, message, name, email } = formData;
         let hasErrors = false;
         const errors = {};
 
-        // Validación completa
         if (!datetime) {
             errors.datetime = "Seleccioná una fecha y hora.";
             hasErrors = true;
         } else {
             const now = new Date();
+            const hours = datetime.getHours();
+            const minutes = datetime.getMinutes();
             if (datetime < now) {
                 errors.datetime = "No puedes seleccionar una fecha pasada.";
                 hasErrors = true;
-            }
-            const hours = datetime.getHours();
-            const minutes = datetime.getMinutes();
-            if (hours < 9 || (hours === 18 && minutes > 0) || hours > 18) {
+            } else if (hours < 9 || (hours === 18 && minutes > 0) || hours > 18) {
                 errors.datetime = "Solo horarios entre 9:00 y 18:00.";
                 hasErrors = true;
             }
@@ -114,26 +119,30 @@ export const useAppointmentForm = ({ user, token }) => {
         }
 
         setIsLoading(true);
-        const available = await checkAvailability(datetime, token); 
-        if (!available) {
-            toast.error("Ese horario ya está ocupado. Elegí otro.");
-            setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
-            setIsLoading(false);
-            return;
-        }
-
         try {
+            const available = await checkAvailability(datetime, token);
+            if (!available) {
+                toast.error("Ese horario ya está ocupado. Elegí otro.");
+                setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
+                return;
+            }
+
             await createCalendarEvent({
                 summary: `Reunión con ${name}`,
                 description: message,
                 startTime: datetime.toISOString(),
                 endTime: new Date(datetime.getTime() + 60 * 60 * 1000).toISOString(),
                 email,
-                token, // 👈 agregar esto
+                token,
             });
 
-            await createHubspotLead(formData);
-            toast.success("✅ Reunión agendada con éxito");
+            try {
+                await createHubspotLead(formData);
+            } catch (hubErr) {
+                console.warn("⚠️ No se pudo registrar en HubSpot:", hubErr.message);
+            }
+
+            toast.success(`✅ Gracias ${name.split(" ")[0]} por agendar con nosotros`);
             setShowConfirmation(true);
         } catch (error) {
             console.error("❌ Error al agendar:", error);
@@ -151,11 +160,8 @@ export const useAppointmentForm = ({ user, token }) => {
                 message: "",
                 datetime: null,
             });
-            onClose && onClose(); // Cierra el modal si la función está disponible
         }, 3000);
-        
     };
-
 
     return {
         formData,

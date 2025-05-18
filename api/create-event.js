@@ -23,8 +23,8 @@ export default async function handler(req, res) {
         const calendarId = 'aae871d62f645bd35cd19dd60165006f7128898b9dda88151a24648d531bee2d@group.calendar.google.com';
 
         const event = {
-            summary,
-            description,
+            summary: `#Landing #LeadConsulta Consulta de ${formData.name}`,
+            description: description || '',
             start: {
                 dateTime: startTime,
                 timeZone: 'America/Montevideo',
@@ -33,13 +33,17 @@ export default async function handler(req, res) {
                 dateTime: endTime,
                 timeZone: 'America/Montevideo',
             },
-            ...(email && { attendees: [{ email }] }),
+            attendees: email ? [{ email }] : [], // 👈 le llega invitación por Gmail
+            reminders: {
+                useDefault: true,
+            },
         };
-
+          
         const response = await calendar.events.insert({
             calendarId,
             requestBody: event,
-        });
+            sendUpdates: 'all', // 👈 notifica a todos los asistentes
+          });
 
         res.status(200).json({ success: true, eventId: response.data.id });
     } catch (err) {

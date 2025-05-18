@@ -74,6 +74,11 @@ img {
 /* Estilo base (mobile primero) */
 .dark-calendar {
   font-size: 10px;
+  @apply bg-white rounded-lg shadow-lg p-2 text-sm;
+}
+
+.dark-datepicker-popper {
+  @apply z-[9999];
 }
 
 .dark-calendar .react-datepicker__day-name,
