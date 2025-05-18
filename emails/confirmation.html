@@ -1,25 +1,47 @@
 <div
-    style="font-family: sans-serif; background-color: #f9fafb; padding: 32px; max-width: 600px; margin: auto; border-radius: 10px;">
-    <img src="https://grupodte.com/logo.png" alt="Grupo DTE" style="max-width: 160px; margin-bottom: 24px;" />
-
-    <h2 style="color: #111827;">¡Hola {{name}}!</h2>
-    <p style="font-size: 16px; color: #374151;">Gracias por agendar una reunión con nosotros.</p>
-
-    <div style="margin-top: 24px; padding: 16px; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;">
-        <p><strong>📌 Tema:</strong> {{summary}}</p>
-        <p><strong>🕒 Fecha:</strong> {{formattedDate}}</p>
-        <p><strong>📝 Mensaje:</strong> {{description}}</p>
+    style="background-color: #f9fafb; padding: 32px; max-width: 600px; margin: auto; font-family: 'Inter', Arial, sans-serif; color: #111827; border-radius: 12px;">
+    <div style="text-align: center;">
+        <img src="https://grupodte.com/LOGODTE.svg" alt="Grupo DTE" style="max-width: 160px; margin-bottom: 24px;" />
+   
+        <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 8px;">¡Hola {{name}}!</h2>
+        <p style="font-size: 16px; margin-bottom: 24px;">
+            Gracias por agendar una reunión con nosotros. Tu cita fue registrada exitosamente 🎉
+        </p>
     </div>
 
-    <p style="margin-top: 24px; font-size: 15px; color: #374151;">Nos comunicaremos contigo al horario acordado. Si
-        tenés alguna consulta previa, respondé este email o escribinos a <a
-            href="mailto:info@grupodte.com">info@grupodte.com</a>.</p>
+    <div
+        style="background-color: #ffffff; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+        <p style="margin: 0 0 12px 0;"><strong>📌 Tema:</strong> {{summary}}</p>
+        <p style="margin: 0 0 12px 0;"><strong>🗓️ Fecha:</strong> {{formattedDate}}</p>
+        <p style="margin: 0;"><strong>📝 Mensaje:</strong> {{description}}</p>
+    </div>
 
-    <hr style="margin: 32px 0;" />
+    <p style="font-size: 15px; margin-bottom: 24px;">
+        <strong>ℹ️ También recibirás una invitación oficial de Google Calendar.</strong> Aceptala para añadirla a tu
+        calendario y recibir recordatorios automáticos.
+    </p>
 
-    <footer style="font-size: 13px; color: #9ca3af; text-align: center;">
-        © {{year}} Grupo DTE – Todos los derechos reservados<br />
-        <a href="https://grupodte.com" style="color: #6b7280;">grupodte.com</a>
+    <div style="text-align: center; margin-bottom: 32px;">
+        <a href="https://grupodte.com" target="_blank"
+            style="display: inline-block; background-color: #111827; color: #ffffff; padding: 14px 24px; font-weight: 600; text-decoration: none; border-radius: 6px;">
+            Ver nuestros servicios
+        </a>
+    </div>
+
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin-bottom: 16px;" />
+
+    <footer style="text-align: center; font-size: 13px; color: #6b7280; margin-top: 32px;">
+        <p style="margin-bottom: 8px;">
+            Este correo fue enviado desde una dirección automática (<strong>auto@hola.grupodte.com</strong>), no recibe
+            respuestas.
+            Si necesitás contactarnos, escribinos a
+            <a href="mailto:grupo@grupodte.com" style="color: #6b7280; text-decoration: none;">grupo@grupodte.com</a>.
+        </p>
+        <p>
+            © {{year}} Grupo DTE – Todos los derechos reservados<br />
+            <a href="https://grupodte.com" style="color: #6b7280; text-decoration: none;">grupodte.com</a>
+        </p>
     </footer>
+      
 </div>
   
