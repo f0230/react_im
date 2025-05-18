@@ -1,33 +1,36 @@
 import axios from "axios";
 
-export const getBusySlots = async (token, start, end) => {
+// Retorna un array de Date con los slots ocupados
+export const getBusySlots = async (start, end) => {
     const response = await axios.post("/api/check-availability", {
         range: {
             timeMin: start.toISOString(),
             timeMax: end.toISOString(),
         },
-        token,
         allBusy: true,
     });
 
     return response.data.busy.map(b => new Date(b.start));
 };
 
-export const isSlotAvailable = async (datetime, token) => {
+// Retorna true si el datetime está disponible
+export const isSlotAvailable = async (datetime) => {
     const response = await axios.post("/api/check-availability", {
         datetime,
-        token,
     });
 
     return response.data.available;
 };
 
+// Crea un evento y devuelve el response del backend
 export const createCalendarEvent = async ({ summary, description, startTime, endTime, email }) => {
-    return axios.post("/api/create-event", {
+    const response = await axios.post("/api/create-event", {
         summary,
         description,
         startTime,
         endTime,
-        email,
+        email,s
     });
+
+    return response.data;
 };

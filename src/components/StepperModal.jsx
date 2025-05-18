@@ -1,75 +1,30 @@
-// StepperModal.jsx con mensajes de error visuales añadidos
-import React, { useState, useEffect } from "react";
-import Stepper, { Step } from "./Form/Stepper";
+// StepperModal.jsx usando useAppointmentForm
+import React from "react";
+import Stepper, { Step } from "@/components/Form/Stepper";
 import { motion, AnimatePresence } from "framer-motion";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { toast } from "react-hot-toast";
 
-import GoogleLoginWrapper from "./Form/GoogleLoginWrapper";
-import { useAuthUser } from "../hooks/useAuthUser";
-import { useCalendarAvailability } from "../hooks/useCalendarAvailability";
-import { createCalendarEvent } from "../services/calendar";
-import { createHubspotLead } from "../services/hubspot";
+import GoogleLoginWrapper from "@/components/Form/GoogleLoginWrapper";
+import { useAuthUser } from "@/hooks/useAuthUser";
+import { useAppointmentForm } from "@/hooks/useAppointmentForm";
 
 const StepperModal = ({ isOpen, onClose }) => {
     const { user, token, isAuthenticated, setToken } = useAuthUser();
-    const { busySlots, fetchBusy, checkAvailability } = useCalendarAvailability();
-
-    const [formData, setFormData] = useState({
-        name: "",
-        email: "",
-        phone: "",
-        message: "",
-        datetime: null,
-    });
-
-    const [fieldErrors, setFieldErrors] = useState({});
-    const [isLoading, setIsLoading] = useState(false);
-    const [showConfirmation, setShowConfirmation] = useState(false);
-
-    useEffect(() => {
-        if (user && token) {
-            setFormData((prev) => ({
-                ...prev,
-                name: user.name,
-                email: user.email,
-            }));
-            fetchBusy(token);
-        }
-    }, [user, token]);
-
-    const handleFinalSubmit = async () => {
-        const { datetime, phone, message, name, email } = formData;
-
-        setIsLoading(true);
-        const available = await checkAvailability(datetime, token);
-        if (!available) {
-            toast.error("Ese horario ya está ocupado. Elegí otro.");
-            setIsLoading(false);
-            return;
-        }
-
-        try {
-            await createCalendarEvent({
-                summary: `Reunión con ${name}`,
-                description: message,
-                startTime: datetime.toISOString(),
-                endTime: new Date(datetime.getTime() + 60 * 60 * 1000).toISOString(),
-                email,
-            });
-
-            await createHubspotLead(formData);
-
-            toast.success("✅ Reunión agendada con éxito");
-            setShowConfirmation(true);
-        } catch (error) {
-            console.error("❌ Error al agendar:", error);
-            toast.error("Ocurrió un error al enviar el formulario.");
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const {
+        formData,
+        setFormData,
+        fieldErrors,
+        setFieldErrors,
+        isLoading,
+        isDateValidating,
+        showConfirmation,
+        setShowConfirmation,
+        busySlots,
+        handleDateChange,
+        handleFinalSubmit,
+    } = useAppointmentForm({ user, token });
 
     return (
         <AnimatePresence>
@@ -114,7 +69,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                                         <label className="font-semibold">Seleccioná día y hora</label>
                                         <DatePicker
                                             selected={formData.datetime}
-                                            onChange={(date) => setFormData((prev) => ({ ...prev, datetime: date }))}
+                                            onChange={handleDateChange}
                                             showTimeSelect
                                             timeIntervals={30}
                                             dateFormat="Pp"
@@ -126,6 +81,11 @@ const StepperModal = ({ isOpen, onClose }) => {
                                             popperClassName="dark-datepicker-popper"
                                             required
                                         />
+                                        {isDateValidating && (
+                                            <p className="text-blue-500 text-xs mt-1 animate-pulse">
+                                                Verificando disponibilidad...
+                                            </p>
+                                        )}
                                         {fieldErrors.datetime && (
                                             <p className="text-red-500 text-xs mt-1">{fieldErrors.datetime}</p>
                                         )}

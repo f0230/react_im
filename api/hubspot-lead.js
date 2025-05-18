@@ -1,8 +1,7 @@
 export default async function handler(req, res) {
-    const { name, email, message } = req.body;
+    const { name, email, phone, message } = req.body;
 
     const HUBSPOT_TOKEN = process.env.HUBSPOT_TOKEN;
-
     if (!HUBSPOT_TOKEN) {
         return res.status(500).json({ error: 'Falta el token de HubSpot' });
     }
@@ -18,6 +17,7 @@ export default async function handler(req, res) {
                 properties: {
                     email,
                     firstname: name,
+                    phone,
                     message,
                 },
             }),
