@@ -6,11 +6,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método no permitido. Se requiere POST.' });
   }
 
-  const { datetime, range, allBusy } = req.body;
-  const calendarId = process.env.CALENDAR_ID || 'default_calendar_id@group.calendar.google.com';
+  const { datetime, range, allBusy, token: frontendToken } = req.body;
+  const calendarId = 'primary'; // 👈 usamos el calendario del usuario autenticado
 
   try {
-    const token = await getAccessTokenFromRefresh();
+    // Token desde el frontend, o usamos refresh token como fallback
+    let token = frontendToken;
+    if (!token) {
+      console.warn("⚠️ No se recibió token del frontend. Usando refresh token...");
+      token = await getAccessTokenFromRefresh();
+    }
+
     if (!token) {
       throw new Error('Token de acceso no válido.');
     }
@@ -20,6 +26,7 @@ export default async function handler(req, res) {
 
     const calendar = google.calendar({ version: 'v3', auth });
 
+    // ✔️ Si se consulta un rango completo (para el DatePicker)
     if (allBusy && range?.timeMin && range?.timeMax) {
       const response = await calendar.freebusy.query({
         requestBody: {
@@ -34,6 +41,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ busy });
     }
 
+    // ✔️ Validar disponibilidad de un solo datetime
     if (!datetime) {
       return res.status(400).json({
         error: 'El parámetro datetime es obligatorio.',
