@@ -2,31 +2,20 @@ import { google } from 'googleapis';
 import { getAccessTokenFromRefresh } from './utils/getAccessToken.js';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido. Se requiere POST.' });
-  }
-
-  const { datetime, range, allBusy, token: frontendToken } = req.body;
-  const calendarId = 'primary'; // 👈 usamos el calendario del usuario autenticado
-
   try {
-    // Token desde el frontend, o usamos refresh token como fallback
-    let token = frontendToken;
+    const token = await getAccessTokenFromRefresh();
     if (!token) {
-      console.warn("⚠️ No se recibió token del frontend. Usando refresh token...");
-      token = await getAccessTokenFromRefresh();
-    }
-
-    if (!token) {
-      throw new Error('Token de acceso no válido.');
+      return res.status(500).json({ error: 'No se pudo obtener un access_token válido.' });
     }
 
     const auth = new google.auth.OAuth2();
     auth.setCredentials({ access_token: token });
 
     const calendar = google.calendar({ version: 'v3', auth });
+    const { datetime, range, allBusy } = req.body;
 
-    // ✔️ Si se consulta un rango completo (para el DatePicker)
+    const calendarId = 'aae871d62f645bd35cd19dd60165006f7128898b9dda88151a24648d531bee2d@group.calendar.google.com';
+
     if (allBusy && range?.timeMin && range?.timeMax) {
       const response = await calendar.freebusy.query({
         requestBody: {
@@ -41,12 +30,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ busy });
     }
 
-    // ✔️ Validar disponibilidad de un solo datetime
     if (!datetime) {
-      return res.status(400).json({
-        error: 'El parámetro datetime es obligatorio.',
-        detail: 'datetime no fue proporcionado en el body.'
-      });
+      return res.status(400).json({ error: 'El parámetro datetime es obligatorio.' });
     }
 
     const start = new Date(datetime);
@@ -63,13 +48,8 @@ export default async function handler(req, res) {
 
     const busy = response.data.calendars[calendarId].busy;
     return res.status(200).json({ available: busy.length === 0 });
-  } catch (err) {
-    const apiError = err.response?.data;
-    console.error('🟥 Error consultando disponibilidad:', apiError || err.message || err);
-    return res.status(500).json({
-      error: 'Fallo al consultar disponibilidad.',
-      detail: apiError?.error?.message || err.message,
-      status: apiError?.error?.code || 500
-    });
+  } catch (error) {
+    console.error('🟥 Error en disponibilidad:', error.response?.data || error.message || error);
+    res.status(500).json({ error: 'Error consultando disponibilidad', detail: error.message });
   }
 }
