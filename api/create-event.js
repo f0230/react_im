@@ -15,11 +15,14 @@ const renderTemplate = (templatePath, data) => {
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
+    console.log("🟡 create-event req.body:", req.body); // ⬅️ Agregalo acá
+
+    
     const { summary, description, startTime, endTime, email, name } = req.body;
 
     if (!summary || !startTime || !endTime || !email || !name) {
         return res.status(400).json({ error: 'Faltan campos requeridos' });
-    }
+      }
 
     try {
         // 1. Crear evento en Google Calendar

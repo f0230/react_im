@@ -2,8 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useCalendarAvailability } from "./useCalendarAvailability";
-import { createCalendarEvent } from "../services/calendar";
-import { createHubspotLead } from "../services/hubspot";
+import { createCalendarEvent } from "@/services/calendar";
+import { createHubspotLead } from "@/services/hubspot";
 import { isValidPhone } from "@/utils/phone-validation";
 
 export const useAppointmentForm = ({ user }) => {
@@ -144,13 +144,14 @@ export const useAppointmentForm = ({ user }) => {
             }
 
             await createCalendarEvent({
-                summary: `Reunión con ${name}`,
-                description: message,
-                startTime: datetime.toISOString(),
-                endTime: new Date(datetime.getTime() + 60 * 60 * 1000).toISOString(),
-                email,
+                name: formData.name,
+                summary: `Reunión con ${formData.name}`,
+                description: formData.message,
+                startTime: formData.datetime.toISOString(),
+                endTime: new Date(formData.datetime.getTime() + 60 * 60 * 1000).toISOString(),
+                email: formData.email,
             });
-
+              
             try {
                 await createHubspotLead(formData);
             } catch (hubErr) {
