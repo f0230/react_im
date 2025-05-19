@@ -5,6 +5,9 @@ import RotatingText from "./ui/RotatingText";
 import AnimatedContent from './ui/AnimatedContent';
 import FadeContent from './ui/FadeContent';
 import OptimizedImage from "@/components/OptimizedImage";
+import { Link } from 'react-router-dom';
+
+
 
 import bgMobileImg from "../assets/PORTADA_1_MOVIL.webp";
 import bgDesktopImg from "../assets/PORTADA_1.webp";
@@ -92,12 +95,14 @@ const HeroSection = () => {
                     </a>
                   </AnimatedContent>
 
+                  
+
                   <AnimatedContent distance={60} direction="horizontal" reverse={false} config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={1050} className="inline-block">
-                    <a href="/servicios" aria-label="Ir a servicios">
-                      <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 transition">
+                    <Link to="/servicios">
+                  <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 transition">
                         Servicios
-                      </button>
-                    </a>
+                      </button></Link>
+                    
                   </AnimatedContent>
                 </div>
 

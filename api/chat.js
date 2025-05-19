@@ -1,59 +1,43 @@
-// /api/chat.js
 import OpenAI from 'openai';
+import dotenv from 'dotenv';
+import { cleoPrompt } from './prompts/cleoPrompt.js';
+
+dotenv.config();
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
-const dteServicios = `
-Nuestros Servicios:
+export async function handleChatRequest(req, res) {
+    const { messages, persona = 'cleo' } = req.body;
 
-1. Desarrollo de Proyectos
-Acompañamos a empresas en el diseño, planificación y ejecución de proyectos que impulsan su crecimiento.
-
-2. Rediseño de Marcas Existentes
-Replanteamos la identidad visual, mensaje y posicionamiento estratégico de marcas activas.
-
-3. Diseño de Espacios
-Creamos ambientes que reflejan el ADN de marca: oficinas, tiendas, showrooms.
-
-4. Identidad de Marca
-Definimos propósito, tono, valores, estilo visual y narrativa coherente.
-
-... [continúa todo tu contenido aquí]
-`;
-
-export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Solo se permite POST' });
+    if (!Array.isArray(messages) || messages.length === 0) {
+        return res.status(400).json({ error: 'Parámetro "messages" inválido o vacío' });
     }
 
-    const { messages } = req.body;
+    const systemPrompt = cleoPrompt; // en futuro: usar mapa de prompts por persona
 
     try {
         const completion = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
             messages: [
-                {
-                    role: 'system',
-                    content: `Sos Cleo, una experta creativa de DTE.
-Solo podés responder usando esta información:
-
-"""
-${dteServicios}
-"""
-
-No inventes. Si no sabés algo, decí: "No tengo esa información por ahora, pero puedo averiguarlo."
-Usá un tono cálido, claro y profesional. Siempre hablá en primera persona.`,
-                },
+                { role: 'system', content: systemPrompt },
                 ...messages,
             ],
+            temperature: 0.7,
+            max_tokens: 500,
+            timeout: 10000,
         });
 
-        const reply = completion.choices[0].message.content;
+        const reply = completion.choices[0]?.message?.content?.trim();
+        if (!reply) throw new Error('Respuesta vacía de OpenAI');
+
         return res.status(200).json({ reply });
     } catch (err) {
-        console.error('❌ Error generando respuesta de Cleo:', err);
-        return res.status(500).json({ error: 'Error generando respuesta' });
+        console.error('❌ Error al generar respuesta de Cleo:', err.response?.data || err.message);
+        return res.status(500).json({
+            error: 'Error generando respuesta',
+            details: err.response?.data || err.message,
+        });
     }
 }

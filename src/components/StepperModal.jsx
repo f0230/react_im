@@ -43,10 +43,11 @@ const StepperModal = ({ isOpen, onClose }) => {
         if (!showConfirmation) return;
         const timer = setTimeout(() => {
             setShowConfirmation(false);
-            onClose();
+            onClose(true); // ✅ Se confirmó la cita → notificar a Cleo
         }, 3000);
         return () => clearTimeout(timer);
     }, [showConfirmation, onClose]);
+    
 
     return (
         <AnimatePresence>
@@ -60,13 +61,14 @@ const StepperModal = ({ isOpen, onClose }) => {
                     {/* Botón cerrar modal */}
                     <button
                         className="absolute top-6 right-6 text-white hover:scale-110 transition-transform duration-200 z-50"
-                        onClick={onClose}
+                        onClick={() => onClose(false)} // ❌ Se cerró sin agendar → notificar a Cleo
                         aria-label="Cerrar"
                     >
                         <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
+
 
                     {/* Contenido del modal */}
                     <motion.div

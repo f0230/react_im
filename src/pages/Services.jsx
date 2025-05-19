@@ -6,6 +6,8 @@ import ServiceCard from '@/components/ui/ServiceCard';
 import { servicios } from '@/data/serviciosList';
 import TrueFocus from '@/components/ui/TrueFocus';
 import PageWrapper from '@/components/layout/PageWrapper';
+import CleoWidget from '@/components/CleoChat';
+
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -56,6 +58,8 @@ const Servicios = () => {
                     </ul>
                 </section>
             </main>
+            <CleoWidget />
+
         </PageWrapper>
     );
 };

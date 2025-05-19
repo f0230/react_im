@@ -1,11 +1,22 @@
+// vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
+import { imagetools } from 'vite-imagetools';
+import imagePresets from 'vite-plugin-image-presets';
 
 export default defineConfig({
   plugins: [
     react(),
+    imagetools(),
+    imagePresets({
+      responsive: {
+        formats: ['webp', 'jpeg'],
+        widths: [480, 768, 1024, 1440],
+        sizes: '100vw',
+      },
+    }),
     visualizer({
       filename: './dist/stats.html',
       open: false,
@@ -17,6 +28,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:3001',
     },
   },
   build: {
@@ -43,11 +59,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: [
-      'react',
-      'react-dom',
-      'framer-motion',
-      'gsap',
-    ],
+    include: ['react', 'react-dom', 'framer-motion', 'gsap'],
   },
 });

@@ -1,5 +1,4 @@
-// Slide.jsx optimizado como Section6 (con mejora para pantallas grandes)
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import CarouselSlide from './CarouselSlide';
 import SlideContent from './SlideContent';
 import Slider1 from '../assets/PYMES.webp';
@@ -15,32 +14,39 @@ const Section6 = () => {
   const carouselRef = useRef(null);
   const slideRefs = useRef([]);
 
+  // Detección responsiva más precisa
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handleResize = () => setIsMobile(mq.matches);
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    mq.addEventListener('change', handleResize);
+    return () => mq.removeEventListener('change', handleResize);
   }, []);
 
+  // Scroll tracking
   useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+
     const handleScroll = () => {
-      const scrollX = carouselRef.current.scrollLeft;
+      const scrollX = el.scrollLeft;
       const slideWidth = slideRefs.current[0]?.offsetWidth || 1;
       const index = Math.round(scrollX / slideWidth);
       setActiveIndex(index);
     };
-    const el = carouselRef.current;
-    el?.addEventListener('scroll', handleScroll);
-    return () => el?.removeEventListener('scroll', handleScroll);
+
+    el.addEventListener('scroll', handleScroll);
+    return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Drag horizontal
   useEffect(() => {
     const el = carouselRef.current;
     if (!el) return;
 
     let isDown = false;
-    let startX;
-    let scrollLeft;
+    let startX = 0;
+    let scrollLeft = 0;
 
     const handleMouseDown = (e) => {
       isDown = true;
@@ -109,7 +115,10 @@ const Section6 = () => {
   ], [isMobile]);
 
   return (
-    <section className="w-full h-[520px] md:h-[720px] lg:h-[950px] flex flex-col justify-evenly items-center" aria-label="Carrusel de públicos ideales">
+    <section
+      className="w-full h-[520px] md:h-[720px] lg:h-[950px] flex flex-col justify-evenly items-center"
+      aria-label="Carrusel de públicos ideales"
+    >
       <div className="w-full max-w-screen px-4 mx-auto items-center flex flex-col text-center">
         <h2 className="text-[35px] md:text-[37px] text-black font-product font-normal leading-none">
           <span className="md:inline mr-2">Somos</span>
@@ -121,7 +130,7 @@ const Section6 = () => {
       <div className="w-full overflow-hidden relative px-2">
         <div
           ref={carouselRef}
-          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar cursor-grab active:cursor-grabbing "
+          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar cursor-grab active:cursor-grabbing"
           role="region"
           aria-label="Carrusel horizontal"
         >

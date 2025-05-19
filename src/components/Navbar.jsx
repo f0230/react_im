@@ -198,12 +198,12 @@ const Navbar = () => {
                     <ul className="hidden md:flex items-center gap-6">
                         {menuItems.map((item, i) => (
                             <li key={i}>
-                                <a
-                                    href={item.url}
+                                <Link
+                                    to={item.url}
                                     className="text-black text-sm font-bold hover:underline"
                                 >
                                     {item.text}
-                                </a>
+                                </Link>
                             </li>
                         ))}
                     </ul>

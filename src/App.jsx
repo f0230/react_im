@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
+import CleoWidget from '@/components/CleoChat';
+
 
 
 const Home = lazy(() => import("@/pages/Home"));
@@ -18,13 +20,19 @@ const App = () => {
       <Suspense fallback={<LoadingFallback type="spinner" />}>
 
       <Layout>
+
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
+            <Route path="/Nosotros" element={<About />} />
+            <Route path="/Contacto" element={<Contact />} />
             <Route path="/servicios" element={<Services />} />
           </Routes>
-      </Layout>
+
+            <CleoWidget />
+
+
+        </Layout>
+
     </Suspense>
 
     </Router>

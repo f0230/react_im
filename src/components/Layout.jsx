@@ -3,7 +3,6 @@ import React, { lazy, Suspense, useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import StepperModal from "@/components/StepperModal";
 import { useInView } from "react-intersection-observer";
-import CleoWidget from '@/components/CleoChat';
 
 
 const Footer = lazy(() => import("@/components/Footer"));
@@ -31,7 +30,6 @@ const Layout = ({ children }) => {
                 </Suspense>
             )}
 
-            <CleoWidget />
 
 
             <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
