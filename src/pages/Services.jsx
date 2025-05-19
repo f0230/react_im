@@ -4,7 +4,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import ServiceCard from '@/components/ui/ServiceCard';
 import { servicios } from '@/data/serviciosList';
 import TrueFocus from '@/components/ui/TrueFocus';
-import FadeContent from '../components/ui/FadeContent';
+
+import PageWrapper from "@/components/layout/PageWrapper";
+
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -12,33 +14,10 @@ const Servicios = () => {
     const containerRef = useRef(null);
     const auroraRef = useRef(null);
 
-    useEffect(() => {
-        const sections = gsap.utils.toArray('.service-block');
 
-        const ctx = gsap.context(() => {
-            // 🎨 Fondo dinámico por sección
-            sections.forEach((section) => {
-                const color = section.dataset.bg;
-                if (color) {
-                    gsap.to(containerRef.current, {
-                        backgroundColor: color,
-                        duration: 1,
-                        ease: 'power2.out',
-                        scrollTrigger: {
-                            trigger: section,
-                            start: 'top center',
-                            end: 'bottom center',
-                            scrub: true,
-                        },
-                    });
-                }
-            });
-        }, containerRef);
-
-        return () => ctx.revert();
-    }, []);
 
     return (
+        <PageWrapper>
         <main
             ref={containerRef}
             className="bg-skysoft relative min-h-screen transition-colors duration-[1500ms] ease-in-out flex flex-col items-center font-product text-black bg-[#d0f0f9] w-full"
@@ -71,6 +50,7 @@ const Servicios = () => {
                 ))}
             </div>
         </main>
+        </PageWrapper>
     );
 };
 

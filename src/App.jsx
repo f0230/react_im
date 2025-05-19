@@ -2,6 +2,8 @@ import React, { Suspense, lazy, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useInView } from "react-intersection-observer";
 
+import ScrollToTop from "@/components/ScrollToTop"; // ✅ ScrollToTop global
+
 import Navbar from "@/components/Navbar";
 import StepperModal from "@/components/StepperModal"; // ✅ Modal global
 
@@ -11,6 +13,8 @@ const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Services = lazy(() => import("@/pages/Services"));
+
+
 
 const App = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +32,8 @@ const App = () => {
 
   return (
     <Router>
+      <ScrollToTop /> 
+
       <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative min-h-screen flex flex-col">
         <Navbar />
 

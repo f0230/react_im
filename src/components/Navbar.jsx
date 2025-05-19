@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-
 import OptimizedImage from "./OptimizedImage";
 import HamburgerButton from "./ui/HamburgerButton";
 import logo from "../assets/iconodte.svg";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -19,8 +19,40 @@ const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isMenuVisible, setIsMenuVisible] = useState(false);
     const [showNavbar, setShowNavbar] = useState(true);
-    const [lastScrollY, setLastScrollY] = useState(0);
     const [hasScrolled, setHasScrolled] = useState(false);
+    const navigate = useNavigate();
+
+    const handleMenuItemClick = (url) => {
+        const menu = document.getElementById("mobile-menu");
+
+        // Protege si no se encuentra el menú
+        if (!menu) {
+            navigate(url);
+            return;
+        }
+
+        // Animación de salida más limpia y sincronizada
+        gsap.to(menu, {
+            opacity: 0,
+            y: 20,
+            scale: 0.96,
+            filter: "blur(4px)",
+            duration: 0.5,
+            ease: "power2.out",
+            onStart: () => {
+                setIsMenuOpen(false); // cierra el menú en React
+            },
+            onComplete: () => {
+                setIsMenuVisible(false); // remueve del DOM
+                navigate(url); // navega a la página
+            },
+        });
+    };
+    
+    
+
+
+    const lastScrollYRef = useRef(0);
     const menuRef = useRef();
     const glowRef = useRef();
 
@@ -29,8 +61,15 @@ const Navbar = () => {
     useEffect(() => {
         const handleScroll = () => {
             const currentScrollY = window.scrollY;
-            setShowNavbar(currentScrollY < lastScrollY || currentScrollY < 100);
-            setLastScrollY(currentScrollY);
+
+            // Mostrar navbar al hacer scroll hacia arriba o estar arriba de todo
+            if (currentScrollY > lastScrollYRef.current && currentScrollY > 100) {
+                setShowNavbar(false);
+            } else {
+                setShowNavbar(true);
+            }
+
+            lastScrollYRef.current = currentScrollY;
             setIsMenuOpen(false);
         };
 
@@ -43,7 +82,7 @@ const Navbar = () => {
             window.removeEventListener("scroll", handleScroll);
             window.removeEventListener("scroll", onScroll);
         };
-    }, [lastScrollY]);
+    }, []);
 
     useEffect(() => {
         document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
@@ -102,7 +141,6 @@ const Navbar = () => {
                     }
                 );
 
-                // ✨ Loop de brillo sutil
                 if (glowRef.current) {
                     gsap.to(glowRef.current, {
                         boxShadow: "0 0 40px rgba(255, 255, 255, 0.4)",
@@ -123,23 +161,25 @@ const Navbar = () => {
             });
 
             tl.to("#mobile-menu", {
-                x: "-120%",
-                y: "-120%",
                 opacity: 0,
-                scale: 0.75,
-                rotateZ: -10,
-                boxShadow: "0px 0px 0px rgba(0,0,0,0)",
-                filter: "blur(12px)",
-                duration: 0.7,
-                ease: "power2.inOut",
+                scale: 0.96,
+                y: 20,
+                filter: "blur(4px)",
+                duration: 0.6,
+                ease: "power2.out",
             });
+            
+            
+            
         }
     }, [isMenuOpen, isMenuVisible]);
 
     return (
         <>
+            {/* Navbar principal */}
             <div
-                className={`fixed top-0 left-0 w-full bg-white/75 backdrop-blur-md z-50 transition-shadow duration-300 ${hasScrolled ? "shadow-md" : ""}`}
+                className={`fixed top-0 left-0 w-full bg-white/75 backdrop-blur-md z-50 transition-all duration-300 transform ${hasScrolled ? "shadow-md" : ""
+                    } ${showNavbar ? "translate-y-0" : "-translate-y-full"}`}
             >
                 <nav
                     className="relative w-full max-w-[1440px] mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2 h-[45px] z-30"
@@ -177,14 +217,17 @@ const Navbar = () => {
                 </nav>
             </div>
 
-            {/* Menú móvil con animación desde arriba a la izquierda */}
+            {/* Menú móvil */}
             {isMenuVisible && (
                 <div
                     ref={menuRef}
                     id="mobile-menu"
                     className="fixed inset-0 bg-white/80 backdrop-blur-lg flex justify-start items-end flex-col p-6 pt-20 z-40"
                 >
-                    <div ref={glowRef} className="absolute inset-0 pointer-events-none rounded-2xl" />
+                    <div
+                        ref={glowRef}
+                        className="absolute inset-0 pointer-events-none rounded-2xl"
+                    />
                     <nav className="w-full max-w-md">
                         <ul className="flex flex-col items-start space-y-4">
                             {menuItems.map((item, i) => (
@@ -192,13 +235,13 @@ const Navbar = () => {
                                     key={i}
                                     className="menu-item text-right opacity-0 transform"
                                 >
-                                    <a
-                                        href={item.url}
+                                    <button
+                                        onClick={() => handleMenuItemClick(item.url)}
                                         className="text-black text-[18px] leading-tight font-product font-normal tracking-wide block hover:scale-105 transition-transform duration-300"
-                                        onClick={toggleMenu}
                                     >
                                         {item.text}
-                                    </a>
+                                    </button>
+
                                 </li>
                             ))}
                         </ul>
