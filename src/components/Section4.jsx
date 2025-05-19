@@ -3,6 +3,8 @@ import React, { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import OptimizedImage from "@/components/OptimizedImage";
+import { Link } from 'react-router-dom';
+
 
 import ContImg from "../assets/BANNER_ESPACIOS-1.webp";
 import MContImg from "../assets/BANNER_ESPACIOS_M-1.webp";
@@ -59,12 +61,14 @@ const Section4 = () => {
               <p className="mb-10 w-[250px] text-[12px] md:text-[17px] text-white text-center leading-none">
                 Diseñamos espacios físicos que traducen la identidad de tu marca.
               </p>
+              <Link to="/servicios">
               <button
                 className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full hover:bg-blue-400 transition duration-300 mb-6"
                 aria-label="Ver más sobre espacios"
               >
                 Ver más
               </button>
+              </Link>
             </div>
 
             <div ref={spaceWebRef} className="absolute inset-0 hidden sm:block z-10 opacity-0 translate-y-10">
@@ -94,12 +98,14 @@ const Section4 = () => {
               <p className="mb-10 w-[250px] text-[12px] md:text-[17px] text-white text-center leading-none">
                 Creativos y estratégicos que conectan con tu público
               </p>
-              <button
-                className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full hover:bg-blue-400 transition duration-300 mb-6"
-                aria-label="Ver más sobre contenidos"
-              >
-                Ver más
-              </button>
+              <Link to="/servicios">
+                <button
+                  className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full hover:bg-blue-400 transition duration-300 mb-6"
+                  aria-label="Ver más sobre espacios"
+                >
+                  Ver más
+                </button>
+              </Link>
             </div>
 
             <div ref={contWebRef} className="absolute inset-0 hidden sm:block z-10 opacity-0 translate-y-10">

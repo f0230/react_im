@@ -3,7 +3,8 @@ import React from "react";
 import OptimizedImage from "@/components/OptimizedImage";
 import bgMobileProfe from "../assets/ProfMov.webp";
 import bgWebProfe from "../assets/Profeweb.webp";
-import iphonegreen from "../assets/iphone-green-web.png";
+import { Link } from 'react-router-dom';
+
 
 const Section2 = () => {
   return (
@@ -39,11 +40,12 @@ const Section2 = () => {
                 Contactanos
               </button>
             </a>
-            <a href="/servicios" aria-label="Ir a servicios">
-              <button className="z-100 text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
+            <Link to="/servicios">
+            <button className="z-100 text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
                 Servicios
               </button>
-            </a>
+            </Link>
+
           </div>
         </div>
       </div>

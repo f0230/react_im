@@ -2,92 +2,26 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import StepperModal from '@/components/StepperModal';
 
-const chatConfig = {
-    appointmentTriggers: /\b(reunión|agendar|cita|coordinar una reunión|agendamos una cita|charlemos sobre tu proyecto)\b/i,
-    confirmTriggers: /\b(sí|si|dale|ok|agendemos|quiero agendar|hagámoslo|perfecto|genial|vamos a agendar)\b/i,
-    suggestionTriggers: /\b(agendar cita|quiero agendar|coordinemos una reunión|charlar sobre pymes|cita|reunión)\b/i,
-};
-
-const useModalLogic = (messages, setMessages) => {
-    const [modalState, setModalState] = useState({ isOpen: false, trigger: null });
-    const [waitingForConfirmation, setWaitingForConfirmation] = useState(false);
-    const [modalCooldown, setModalCooldown] = useState(false);
-    const [isConversationPaused, setIsConversationPaused] = useState(false);
-    const [hasSuggestedAppointment, setHasSuggestedAppointment] = useState(false);
-
-    const openModal = useCallback((trigger) => {
-        if (modalState.isOpen || modalCooldown) return;
-
-        setIsConversationPaused(true);
-        setModalCooldown(true);
-
-        setTimeout(() => {
-            setModalState({ isOpen: true, trigger });
-        }, 3000);
-
-        setTimeout(() => setModalCooldown(false), 8000);
-    }, [modalState.isOpen, modalCooldown]);
-
-    const closeModal = useCallback((wasSubmitted = false) => {
-        setModalState({ isOpen: false, trigger: null });
-        setWaitingForConfirmation(false);
-        setIsConversationPaused(false);
-
-    }, [setMessages]);
-
-    useEffect(() => {
-        const lastMsg = messages[messages.length - 1];
-        const secondLastMsg = messages[messages.length - 2];
-
-        if (!lastMsg || modalState.isOpen) return;
-
-        const isLastMessageConfirmationRequest =
-            lastMsg.role === 'assistant' &&
-            lastMsg.content === '¿Querés coordinar una reunión ahora? Decí "sí" o "agendemos".';
-
-        if (isLastMessageConfirmationRequest || waitingForConfirmation || hasSuggestedAppointment) return;
-
-        const isSecondLastMessageConfirmationRequest =
-            secondLastMsg?.role === 'assistant' &&
-            secondLastMsg?.content === '¿Querés coordinar una reunión ahora? Decí "sí" o "agendemos".';
-
-        if (
-            lastMsg.role === 'assistant' &&
-            chatConfig.appointmentTriggers.test(lastMsg.content) &&
-            !isSecondLastMessageConfirmationRequest
-        ) {
-            setMessages((prev) => [
-                ...prev,
-                { role: 'assistant', content: '¿Querés coordinar una reunión ahora? Decí "sí" o "agendemos".' },
-            ]);
-            setWaitingForConfirmation(true);
-            setHasSuggestedAppointment(true);
-        } else if (lastMsg.role === 'user' && chatConfig.confirmTriggers.test(lastMsg.content) && waitingForConfirmation) {
-            setMessages((prev) => [...prev, {
-                role: 'assistant',
-                content: '¡Genial! Dame un segundo que estoy abriendo el formulario...'
-            }]);
-
-            setTimeout(() => {
-                openModal('user');
-            }, 3000);
-            setWaitingForConfirmation(false);
-        }
-    }, [messages, modalState.isOpen, waitingForConfirmation, hasSuggestedAppointment, setMessages, openModal]);
-
-    return { modalState, openModal, closeModal, isConversationPaused };
-};
-
-export default function CleoWidget() {
+const CleoWidget = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const { modalState, openModal, closeModal, isConversationPaused } = useModalLogic(messages, setMessages);
+    const [modalState, setModalState] = useState({ isOpen: false, trigger: null });
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, []);
+
+    const openModal = useCallback((trigger) => {
+        if (!modalState.isOpen) {
+            setModalState({ isOpen: true, trigger });
+        }
+    }, [modalState.isOpen]);
+
+    const closeModal = useCallback(() => {
+        setModalState({ isOpen: false, trigger: null });
     }, []);
 
     const sendMessage = useCallback(async (text) => {
@@ -99,11 +33,14 @@ export default function CleoWidget() {
         setIsLoading(true);
 
         try {
-            if (isConversationPaused) {
-                setMessages((prev) => [...prev, {
-                    role: 'assistant',
-                    content: 'Por favor, completá el formulario para agendar la reunión. Estoy esperando para continuar. 😊',
-                }]);
+            const userRequestedForm = /\b(formulario|agendar|coordinar reunión|quiero hablar con alguien|necesito contacto)\b/i.test(text);
+
+            if (userRequestedForm) {
+                setMessages((prev) => [
+                    ...prev,
+                    { role: 'assistant', content: '¡Claro! 😊 Abrí el formulario para coordinar.' }
+                ]);
+                openModal('user');
                 return;
             }
 
@@ -116,10 +53,9 @@ export default function CleoWidget() {
             if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
 
             const { reply } = await res.json();
-            if (typeof reply !== 'string' || !reply.trim()) throw new Error('Respuesta de API inválida');
             setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
-        } catch (error) {
-            console.error('Error en sendMessage:', error);
+        } catch (err) {
+            console.error('Error en sendMessage:', err);
             setMessages((prev) => [
                 ...prev,
                 { role: 'assistant', content: 'Lo siento, hubo un problema. ¿Podés intentarlo de nuevo?' },
@@ -127,39 +63,17 @@ export default function CleoWidget() {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, isConversationPaused]);
+    }, [messages, openModal]);
 
-    const handleSend = useCallback(
-        (e) => {
-            e.preventDefault();
-            sendMessage(input);
-        },
-        [input, sendMessage],
-    );
+    const handleSend = useCallback((e) => {
+        e.preventDefault();
+        sendMessage(input);
+    }, [input, sendMessage]);
 
-    const handleSuggestion = useCallback(
-        async (text) => {
-            if (chatConfig.suggestionTriggers.test(text)) {
-                setMessages((prev) => [
-                    ...prev,
-                    { role: 'user', content: text },
-                    { role: 'assistant', content: '¡Perfecto! 😊 Abrí el formulario para coordinar.' },
-                ]);
-                openModal('suggestion');
-                return;
-            }
-            await sendMessage(text);
-        },
-        [openModal, sendMessage],
-    );
-
-    const openChat = useCallback(() => {
-        setIsChatOpen(true);
-    }, []);
-
+    const openChat = useCallback(() => setIsChatOpen(true), []);
     const closeChat = useCallback(() => {
         setIsChatOpen(false);
-        closeModal(false); // cerrado manualmente
+        closeModal();
     }, [closeModal]);
 
     useEffect(() => {
@@ -207,7 +121,7 @@ export default function CleoWidget() {
                         animate="animate"
                         exit="exit"
                         transition={{ duration: 0.4, ease: 'easeOut' }}
-                        className=" fixed bottom-4 left-4 z-50 w-full max-w-sm bg-white rounded-xl shadow-xl border p-4"
+                        className="fixed bottom-4 left-4 z-50 w-full max-w-sm bg-white rounded-xl shadow-xl border p-4"
                         role="dialog"
                         aria-labelledby="chat-title"
                     >
@@ -247,7 +161,7 @@ export default function CleoWidget() {
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder="¿En qué te ayudo?"
-                                className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
+                                className="flex-1 border rounded px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-black"
                                 disabled={isLoading}
                                 aria-label="Message input"
                             />
@@ -273,4 +187,6 @@ export default function CleoWidget() {
             </AnimatePresence>
         </>
     );
-}
+};
+
+export default CleoWidget;

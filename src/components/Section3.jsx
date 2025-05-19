@@ -6,6 +6,8 @@ import BannerMovil from "../assets/BANNER_CAMPAÑA_MOVIL.webp";
 import BannerMovilDTE from "../assets/BgMov_dtelohace.webp";
 import BannerWebDTE from "../assets/BgWeb_dtelohace.webp";
 import Cinta from "../assets/cinta.webp";
+import { Link } from "react-router-dom";
+
 
 const Section3 = () => {
   const bannerWebRef = useRef(null);
@@ -103,9 +105,11 @@ const Section3 = () => {
               <p className="mb-10 w-[250px] text-[12px] md:text-[17px] text-white leading-none">
                 creativas y estratégicas que conectan con tu público
               </p>
+              <Link to = "/contactanos>">
               <button className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full hover:bg-blue-400 transition duration-300 mb-6">
                 Contáctanos
               </button>
+              </Link>
             </div>
 
             {/* Imagen web */}

@@ -25,6 +25,14 @@ html {
   }
 }
 
+@layer base {
+  input,
+  textarea,
+  select {
+    @apply text-base;
+  }
+}
+
 *,
 *::before,
 *::after {
