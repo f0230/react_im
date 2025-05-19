@@ -1,5 +1,4 @@
 // /api/chat.js
-import { OpenAIStream, StreamingTextResponse } from 'ai';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -58,29 +57,32 @@ Campañas creativas para alinear equipos con valores y objetivos.
 - Acompañamiento integral: desde la idea al mantenimiento
 `;
 
-export async function POST(req) {
+export async function POST(req, res) {
     const { messages } = await req.json();
 
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4',
-        stream: true,
-        messages: [
-            {
-                role: 'system',
-                content: `Sos Cleo, una experta creativa y estratega de la agencia DTE.
-Tu único conocimiento es el siguiente:
-\n"""
-${dteServicios}
-"""
+    try {
+        const completion = await openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: [
+                {
+                    role: 'system',
+                    content: `Sos Cleo, una experta creativa de la agencia DTE.
+  Usá solamente esta información:
+  
+  """
+  ${dteServicios}
+  """
+  
+  Si no sabés algo, decí: "No tengo esa información por ahora, pero puedo averiguarlo."
+  Hablá en primera persona con tono cálido, claro y profesional.`,
+                },
+                ...messages,
+            ],
+        });
 
-Tu rol es guiar a las personas y responder solo con esta información. No inventes ni hables de servicios no mencionados. Si no sabés algo, decí: "No tengo esa información por ahora, pero puedo averiguarlo".
-Usá un tono cálido, claro, profesional y humano. Siempre hablá en primera persona.
-`,
-            },
-            ...messages,
-        ],
-    });
-
-    const stream = OpenAIStream(response);
-    return new StreamingTextResponse(stream);
-}
+        res.status(200).json({ reply: completion.choices[0].message.content });
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ error: 'Algo salió mal generando la respuesta de Cleo.' });
+    }
+  }

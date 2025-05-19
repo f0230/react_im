@@ -1,16 +1,41 @@
-import { useChat } from 'ai/react';
 import { useState, useEffect, useRef } from 'react';
 import StepperModal from '@/components/StepperModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function CleoWidget() {
-    const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
-        api: '/api/chat',
-    });
-
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const messagesEndRef = useRef(null);
+
+    const handleSend = async (e) => {
+        e.preventDefault();
+        if (!input.trim()) return;
+
+        const userMessage = { role: 'user', content: input };
+        const updatedMessages = [...messages, userMessage];
+        setMessages(updatedMessages);
+        setInput('');
+        setIsLoading(true);
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: updatedMessages }),
+            });
+
+            const data = await res.json();
+            const assistantMessage = { role: 'assistant', content: data.reply };
+            setMessages([...updatedMessages, assistantMessage]);
+        } catch (error) {
+            console.error('Error al comunicar con Cleo:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Detectar si Cleo menciona agendar
     useEffect(() => {
@@ -72,8 +97,8 @@ export default function CleoWidget() {
                                 <div
                                     key={i}
                                     className={`px-2 py-1 rounded-md ${m.role === 'user'
-                                            ? 'text-right bg-black text-white ml-auto w-fit'
-                                            : 'text-left bg-gray-100 text-gray-800 mr-auto w-fit'
+                                        ? 'text-right bg-black text-white ml-auto w-fit'
+                                        : 'text-left bg-gray-100 text-gray-800 mr-auto w-fit'
                                         }`}
                                 >
                                     <p><strong>{m.role === 'user' ? 'Vos' : 'Cleo'}:</strong> {m.content}</p>
@@ -82,12 +107,13 @@ export default function CleoWidget() {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        <form onSubmit={handleSubmit} className="flex mt-3 gap-2">
+                        <form onSubmit={handleSend} className="flex mt-3 gap-2">
                             <input
                                 value={input}
-                                onChange={handleInputChange}
+                                onChange={(e) => setInput(e.target.value)}
                                 placeholder="¿En qué te ayudo?"
                                 className="flex-1 border rounded px-3 py-2 text-sm"
+                                disabled={isLoading}
                             />
                             <button
                                 type="submit"
