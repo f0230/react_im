@@ -1,3 +1,4 @@
+// Slide.jsx optimizado como Section6 (con mejora para pantallas grandes)
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import CarouselSlide from './CarouselSlide';
 import SlideContent from './SlideContent';
@@ -14,7 +15,6 @@ const Section6 = () => {
   const carouselRef = useRef(null);
   const slideRefs = useRef([]);
 
-  // Detectar si es mobile
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     handleResize();
@@ -22,7 +22,6 @@ const Section6 = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Slide activo por scroll
   useEffect(() => {
     const handleScroll = () => {
       const scrollX = carouselRef.current.scrollLeft;
@@ -30,13 +29,11 @@ const Section6 = () => {
       const index = Math.round(scrollX / slideWidth);
       setActiveIndex(index);
     };
-
     const el = carouselRef.current;
     el?.addEventListener('scroll', handleScroll);
     return () => el?.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Scroll horizontal con clic y arrastre
   useEffect(() => {
     const el = carouselRef.current;
     if (!el) return;
@@ -50,11 +47,6 @@ const Section6 = () => {
       el.classList.add('active');
       startX = e.pageX - el.offsetLeft;
       scrollLeft = el.scrollLeft;
-    };
-
-    const handleMouseLeave = () => {
-      isDown = false;
-      el.classList.remove('active');
     };
 
     const handleMouseUp = () => {
@@ -71,19 +63,18 @@ const Section6 = () => {
     };
 
     el.addEventListener('mousedown', handleMouseDown);
-    el.addEventListener('mouseleave', handleMouseLeave);
+    el.addEventListener('mouseleave', handleMouseUp);
     el.addEventListener('mouseup', handleMouseUp);
     el.addEventListener('mousemove', handleMouseMove);
 
     return () => {
       el.removeEventListener('mousedown', handleMouseDown);
-      el.removeEventListener('mouseleave', handleMouseLeave);
+      el.removeEventListener('mouseleave', handleMouseUp);
       el.removeEventListener('mouseup', handleMouseUp);
       el.removeEventListener('mousemove', handleMouseMove);
     };
   }, []);
 
-  // Slides
   const slides = useMemo(() => [
     {
       background: isMobile ? MSlider1 : Slider1,
@@ -118,9 +109,8 @@ const Section6 = () => {
   ], [isMobile]);
 
   return (
-    <div className="w-full h-[520px] md:h-[720px] lg:h-[950px] flex flex-col justify-evenly items-center">
-      {/* Título */}
-      <div className="w-full max-w-screen px-4 mx-auto items-center flex flex-col">
+    <section className="w-full h-[520px] md:h-[720px] lg:h-[950px] flex flex-col justify-evenly items-center" aria-label="Carrusel de públicos ideales">
+      <div className="w-full max-w-screen px-4 mx-auto items-center flex flex-col text-center">
         <h2 className="text-[35px] md:text-[37px] text-black font-product font-normal leading-none">
           <span className="md:inline mr-2">Somos</span>
           <span className="font-bold mr-2">ideal</span>
@@ -128,17 +118,18 @@ const Section6 = () => {
         </h2>
       </div>
 
-      {/* Carrusel */}
       <div className="w-full overflow-hidden relative px-2">
         <div
           ref={carouselRef}
-          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar cursor-grab active:cursor-grabbing"
+          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar cursor-grab active:cursor-grabbing "
+          role="region"
+          aria-label="Carrusel horizontal"
         >
           {slides.map((slide, index) => (
             <div
               key={index}
               ref={(el) => (slideRefs.current[index] = el)}
-              className="w-full md:w-[750px] lg:w-[1000px] xl:w-[1200px] flex-shrink-0"
+              className="w-full md:w-[750px] lg:w-[1000px] xl:w-[1300px] flex-shrink-0 snap-center"
             >
               <CarouselSlide
                 slide={slide}
@@ -148,7 +139,7 @@ const Section6 = () => {
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

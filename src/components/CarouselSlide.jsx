@@ -1,3 +1,4 @@
+// CarouselSlide.jsx optimizado y corregido
 import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -11,18 +12,20 @@ const CarouselSlide = ({ slide, isActive }) => {
     if (!innerRef.current) return;
 
     const ctx = gsap.context(() => {
-      gsap.from(innerRef.current, {
-        scrollTrigger: {
-          trigger: innerRef.current,
-          start: 'top 85%',
-          toggleActions: 'play none none reverse',
-        },
-        opacity: 0,
-        scale: 0.95,
-        y: 50,
-        duration: 1,
-        ease: 'power2.out',
-      });
+      gsap.fromTo(
+        innerRef.current,
+        { y: 50, },
+        {
+          y: 0,
+          duration: 1,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: innerRef.current,
+            start: 'top 85%',
+            toggleActions: 'play none none reverse',
+          },
+        }
+      );
 
       gsap.to(innerRef.current, {
         backgroundPosition: 'center 40%',
@@ -38,12 +41,13 @@ const CarouselSlide = ({ slide, isActive }) => {
 
   return (
     <div
-      className={`relative snap-center w-full h-full overflow-hidden rounded-xl flex items-center justify-center transition-all duration-500 ${isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-60'}`}
+      className={`relative snap-center w-full h-full overflow-hidden rounded-xl flex items-center justify-center transition-all duration-500 ease-in-out transform ${isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-75'}`}
+      aria-hidden={!isActive}
     >
       {/* Fondo */}
       <div
         className="absolute inset-0 bg-cover bg-center z-0"
-        style={{ backgroundImage: `url(${slide.background})`, position: 'absolute' }}
+        style={{ backgroundImage: `url(${slide.background})` }}
       />
 
       {/* Contenido */}

@@ -1,30 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
-import OptimizedImage from "./OptimizedImage";
+// Section3.jsx optimizado
+import React, { useEffect, useRef } from "react";
+import OptimizedImage from "@/components/OptimizedImage";
 import BannerWeb from "../assets/BANNER_CAMPAÑA.webp";
 import BannerMovil from "../assets/BANNER_CAMPAÑA_MOVIL.webp";
 import BannerMovilDTE from "../assets/BgMov_dtelohace.webp";
 import BannerWebDTE from "../assets/BgWeb_dtelohace.webp";
-import Cinta from "../assets/cinta.webp"
+import Cinta from "../assets/cinta.webp";
 
-const Section2 = () => {
+const Section3 = () => {
   const bannerWebRef = useRef(null);
   const bannerMobileRef = useRef(null);
   const firstSectionRef = useRef(null);
-  const [bgBannerDTE, setBgBannerDTE] = useState(BannerWebDTE);
-
-  useEffect(() => {
-    const updateBanner = () => {
-      if (window.innerWidth < 768) {
-        setBgBannerDTE(BannerMovilDTE);
-      } else {
-        setBgBannerDTE(BannerWebDTE);
-      }
-    };
-
-    updateBanner(); // inicial
-    window.addEventListener("resize", updateBanner);
-    return () => window.removeEventListener("resize", updateBanner);
-  }, []);
 
   useEffect(() => {
     const loadGSAP = async () => {
@@ -32,7 +18,7 @@ const Section2 = () => {
       const { ScrollTrigger } = await import("gsap/ScrollTrigger");
       gsap.registerPlugin(ScrollTrigger);
 
-      const animateElement = (ref) => {
+      const animate = (ref) => {
         if (ref.current) {
           gsap.fromTo(
             ref.current,
@@ -53,7 +39,7 @@ const Section2 = () => {
         }
       };
 
-      [firstSectionRef, bannerWebRef, bannerMobileRef].forEach(animateElement);
+      [firstSectionRef, bannerWebRef, bannerMobileRef].forEach(animate);
     };
 
     loadGSAP();
@@ -66,18 +52,25 @@ const Section2 = () => {
   }, []);
 
   return (
-    <section className="font-product relative w-full flex justify-center items-start px-2 z-10 mt-2">
+    <section
+      className="font-product relative w-full flex justify-center items-start px-2 z-10 mt-2"
+      aria-label="Campaña y propuesta DTE"
+    >
       <div className="relative w-full max-w-[1440px] overflow-hidden mt-1 sm:mt-0">
         <div className="flex flex-col md:flex-row w-full gap-2">
           {/* Bloque de texto con fondo dinámico */}
           <div
             ref={firstSectionRef}
             className="w-full md:w-1/2 h-[510px] sm:h-[600px] md:h-[625px] bg-cover bg-center bg-no-repeat bg-crem/10 p-6 opacity-0 translate-y-10"
-            style={{ backgroundImage: `url(${bgBannerDTE})` }}
           >
+            <picture className="absolute inset-0 -z-10">
+              <source media="(min-width: 768px)" srcSet={BannerWebDTE} />
+              <img src={BannerMovilDTE} alt="Fondo DTE lo hace" className="w-full h-full object-cover" />
+            </picture>
+
             <div className="h-full flex flex-col justify-center items-center text-center">
               <h2 className="text-[40px] md:text-[60px] font-normal">
-                DTE lo{" "}
+                DTE lo {" "}
                 <span
                   className="text-black bg-no-repeat bg-center"
                   style={{
@@ -103,7 +96,7 @@ const Section2 = () => {
             </div>
           </div>
 
-          {/* Bloque con imagen animada */}
+          {/* Imagen + contenido */}
           <div className="w-full md:w-1/2 h-[510px] sm:h-[600px] md:h-[625px] relative overflow-hidden flex items-center justify-center">
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 md:p-10 z-20">
               <h2 className="text-white text-[40px] md:text-[60px] font-normal">Campañas</h2>
@@ -119,19 +112,21 @@ const Section2 = () => {
             <div className="absolute inset-0 hidden sm:block z-10 opacity-0 translate-y-10" ref={bannerWebRef}>
               <OptimizedImage
                 src={BannerWeb}
-                mobileSrc={null}
-                alt="Banner Web"
+                alt="Banner campaña desktop"
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
 
             {/* Imagen móvil */}
             <div className="absolute inset-0 sm:hidden z-10 opacity-0 translate-y-10" ref={bannerMobileRef}>
               <OptimizedImage
-                src={BannerWeb}
-                mobileSrc={BannerMovil}
-                alt="Banner Móvil"
+                src={BannerMovil}
+                alt="Banner campaña móvil"
                 className="w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           </div>
@@ -141,4 +136,4 @@ const Section2 = () => {
   );
 };
 
-export default Section2;
+export default Section3;

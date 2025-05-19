@@ -1,3 +1,4 @@
+// TextEnDTE.jsx optimizado
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -8,6 +9,8 @@ const SimultaneousWords = () => {
     const containerRef = useRef(null);
 
     useEffect(() => {
+        if (!containerRef.current) return;
+
         const titleWords = gsap.utils.toArray('.title-word');
         const paragraphWords = gsap.utils.toArray('.paragraph-word');
 
@@ -17,6 +20,7 @@ const SimultaneousWords = () => {
                 start: 'top 80%',
                 end: 'bottom 20%',
                 toggleActions: 'play none none reverse',
+                markers: false,
             },
         });
 
@@ -43,7 +47,9 @@ const SimultaneousWords = () => {
             '-=0.3'
         );
 
-        return () => tl.kill();
+        return () => {
+            tl.kill();
+        };
     }, []);
 
     const title = 'en DTE';
@@ -54,25 +60,32 @@ const SimultaneousWords = () => {
     const paragraphWords = paragraph.split(' ');
 
     return (
-        <section className="relative w-full flex justify-center items-center border-y-2 border-black overflow-hidden py-10 md:py-16">
+        <section
+            className="relative w-full flex justify-center items-center border-y-2 border-black overflow-hidden py-10 md:py-16"
+            aria-label="Texto institucional sobre DTE"
+        >
             <article
                 ref={containerRef}
                 className="w-full max-w-[1100px] px-4 md:px-6 flex flex-col justify-center items-start"
             >
-                <h2 className="text-[30px] md:text-3xl font-bold font-product flex flex-wrap gap-2 mb-4">
-                    {titleWords.map((word, i) => (
-                        <span key={i} className="title-word inline-block whitespace-nowrap">
-                            {word}
-                        </span>
-                    ))}
-                </h2>
-                <p className="text-[17px] md:text-[17px] font-product font-normal flex flex-wrap gap-1 leading-none">
-                    {paragraphWords.map((word, i) => (
-                        <span key={i} className="paragraph-word inline-block whitespace-nowrap">
-                            {word}
-                        </span>
-                    ))}
-                </p>
+                <header>
+                    <h2 className="text-[30px] md:text-3xl font-bold font-product flex flex-wrap gap-2 mb-4">
+                        {titleWords.map((word, i) => (
+                            <span key={i} className="title-word inline-block whitespace-nowrap">
+                                {word}
+                            </span>
+                        ))}
+                    </h2>
+                </header>
+                <section>
+                    <p className="text-[17px] md:text-[17px] font-product font-normal flex flex-wrap gap-1 leading-none">
+                        {paragraphWords.map((word, i) => (
+                            <span key={i} className="paragraph-word inline-block whitespace-nowrap">
+                                {word}
+                            </span>
+                        ))}
+                    </p>
+                </section>
             </article>
         </section>
     );

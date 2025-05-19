@@ -6,14 +6,12 @@ import { Link, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+import { menuItems } from "@/config/nav";
+
 
 gsap.registerPlugin(ScrollTrigger);
 
-const menuItems = [
-    { text: "Servicios", url: "/servicios" },
-    { text: "Nosotros", url: "#about" },
-    { text: "Contacto", url: "#contact" },
-];
+
 
 const Navbar = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);

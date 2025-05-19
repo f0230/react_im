@@ -1,42 +1,29 @@
-import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-
+// Section2.jsx optimizado
+import React from "react";
+import OptimizedImage from "@/components/OptimizedImage";
 import bgMobileProfe from "../assets/ProfMov.webp";
 import bgWebProfe from "../assets/Profeweb.webp";
 import iphonegreen from "../assets/iphone-green-web.png";
-import OptimizedImage from "../components/OptimizedImage";
-
-const revealUp = {
-  hidden: { opacity: 0, y: 100, scale: 0.95 },
-  visible: { opacity: 1, y: 0, scale: 1 }
-};
 
 const Section2 = () => {
-  const [bgImage, setBgImage] = useState(bgWebProfe);
-
-  useEffect(() => {
-    const updateBackground = () => {
-      if (window.innerWidth < 768) {
-        setBgImage(bgMobileProfe);
-      } else {
-        setBgImage(bgWebProfe);
-      }
-    };
-
-    updateBackground();
-    window.addEventListener("resize", updateBackground);
-    return () => window.removeEventListener("resize", updateBackground);
-  }, []);
-
   return (
-    <section className="font-product relative w-full flex justify-center items-start px-2 sm:px-2 lg:px-2 z-10">
-      <div
-        className="bg-black relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px]
-                   h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] xl:h-[700px]
-                   mt-[5px] sm:mt-[0px] overflow-hidden bg-cover bg-center"
-        style={{ backgroundImage: `url(${bgImage})` }}
-      >
-        <div className="relative z-10 w-full mx-auto h-full flex flex-col items-center justify-center text-center ">
+    <section
+      className="font-product relative w-full flex justify-center items-start px-2 z-10"
+      aria-label="Sección sobre profesionales"
+    >
+      <div className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px] h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] xl:h-[700px] mt-[5px] sm:mt-[0px] overflow-hidden">
+        <picture className="absolute inset-0 z-0">
+          <source srcSet={bgWebProfe} media="(min-width: 768px)" />
+          <OptimizedImage
+            src={bgMobileProfe}
+            alt="Fondo profesionales DTE"
+            className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        </picture>
+
+        <div className="relative z-10 w-full mx-auto h-full flex flex-col items-center justify-center text-center">
           <h1 className="text-white text-[30px] sm:text-[40px] md:text-[50px] lg:text-[60px] font-normal leading-none">
             <span className="block md:inline">+ ideas</span>
             <span className="block md:inline md:ml-2">+ profesionales</span>
@@ -47,15 +34,18 @@ const Section2 = () => {
           </p>
 
           <div className="mt-4 md:mt-8 inline-block space-x-1 md:space-x-2 lg:space-x-3">
-            <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 hover:text-white transition duration-300">
-              Contactanos
-            </button>
-            <button className="z-100 text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
-              Servicios
-            </button>
+            <a href="#contact" aria-label="Ir a contacto">
+              <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 hover:text-white transition duration-300">
+                Contactanos
+              </button>
+            </a>
+            <a href="/servicios" aria-label="Ir a servicios">
+              <button className="z-100 text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
+                Servicios
+              </button>
+            </a>
           </div>
         </div>
-
       </div>
     </section>
   );

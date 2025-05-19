@@ -1,27 +1,21 @@
-import React from "react";
-import ScrollToTopButton from "../components/ui/ScrollToTopButton";
-import HeroG from "../components/Section1";
-import Section2 from "../components/Section2";
-import Section3 from "../components/Section3";
-import Section4 from "../components/Section4";  
-import Section5 from "../components/Section5";
-import SimultaneousWords from "../components/TextEnDTE";
-import InfiniteCarousel from "../components/Slide";
-import Section7 from "../components/Section8";  
+// Home.jsx optimizado
+import React, { lazy, Suspense } from "react";
+import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 
+const HeroSection = lazy(() => import("@/components/Section1"));
+const Section2 = lazy(() => import("@/components/Section2"));
+const Section3 = lazy(() => import("@/components/Section3"));
+const Section4 = lazy(() => import("@/components/Section4"));
+const Section5 = lazy(() => import("@/components/Section5"));
+const SimultaneousWords = lazy(() => import("@/components/TextEnDTE"));
+const InfiniteCarousel = lazy(() => import("@/components/Slide"));
+const Section7 = lazy(() => import("@/components/Section8"));
 
-
-
-
-export const AnimaComponent = () => {
+const Home = () => {
   return (
-    
-      <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative"> 
-        
-   
+    <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative">
         <div className="relative w-full">
-          <HeroG />
-
+          <HeroSection />
         </div>
         <div className="relative w-full">
           <Section2 />
@@ -29,31 +23,24 @@ export const AnimaComponent = () => {
         <div className="relative w-full">
           <Section3 />
         </div>
-        <div>
+        <div className="relative w-full">
           <Section4 />
         </div>
         <div className="relative w-full">
           <Section5 />
         </div>
-      <div className="relative w-full">    
-              <SimultaneousWords />   
+        <div className="relative w-full">
+          <SimultaneousWords />
         </div>
         <div className="relative w-full">
-        <InfiniteCarousel />  
+          <InfiniteCarousel />
         </div>
         <div className="relative w-full">
           <Section7 />
         </div>
-
-
-
-    
         <ScrollToTopButton />
-
-
-
-      </div>
+    </div>
   );
 };
 
-export default AnimaComponent;
+export default Home;
