@@ -16,7 +16,7 @@ const ServiceCard = ({ title, text, index = 0, bg = '#ffffff', customTitle = nul
       blur
       delay={index}
       stagger={0.15}
-      className="md:mb-6 mb-4 service-block snap-start p-5 bg-white/30 backdrop-blur-xl 
+      className="md:mb-4 mb-4 service-block snap-start p-5 bg-white/30 backdrop-blur-xl 
                  rounded-xl border border-white/35 animate-borderPulse transition-all duration-700 ease-in-out hover:border-white/30
                  shadow-md md:hover:shadow-xl"
     >

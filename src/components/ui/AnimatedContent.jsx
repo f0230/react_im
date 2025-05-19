@@ -1,64 +1,67 @@
-import { useRef, useEffect, useState } from "react";
-import { useSpring, animated } from "@react-spring/web";
+// src/components/AnimatedContent.jsx
+import { useEffect, useRef } from 'react';
+import { motion, useAnimation } from 'framer-motion';
+import { useInView } from 'framer-motion';
+
+const variants = {
+    fade: { opacity: 0, y: 0 },
+    slideUp: { opacity: 0, y: 40 },
+    slideLeft: { opacity: 0, x: 40 },
+    zoom: { opacity: 0, scale: 0.95 },
+};
+
+const getAnimation = (type, blur) => {
+    const base = variants[type] || variants.fade;
+    return {
+        hidden: {
+            ...base,
+            filter: blur ? 'blur(8px)' : 'none',
+        },
+        visible: {
+            opacity: 1,
+            x: 0,
+            y: 0,
+            scale: 1,
+            filter: 'blur(0px)',
+            transition: {
+                duration: 0.8,
+                ease: 'easeOut',
+            },
+        },
+    };
+};
 
 const AnimatedContent = ({
     children,
-    distance = 100,
-    direction = "vertical",
-    reverse = false,
-    config = { tension: 50, friction: 25 },
-    initialOpacity = 0,
-    animateOpacity = true,
-    scale = 1,
-    threshold = 0.1,
-    delay = 0
+    type = 'fade',           // fade | slideUp | slideLeft | zoom
+    className = '',
+    delay = 0,
+    threshold = 0.3,
+    blur = false,
+    once = true,
 }) => {
-    const [inView, setInView] = useState(false);
-    const ref = useRef();
+    const ref = useRef(null);
+    const isInView = useInView(ref, { threshold, once });
+    const controls = useAnimation();
 
     useEffect(() => {
-        if (!ref.current) return;
-
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                if (entry.isIntersecting) {
-                    observer.unobserve(ref.current);
-                    setTimeout(() => {
-                        setInView(true);
-                    }, delay);
-                }
-            },
-            { threshold }
-        );
-
-        observer.observe(ref.current);
-
-        return () => observer.disconnect();
-    }, [threshold, delay]);
-
-    const directions = {
-        vertical: "Y",
-        horizontal: "X",
-    };
-
-    const springProps = useSpring({
-        from: {
-            transform: `translate${directions[direction]}(${reverse ? `-${distance}px` : `${distance}px`}) scale(${scale})`,
-            opacity: animateOpacity ? initialOpacity : 1,
-        },
-        to: inView
-            ? {
-                transform: `translate${directions[direction]}(0px) scale(1)`,
-                opacity: 1,
-            }
-            : undefined,
-        config,
-    });
+        if (isInView) {
+            controls.start('visible');
+        }
+    }, [isInView, controls]);
 
     return (
-        <animated.div ref={ref} style={springProps}>
+        <motion.div
+            ref={ref}
+            initial="hidden"
+            animate={controls}
+            variants={getAnimation(type, blur)}
+            transition={{ delay: delay / 1000 }}
+            className={`${className} ${blur ? 'backdrop-blur-sm' : ''}`}
+            style={{ willChange: 'opacity, transform' }}
+        >
             {children}
-        </animated.div>
+        </motion.div>
     );
 };
 
