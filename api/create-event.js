@@ -61,7 +61,7 @@ export default async function handler(req, res) {
             timeStyle: 'short',
         });
 
-        const html = renderTemplate(
+        const htmlCliente = renderTemplate(
             path.resolve(process.cwd(), 'emails/confirmation.html'),
             {
                 name,
@@ -77,9 +77,32 @@ export default async function handler(req, res) {
             from: `Grupo DTE <${process.env.RESEND_FROM}>`,
             to: email,
             subject: '✅ ¡Reunión confirmada con Grupo DTE!',
-            html,
+            html: htmlCliente,
             reply_to: "grupo@grupodte.com"
         });
+
+
+        const internalHtml = renderTemplate(
+            path.resolve(process.cwd(), 'emails/internal-notification.html'),
+            {
+                name,
+                email,
+                summary,
+                description: description || 'Sin descripción',
+                formattedDate,
+            }
+        );
+        
+
+        // Enviar una copia interna a grupo@grupodte.com
+        await resend.emails.send({
+            from: `Grupo DTE <${process.env.RESEND_FROM}>`,
+            to: 'grupo@grupodte.com',
+            subject: `📩 Nueva reunión agendada: ${summary}`,
+            html: internalHtml, // Podés usar el mismo HTML, o crear uno distinto si preferís
+            reply_to: email
+        });
+
 
         res.status(200).json({ ok: true });
     } catch (err) {

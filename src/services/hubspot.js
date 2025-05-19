@@ -1,4 +1,4 @@
-// hubspot.js
+// src/services/hubspot.js
 export const createHubspotLead = async ({ name, email, phone, message }) => {
     await fetch("/api/hubspot-lead", {
         method: "POST",
