@@ -18,7 +18,7 @@ export default async function handler(req, res) {
                     email,
                     firstname: name,
                     phone,
-                    mensaje_de_interes: message, // ✅ esto sí lo acepta HubSpot
+                    message, 
                 }
             }),
         });
