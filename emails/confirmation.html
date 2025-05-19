@@ -1,50 +1,53 @@
 <div
-    style="background-color: #f9fafb; padding: 32px; max-width: 600px; margin: auto; font-family: 'Inter', Arial, sans-serif; color: #111827; border-radius: 12px;">
+    style="background-color: #ffffff; padding: 32px; max-width: 600px; margin: auto; font-family: 'Inter', Arial, sans-serif; color: #111827; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
     <div style="text-align: center;">
-        <img src="https://grupodte.com/LOGODTE.svg" alt="Grupo DTE" style="max-width: 160px; margin-bottom: 24px;" />
-   
-        <h2 style="font-size: 24px; font-weight: 600; margin-bottom: 8px;">¡Hola {{name}}!</h2>
-        <p style="font-size: 16px; margin-bottom: 24px;">
-            Gracias por agendar una reunión con nosotros. Tu cita fue registrada exitosamente 🎉
+        <img src="https://grupodte.com/LOGODTE.png" alt="Grupo DTE" style="max-width: 180px; margin-bottom: 24px;" />
+
+        <h2 style="font-size: 26px; font-weight: 700; margin-bottom: 12px; color: #111827;">¡Hola {{name}}!</h2>
+
+        <p style="font-size: 17px; color: #374151; margin-bottom: 24px; line-height: 1.6;">
+            Gracias por agendar una reunión con nosotros. <br />
+            Tu cita fue registrada exitosamente.
         </p>
     </div>
 
-    <div
-        style="background-color: #ffffff; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-        <p style="margin: 0 0 12px 0;"><strong>📌 Tema:</strong> {{summary}}</p>
-        <p style="margin: 0 0 12px 0;"><strong>🗓️ Fecha:</strong> {{formattedDate}}</p>
-        <p style="margin: 0;"><strong>📝 Mensaje:</strong> {{description}}</p>
+    <div style="background-color: #f3f4f6; padding: 20px; border-radius: 10px; margin-bottom: 24px;">
+        <p style="margin: 0; font-size: 18px; font-weight: 600; color: #111827; text-align: center;">
+            Fecha de la reunión:<br />
+            <span style="font-size: 20px; color: #1f2937;">{{formattedDate}}</span>
+        </p>
     </div>
 
-    <p>
-        📅 También podés
-        <a href="{{icsLink}}" download style="color: #111827; text-decoration: underline;">
-            añadir este evento a tu calendario (.ics)
-        </a>.
-    </p>
-      
-
     <div style="text-align: center; margin-bottom: 32px;">
-        <a href="https://grupodte.com/servicios" target="_blank"
-            style="display: inline-block; background-color: #111827; color: #ffffff; padding: 14px 24px; font-weight: 600; text-decoration: none; border-radius: 6px;">
-            Ver nuestros servicios
+        <a href="{{icsLink}}" download target="_blank"
+            style="display: inline-block; background-color: #111827; color: #ffffff; padding: 16px 28px; font-size: 16px; font-weight: 600; text-decoration: none; border-radius: 8px;">
+            Agregar a mi calendario
         </a>
     </div>
 
-    <hr style="border: none; border-top: 1px solid #e5e7eb; margin-bottom: 16px;" />
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin-bottom: 24px;" />
 
-    <footer style="text-align: center; font-size: 13px; color: #6b7280; margin-top: 32px;">
-        <p style="margin-bottom: 8px;">
-            Este correo fue enviado desde una dirección automática (<strong>auto@hola.grupodte.com</strong>), no recibe
-            respuestas.
-            Si necesitás contactarnos, escribinos a
-            <a href="mailto:grupo@grupodte.com" style="color: #6b7280; text-decoration: none;">grupo@grupodte.com</a>.
+    <footer style="text-align: center; font-size: 14px; color: #4b5563;">
+        <p style="margin-bottom: 12px;">
+            Este correo fue enviado desde una dirección automática<br />
+            <strong>auto@hola.grupodte.com</strong> – No responde correos.
+            <br />
+            ¿Dudas? Escribinos a
+            <a href="mailto:grupo@grupodte.com"
+                style="color: #111827; text-decoration: none;"><strong>grupo@grupodte.com</strong></a>.
         </p>
-        <p>
+
+        <p style="margin-bottom: 16px;">
             © {{year}} Grupo DTE – Todos los derechos reservados<br />
-            <a href="https://grupodte.com" style="color: #6b7280; text-decoration: none;">grupodte.com</a>
+            <a href="https://grupodte.com" style="color: #111827; text-decoration: underline;">grupodte.com</a>
         </p>
+
+        <div style="font-size: 20px;">
+            <a href="https://www.instagram.com/grupodte"
+                style="margin: 0 10px; text-decoration: none; color: #111827;">instagram</a>
+       
+            <a href="https://wa.me/+59896219905" style="margin: 0 10px; text-decoration: none; color: #111827;">WhatsApp</a>
+        </div>
     </footer>
-      
 </div>
   

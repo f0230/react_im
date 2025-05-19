@@ -7,9 +7,8 @@ export const createHubspotLead = async ({ name, email, phone, message }) => {
                 email,
                 firstname: name,
                 phone,
-                message, // puedes mapearlo a un campo personalizado de HubSpot si lo tenés
+                mensaje: message, // Asegurate que este campo exista en HubSpot
             },
         }),
     });
 };
-  

@@ -10,7 +10,7 @@ export default async function handler(req, res) {
         const response = await fetch('https://api.hubapi.com/crm/v3/objects/contacts', {
             method: 'POST',
             headers: {
-                Authorization: `Bearer ${HUBSPOT_TOKEN}`,
+                'Authorization': `Bearer ${HUBSPOT_TOKEN}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -18,12 +18,15 @@ export default async function handler(req, res) {
                     email,
                     firstname: name,
                     phone,
-                    message,
-                },
+                    mensaje_de_interes: message, // ✅ esto sí lo acepta HubSpot
+                }
             }),
         });
 
-        if (!response.ok) throw new Error(await response.text());
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+        }
 
         res.status(200).json({ message: 'Lead enviado a HubSpot' });
     } catch (err) {
@@ -31,4 +34,3 @@ export default async function handler(req, res) {
         res.status(500).json({ error: 'Error enviando a HubSpot' });
     }
 }
-  
