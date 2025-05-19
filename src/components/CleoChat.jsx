@@ -33,11 +33,6 @@ const useModalLogic = (messages, setMessages) => {
         setWaitingForConfirmation(false);
         setIsConversationPaused(false);
 
-        const message = wasSubmitted
-            ? '¡Gracias por completar el formulario! ¿En qué más te puedo ayudar?'
-            : 'Entendido, no coordinamos por ahora. Si cambiás de idea, decime 😊';
-
-        setMessages((prev) => [...prev, { role: 'assistant', content: message }]);
     }, [setMessages]);
 
     useEffect(() => {
