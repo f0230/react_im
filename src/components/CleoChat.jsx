@@ -207,7 +207,7 @@ export default function CleoWidget() {
                         animate="animate"
                         exit="exit"
                         transition={{ duration: 0.4, ease: 'easeOut' }}
-                        className="fixed bottom-4 left-4 z-50 w-full max-w-sm bg-white rounded-xl shadow-xl border p-4"
+                        className=" fixed bottom-4 left-4 z-50 w-full max-w-sm bg-white rounded-xl shadow-xl border p-4"
                         role="dialog"
                         aria-labelledby="chat-title"
                     >

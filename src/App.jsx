@@ -4,7 +4,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Layout from "@/components/Layout";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
-import CleoWidget from '@/components/CleoChat';
+
+import CleoWidget from "@/components/CleoChat";
 
 
 
@@ -28,7 +29,8 @@ const App = () => {
             <Route path="/servicios" element={<Services />} />
           </Routes>
 
-            <CleoWidget />
+
+
 
 
         </Layout>
