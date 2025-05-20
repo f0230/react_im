@@ -5,8 +5,9 @@ import BannerWeb from "../assets/BANNER_CAMPAÑA.webp";
 import BannerMovil from "../assets/BANNER_CAMPAÑA_MOVIL.webp";
 import BannerMovilDTE from "../assets/BgMov_dtelohace.webp";
 import BannerWebDTE from "../assets/BgWeb_dtelohace.webp";
-import Cinta from "../assets/cinta.webp";
 import { Link } from "react-router-dom";
+import logoDTE from '../assets/dte_lohace.webp';
+
 
 
 const Section3 = () => {
@@ -71,20 +72,9 @@ const Section3 = () => {
             </picture>
 
             <div className="h-full flex flex-col justify-center items-center text-center">
-              <h2 className="text-[40px] md:text-[60px] font-normal">
-                DTE lo {" "}
-                <span
-                  className="text-black bg-no-repeat bg-center"
-                  style={{
-                    backgroundImage: `url(${Cinta})`,
-                    backgroundSize: "125%",
-                    padding: "2px 6px",
-                    display: "inline-block",
-                  }}
-                >
-                  hace
-                </span>
-              </h2>
+             <div className="flex items-center w-[200px] px-2">
+                     <img src={logoDTE} alt="Logo Grupo DTE" />
+                   </div>
 
               <h3 className="mt-[-10px] md:mt-[-20px] mb-5 text-greyburger text-[20px] md:text-[40px] font-normal">
                 proyectos + ideas

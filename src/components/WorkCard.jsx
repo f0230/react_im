@@ -5,7 +5,7 @@ import OptimizeImage from './OptimizedImage'; // Asegúrate de tener este compon
 const WorkCard = ({ imageSrc, altText }) => {
     return (
         <motion.div
-            className="flex-shrink-0 rounded-xl overflow-hidden"
+            className="flex-shrink-0  overflow-hidden"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
