@@ -1,4 +1,4 @@
-// StepperModal.jsx optimizado con comentarios en línea
+// StepperModal.jsx optimizado con correcciones
 import React, { useEffect } from "react";
 import Stepper, { Step } from "@/components/Form/Stepper";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,44 +10,48 @@ import { useAuthUser } from "@/hooks/useAuthUser";
 import { useAppointmentForm } from "@/hooks/useAppointmentForm";
 
 // Componente de error reutilizable
-const ErrorMessage = ({ message }) => {
-    if (!message) return null;
-    return (
+const ErrorMessage = ({ message }) =>
+    message ? (
         <div className="flex items-center mt-1 text-xs text-red-500">
             <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
             </svg>
             <span>{message}</span>
         </div>
-    );
-};
+    ) : null;
 
 const StepperModal = ({ isOpen, onClose }) => {
     const { user, token, isAuthenticated, setToken } = useAuthUser();
     const {
         formData,
-        setFormData,
-        fieldErrors,
-        setFieldErrors,
+        errors: fieldErrors,
         isLoading,
         isDateValidating,
         showConfirmation,
-        setShowConfirmation,
         busySlots,
         handleDateChange,
         handleFinalSubmit,
+        dispatch,
+        // ✅ se usa dispatch para manejar campos
+        setShowConfirmation,
     } = useAppointmentForm({ user, token });
 
-    // Efecto de cierre automático del modal después de confirmar cita
+    // Cierre automático del modal tras la confirmación
     useEffect(() => {
         if (!showConfirmation) return;
         const timer = setTimeout(() => {
             setShowConfirmation(false);
-            onClose(true); // ✅ Se confirmó la cita → notificar a Cleo
+            onClose(true);
         }, 3000);
         return () => clearTimeout(timer);
     }, [showConfirmation, onClose]);
-    
+
+    const firstName = formData?.name?.split?.(" ")[0] || "";
 
     return (
         <AnimatePresence>
@@ -61,14 +65,13 @@ const StepperModal = ({ isOpen, onClose }) => {
                     {/* Botón cerrar modal */}
                     <button
                         className="absolute top-6 right-6 text-white hover:scale-110 transition-transform duration-200 z-50"
-                        onClick={() => onClose(false)} // ❌ Se cerró sin agendar → notificar a Cleo
+                        onClick={() => onClose(false)}
                         aria-label="Cerrar"
                     >
                         <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
-
 
                     {/* Contenido del modal */}
                     <motion.div
@@ -78,21 +81,18 @@ const StepperModal = ({ isOpen, onClose }) => {
                         exit={{ scale: 0.95, opacity: 0 }}
                         transition={{ duration: 0.25, ease: "easeOut" }}
                     >
-                        {/* Saludo personalizado */}
                         <h2 className="text-base sm:text-lg md:text-2xl font-bold mb-6 text-center">
-                            {user?.name ? `Hola ${user.name.split(" ")[0]} 👋` : "Agendá tu cita"}
+                            {user?.name ? `Hola ${firstName} 👋` : "Agendá tu cita"}
                         </h2>
 
-                        {/* Si no está autenticado, muestra login */}
                         {!isAuthenticated ? (
                             <GoogleLoginWrapper onLoginSuccess={() => setToken(localStorage.getItem("google_token"))} />
                         ) : (
                             <Stepper
                                 formData={formData}
-                                setFieldErrors={setFieldErrors}
+                                setFieldErrors={(errors) => dispatch({ type: "SET_ERRORS", errors })}
                                 onFinalStepCompleted={handleFinalSubmit}
                             >
-                                {/* Paso 1: seleccionar fecha y hora */}
                                 <Step>
                                     <div className="min-h-[250px] sm:min-h-[320px] flex flex-col justify-start gap-1 text-sm sm:text-base">
                                         <label className="font-semibold mb-1">Seleccioná día y hora</label>
@@ -108,17 +108,21 @@ const StepperModal = ({ isOpen, onClose }) => {
                                             maxTime={new Date(new Date().setHours(18, 0, 0, 0))}
                                             placeholderText="Ej: 10:00, lunes 20 mayo"
                                             excludeTimes={busySlots}
-                                            withPortal={window.innerWidth < 640}
-                                            className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black transition-colors duration-150 ${fieldErrors.datetime ? "border-red-500" : "border-gray-300"}`}
+                                            withPortal={typeof window !== "undefined" && window.innerWidth < 640}
+                                            className={`w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black transition-colors duration-150 ${fieldErrors.datetime ? "border-red-500" : "border-gray-300"
+                                                }`}
                                             calendarClassName="dark-calendar"
                                             popperClassName="dark-datepicker-popper"
-                                            required
                                         />
                                         {isDateValidating && (
                                             <p className="text-blue-500 text-xs mt-1 animate-pulse flex items-center gap-1">
                                                 <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4zm2 5.29A7.96 7.96 0 014 12H0c0 3.04 1.13 5.82 3 7.94l3-2.65z"></path>
+                                                    <path
+                                                        className="opacity-75"
+                                                        fill="currentColor"
+                                                        d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4zm2 5.29A7.96 7.96 0 014 12H0c0 3.04 1.13 5.82 3 7.94l3-2.65z"
+                                                    ></path>
                                                 </svg>
                                                 Verificando disponibilidad...
                                             </p>
@@ -127,7 +131,6 @@ const StepperModal = ({ isOpen, onClose }) => {
                                     </div>
                                 </Step>
 
-                                {/* Paso 2: datos adicionales */}
                                 <Step>
                                     <div className="min-h-[320px] flex flex-col gap-4">
                                         <div>
@@ -136,9 +139,11 @@ const StepperModal = ({ isOpen, onClose }) => {
                                                 type="tel"
                                                 placeholder="Ej: +598 99 123 456"
                                                 value={formData.phone}
-                                                onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
-                                                className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black ${fieldErrors.phone ? "border-red-500" : "border-gray-300"}`}
-                                                required
+                                                onChange={(e) =>
+                                                    dispatch({ type: "SET_FIELD", field: "phone", value: e.target.value })
+                                                }
+                                                className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black ${fieldErrors.phone ? "border-red-500" : "border-gray-300"
+                                                    }`}
                                             />
                                             <ErrorMessage message={fieldErrors.phone} />
                                         </div>
@@ -147,9 +152,11 @@ const StepperModal = ({ isOpen, onClose }) => {
                                             <textarea
                                                 placeholder="Contanos en qué te podemos ayudar..."
                                                 value={formData.message}
-                                                onChange={(e) => setFormData((prev) => ({ ...prev, message: e.target.value }))}
-                                                className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black min-h-[120px] ${fieldErrors.message ? "border-red-500" : "border-gray-300"}`}
-                                                required
+                                                onChange={(e) =>
+                                                    dispatch({ type: "SET_FIELD", field: "message", value: e.target.value })
+                                                }
+                                                className={`w-full p-3 rounded-lg border focus:outline-none focus:ring-2 focus:ring-black min-h-[120px] ${fieldErrors.message ? "border-red-500" : "border-gray-300"
+                                                    }`}
                                             />
                                             <ErrorMessage message={fieldErrors.message} />
                                         </div>
@@ -158,15 +165,11 @@ const StepperModal = ({ isOpen, onClose }) => {
                             </Stepper>
                         )}
 
-                        {/* Loader de agendamiento */}
                         {isLoading && (
-                            <p className="text-center text-sm mt-4 text-gray-600 animate-pulse">
-                                Agendando...
-                            </p>
+                            <p className="text-center text-sm mt-4 text-gray-600 animate-pulse">Agendando...</p>
                         )}
                     </motion.div>
 
-                    {/* Confirmación visual de éxito */}
                     {showConfirmation && (
                         <motion.div
                             className="fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center"
@@ -177,7 +180,7 @@ const StepperModal = ({ isOpen, onClose }) => {
                             <div className="bg-white rounded-xl shadow-lg p-6 text-center max-w-sm">
                                 <h3 className="text-xl font-semibold mb-2">¡Cita confirmada!</h3>
                                 <p className="text-gray-700 mb-4">
-                                    Gracias {formData.name?.split(" ")[0] || ""}, te esperamos en el horario elegido.
+                                    Gracias {firstName}, te esperamos en el horario elegido.
                                 </p>
                                 <button
                                     className="bg-black text-white px-4 py-2 rounded hover:bg-gray-900"
@@ -195,3 +198,4 @@ const StepperModal = ({ isOpen, onClose }) => {
 };
 
 export default StepperModal;
+

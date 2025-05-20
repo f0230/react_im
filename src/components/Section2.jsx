@@ -16,12 +16,14 @@ const Section2 = () => {
         <picture className="absolute inset-0 z-0">
           <source srcSet={bgWebProfe} media="(min-width: 768px)" />
           <OptimizedImage
-            src={bgMobileProfe}
+            src={bgWebProfe}          // imagen por defecto (web)
+            mobileSrc={bgMobileProfe} // imagen para mobile
             alt="Fondo profesionales DTE"
-            className="w-full h-full object-cover"
-            loading="lazy"
+            className="w-full h-full"
             decoding="async"
+            loading="lazy"
           />
+
         </picture>
 
         <div className="relative z-10 w-full mx-auto h-full flex flex-col items-center justify-center text-center">
