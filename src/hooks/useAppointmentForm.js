@@ -129,14 +129,18 @@ export const useAppointmentForm = ({ user }) => {
                 return;
             }
 
+            const name = formData.name?.trim();
+            const summary = name ? `Reunión con ${name}` : "Reunión";
+            const startTime = formData.datetime.toISOString();
+            const endTime = new Date(formData.datetime.getTime() + 60 * 60 * 1000).toISOString();
+
             await createCalendarEvent({
-                name: formData.name,
-                summary: `Reunión con ${formData.name}`,
+                name,
+                summary,
                 description: formData.message,
-                startTime: formData.datetime.toISOString(),
-                endTime: new Date(formData.datetime.getTime() + 60 * 60 * 1000).toISOString(),
-                email: formData.email,
-                userAccessToken: accessToken,
+                startTime,
+                endTime,
+                email: formData.email
             });
 
             try {
@@ -145,7 +149,7 @@ export const useAppointmentForm = ({ user }) => {
                 console.warn("HubSpot error:", err);
             }
 
-            toast.success(`Gracias ${formData.name.split(" ")[0]} por agendar con nosotros`);
+            toast.success(`Gracias ${name?.split?.(" ")[0] || "por agendar"} con nosotros`);
             dispatch({ type: "SET_CONFIRMATION", value: true });
 
             setTimeout(() => {
@@ -159,6 +163,7 @@ export const useAppointmentForm = ({ user }) => {
             dispatch({ type: "SET_LOADING", value: false });
         }
     };
+      
 
     return {
         formData,
