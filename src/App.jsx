@@ -5,7 +5,6 @@ import Layout from "@/components/Layout";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
 
-import CleoWidget from "@/components/CleoChat";
 
 
 
