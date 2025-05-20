@@ -1,179 +1,193 @@
-import { useReducer, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useCalendarAvailability } from "./useCalendarAvailability";
 import { createCalendarEvent } from "@/services/calendar";
 import { createHubspotLead } from "@/services/hubspot";
-import { validateAppointmentFields } from "@/utils/validators";
+import { isValidPhone } from "@/utils/phone-validation";
 import { useAuthUser } from "@/hooks/useAuthUser";
-
-const initialState = (user) => ({
-    formData: {
-        name: user?.name || "",
-        email: user?.email || "",
-        phone: "",
-        message: "",
-        datetime: null,
-    },
-    errors: {},
-    isLoading: false,
-    isDateValidating: false,
-    showConfirmation: false,
-});
-
-function reducer(state, action) {
-    switch (action.type) {
-        case "SET_FIELD":
-            return {
-                ...state,
-                formData: { ...state.formData, [action.field]: action.value },
-            };
-        case "SET_ERRORS":
-            return { ...state, errors: action.errors };
-        case "SET_LOADING":
-            return { ...state, isLoading: action.value };
-        case "SET_DATE_VALIDATING":
-            return { ...state, isDateValidating: action.value };
-        case "SET_CONFIRMATION":
-            return { ...state, showConfirmation: action.value };
-        case "RESET":
-            return initialState(action.user);
-        default:
-            return state;
-    }
-}
 
 export const useAppointmentForm = ({ user }) => {
     const { busySlots, fetchBusy, checkAvailability } = useCalendarAvailability();
     const { accessToken } = useAuthUser();
-    const [state, dispatch] = useReducer(reducer, user, initialState);
+    const [formData, setFormData] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        message: "",
+        datetime: null,
+    });
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [isLoading, setIsLoading] = useState(false);
+    const [isDateValidating, setIsDateValidating] = useState(false);
+    const [showConfirmation, setShowConfirmation] = useState(false);
     const debounceRef = useRef(null);
 
-    const { formData, errors, isLoading, isDateValidating, showConfirmation } = state;
-
-    // SSR-safe localStorage restoration
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            const stored = localStorage.getItem("appointmentForm");
-            if (stored) {
-                try {
-                    const parsed = JSON.parse(stored);
-                    if (parsed.phone) dispatch({ type: "SET_FIELD", field: "phone", value: parsed.phone });
-                    if (parsed.message) dispatch({ type: "SET_FIELD", field: "message", value: parsed.message });
-                } catch { }
+        if (user) {
+            setFormData((prev) => ({
+                ...prev,
+                name: user.name,
+                email: user.email,
+            }));
+            fetchBusy(new Date(), new Date(new Date().setDate(new Date().getDate() + 3)));
+        }
+    }, [user]);
+
+    useEffect(() => {
+        const selectedDate = formData.datetime;
+        if (!selectedDate) return;
+
+        const startOfDay = new Date(selectedDate);
+        startOfDay.setHours(10, 0, 0, 0);
+
+        const endOfDay = new Date(selectedDate);
+        endOfDay.setHours(18, 0, 0, 0);
+
+        fetchBusy(startOfDay, endOfDay);
+    }, [formData.datetime]);
+
+    const validateFormFields = ({ datetime, phone, message }) => {
+        const errors = {};
+        const now = new Date();
+
+        if (!datetime) {
+            errors.datetime = "Seleccioná una fecha y hora.";
+        } else if (datetime < now) {
+            errors.datetime = "No puedes seleccionar una fecha pasada.";
+        } else {
+            const hours = datetime.getHours();
+            const minutes = datetime.getMinutes();
+            if (hours < 10 || (hours === 18 && minutes > 0) || hours > 18) {
+                errors.datetime = "Solo se permiten horarios entre 10:00 y 18:00.";
             }
         }
-    }, []);
 
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            localStorage.setItem("appointmentForm", JSON.stringify({
-                phone: formData.phone,
-                message: formData.message,
-            }));
+        if (!phone?.trim()) {
+            errors.phone = "El teléfono es obligatorio.";
+        } else if (!isValidPhone(phone)) {
+            errors.phone = "Ingresá un número de teléfono válido.";
         }
-    }, [formData.phone, formData.message]);
 
-    useEffect(() => {
-        if (formData.datetime) {
-            const start = new Date(formData.datetime);
-            const end = new Date(start);
-            start.setHours(10, 0, 0, 0);
-            end.setHours(18, 0, 0, 0);
-            fetchBusy(start, end);
+        if (!message?.trim()) {
+            errors.message = "El mensaje es obligatorio.";
+        } else if (message.trim().length < 10) {
+            errors.message = "El mensaje debe tener al menos 10 caracteres.";
         }
-    }, [formData.datetime]);
+
+        return errors;
+    };
 
     const handleDateChange = (date) => {
         clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(async () => {
-            if (!date) return dispatch({ type: "SET_FIELD", field: "datetime", value: null });
+            setFieldErrors((prev) => ({ ...prev, datetime: null }));
 
-            const now = new Date();
-            if (date < now || date.getHours() < 10 || date.getHours() >= 18) {
-                dispatch({ type: "SET_ERRORS", errors: { ...errors, datetime: "Horario inválido" } });
+            if (!date) {
+                setFormData((prev) => ({ ...prev, datetime: null }));
                 return;
             }
 
-            dispatch({ type: "SET_FIELD", field: "datetime", value: date });
-            dispatch({ type: "SET_DATE_VALIDATING", value: true });
+            const now = new Date();
+            if (date < now) {
+                setFieldErrors((prev) => ({ ...prev, datetime: "No puedes seleccionar una fecha pasada" }));
+                return;
+            }
 
+            const hours = date.getHours();
+            if (hours < 10 || hours >= 18) {
+                setFieldErrors((prev) => ({ ...prev, datetime: "Solo horarios de 10:00 a 18:00" }));
+                return;
+            }
+
+            setFormData((prev) => ({ ...prev, datetime: date }));
+
+            setIsDateValidating(true);
             try {
                 const available = await checkAvailability(date);
                 if (!available) {
-                    toast.error("Ese horario ya está ocupado.");
-                    dispatch({ type: "SET_ERRORS", errors: { ...errors, datetime: "Este horario ya está ocupado" } });
+                    setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
+                    toast.error("Ese horario ya está ocupado. Por favor, elegí otro.");
                 }
             } catch (err) {
                 toast.error("Error al verificar disponibilidad.");
                 console.error(err);
             } finally {
-                dispatch({ type: "SET_DATE_VALIDATING", value: false });
+                setIsDateValidating(false);
             }
-        }, 500);
+        }, 400);
     };
 
     const handleFinalSubmit = async () => {
-        const validationErrors = validateAppointmentFields(formData);
-        if (Object.keys(validationErrors).length > 0) {
-            dispatch({ type: "SET_ERRORS", errors: validationErrors });
+        const { datetime, phone, message, name, email } = formData;
+
+        const errors = validateFormFields({ datetime, phone, message });
+        const hasErrors = Object.keys(errors).length > 0;
+
+        if (hasErrors) {
+            setFieldErrors(errors);
             return;
         }
 
-        dispatch({ type: "SET_LOADING", value: true });
-
+        setIsLoading(true);
         try {
-            const available = await checkAvailability(formData.datetime);
+            const available = await checkAvailability(datetime);
             if (!available) {
-                toast.error("Ese horario ya está ocupado.");
-                dispatch({ type: "SET_ERRORS", errors: { datetime: "Este horario ya está ocupado" } });
+                toast.error("Ese horario ya está ocupado. Elegí otro.");
+                setFieldErrors((prev) => ({ ...prev, datetime: "Este horario ya está ocupado" }));
                 return;
             }
 
-            const name = formData.name?.trim();
-            const summary = name ? `Reunión con ${name}` : "Reunión";
-            const startTime = formData.datetime.toISOString();
-            const endTime = new Date(formData.datetime.getTime() + 60 * 60 * 1000).toISOString();
-
             await createCalendarEvent({
                 name,
-                summary,
-                description: formData.message,
-                startTime,
-                endTime,
-                email: formData.email
+                summary: `Reunión con ${name}`,
+                description: message,
+                startTime: datetime.toISOString(),
+                endTime: new Date(datetime.getTime() + 60 * 60 * 1000).toISOString(),
+                email,
+                userAccessToken: accessToken
             });
+
+            console.log("📤 Enviando a HubSpot:", formData);
 
             try {
                 await createHubspotLead(formData);
-            } catch (err) {
-                console.warn("HubSpot error:", err);
+            } catch (hubErr) {
+                console.warn("⚠️ No se pudo registrar en HubSpot:", hubErr.message);
             }
 
-            toast.success(`Gracias ${name?.split?.(" ")[0] || "por agendar"} con nosotros`);
-            dispatch({ type: "SET_CONFIRMATION", value: true });
+            toast.success(`✅ Gracias ${name.split(" ")[0]} por agendar con nosotros`);
+            setShowConfirmation(true);
 
-            setTimeout(() => {
-                dispatch({ type: "RESET", user });
-            }, 3000);
-
-        } catch (err) {
-            console.error("Error al enviar:", err);
+        } catch (error) {
+            console.error("❌ Error al agendar:", error);
             toast.error("Ocurrió un error al enviar el formulario.");
         } finally {
-            dispatch({ type: "SET_LOADING", value: false });
+            setIsLoading(false);
         }
+
+        setTimeout(() => {
+            setShowConfirmation(false);
+            setFormData({
+                name: user?.name || "",
+                email: user?.email || "",
+                phone: "",
+                message: "",
+                datetime: null,
+            });
+        }, 3000);
     };
-      
 
     return {
         formData,
-        errors,
+        setFormData,
+        fieldErrors,
+        setFieldErrors,
         isLoading,
         isDateValidating,
         showConfirmation,
+        setShowConfirmation,
         busySlots,
         handleDateChange,
         handleFinalSubmit,
-        dispatch,
     };
 };
