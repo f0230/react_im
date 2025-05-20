@@ -8,6 +8,8 @@ import PageWrapper from "@/components/layout/PageWrapper";
 import CleoWidget from "@/components/CleoChat";
 import SEO from '@/components/SEO';
 
+import Layout from "@/components/Layout";
+
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -16,12 +18,15 @@ const Servicios = () => {
 
     return (
         <>
+
             <SEO
                 title="Servicios | Grupo DTE"
                 description="Conocé nuestros servicios de desarrollo web, automatización de marketing y diseño personalizado para empresas modernas."
                 image="https://grupodte.com/og-servicios.jpg"
                 url="https://grupodte.com/servicios"
             />
+
+            <Layout>
 
             <PageWrapper>
                 <main
@@ -57,8 +62,9 @@ const Servicios = () => {
                     </div>
                 </main>
             </PageWrapper>
-
+            </Layout>
             <CleoWidget />
+        
         </>
     );
 };

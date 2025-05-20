@@ -12,6 +12,7 @@ const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Services = lazy(() => import("@/pages/Services"));
+const LandingDespega = lazy(() => import("@/pages/LandingDespega"));
 
 const App = () => {
   return (
@@ -19,20 +20,17 @@ const App = () => {
       <ScrollToTop />
       <Suspense fallback={<LoadingFallback type="spinner" />}>
 
-      <Layout>
+
 
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/Nosotros" element={<About />} />
             <Route path="/Contacto" element={<Contact />} />
             <Route path="/servicios" element={<Services />} />
+            <Route path="/despega" element={<LandingDespega />} />
           </Routes>
 
 
-
-
-
-        </Layout>
 
     </Suspense>
 

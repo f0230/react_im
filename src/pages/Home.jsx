@@ -2,6 +2,8 @@
 import React, { lazy, Suspense } from "react";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 
+import Layout from "@/components/Layout";
+
 const HeroSection = lazy(() => import("@/components/Section1"));
 const Section2 = lazy(() => import("@/components/Section2"));
 const Section3 = lazy(() => import("@/components/Section3"));
@@ -13,6 +15,8 @@ const Section7 = lazy(() => import("@/components/Section8"));
 
 const Home = () => {
   return (
+
+    <Layout>
     <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative">
         <div className="relative w-full">
           <HeroSection />
@@ -40,6 +44,7 @@ const Home = () => {
         </div>
         <ScrollToTopButton />
     </div>
+    </Layout>
   );
 };
 
