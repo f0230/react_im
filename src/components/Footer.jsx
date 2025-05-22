@@ -70,7 +70,7 @@ const Footer = ({ setIsModalOpen }) => {
 
       {/* Pie de página con metainformación */}
       <div className="grid grid-cols-3 items-center w-full max-w-[1080px] mx-auto px-4">
-        <div className="block md:invisible text-left">
+        <div className="block  text-left">
           <p className="text-[10px] text-neutral-500">© 2025</p>
           <Link to="/tyc" className=" hover:text-black transition">
             <p className="text-[10px] text-neutral-500">   Términos y Condiciones</p>
@@ -83,7 +83,7 @@ const Footer = ({ setIsModalOpen }) => {
         
         
         </div>
-        <div className="block md:invisible text-right">
+        <div className="block  text-right">
           <p className="text-[10px] text-neutral-500">{contactInfo.country}</p>
           <Link to="/politica-privacidad" className=" hover:text-black transition">
             <p className="text-[10px] text-neutral-500">     Política de Privacidad</p>
