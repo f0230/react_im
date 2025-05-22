@@ -5,6 +5,8 @@ import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 import { imagetools } from 'vite-imagetools';
 import imagePresets from 'vite-plugin-image-presets';
+import Pages from 'vite-plugin-pages';
+import PagesSitemap from 'vite-plugin-pages-sitemap';
 
 export default defineConfig({
   plugins: [
@@ -16,6 +18,11 @@ export default defineConfig({
         widths: [480, 768, 1024, 1440],
         sizes: '100vw',
       },
+    }),
+    Pages(),
+    PagesSitemap({
+      hostname: 'https://www.grupodte.com', // ✅ Cambiar a tu dominio final
+      exclude: ['/404'],
     }),
     visualizer({
       filename: './dist/stats.html',
