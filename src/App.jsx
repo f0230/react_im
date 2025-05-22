@@ -13,6 +13,9 @@ const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Services = lazy(() => import("@/pages/Services"));
 const LandingDespega = lazy(() => import("@/pages/LandingDespega"));
+const Terminos = lazy(() => import("@/pages/TerminosCondiciones"));
+const PoliticaPrivacidad = lazy(() => import("@/pages/PoliticaPrivacidad"));
+
 
 const App = () => {
   return (
@@ -28,6 +31,8 @@ const App = () => {
             <Route path="/Contacto" element={<Contact />} />
             <Route path="/servicios" element={<Services />} />
             <Route path="/despega" element={<LandingDespega />} />
+            <Route path="tyc" element={<Terminos />} />
+            <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
           </Routes>
 
 
