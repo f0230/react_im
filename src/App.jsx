@@ -1,7 +1,6 @@
 // App.jsx
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Layout from "@/components/Layout";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
 
@@ -22,24 +21,18 @@ const App = () => {
     <Router>
       <ScrollToTop />
       <Suspense fallback={<LoadingFallback type="spinner" />}>
-
-
-
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/Nosotros" element={<About />} />
-            <Route path="/Contacto" element={<Contact />} />
-            <Route path="/servicios" element={<Services />} />
-            <Route path="/despega" element={<LandingDespega />} />
-            <Route path="tyc" element={<Terminos />} />
-            <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
-          </Routes>
-
-
-
-    </Suspense>
-
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/Nosotros" element={<About />} />
+          <Route path="/Contacto" element={<Contact />} />
+          <Route path="/servicios" element={<Services />} />
+          <Route path="/despega" element={<LandingDespega />} />
+          <Route path="/tyc" element={<Terminos />} /> {/* ✅ este era el problema */}
+          <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
+        </Routes>
+      </Suspense>
     </Router>
+  
   );
 };
 
