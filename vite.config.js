@@ -7,6 +7,9 @@ import { imagetools } from 'vite-imagetools';
 import imagePresets from 'vite-plugin-image-presets';
 import Pages from 'vite-plugin-pages';
 import PagesSitemap from 'vite-plugin-pages-sitemap';
+import Sitemap from 'vite-plugin-sitemap';
+
+
 
 export default defineConfig({
   plugins: [
@@ -30,6 +33,20 @@ export default defineConfig({
       gzipSize: true,
       brotliSize: true,
     }),
+
+    Sitemap({
+      hostname: 'https://www.grupodte.com',
+      routes: [
+        '/',
+        '/Nosotros',
+        '/Contacto',
+        '/servicios',
+        '/despega',
+        '/tyc',
+        '/politica-privacidad'
+      ],
+    }),
+    
   ],
   base: './',
   resolve: {
