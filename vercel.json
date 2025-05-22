@@ -14,20 +14,18 @@
       ]
     }
   ],
-  
-    "rewrites": [
-      {
-        "source": "/sitemap.xml",
-        "destination": "/sitemap.xml"
-      },
-      {
-        "source": "/assets/(.*)",
-        "destination": "/assets/$1"
-      },
-      {
-        "source": "/(.*)",
-        "destination": "/index.html"
-      }
-    ]
-  
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/sitemap.xml"
+    },
+    {
+      "source": "/assets/(.*)",
+      "destination": "/assets/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

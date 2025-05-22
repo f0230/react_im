@@ -8,6 +8,8 @@ import { toast } from "react-hot-toast";
 import GoogleLoginWrapper from "@/components/Form/GoogleLoginWrapper";
 import { useAuthUser } from "@/hooks/useAuthUser";
 import { useAppointmentForm } from "@/hooks/useAppointmentForm";
+import { Link } from 'react-router-dom';
+
 
 // Componente de error reutilizable
 const ErrorMessage = ({ message }) => {
@@ -85,7 +87,22 @@ const StepperModal = ({ isOpen, onClose }) => {
 
                         {/* Si no está autenticado, muestra login */}
                         {!isAuthenticated ? (
-                            <GoogleLoginWrapper onLoginSuccess={() => setToken(localStorage.getItem("google_token"))} />
+
+                            
+<>
+                                <p className="text-xs text-gray-500 text-center mb-4">
+                                    Usamos tu cuenta de Google únicamente para identificarte y agendar tu cita. Nunca compartiremos tus datos sin tu consentimiento.
+                                </p>
+
+                                <GoogleLoginWrapper onLoginSuccess={() => setToken(localStorage.getItem("google_token"))} />
+
+                                <p className="text-xs text-center text-gray-400 mt-2">
+                                    Al continuar aceptás nuestra{' '}
+                                    <Link to="/politica-privacidad" className="underline text-blue-600">
+                                        Política de Privacidad
+                                    </Link>.
+                                </p>
+                            </>
                         ) : (
                             <Stepper
                                 formData={formData}
