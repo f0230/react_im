@@ -16,7 +16,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
-    "framer-motion": "^12.10.0",
+    "framer-motion": "^10.16.3",
     "googleapis": "^148.0.0",
     "gsap": "^3.12.7",
     "ics": "^3.8.1",
