@@ -29,7 +29,8 @@ const TerminosCondiciones = () => {
                 <section className="space-y-10">
                     <FadeContent delay={100}>
                         <p>
-                            Bienvenido al sitio web <strong>www.grupodte.com</strong> (en adelante, el “Sitio”), propiedad de <strong>Maria Jose Isgleas Rodriguez</strong>, titular legal de la marca y responsable de la operación comercial de Grupo DTE.
+                                Bienvenido al sitio web <strong>www.grupodte.com</strong> (en adelante, el “Sitio”), propiedad de <strong>ISGLEAS RODRIGUEZ MARIA JOSE
+                            </strong>, titular legal de la marca y responsable de la operación comercial de Grupo DTE.
                         </p>
                         <p>
                             El uso de este Sitio implica la aceptación plena de los siguientes Términos y Condiciones. Si no estás de acuerdo con alguna de las condiciones aquí establecidas, por favor no utilices este Sitio.
