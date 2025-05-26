@@ -7,7 +7,7 @@ import { contactInfo } from '@/config/branding';
 
 const Footer = ({ setIsModalOpen }) => {
   const footerRef = useRef();
-
+s
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo(
@@ -71,10 +71,11 @@ const Footer = ({ setIsModalOpen }) => {
       {/* Pie de página con metainformación */}
       <div className="grid grid-cols-3 items-center w-full max-w-[1080px] mx-auto px-4">
         <div className="block  text-left">
-          <p className="text-[10px] text-neutral-500">© 2025</p>
+          <p className="text-[10px] text-neutral-500">© 2025 Grupo DTE | ISGLEAS RODRIGUEZ MARIA JOSE | Todos los derechos reservados</p>
           <Link to="/tyc" className=" hover:text-black transition">
             <p className="text-[10px] text-neutral-500">   Términos y Condiciones</p>
           </Link>
+          <p className="text-[10px] text-neutral-500">   Términos y Condiciones</p>
 
         </div>
         <div className="text-center text-[10px] text-neutral-500 flex flex-wrap justify-center gap-x-2 gap-y-1">

@@ -35,7 +35,7 @@ const PoliticaPrivacidad = () => {
                         {
                             title: '1. Responsable del tratamiento',
                             content: `El responsable de los datos personales recogidos a través de este Sitio es:
-Maria Jose Isgleas Rodriguez
+ISGLEAS RODRIGUEZ MARIA JOSE
 
 Correo electrónico: grupo@grupodte.com`
                         },
