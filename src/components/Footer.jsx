@@ -7,7 +7,7 @@ import { contactInfo } from '@/config/branding';
 
 const Footer = ({ setIsModalOpen }) => {
   const footerRef = useRef();
-s
+
   useLayoutEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo(
