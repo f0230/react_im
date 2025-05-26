@@ -70,27 +70,30 @@ s
 
       {/* Pie de página con metainformación */}
       <div className="grid grid-cols-3 items-center w-full max-w-[1080px] mx-auto px-4">
-        <div className="block  text-left">
-          <p className="text-[10px] text-neutral-500">© 2025 Grupo DTE | ISGLEAS RODRIGUEZ MARIA JOSE | Todos los derechos reservados</p>
-          <Link to="/tyc" className=" hover:text-black transition">
-            <p className="text-[10px] text-neutral-500">   Términos y Condiciones</p>
+        {/* Columna izquierda */}
+        <div className="text-left">
+          <p className="text-[10px] text-neutral-500">
+            © 2025 Grupo DTE | ISGLEAS RODRIGUEZ MARIA JOSE | Todos los derechos reservados
+          </p>
+          <Link to="/tyc" className="text-[10px] text-neutral-500 hover:text-black transition">
+            Términos y Condiciones
           </Link>
-          <p className="text-[10px] text-neutral-500">   Términos y Condiciones</p>
-
         </div>
+
+        {/* Columna central */}
         <div className="text-center text-[10px] text-neutral-500 flex flex-wrap justify-center gap-x-2 gap-y-1">
           <span>Desarrollado por DTE</span>
-          
-        
-        
         </div>
-        <div className="block  text-right">
+
+        {/* Columna derecha */}
+        <div className="text-right">
           <p className="text-[10px] text-neutral-500">{contactInfo.country}</p>
-          <Link to="/politica-privacidad" className=" hover:text-black transition">
-            <p className="text-[10px] text-neutral-500">     Política de Privacidad</p>
+          <Link to="/politica-privacidad" className="text-[10px] text-neutral-500 hover:text-black transition">
+            Política de Privacidad
           </Link>
         </div>
       </div>
+
     </footer>
   );
 };
