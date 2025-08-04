@@ -1,5 +1,7 @@
 import React from 'react';
 import BlurText from './ui/TextBlur';
+import LogoCloud from '../components/LogoCloud';
+
 
 const DevelopmentHero = () => {
   return (
@@ -16,6 +18,7 @@ const DevelopmentHero = () => {
         animateBy="words"
         className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto"    
       />
+      <LogoCloud />
     </div>
   );
 };

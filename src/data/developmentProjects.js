@@ -17,20 +17,21 @@ const developmentProjects = [
   },
   {
     id: 3,
-    title: 'App de Entrenamiento',
-    description: 'Aplicación móvil PWA para la planificación y seguimiento de rutinas de entrenamiento personalizadas, desplegada completamente en React con Google como login y autenticación para múltiples usuarios.',
-    imageUrl: 'https://placehold.co/400x250',
-    technologies: ['React Native', 'Supabase', 'AI', 'PWA', 'Google Login'],
-    link: '#', // Placeholder link
-  },
-  {
-    id: 4,
     title: 'Gestión de Transacciones de Fichas Online',
     description: 'Plataforma para la gestión de transacciones de fichas online, orientada a sistemas de juego y fidelización.',
     imageUrl: 'https://placehold.co/400x250',
     technologies: ['React', 'Supabase',],
     link: '#', // Placeholder link
   },
+  {
+    id: 4,
+    title: 'App de Entrenamiento',
+    description: 'Aplicación móvil PWA para la planificación y seguimiento de rutinas de entrenamiento personalizadas, desplegada completamente en React con Google como login y autenticación para múltiples usuarios.',
+    imageUrl: 'https://placehold.co/400x250',
+    technologies: ['React Native', 'Supabase', 'AI', 'PWA', 'Google Login'],
+    link: '#', // Placeholder link
+  },
+
 ];
 
 export default developmentProjects;

@@ -3,13 +3,13 @@ import Lenis from "lenis";
 
 export const ScrollStackItem = ({ children, itemClassName = "" }) => (
   <div
-    className={`scroll-stack-card relative my-8 p-8 md:p-12 rounded-[40px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] box-border origin-top will-change-transform bg-white mx-auto border border-gray-100/50 ${itemClassName}`.trim()}
+    className={`scroll-stack-card relative my-4 sm:my-6 md:my-8 p-4 sm:p-6 md:p-8 lg:p-12 rounded-[20px] sm:rounded-[30px] md:rounded-[40px] shadow-[0_8px_32px_rgba(0,0,0,0.12)] box-border origin-top will-change-transform bg-white mx-auto border border-gray-100/50 ${itemClassName}`.trim()}
     style={{
       backfaceVisibility: 'hidden',
       transformStyle: 'preserve-3d',
-      width: '1080px',
-      maxWidth: '100%',
-      minHeight: '500px',
+      width: '100%',
+      maxWidth: '1080px',
+      minHeight: '400px',
       background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
     }}
   >
@@ -252,7 +252,7 @@ const ScrollStack = ({
       className={`relative w-full ${className}`.trim()}
       ref={scrollerRef}
     >
-      <div className="scroll-stack-inner pt-[20vh] px-20 pb-[20vh] min-h-[200vh]">
+      <div className="scroll-stack-inner  sm:pt-[15vh] md:pt-[0vh] px-4 sm:px-8 md:px-12 lg:px-20 pb-[60vh] sm:pb-[30vh] md:pb-[50vh] min-h-[200vh]">
         {children}
         {/* Spacer so the last pin can release cleanly */}
         <div className="scroll-stack-end w-full h-px" />

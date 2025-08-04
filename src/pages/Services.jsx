@@ -7,6 +7,7 @@ import TrueFocus from '@/components/ui/TrueFocus';
 import PageWrapper from "@/components/layout/PageWrapper";
 import CleoWidget from "@/components/CleoChat";
 import SEO from '@/components/SEO';
+import BlurText from '../components/ui/TextBlur';
 
 import Layout from "@/components/Layout";
 
@@ -31,19 +32,22 @@ const Servicios = () => {
             <PageWrapper>
                 <main
                     ref={containerRef}
-                    className="bg-skysoft relative transition-colors duration-[1500ms] ease-in-out flex flex-col items-center font-product text-black bg-[#d0f0f9] w-full pt-[80px] pb-[100px]"
+                    className=" relative transition-colors duration-[1500ms] ease-in-out flex flex-col items-center font-product text-black w-full pt-[80px] pb-[100px]"
                 >
                     {/* 🏷️ Título principal */}
                     <div className="relative z-10 px-4 md:px-20 w-full md:max-w-[1080px] text-center">
-                        <TrueFocus
-                            sentence="Servicios DTE"
-                            manualMode={false}
-                            blurAmount={5}
-                            borderColor="red"
-                            animationDuration={2}
-                            pauseBetweenAnimations={1}
-                            textClassName="text-5xl md:text-7xl font-black"
-                        />
+                            <BlurText
+                                text="Listado de Servicios"
+                                delay={100}
+                                animateBy="words"
+                                className="text-4xl md:text-5xl font-bold mb-4"
+                            />
+                            <BlurText
+                                text="Ofrecemos una aplia gama de servicios para ayudar a tu empresa a crecer y destacar en el mundo digital. Desde desarrollo web hasta automatización de marketing, tenemos la solución perfecta para tus necesidades."
+                                delay={100}
+                                animateBy="words"
+                                className="text-1xl md:text-2xl font-normal mb-4"
+                            />
                     </div>
 
                     {/* 📦 Lista de servicios */}
