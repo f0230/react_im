@@ -48,10 +48,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'framer-motion': 'framer-motion/dist/es/index.mjs'
+      'framer-motion': path.resolve(__dirname, 'node_modules/framer-motion/dist/framer-motion.cjs.js'),
     },
     dedupe: ['framer-motion'],
   },
+
   server: {
     proxy: {
       '/api': 'http://localhost:3001',
