@@ -73,7 +73,7 @@ const Footer = ({ setIsModalOpen }) => {
         {/* Columna izquierda */}
         <div className="text-left">
           <p className="text-[10px] text-neutral-500">
-            © 2025 Grupo DTE | ISGLEAS RODRIGUEZ MARIA JOSE | Todos los derechos reservados
+            © 2025 Grupo DTE 
           </p>
           <Link to="/tyc" className="text-[10px] text-neutral-500 hover:text-black transition">
             Términos y Condiciones

@@ -14,6 +14,7 @@ const Services = lazy(() => import("@/pages/Services"));
 const LandingDespega = lazy(() => import("@/pages/LandingDespega"));
 const Terminos = lazy(() => import("@/pages/TerminosCondiciones"));
 const PoliticaPrivacidad = lazy(() => import("@/pages/PoliticaPrivacidad"));
+const Development = lazy(() => import("@/pages/Development"));
 
 
 const App = () => {
@@ -29,6 +30,7 @@ const App = () => {
           <Route path="/despega" element={<LandingDespega />} />
           <Route path="/tyc" element={<Terminos />} /> {/* ✅ este era el problema */}
           <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
+          <Route path="/desarrollo" element={<Development />} />
         </Routes>
       </Suspense>
     </Router>
