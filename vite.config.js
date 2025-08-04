@@ -9,8 +9,6 @@ import Pages from 'vite-plugin-pages';
 import PagesSitemap from 'vite-plugin-pages-sitemap';
 import Sitemap from 'vite-plugin-sitemap';
 
-
-
 export default defineConfig({
   plugins: [
     react(),
@@ -24,7 +22,7 @@ export default defineConfig({
     }),
     Pages(),
     PagesSitemap({
-      hostname: 'https://www.grupodte.com', // ✅ Cambiar a tu dominio final
+      hostname: 'https://www.grupodte.com',
       exclude: ['/404'],
     }),
     visualizer({
@@ -33,7 +31,6 @@ export default defineConfig({
       gzipSize: true,
       brotliSize: true,
     }),
-
     Sitemap({
       hostname: 'https://www.grupodte.com',
       routes: [
@@ -46,12 +43,12 @@ export default defineConfig({
         '/politica-privacidad'
       ],
     }),
-    
   ],
   base: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'framer-motion': 'framer-motion/dist/es/index.mjs'
     },
     dedupe: ['framer-motion'],
   },
@@ -84,6 +81,12 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'framer-motion', 'gsap', 'framer-motion/dist/framer-motion'],
+    include: [
+      'react',
+      'react-dom',
+      'framer-motion',
+      'gsap',
+      'framer-motion/dist/framer-motion'
+    ],
   },
 });
