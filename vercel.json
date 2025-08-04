@@ -1,4 +1,7 @@
 {
+  "engines": {
+    "node": "20.x"
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -27,10 +30,5 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "build": {
-    "env": {
-      "NODE_VERSION": "18"
-    }
-  }
+  ]
 }
