@@ -83,6 +83,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'framer-motion', 'gsap'],
+    include: ['react', 'react-dom', 'framer-motion', 'gsap', 'framer-motion/dist/framer-motion'],
   },
 });
