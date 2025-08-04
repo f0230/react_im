@@ -48,9 +48,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      'framer-motion': path.resolve(__dirname, 'node_modules/framer-motion/dist/framer-motion.cjs.js'),
     },
-    dedupe: ['framer-motion'],
   },
 
   server: {
@@ -86,8 +84,7 @@ export default defineConfig({
       'react',
       'react-dom',
       'framer-motion',
-      'gsap',
-      'framer-motion/dist/framer-motion'
+      'gsap'
     ],
   },
 });
