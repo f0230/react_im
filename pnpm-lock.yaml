@@ -94,7 +94,7 @@ importers:
         specifier: ^5.14.0
         version: 5.14.0(rollup@4.46.2)
       sharp:
-        specifier: ^0.33.4
+        specifier: 0.33.5
         version: 0.33.5
       tailwindcss:
         specifier: ^3.4.17

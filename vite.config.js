@@ -3,8 +3,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
-import { imagetools } from 'vite-imagetools';
-import imagePresets from 'vite-plugin-image-presets';
+// import { imagetools } from 'vite-imagetools'; // Comentado temporalmente
+// import imagePresets from 'vite-plugin-image-presets'; // Comentado temporalmente
 import Pages from 'vite-plugin-pages';
 import PagesSitemap from 'vite-plugin-pages-sitemap';
 import Sitemap from 'vite-plugin-sitemap';
@@ -12,14 +12,14 @@ import Sitemap from 'vite-plugin-sitemap';
 export default defineConfig({
   plugins: [
     react(),
-    imagetools(),
-    imagePresets({
-      responsive: {
-        formats: ['webp', 'jpeg'],
-        widths: [480, 768, 1024, 1440],
-        sizes: '100vw',
-      },
-    }),
+    // imagetools(), // Comentado temporalmente
+    // imagePresets({ // Comentado temporalmente
+    //   responsive: {
+    //     formats: ['webp', 'jpeg'],
+    //     widths: [480, 768, 1024, 1440],
+    //     sizes: '100vw',
+    //   },
+    // }),
     Pages(),
     PagesSitemap({
       hostname: 'https://www.grupodte.com',
