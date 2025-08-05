@@ -158,12 +158,9 @@ const CleoWidget = () => {
                         animate="animate"
                         exit="exit"
                         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                        className="fixed bottom-4 left-4 z-50 bg-gray-900 text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2 text-lg font-semibold hover:bg-gray-800 transition-all duration-300 transform hover:scale-105"
+                        className="backdrop-blur-lg fixed bottom-4 left-4 z-50  text-bold px-2 py-1 rounded-full shadow-lg flex items-center gap-2 text-[11px] hover:bg-gray-800 transition-all duration-300 transform hover:scale-105"
                         aria-label="Open chat with Cleo"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        </svg>
                         ¡Hola! Soy Cloe
                     </motion.button>
                 )}
@@ -178,11 +175,12 @@ const CleoWidget = () => {
                         animate="animate"
                         exit="exit"
                         transition={{ duration: 0.4, ease: 'easeOut' }}
-                        className="fixed bottom-4 left-4 z-50 w-full max-w-sm bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col h-[450px]"
+                        className="fixed bottom-4 left-4 z-50 w-full max-w-[250px] rounded-xl shadow-2xl border border-gray-200 flex flex-col h-[450px] backdrop-blur-lg"
                         role="dialog"
                         aria-labelledby="chat-title"
+                        style={{ background: 'none', backdropFilter: 'blur(12px)' }}
                     >
-                        <div className="flex justify-between items-center p-4 bg-gray-900 text-white rounded-t-xl shadow-md">
+                        <div className="flex justify-between items-center p-4 bg-black/75 text-white rounded-t-xl shadow-md">
                             <h2 id="chat-title" className="text-xl font-bold flex items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -191,7 +189,7 @@ const CleoWidget = () => {
                             </h2>
                             <button
                                 onClick={closeChat}
-                                className="text-white hover:text-gray-100 transition-colors duration-200 p-1 rounded-full hover:bg-white hover:bg-opacity-20"
+                                className="text-white backdrop-blur-lg  transition-colors duration-200 p-1 rounded-full "
                                 aria-label="Close chat"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -221,12 +219,12 @@ const CleoWidget = () => {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        <form onSubmit={handleSend} className="flex p-4 border-t border-gray-200 gap-2">
+                        <form onSubmit={handleSend} className="flex p-4 bg-black/10 gap-2">
                             <input
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder="Escribe tu mensaje..."
-                                className="flex-1 border border-gray-300 rounded-full px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
+                                className="max-w-[155px] flex-1 border border-gray-300 rounded-full px-4 py-2 text-base focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
                                 disabled={isLoading}
                                 aria-label="Message input"
                             />

@@ -220,7 +220,7 @@ const Navbar = () => {
                 <div
                     ref={menuRef}
                     id="mobile-menu"
-                    className="fixed inset-0 bg-white/80 backdrop-blur-lg flex justify-start items-end flex-col p-6 pt-20 z-40"
+                    className="fixed rounded-[20px] backdrop-blur-md  flex-col p-6 pt-20 z-40"
                 >
                     <div
                         ref={glowRef}
@@ -235,7 +235,7 @@ const Navbar = () => {
                                 >
                                     <button
                                         onClick={() => handleMenuItemClick(item.url)}
-                                        className="text-black text-[18px] leading-tight font-product font-normal tracking-wide block hover:scale-105 transition-transform duration-300"
+                                        className="text-black text-[13px] leading-tight font-product font-normal tracking-wide block hover:scale-105 transition-transform duration-300"
                                     >
                                         {item.text}
                                     </button>
