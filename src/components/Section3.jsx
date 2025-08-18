@@ -76,7 +76,7 @@ const Section3 = () => {
                      <img src={logoDTE} alt="Logo Grupo DTE" />
                    </div>
 
-              <h3 className="mt-[-10px] md:mt-[-20px] mb-5 text-greyburger text-[20px] md:text-[40px] font-normal">
+              <h3 className="mt-[-10px] md:mt-[-20px] mb-5 text-black text-[20px] md:text-[40px] font-normal">
                 proyectos + ideas
               </h3>
               <p className="mb-10 md:mb-[75px] w-[250px] md:w-[323px] text-[12px] md:text-[17px] text-gray-600 leading-none">

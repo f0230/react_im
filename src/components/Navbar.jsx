@@ -220,13 +220,13 @@ const Navbar = () => {
                 <div
                     ref={menuRef}
                     id="mobile-menu"
-                    className="fixed rounded-[20px] backdrop-blur-md  flex-col p-6 pt-20 z-40"
+                    className="fixed rounded-[20px] backdrop-blur-md  flex-col p-6 pt-20 z-40 right-0"
                 >
                     <div
                         ref={glowRef}
                         className="absolute inset-0 pointer-events-none rounded-2xl"
                     />
-                    <nav className="w-full max-w-md">
+                    <nav className="w-full max-w-md ">
                         <ul className="flex flex-col items-start space-y-4">
                             {menuItems.map((item, i) => (
                                 <li
