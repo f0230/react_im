@@ -10,7 +10,7 @@ import logoDTE from '../assets/dte_lohace.webp';
 
 
 
-const Section3 = () => {
+const Section3 = ({ onContactClick }) => {
   const bannerWebRef = useRef(null);
   const bannerMobileRef = useRef(null);
   const firstSectionRef = useRef(null);
@@ -82,9 +82,14 @@ const Section3 = () => {
               <p className="mb-10 md:mb-[75px] w-[250px] md:w-[323px] text-[12px] md:text-[17px] text-gray-600 leading-none">
                 Te ayudamos a tomar decisiones estratégicas para que tu nuevo proyecto crezca con foco, coherencia y resultados.
               </p>
-              <button className="text-[13px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-full hover:bg-skyblue/95 transition duration-300">
-                Ver más
-              </button>
+              <Link to="/servicios">
+                <button
+                  className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full hover:bg-blue-400 transition duration-300 mb-6"
+                  aria-label="Ver más sobre espacios"
+                >
+                  Ver más
+                </button>
+              </Link>
             </div>
           </div>
 
@@ -95,11 +100,9 @@ const Section3 = () => {
               <p className="mb-10 w-[250px] text-[12px] md:text-[17px] text-white leading-none">
                 creativas y estratégicas que conectan con tu público
               </p>
-              <Link to = "/contactanos>">
-              <button className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full hover:bg-blue-400 transition duration-300 mb-6">
+              <button onClick={onContactClick} className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
                 Contáctanos
               </button>
-              </Link>
             </div>
 
             {/* Imagen web */}

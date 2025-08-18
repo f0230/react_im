@@ -22,9 +22,9 @@ const ScrollStack = ({
   className = "",
   itemDistance = 100,
   itemScale = 0.03,
-  itemStackDistance = 30,
-  stackPosition = "20%",
-  scaleEndPosition = "10%",
+  itemStackDistance = 10,
+  stackPosition = "10%",
+  scaleEndPosition = "5%",
   baseScale = 0.85,
   scaleDuration = 0.5,
   rotationAmount = 0,
@@ -252,10 +252,10 @@ const ScrollStack = ({
       className={`relative w-full ${className}`.trim()}
       ref={scrollerRef}
     >
-      <div className="scroll-stack-inner  sm:pt-[15vh] md:pt-[0vh] px-4 sm:px-8 md:px-12 lg:px-20 pb-[60vh] sm:pb-[30vh] md:pb-[50vh] min-h-[200vh]">
+      <div className="scroll-stack-inner  sm:pt-[15vh] md:pt-[0vh] px-4 sm:px-8 md:px-12 lg:px-20 pb-[250px] min-h-[200vh]">
         {children}
         {/* Spacer so the last pin can release cleanly */}
-        <div className="scroll-stack-end w-full h-px" />
+        <div className="scroll-stack-end w-full " />
       </div>
     </div>
   );

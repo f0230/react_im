@@ -6,7 +6,7 @@ import bgWebProfe from "../assets/Profeweb.webp";
 import { Link } from 'react-router-dom';
 
 
-const Section2 = () => {
+const Section2 = ({ onContactClick }) => {
   return (
     <section
       className="font-product relative w-full flex justify-center items-start px-2 z-10"
@@ -37,11 +37,9 @@ const Section2 = () => {
           </p>
 
           <div className="mt-4 md:mt-8 inline-block space-x-1 md:space-x-2 lg:space-x-3">
-            <a href="#contact" aria-label="Ir a contacto">
-              <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 hover:text-white transition duration-300">
-                Contactanos
-              </button>
-            </a>
+            <button onClick={onContactClick} className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
+                        Contactanos
+                      </button>
             <Link to="/servicios">
             <button className="z-100 text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 hover:text-skyblue transition duration-300">
                 Servicios

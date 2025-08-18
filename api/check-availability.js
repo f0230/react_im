@@ -2,6 +2,11 @@ import { google } from 'googleapis';
 import { getAccessTokenFromRefresh } from './utils/getAccessToken.js';
 
 export default async function handler(req, res) {
+  console.log('Checking environment variables:', {
+    clientId: process.env.GOOGLE_CLIENT_ID ? 'Loaded' : 'Missing',
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET ? 'Loaded' : 'Missing',
+    refreshToken: process.env.GOOGLE_REFRESH_TOKEN ? 'Loaded' : 'Missing',
+  });
   try {
     const token = await getAccessTokenFromRefresh();
     if (!token) {

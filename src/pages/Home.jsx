@@ -1,6 +1,8 @@
 // Home.jsx optimizado
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
+import StepperModal from "@/components/StepperModal";
+
 
 import Layout from "@/components/Layout";
 
@@ -14,18 +16,19 @@ const InfiniteCarousel = lazy(() => import("@/components/Slide"));
 const Section7 = lazy(() => import("@/components/Section8"));
 
 const Home = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
   return (
 
     <Layout>
     <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative">
         <div className="relative w-full">
-          <HeroSection />
+          <HeroSection onContactClick={() => setIsModalOpen(true)} />
         </div>
         <div className="relative w-full">
-          <Section2 />
+          <Section2 onContactClick={() => setIsModalOpen(true)} />
         </div>
         <div className="relative w-full">
-          <Section3 />
+          <Section3 onContactClick={() => setIsModalOpen(true)} />
         </div>
         <div className="relative w-full">
           <Section4 />
@@ -40,10 +43,11 @@ const Home = () => {
           <InfiniteCarousel />
         </div>
         <div className="relative w-full">
-          <Section7 />
+          <Section7 onContactClick={() => setIsModalOpen(true)} />
         </div>
         <ScrollToTopButton />
     </div>
+    <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </Layout>
   );
 };

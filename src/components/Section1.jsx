@@ -16,7 +16,7 @@ import xclose from "../assets/x-close.svg";
 
 const rotatingWords = ["negocio", "empresa", "marca", "proyecto", "futuro"];
 
-const HeroSection = () => {
+const HeroSection = ({ onContactClick }) => {
   const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
@@ -88,11 +88,9 @@ const HeroSection = () => {
 
                 <div className="mt-4 md:mt-8 flex flex-wrap justify-center gap-2 md:gap-4">
                   <AnimatedContent distance={60} direction="horizontal" reverse config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={900} className="inline-block">
-                    <a href="#contact" aria-label="Ir a contacto">
-                      <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
+                    <button onClick={onContactClick} className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
                         Contactanos
                       </button>
-                    </a>
                   </AnimatedContent>
 
                   

@@ -9,7 +9,7 @@ const MoreContent = () => {
   ];
   return (
     <div className="w-full md:h-[500px] flex flex-col justify-center items-center text-center bg-white p-6">
-      <div className="mb-40 w-full">
+      <div className=" w-full">
         <ScrollVelocity texts={technologies} />
       </div>
     

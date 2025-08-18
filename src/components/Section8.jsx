@@ -4,7 +4,7 @@ import Noise from './ui/Noise'; // Componente que renderiza un efecto de ruido v
 import GaleriaScroll from '../components/GaleriaScroll'; // Galería horizontal tipo carrusel scrollable
 import CompuFondo from '../assets/compu_fondo.webp'; // Imagen de fondo del hero
 
-const Section8 = () => {
+const Section8 = ({ onContactClick }) => {
     return (
         // Contenedor principal de la sección, con fuente personalizada y accesibilidad descriptiva
         <section className="w-full bg-black text-white font-product" aria-label="Planes personalizados">
@@ -42,11 +42,9 @@ const Section8 = () => {
 
                     {/* Botones principales: CTA de contacto y más información */}
                     <div className="mt-6 md:mt-10 flex justify-center gap-2 flex-wrap">
-                        <a href="#contact" aria-label="Ir a contacto">
-                            <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-full hover:bg-skyblue/90 transition duration-300">
+                        <button onClick={onContactClick} className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
                                 Contactanos
-                            </button>
-                        </a>
+                              </button>
                         <a href="#info" aria-label="Ver más información">
                             <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-full hover:bg-white/90 transition duration-300">
                                 Más info
