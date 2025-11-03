@@ -10,7 +10,7 @@ export const ScrollStackItem = ({ children, itemClassName = "" }) => (
       width: '100%',
       maxWidth: '1080px',
       minHeight: '400px',
-      background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
+      background: 'linear-gradient(135deg, #f2f2f2 0%, #fafafa 100%)',
     }}
   >
     {children}
@@ -252,7 +252,7 @@ const ScrollStack = ({
       className={`relative w-full ${className}`.trim()}
       ref={scrollerRef}
     >
-      <div className="scroll-stack-inner  sm:pt-[15vh] md:pt-[0vh] px-4 sm:px-8 md:px-12 lg:px-20 pb-[250px] min-h-[200vh]">
+      <div className="scroll-stack-inner pb-[200px]">
         {children}
         {/* Spacer so the last pin can release cleanly */}
         <div className="scroll-stack-end w-full " />

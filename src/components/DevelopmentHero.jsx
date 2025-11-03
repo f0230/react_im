@@ -5,7 +5,7 @@ import LogoCloud from '../components/LogoCloud';
 
 const DevelopmentHero = () => {
   return (
-    <div className="w-full pt-[175px] sm:pt-0 h-[500px] flex flex-col justify-center items-center text-center p-4">
+    <div className="w-full flex flex-col justify-center items-center text-center p-4">
       <BlurText
         text="Nuestro Portafolio de Desarrollo"
         delay={100}

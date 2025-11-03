@@ -54,7 +54,7 @@ const HeroSection = ({ onContactClick }) => {
             <div className="relative z-10 w-full h-full flex items-center justify-center">
               <div className="w-full max-w-7xl mx-auto flex flex-col items-center justify-center text-black">
 
-                <FadeContent blur duration={800} easing="ease-out" initialOpacity={0} delay={200}>
+                <FadeContent duration={800} easing="ease-out" initialOpacity={0} delay={200}>
                   <OptimizedImage
                     src={grupodte}
                     alt="Logo de Grupo DTE"
