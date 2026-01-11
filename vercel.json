@@ -1,6 +1,6 @@
 {
   "buildCommand": "bash vercel-build.sh",
-  "installCommand": "npm install -g pnpm@9.15.4 && pnpm install --ignore-scripts=false && pnpm rebuild sharp",
+  "installCommand": "corepack enable && pnpm install --ignore-scripts=false && pnpm rebuild sharp",
   "headers": [
     {
       "source": "/(.*)",
