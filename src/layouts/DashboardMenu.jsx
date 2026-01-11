@@ -43,7 +43,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
                         transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="absolute top-full right-0 mt-4 w-[280px] bg-[#111] border border-white/10 rounded-[20px] shadow-2xl z-50 overflow-hidden"
+                        className="absolute top-full right-0 mt-4 w-[240px] bg-[#111] border border-white/10 rounded-[20px] shadow-2xl z-50 overflow-hidden"
                     >
 
 
@@ -52,9 +52,10 @@ const DashboardMenu = ({ isOpen, onClose }) => {
                                 <NavLink
                                     key={item.path}
                                     to={item.path}
+                                    end={item.path === '/dashboard'}
                                     onClick={onClose}
                                     className={({ isActive }) => `
-                                flex items-center gap-3 px-4 py-3 rounded-[15px] transition-all duration-200 group
+                                flex items-center gap-2.5 px-3 py-2.5 rounded-[15px] transition-all duration-200 group
                                 ${isActive
                                             ? 'bg-white/10 text-white font-bold'
                                             : 'text-gray-400 hover:bg-white/5 hover:text-white'}

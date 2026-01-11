@@ -41,8 +41,8 @@ const Sidebar = () => {
                 {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
-            <div className={`
-        fixed inset-y-0 left-0 z-40 w-72 bg-black text-white transition-transform duration-300 ease-in-out transform
+                <div className={`
+        fixed inset-y-0 left-0 z-40 w-64 bg-black text-white transition-transform duration-300 ease-in-out transform
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0 md:static md:h-screen flex flex-col border-r border-white/10
       `}>
@@ -55,14 +55,14 @@ const Sidebar = () => {
                     </p>
                 </div>
 
-                <nav className="flex-1 overflow-y-auto py-8 px-4 space-y-3 font-product">
+                <nav className="flex-1 overflow-y-auto py-8 px-3 space-y-3 font-product">
                     {navLinks.map((item) => (
                         <NavLink
                             key={item.path}
                             to={item.path}
                             end={item.path === '/dashboard'}
                             className={({ isActive }) => `
-                flex items-center gap-4 px-6 py-3.5 rounded-[30px] transition-all duration-300 group
+                flex items-center gap-3 px-4 py-3.5 rounded-[26px] transition-all duration-300 group
                 ${isActive
                                     ? 'bg-white text-black font-bold shadow-lg shadow-white/5'
                                     : 'text-gray-400 hover:bg-white/5 hover:text-white'}
