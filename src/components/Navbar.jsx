@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import OptimizedImage from "./OptimizedImage";
 import HamburgerButton from "./ui/HamburgerButton";
-import logo from "../assets/iconodte.svg";
+import logo from "../assets/Group 255.svg";
 import { Link, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { menuItems } from "@/config/nav";
+import LoginModal from "./LoginModal";
 
 
 gsap.registerPlugin(ScrollTrigger);
@@ -46,8 +47,8 @@ const Navbar = () => {
             },
         });
     };
-    
-    
+
+
 
 
     const lastScrollYRef = useRef(0);
@@ -55,6 +56,7 @@ const Navbar = () => {
     const glowRef = useRef();
 
     const toggleMenu = () => setIsMenuOpen((prev) => !prev);
+    const [isLoginOpen, setIsLoginOpen] = useState(false);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -83,9 +85,9 @@ const Navbar = () => {
     }, []);
 
     useEffect(() => {
-        document.body.style.overflow = isMenuOpen ? "hidden" : "auto";
+        document.body.style.overflow = isMenuOpen || isLoginOpen ? "hidden" : "auto";
         return () => (document.body.style.overflow = "auto");
-    }, [isMenuOpen]);
+    }, [isMenuOpen, isLoginOpen]);
 
     useEffect(() => {
         if (isMenuOpen) {
@@ -166,9 +168,8 @@ const Navbar = () => {
                 duration: 0.6,
                 ease: "power2.out",
             });
-            
-            
-            
+
+
         }
     }, [isMenuOpen, isMenuVisible]);
 
@@ -176,7 +177,7 @@ const Navbar = () => {
         <>
             {/* Navbar principal */}
             <div
-                className={`fixed top-0 left-0 w-full bg-white/75 backdrop-blur-md z-50 transition-all duration-300 transform ${hasScrolled ? "shadow-md" : ""
+                className={`fixed top-0 left-0 w-full bg-black backdrop-blur-md z-50 transition-all duration-300 transform ${hasScrolled ? "shadow-md" : ""
                     } ${showNavbar ? "translate-y-0" : "-translate-y-full"}`}
             >
                 <nav
@@ -188,9 +189,9 @@ const Navbar = () => {
                         <OptimizedImage
                             src={logo}
                             alt="Logo DTE"
-                            width={100}
-                            height={25}
-                            className="h-[17.5px] sm:h-[20px] w-auto"
+                            width={56}
+                            height={18}
+                            className="h-[18px] w-auto"
                         />
                     </Link>
 
@@ -200,12 +201,22 @@ const Navbar = () => {
                             <li key={i}>
                                 <Link
                                     to={item.url}
-                                    className="text-black text-sm font-bold hover:underline"
+                                    className="text-white text-sm font-bold hover:underline"
                                 >
                                     {item.text}
                                 </Link>
                             </li>
                         ))}
+                        {/* Login Button Desktop */}
+                        <li>
+                            <button
+                                onClick={() => setIsLoginOpen(true)}
+                                className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors border border-white/10 flex items-center gap-2"
+                            >
+                                <span>Portal Clientes</span>
+
+                            </button>
+                        </li>
                     </ul>
 
                     {/* Botón hamburguesa */}
@@ -235,17 +246,31 @@ const Navbar = () => {
                                 >
                                     <button
                                         onClick={() => handleMenuItemClick(item.url)}
-                                        className="text-black text-[13px] leading-tight font-product font-normal tracking-wide block hover:scale-105 transition-transform duration-300"
+                                        className="text-white text-[13px] leading-tight font-product font-normal tracking-wide block hover:scale-105 transition-transform duration-300"
                                     >
                                         {item.text}
                                     </button>
 
                                 </li>
                             ))}
+                            {/* Login Button Mobile */}
+                            <li className="menu-item opacity-0 transform pt-4">
+                                <button
+                                    onClick={() => {
+                                        setIsMenuOpen(false);
+                                        setIsLoginOpen(true);
+                                    }}
+                                    className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px]"
+                                >
+                                    Acceso Clientes
+                                </button>
+                            </li>
                         </ul>
                     </nav>
                 </div>
             )}
+
+            <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
         </>
     );
 };

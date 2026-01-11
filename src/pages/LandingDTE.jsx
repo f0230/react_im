@@ -1,8 +1,8 @@
 import React from 'react';
 import Navbar from "@/components/Navbar";
-import bgHeroVideo from '@/assets/hero-video-loop.mp4';
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle, TrendingUp, Shield, Zap, Search, Clock, Users, Activity, BarChart } from 'lucide-react';
+import heroImage from '@/assets/Landing/Rectangle 80.webp';
 
 const LandingDTE = () => {
     const scrollToDiagnostico = () => {
@@ -14,56 +14,49 @@ const LandingDTE = () => {
             <Navbar />
 
             {/* 1. SECCIÓN HERO (El Gancho Irresistible) */}
-            <section className="relative min-h-screen flex items-center justify-center text-center overflow-hidden">
-                {/* Video de fondo con overlay */}
-                <div className="absolute inset-0 z-0">
-                    <video
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="w-full h-full object-cover opacity-40 mix-blend-luminosity"
-                    >
-                        <source src={bgHeroVideo} type="video/mp4" />
-                    </video>
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black" />
+            <section className="relative h-[90vh] flex flex-col justify-end items-center text-center overflow-hidden pb-16">
+                {/* Imagen de fondo */}
+                <div
+                    className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+                    style={{ backgroundImage: `url(${heroImage})` }}
+                >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/60" />
                 </div>
 
-                <div className="relative z-10 max-w-5xl px-6 pt-20">
+                <div className="relative z-10 max-w-5xl px-6 w-full flex flex-col items-center">
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.8 }}
                     >
-                        <span className="inline-block py-1 px-3 rounded-full bg-violet-500/20 text-violet-300 text-sm font-semibold mb-6 border border-violet-500/30 backdrop-blur-sm">
-                            Intelligent Automation Systems
-                        </span>
-                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight tracking-tight">
-                            Deja de subir por la escalera <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-fuchsia-400">
-                                y súbete al ascensor.
-                            </span>
+                        <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold leading-tight tracking-tight text-white drop-shadow-lg mb-80">
+                            Deja de subir por la escalera y súbete al <br />
+                            ascensor del crecimiento exponencial
                         </h1>
-                        <p className="mt-8 text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-                            Instalamos sistemas de <strong className="text-white">Intelligent Automation (IA)</strong> que permiten a tu empresa multiplicar sus ingresos sin aumentar sus costos operativos.
-                        </p>
 
-                        <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
+                        <div className="flex justify-center w-full">
                             <a
                                 href="https://wa.me/59899123456?text=Hola,%20quisiera%20un%20diagnóstico%20de%20escalabilidad"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="group relative px-8 py-4 bg-white text-black font-bold rounded-full text-lg hover:bg-gray-100 transition-all flex items-center gap-2"
+                                className="group relative px-6 py-4 bg-[#FF1F1F] text-white font-bold rounded-xl text-lg md:text-xl hover:bg-red-700 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(255,31,31,0.5)] w-full md:w-auto justify-center"
                             >
-                                Obtener diagnóstico en WhatsApp
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                Obtener diagnóstico de escalabilidad en WhatsApp
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="ml-2"
+                                >
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                </svg>
                             </a>
-                            <button
-                                onClick={() => document.getElementById('metodo').scrollIntoView({ behavior: 'smooth' })}
-                                className="px-8 py-4 bg-white/5 text-white border border-white/10 rounded-full font-medium hover:bg-white/10 transition-all backdrop-blur-sm"
-                            >
-                                Ver cómo funciona
-                            </button>
                         </div>
                     </motion.div>
                 </div>

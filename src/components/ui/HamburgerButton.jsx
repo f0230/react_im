@@ -11,13 +11,13 @@ const HamburgerButton = ({ isOpen, toggle }) => {
         >
             {/* Línea superior */}
             <motion.span
-                className="absolute block w-[26px] h-[3px] bg-greyburger rounded-full origin-center"
+                className="absolute block w-[26px] h-[3px] bg-white rounded-full origin-center"
                 animate={isOpen ? { rotate: 45, y: 0 } : { rotate: 0, y: -5 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             />
             {/* Línea inferior */}
             <motion.span
-                className="absolute block w-[26px] h-[3px] bg-greyburger rounded-full origin-center"
+                className="absolute block w-[26px] h-[3px] bg-white rounded-full origin-center"
                 animate={isOpen ? { rotate: -45, y: 0 } : { rotate: 0, y: 5 }}
                 transition={{ type: 'spring', stiffness: 260, damping: 20 }}
             />
