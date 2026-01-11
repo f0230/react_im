@@ -1,6 +1,6 @@
 {
   "buildCommand": "bash vercel-build.sh",
-  "installCommand": "pnpm install --ignore-scripts=false && pnpm rebuild sharp",
+  "installCommand": "npm install --no-audit --no-fund && npm rebuild sharp",
   "headers": [
     {
       "source": "/(.*)",
