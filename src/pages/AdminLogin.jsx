@@ -93,13 +93,9 @@ const AdminLogin = () => {
                             className="space-y-6"
                         >
                             <div className="space-y-2">
-                                <label htmlFor="email" className="text-xs font-medium text-white ml-1 uppercase tracking-wider">
-                                    Email Corporativo
-                                </label>
+
                                 <div className="relative group/input">
-                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-white">
-                                        <Mail size={18} />
-                                    </div>
+
                                     <input
                                         id="email"
                                         type="email"
