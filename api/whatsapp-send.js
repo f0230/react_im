@@ -25,7 +25,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid JSON body' });
   }
 
-  const { to, text, template, preview_url } = body;
+  // Added type, url, caption to destructuring
+  const { to, text, template, preview_url, type, url, caption } = body;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const apiVersion = process.env.WHATSAPP_API_VERSION || 'v18.0';
@@ -40,8 +41,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing "to" phone number' });
   }
 
-  if (!text && !template) {
-    return res.status(400).json({ error: 'Provide "text" or "template"' });
+  // Validation: either text, template, or media type with url
+  if (!text && !template && !(type && url)) {
+    return res.status(400).json({ error: 'Provide "text", "template", or "type" matching with "url"' });
   }
 
   const payload = {
@@ -62,7 +64,18 @@ export default async function handler(req, res) {
       },
       components: template.components || [],
     };
+  } else if (type && ['image', 'video', 'audio', 'document'].includes(type) && url) {
+    // Handle Media Messages
+    payload.type = type;
+    payload[type] = {
+      link: url,
+    };
+    if (caption && type !== 'audio') {
+      payload[type].caption = caption;
+    }
+    // For documents, it's good practice to send a filename, but we'll skip for simplicity unless passed
   } else {
+    // Default to Text
     payload.type = 'text';
     payload.text = {
       body: text,
@@ -87,7 +100,14 @@ export default async function handler(req, res) {
     const supabase = getSupabaseAdmin();
 
     if (supabase) {
-      const preview = text || `template:${template?.name || 'unknown'}`;
+      // Determine what to store as 'body' or preview
+      let bodyContent = text;
+      if (payload.type !== 'text' && payload.type !== 'template') {
+        bodyContent = url; // Store the URL as the body for media
+        if (caption) bodyContent += `|${caption}`; // Naive way to store caption if needed, or just store URL
+      }
+
+      const preview = bodyContent || `template:${template?.name || 'unknown'}`;
 
       await supabase.from('whatsapp_messages').insert([
         {
@@ -95,7 +115,7 @@ export default async function handler(req, res) {
           direction: 'outbound',
           message_id: messageId,
           type: payload.type,
-          body: text || null,
+          body: bodyContent || null,
           timestamp: now,
           raw: { request: payload, response: response.data },
           status: 'sent',

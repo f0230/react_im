@@ -8,6 +8,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
+    const [client, setClient] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }) => {
                 await fetchProfile(session.user.id);
             } else {
                 setProfile(null);
+                setClient(null);
                 setLoading(false);
             }
         };
@@ -32,6 +34,7 @@ export const AuthProvider = ({ children }) => {
                     if (isMounted) {
                         setUser(null);
                         setProfile(null);
+                        setClient(null);
                         setLoading(false);
                     }
                     return;
@@ -42,6 +45,7 @@ export const AuthProvider = ({ children }) => {
                 if (isMounted) {
                     setUser(null);
                     setProfile(null);
+                    setClient(null);
                     setLoading(false);
                 }
             }
@@ -63,22 +67,51 @@ export const AuthProvider = ({ children }) => {
 
     const fetchProfile = async (userId) => {
         try {
-            const { data, error } = await supabase
+            // Fetch profile
+            const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
 
-            if (error) {
-                console.warn('Error fetching profile:', error);
+            if (profileError) {
+                console.warn('Error fetching profile:', profileError);
                 setProfile(null);
             } else {
-                setProfile(data ?? null);
+                setProfile(profileData ?? null);
+
+                // Fetch client record if role is client
+                if (profileData?.role === 'client') {
+                    const { data: clientData, error: clientError } = await supabase
+                        .from('clients')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .maybeSingle(); // Use maybeSingle to avoid error if not found
+
+                    if (clientError) {
+                        console.warn('Error fetching client data:', clientError);
+                    }
+                    setClient(clientData ?? null);
+                } else {
+                    setClient(null);
+                }
             }
         } catch (error) {
-            console.error('Error fetching profile:', error);
+            console.error('Error fetching profile/client:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const refreshClient = async () => {
+        if (!user) return;
+        const { data, error } = await supabase
+            .from('clients')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        if (!error) {
+            setClient(data);
         }
     };
 
@@ -86,13 +119,16 @@ export const AuthProvider = ({ children }) => {
         await supabase.auth.signOut();
         setUser(null);
         setProfile(null);
+        setClient(null);
     };
 
     const value = {
         user,
         profile,
+        client,
         loading,
         signOut,
+        refreshClient,
     };
 
     return (

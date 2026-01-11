@@ -1,0 +1,1469 @@
+{
+  "name": "AGETENWP DTE",
+  "nodes": [
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -21408,
+        800
+      ],
+      "id": "276db483-fa1d-48d5-9954-b6a19fe8e305",
+      "name": "Wait",
+      "webhookId": "e2e9ddda-bfbe-46ea-b379-7451a6aaa71b"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c087de7f-f993-41dc-a6e7-a4c8c8c06362",
+              "leftValue": "={{ $json.is_new }}",
+              "rightValue": "agent_off",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "=false",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -23840,
+        1296
+      ],
+      "id": "912b4b54-a910-4f3b-b129-3e3f3b35eaa3",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "messageData": "={{ JSON.stringify({\n  message: $('WhatsApp Trigger').item.json.messages[0].text.body,\n  sessionid: $('WhatsApp Trigger').item.json.contacts[0].wa_id,\n  datatime: $('WhatsApp Trigger').item.json.messages[0].timestamp\n}) }}\n",
+        "tail": true
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -21968,
+        672
+      ],
+      "id": "40d52e3d-5fbd-478f-a265-cf14c85ebde6",
+      "name": "push buffer",
+      "credentials": {
+        "redis": {
+          "id": "oysREHyfI9MO32y8",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "message",
+        "key": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -21776,
+        672
+      ],
+      "id": "b71affb2-1a82-405f-b6cc-344d55c29c2d",
+      "name": "Redis1",
+      "credentials": {
+        "redis": {
+          "id": "oysREHyfI9MO32y8",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -19728,
+        -336
+      ],
+      "id": "d66f28df-4762-4e8c-8870-1c4b2137d064",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "t70Rh7c42YOwgYM5",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -21296,
+        672
+      ],
+      "id": "6e9e4b9c-eec8-45f8-8137-d2ca01952a05",
+      "name": "Redis",
+      "credentials": {
+        "redis": {
+          "id": "oysREHyfI9MO32y8",
+          "name": "Redis account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f3394a09-7978-4e0f-ba2e-14aae703fd43",
+                    "leftValue": "={{ new Date(Number($('WhatsApp Trigger').item.json.messages[0].timestamp) * 1000) }}\n",
+                    "rightValue": "={{ new Date(Date.now() - 15000) }}\n",
+                    "operator": {
+                      "type": "dateTime",
+                      "operation": "before"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Seguir"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Esperar"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -21600,
+        672
+      ],
+      "id": "50eb3b37-6030-40a0-84ea-0d8f3becb017",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e1f5aa2c-d785-4f74-a6b4-0e1825c504c0",
+                    "leftValue": "={{ $json.messages[0].type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "texto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "f419b6c9-fe67-4311-b6e7-0825ae81153f",
+                    "leftValue": "={{  $json.messages[0].type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Audio"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -23056,
+        1312
+      ],
+      "id": "b103f28d-b3df-4043-a014-3761935af735",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "binaryPropertyName": "file",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -22576,
+        1328
+      ],
+      "id": "62660210-ccb1-4caf-b58f-93f21359391d",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "openAiApi": {
+          "id": "t70Rh7c42YOwgYM5",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Webhook').item.json.body.conversation.messages[0].attachments[0].data_url }}",
+        "options": {
+          "allowUnauthorizedCerts": true,
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -22736,
+        1328
+      ],
+      "id": "49d2d083-114d-4aaf-abdd-9f17086e07f7",
+      "name": "Descargar audio"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aefd46d4-200e-44ca-96c8-d502b0d22548",
+              "name": "final_message",
+              "value": "={{ $json.messages[0].text.body }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -22176,
+        672
+      ],
+      "id": "893a48af-ed24-4935-ad4d-48378728a5c1",
+      "name": "Unify Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bc04d7a6-8169-4a81-befc-55e22f1c8d2f",
+              "name": "text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "b98a5d95-8f8a-4dea-80a4-916846a0c532",
+              "name": "sessionid",
+              "value": "={{ $json.sessionid || $('data_message_extraction').item.json.sessionid }}",
+              "type": "string"
+            },
+            {
+              "id": "17caa545-9221-42d7-acdb-13c761942210",
+              "name": "tipo_mensaje",
+              "value": "={{ $json.tipo_mensaje || $('data_message_extraction').item.json.tipo_mensaje }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -22432,
+        1328
+      ],
+      "id": "de60b4d9-9944-4fb1-816b-2b93a86b4406",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ade27a63-7e0e-4e6b-8bb4-88eb5d67dad8",
+              "leftValue": "={{ $json.output.length }}",
+              "rightValue": 80,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -19280,
+        -880
+      ],
+      "id": "ee9bcdd9-ce68-484e-b51e-32b864d961bb",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Message to split: {{ $json.output }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "type": "HumanMessagePromptTemplate",
+              "message": "Resumi y reescribí y dividí el siguiente mensaje largo de WhatsApp en 2 o 3 mensajes naturales, cancheros tal como lo haría una persona real en una conversación fluida.\n\nInstrucciones:\n\nMantené el tono cálido, cercano y humano de Luna.\n\nEvitá cualquier formato técnico, etiquetas o numeraciones como \"parte 1/2\".\n\nLa división debe sentirse orgánica, con pausas naturales entre ideas.\n\nPodés generar tantos mensajes como necesites para que la conversación suene auténtica.\n\nTexto original:\n{{ $json.output }}"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        -18864,
+        -848
+      ],
+      "id": "a7cc695f-c117-46a1-8072-9f3f4c01632d",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -18816,
+        -1008
+      ],
+      "id": "cb885d3f-50a2-403f-b254-1fce6da77f32",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "t70Rh7c42YOwgYM5",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst result = [];\n\nitems.forEach(item => {\n  const output = item.json?.output || item.json || {};\n  \n  // Nuevo formato: array de mensajes\n  if (output.messages && Array.isArray(output.messages)) {\n    output.messages.forEach(message => {\n      result.push({\n        json: {\n          message: message\n        }\n      });\n    });\n  }\n  // Fallback: formato viejo por si acaso\n  else {\n    let i = 1;\n    while (output[`message${i}`]) {\n      result.push({\n        json: {\n          message: output[`message${i}`]\n        }\n      });\n      i++;\n    }\n  }\n});\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -18416,
+        -864
+      ],
+      "id": "21fdcae6-4c1a-4f93-a30e-a94f9d24d07b",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -17936,
+        -1024
+      ],
+      "id": "09817489-09ed-45ed-8e61-9ab514eb702b",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -18128,
+        -1024
+      ],
+      "id": "8e2b1d4e-3513-464f-9b3e-81e8dc39f101",
+      "name": "Wait1",
+      "webhookId": "a8386d12-e4ef-4764-a2a2-e56f7b273573"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        -19984,
+        -832
+      ],
+      "id": "2f83bb5e-010a-4be3-91d8-64ce6a3817b7",
+      "name": "Think"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getzep.com/api/v2/users",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zepApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.sessionid }}"
+            },
+            {
+              "name": "first_name",
+              "value": "={{ $('WhatsApp Trigger').item.json.contacts[0].profile.name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -20976,
+        224
+      ],
+      "id": "ecad0d51-1523-48de-afe7-37dfdc61729f",
+      "name": "crear usuario",
+      "executeOnce": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tvCT1Y14EBhzLLlE",
+          "name": "Header Auth account 2"
+        },
+        "zepApi": {
+          "id": "yyVFvca9fUbn7UwO",
+          "name": "Zep Api account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.getzep.com/api/v2/graph/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "zepApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"{{ $json.message[0].parseJson().message}}\n\",\n  \"limit\": 10,\n  \"user_id\": \"{{ $('Unified M').item.json.sessionid }}\",\n  \"search_filters\": { \"min_relevance\": 0.7 }\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -20800,
+        224
+      ],
+      "id": "8bc63455-d9bb-45f3-95c0-a3f9f7006b53",
+      "name": "buscar dato",
+      "executeOnce": false,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "tvCT1Y14EBhzLLlE",
+          "name": "Header Auth account 2"
+        },
+        "zepApi": {
+          "id": "yyVFvca9fUbn7UwO",
+          "name": "Zep Api account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.all();\nlet factsText = '';\n\nfor (const item of inputData) {\n  try {\n    const parsedData = JSON.parse(item.json.data);\n    const facts = parsedData.edges.map(edge => edge.fact);\n    const formattedFacts = facts\n      .map((fact, index) => `Fact${index + 1}: ${fact}`)\n      .join('\\n');\n    factsText += formattedFacts + '\\n\\n';\n  } catch (error) {\n    console.error('Error procesando facts:', error);\n    continue;\n  }\n}\n\nreturn [\n  {\n    json: {\n      factsText: factsText.trim() || 'Sin hechos relevantes'\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20656,
+        224
+      ],
+      "id": "557ae801-ebbe-4399-bef8-91c0dacfcd7c",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "773235c7-6aa4-4a4b-b096-8548a7076762",
+              "name": "contact_message",
+              "value": "={{ $json.message[0].parseJson().message}}\n",
+              "type": "string"
+            },
+            {
+              "id": "9b4052bd-38c1-4a79-abdd-e690c30e8ce9",
+              "name": "sessionid",
+              "value": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -21088,
+        656
+      ],
+      "id": "3ff22829-656a-468b-b4f1-32ed3400723e",
+      "name": "Unified M"
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"messages\": {\n      \"type\": \"array\",\n      \"description\": \"Array of split messages in natural conversation format\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"minItems\": 1\n    }\n  },\n  \"required\": [\"messages\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -18704,
+        -1008
+      ],
+      "id": "9ec17526-81e2-431c-9c75-ef4229932619",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "chatgpt-4o-latest",
+          "mode": "list",
+          "cachedResultName": "CHATGPT-4O-LATEST"
+        },
+        "text": "la imagen es un comprobante de una transaccion realizada, necesito que tomes los datos importantes para verificar la transaccion y que el agente ai agrege correctamente el comprobante al registrar la transaccion",
+        "imageUrls": "={{ $('data_message_extraction').item.json.img }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -22736,
+        1520
+      ],
+      "id": "0aca88b8-3587-431b-9a07-20c6facf6893",
+      "name": "Analyze image",
+      "credentials": {
+        "openAiApi": {
+          "id": "t70Rh7c42YOwgYM5",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Unified M').item.json.sessionid }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -20128,
+        -816
+      ],
+      "id": "b5716afa-c766-4867-bc0c-7d563fbe74b4",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "l7PC5KDYAVZDrVq7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "cZfj951LSb98Izny",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/cZfj951LSb98Izny",
+          "cachedResultName": "My workflow 3"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "session_id": "={{ $('data_message_extraction').item.json.body.conversation.id }}",
+            "user_name": "={{ $('data_message_extraction').item.json.user_name }}",
+            "user_id": "={{ $('data_message_extraction').item.json.message.sender_phone }}",
+            "query": "={{ $('Unified M').item.json.contact_message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "user_id",
+              "displayName": "user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "session_id",
+              "displayName": "session_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "query",
+              "displayName": "query",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "user_name",
+              "displayName": "user_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -19120,
+        -352
+      ],
+      "id": "973485c8-50cb-4433-8c10-c24c22a4a4da",
+      "name": "Call 'My workflow 3'"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://dte-chatwoot-dte.xqnwvv.easypanel.host/api/v1/accounts/{{ $('data_message_extraction').first().json.body.account.id }}/conversations/{{ $('data_message_extraction').first().json.body.conversation.id }}/messages\n",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "message_type",
+              "value": "outgoing"
+            },
+            {
+              "name": "private",
+              "value": "false"
+            },
+            {
+              "name": "content",
+              "value": "Audio"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "attachments[]",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -17936,
+        -1536
+      ],
+      "id": "a0a89448-f369-4150-bb36-1c25e8056af5",
+      "name": "HTTP Request1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mXOwshTteT9wDspZ",
+          "name": "Chatwoot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://dte-chatwoot-dte.xqnwvv.easypanel.host/api/v1/accounts/{{ $('data_message_extraction').first().json.body.account.id }}/conversations/{{ $('data_message_extraction').first().json.body.conversation.id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{ $json.output }}"
+            },
+            {
+              "name": "private",
+              "value": "false"
+            },
+            {
+              "name": "message_type",
+              "value": "outgoing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -17904,
+        -1360
+      ],
+      "id": "4cc59a48-bf49-46ea-9ce7-0c8c41f3b5f4",
+      "name": "HTTP Request2",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "mXOwshTteT9wDspZ",
+          "name": "Chatwoot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "speech",
+        "voice": {
+          "__rl": true,
+          "value": "34RuvBpKQDapycxZnrDJ",
+          "mode": "list",
+          "cachedResultName": "Matias Rella "
+        },
+        "text": "={{ $json.output }}",
+        "additionalOptions": {},
+        "requestOptions": {}
+      },
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        -18368,
+        -1472
+      ],
+      "id": "e3d3af7b-8ecb-4223-a718-fbb32c220545",
+      "name": "Convert text to speech",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "alwaysOutputData": false,
+      "maxTries": 2,
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "lGNN5SBuaiAzY8lf",
+          "name": "ElevenLabs account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=CONTEXTO (interno – no mostrar al cliente)\n\n\n\nMemoria (Zep): {{ $json.factsText }}\n\nMensaje: {{ $('Unified M').item.json.contact_message }}\n\nHoy: {{ $now }}",
+        "options": {
+          "systemMessage": "=PERSONA Y TONO\nEres Luna, asistente experta de DTE. Hablas por WhatsApp. Tu tono es humano, directo, cálido pero profesional y estrictamente rioplatense (voseo: \"venís\", \"pasame\", \"contame\").\nProhibido: Saludos corporativos, frases largas, \"mirroring\" (repetir lo que el cliente dijo) o parecer un bot.\nEstilo: Escribís corto (máximo 2 líneas por mensaje), vas al grano y sos \"canchera\".\nREGLAS DE ORO DE CONVERSACIÓN\nUn paso a la vez: Una sola pregunta por mensaje.\nFormato: Sin etiquetas tipo \"Parte 1\", sin negritas exageradas, sin listas numeradas.\nLinks: Siempre completos con https://.\nTimezone: Todo es horario Uruguay (GMT-3).\nFLUJO ESTRATÉGICO (EL \"PASO A PASO\")\nMensaje 0: El Encuadre (Obligatorio la primera vez)\nAntes de cualquier otra cosa, enviá exactamente:\n\"Dale, para ayudarte bien te agendo una videollamada corta con un pro de DTE. ¿Qué vendés y en qué rango de precios (o ticket promedio) estás?\"\nFase 1: Diagnóstico y Disponibilidad\nUna vez que sepa qué vende y su precio (aceptá \"bajo/medio/alto\" si duda), ejecutá inmediatamente consultar_disponibilidad para un rango de 3 días a futuro.\nProponé 2 días concretos: \"¿Qué día te viene mejor? Tengo espacio el martes o miércoles.\"\nCuando elija día, proponé 2 horarios específicos basados en lo que viste en la tool: \"Perfecto. ¿Te sirve 11:00 o 15:30 (UY)?\"\nFase 2: El Cierre y Agendamiento (Prioridad Máxima)\nEn cuanto el lead acepte un Día y Hora, pedí el email: \"Genial, queda para el [día] a las [hora]. Pasame tu email así te mando la invitación formal con el link de Meet.\"\nREGLA TÉCNICA CRÍTICA:\nEn cuanto tengas Día + Hora + Email, ejecutá crear_cita sin pedir más permiso.\nEl attendees debe ser exclusivamente el email del cliente.\nUsá el hangoutLink de la respuesta para el mensaje final.\nFase 3: Datos Secundarios (Mientras se confirma o después de agendar)\nSi el cliente demora en responder el horario o ya agendaste, pedí estos datos uno por uno:\nObjetivo: \"¿Qué querés lograr con nosotros y qué es lo que más te traba hoy?\"\nInversión: \"¿Qué presupuesto mensual manejan para pauta? ¿200-500, 500-1000 o más de 1000 USD?\"\nInstagram/Web: \"Pasame tu web o Instagram así lo bicheo antes de la llamada.\"\nGATILLOS DE HERRAMIENTAS (LOGICA TÉCNICA)\nconsultar_disponibilidad: Apenas te diga qué vende y precio. No esperes a nada más.\nguardar_lead_google_sheets: Ejecutá cuando tengas (Nombre + Celular + Qué vende). No esperes al email. Si conseguís más datos después, volvé a ejecutarla para actualizar.\ncrear_cita: SOLO cuando tengas: Email confirmado + Fecha/Hora confirmada.\nStart/End: Formato ISO8601 con offset -03:00.\nConfirmación final: Al terminar la tool, mandá: \"¡Listo! Ya quedó. Te llegó un correo con el link, igual te lo dejo por acá por las dudas: [Link]\"\nCONTEXTO DE LA SESIÓN\nHoy es: {{ $now.setZone('America/Montevideo').format('dddd, DD [de] MMMM, HH:mm') }} (Horario Uruguay)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -19808,
+        -192
+      ],
+      "id": "5bcd4c15-3c1d-4e63-854f-ebfef7e06014",
+      "name": "AGENTEAI",
+      "retryOnFail": false,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "toolDescription": "Crea la cita en Google Calendar y genera el enlace de Meet",
+        "method": "POST",
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"summary\": \"Sesión DTE: {{ $fromAI('nombre', 'Nombre completo del lead') }}\",\n  \"location\": \"Virtual / Google Meet\",\n  \"description\": \"DETALLE DEL NEGOCIO:\\n- Producto: {{ $fromAI('vende', 'Qué vende y su ticket promedio') }}\\n- Objetivo: {{ $fromAI('objetivo', 'Qué quiere lograr con DTE') }}\\n- Dolor: {{ $fromAI('dolor', 'Principal problema que lo frena') }}\\n- Contacto: {{ $('data_message_extraction').item.json.message.sender_phone }}\",\n  \"start\": {\n    \"dateTime\": \"{{ $fromAI('inicio', 'Fecha y hora de inicio en formato ISO8601') }}\",\n    \"timeZone\": \"America/Montevideo\"\n  },\n  \"end\": {\n    \"dateTime\": \"{{ $fromAI('fin', 'Fecha y hora de fin en formato ISO8601') }}\",\n    \"timeZone\": \"America/Montevideo\"\n  },\n  \"attendees\": [\n    { \"email\": \"{{ $fromAI('email', 'Correo electrónico del cliente para la invitación formal') }}\" }\n  ],\n  \"conferenceData\": {\n    \"createRequest\": {\n      \"requestId\": \"{{ Math.random().toString(36).substring(7) }}\",\n      \"conferenceSolutionKey\": { \"type\": \"hangoutsMeet\" }\n    }\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        -19648,
+        176
+      ],
+      "id": "be779fb7-f3fb-4487-92c0-92a394814c2e",
+      "name": "crear_cita",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "O6OaQTQVkQJ8JKwF",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Consulta la agenda para ver si hay eventos en un rango de tiempo específico. Devuelve una lista de eventos. Si la lista está vacía, el horario está libre",
+        "method": "POST",
+        "url": "https://www.googleapis.com/calendar/v3/freeBusy",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleCalendarOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"timeMin\": \"{{ $fromAI('fecha_inicio', 'ISO8601 string') }}\",\n  \"timeMax\": \"{{ $fromAI('fecha_fin', 'ISO8601 string') }}\",\n  \"items\": [{\"id\": \"primary\"}]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        -19856,
+        240
+      ],
+      "id": "f9c048d1-5eae-40d3-9eb1-c5eeaa1e3d3e",
+      "name": "consultar_disponibilidad",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "O6OaQTQVkQJ8JKwF",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Guarda la información calificada del cliente en la planilla.",
+        "method": "POST",
+        "url": "https://sheets.googleapis.com/v4/spreadsheets/1dMHwLm3s6tRzGelbS86IorNwHzlBUDhWmcqkRdJ1iuM/values/Hoja 1!A:H:append?valueInputOption=USER_ENTERED",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleSheetsOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"values\": [\n    [\n      \"{{ $fromAI('nombre', 'Nombre completo del lead') }}\",\n      \"{{ $('data_message_extraction').item.json.message.sender_phone }}\",\n      \"{{ $fromAI('vende', 'Qué vende y su ticket promedio') }}\",\n      \"{{ $fromAI('objetivo', 'Qué quiere lograr con DTE') }}\",\n      \"{{ $fromAI('dolor', 'Principal problema que lo frena') }}\",\n      \"{{ $fromAI('inversion', 'Rango de inversión mensual') }}\",\n      \"{{ $fromAI('links', 'Enlace a Instagram o Web con https://') }}\",\n      \"{{ $now.setZone('America/Montevideo').format('YYYY-MM-DD HH:mm') }}\",\n      \"{{ $fromAI('email', 'Correo electrónico del cliente para la invitación formal') }}\"\n    ]\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.3,
+      "position": [
+        -19440,
+        160
+      ],
+      "id": "28897064-2301-4f4a-bffb-502757c4e2ff",
+      "name": "guardar_lead_google_sheets",
+      "credentials": {
+        "googleApi": {
+          "id": "0Rqw8s4TanzH70JK",
+          "name": "Google Service Account account"
+        },
+        "googleSheetsOAuth2Api": {
+          "id": "igQv87tRTu9gSdFe",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {}
+      },
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -24816,
+        1312
+      ],
+      "id": "0db4e7d0-a0ea-40a7-8136-9d714b0130c7",
+      "name": "WhatsApp Trigger",
+      "webhookId": "6146a202-f118-4457-971a-29a484196384",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "QYGxgXpKsHtsZWkQ",
+          "name": "WhatsApp OAuth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "=754662787729091",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.messages[0].from }}",
+        "textBody": "={{ $json.message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        -17664,
+        -992
+      ],
+      "id": "e4e22f73-14ef-46d5-8587-9887ead6fe71",
+      "name": "Send message",
+      "webhookId": "2a810003-7807-44b0-911f-12fa761746cd",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "hZQ3W9tW46WOw5mV",
+          "name": "WhatsApp account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "WhatsApp Trigger": [
+      {
+        "json": {
+          "messaging_product": "whatsapp",
+          "metadata": {
+            "display_phone_number": "59896280674",
+            "phone_number_id": "754662787729091"
+          },
+          "contacts": [
+            {
+              "profile": {
+                "name": "F"
+              },
+              "wa_id": "59897080108"
+            }
+          ],
+          "messages": [
+            {
+              "from": "59897080108",
+              "id": "wamid.HBgLNTk4OTcwODAxMDgVAgASGBYzRUIwNzI3MzBDMDFEOEZBRDY0MzgwAA==",
+              "timestamp": "1768112868",
+              "text": {
+                "body": "hola"
+              },
+              "type": "text"
+            }
+          ],
+          "field": "messages"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Redis1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "push buffer": {
+      "main": [
+        [
+          {
+            "node": "Redis1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AGENTEAI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis": {
+      "main": [
+        [
+          {
+            "node": "Unified M",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Redis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Unify Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Descargar audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Descargar audio": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unify Message": {
+      "main": [
+        [
+          {
+            "node": "push buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Unify Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convert text to speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "AGENTEAI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "crear usuario": {
+      "main": [
+        [
+          {
+            "node": "buscar dato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "buscar dato": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "AGENTEAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unified M": {
+      "main": [
+        [
+          {
+            "node": "crear usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Unify Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AGENTEAI",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert text to speech": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AGENTEAI": {
+      "main": [
+        [
+          {
+            "node": "Call 'My workflow 3'",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "crear_cita": {
+      "ai_tool": [
+        [
+          {
+            "node": "AGENTEAI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consultar_disponibilidad": {
+      "ai_tool": [
+        [
+          {
+            "node": "AGENTEAI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar_lead_google_sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AGENTEAI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send message": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Argentina/Buenos_Aires",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "3316d223-cd14-4329-8675-6173e06c2b2e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9bfaf343ffce6b3c787d113485b2e99d7cc301bba6cf9055ccd6056bcf02dfeb"
+  },
+  "id": "IGZtx3o8Z6fZH9t5",
+  "tags": []
+}

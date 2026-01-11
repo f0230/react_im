@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Search, RefreshCw, Send, Phone } from 'lucide-react';
+import { MessageSquare, Search, RefreshCw, Send, Phone, Paperclip, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 
@@ -56,6 +56,8 @@ const Inbox = () => {
     const [templateName, setTemplateName] = useState('');
     const [templateLang, setTemplateLang] = useState('es');
     const [templateComponents, setTemplateComponents] = useState('');
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = React.useRef(null);
 
     const selectedThread = useMemo(
         () => threads.find((thread) => thread.wa_id === selectedThreadId) || null,
@@ -87,18 +89,6 @@ const Inbox = () => {
         });
     }, [threads, searchTerm, filterStatus]);
 
-    const stats = useMemo(() => {
-        return threads.reduce(
-            (acc, thread) => {
-                if (thread.status === 'open') acc.open += 1;
-                if (thread.status === 'pending') acc.pending += 1;
-                if (thread.status === 'closed') acc.closed += 1;
-                return acc;
-            },
-            { open: 0, pending: 0, closed: 0 }
-        );
-    }, [threads]);
-
     const loadAssignees = useCallback(async () => {
         const { data, error: supaError } = await supabase
             .from('profiles')
@@ -111,9 +101,9 @@ const Inbox = () => {
         }
     }, []);
 
-    const loadThreads = useCallback(async () => {
+    const loadThreads = useCallback(async (background = false) => {
         if (!isAllowed) return;
-        setLoadingThreads(true);
+        if (!background) setLoadingThreads(true);
         setError('');
         const { data, error: supaError } = await supabase
             .from('whatsapp_threads')
@@ -121,20 +111,17 @@ const Inbox = () => {
             .order('last_message_at', { ascending: false, nullsFirst: false });
 
         if (supaError) {
-            setError('No se pudo cargar la bandeja.');
+            if (!background) setError('No se pudo cargar la bandeja.');
         } else {
             setThreads(data || []);
-            if (!selectedThreadId && data?.length) {
-                setSelectedThreadId(data[0].wa_id);
-            }
         }
-        setLoadingThreads(false);
+        if (!background) setLoadingThreads(false);
     }, [isAllowed, selectedThreadId]);
 
     const loadMessages = useCallback(
-        async (waId) => {
+        async (waId, background = false) => {
             if (!waId || !isAllowed) return;
-            setLoadingMessages(true);
+            if (!background) setLoadingMessages(true);
             const { data, error: supaError } = await supabase
                 .from('whatsapp_messages')
                 .select('*')
@@ -142,21 +129,14 @@ const Inbox = () => {
                 .order('timestamp', { ascending: true });
 
             if (supaError) {
-                setError('No se pudieron cargar los mensajes.');
+                if (!background) setError('No se pudieron cargar los mensajes.');
             } else {
                 setMessages(data || []);
             }
-            setLoadingMessages(false);
+            if (!background) setLoadingMessages(false);
         },
         [isAllowed]
     );
-
-    const refreshAll = useCallback(async () => {
-        await loadThreads();
-        if (selectedThreadId) {
-            await loadMessages(selectedThreadId);
-        }
-    }, [loadThreads, loadMessages, selectedThreadId]);
 
     const updateThread = useCallback(
         async (updates) => {
@@ -176,6 +156,77 @@ const Inbox = () => {
         },
         [selectedThreadId]
     );
+
+    const handleFileUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file || !selectedThreadId) return;
+
+        // Reset input
+        event.target.value = '';
+
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            setSendError('El archivo es demasiado grande (max 10MB).');
+            return;
+        }
+
+        setUploading(true);
+        setSendError('');
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${selectedThreadId}/${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage
+                .from('chat-media')
+                .upload(fileName, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: publicData } = supabase.storage
+                .from('chat-media')
+                .getPublicUrl(fileName);
+
+            if (!publicData?.publicUrl) throw new Error('No public URL');
+
+            // Determine type
+            let type = 'document';
+            if (file.type.startsWith('image/')) type = 'image';
+            else if (file.type.startsWith('video/')) type = 'video';
+            else if (file.type.startsWith('audio/')) type = 'audio';
+
+            await sendMediaMessage(type, publicData.publicUrl, file.name);
+
+        } catch (err) {
+            console.error(err);
+            setSendError('Error subiendo archivo: ' + err.message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const sendMediaMessage = async (type, url, caption) => {
+        try {
+            const payload = {
+                to: selectedThreadId,
+                type,
+                url,
+                caption: type === 'document' ? caption : undefined // Simple caption logic
+            };
+
+            const response = await fetch('/api/whatsapp-send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                throw new Error(result?.error || 'Error enviando archivo');
+            }
+            // Realtime will handle the update
+        } catch (err) {
+            setSendError(err.message);
+        }
+    };
 
     const handleSend = useCallback(async () => {
         if (!selectedThreadId || sending) return;
@@ -224,8 +275,8 @@ const Inbox = () => {
             }
 
             setMessageText('');
-            await loadMessages(selectedThreadId);
-            await loadThreads();
+            // No need to reload messages/threads manually, Realtime will handle it
+            // eventually, but for UX 'snappiness' we might wait for the insert event
         } catch (sendErr) {
             setSendError(sendErr.message || 'Error enviando mensaje');
         } finally {
@@ -239,29 +290,83 @@ const Inbox = () => {
         templateLang,
         templateComponents,
         messageText,
-        loadMessages,
-        loadThreads,
     ]);
 
     useEffect(() => {
         if (!isAllowed) return;
         loadAssignees();
         loadThreads();
+
+        // Realtime Subscription
+        const channel = supabase
+            .channel('inbox-updates')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'whatsapp_threads' },
+                (payload) => {
+                    const { eventType, new: newRecord, old: oldRecord } = payload;
+                    setThreads((prev) => {
+                        if (eventType === 'INSERT') {
+                            return [newRecord, ...prev];
+                        } else if (eventType === 'UPDATE') {
+                            return prev.map((t) => (t.id === newRecord.id ? newRecord : t))
+                                .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+                        } else if (eventType === 'DELETE') {
+                            return prev.filter((t) => t.id !== oldRecord.id);
+                        }
+                        return prev;
+                    });
+                }
+            )
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'whatsapp_messages' },
+                (payload) => {
+                    const newMessage = payload.new;
+                    setMessages((prev) => {
+                        // Only add if it belongs to the currently viewed thread
+                        // We can't easily access selectedThreadId here in closure without proper dependency handling
+                        // So we'll rely on a check inside the state setter or use a ref, or just add it if we are looking at it.
+                        return [...prev, newMessage];
+                    });
+                    // Also refresh threads to update 'last message' if needed, but the threat subscription handles that.
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, [isAllowed, loadAssignees, loadThreads]);
 
+    // Better message filtering for current thread in Realtime
     useEffect(() => {
-        if (selectedThreadId) {
-            loadMessages(selectedThreadId);
-        }
+        if (!selectedThreadId) return;
+
+        const messageChannel = supabase
+            .channel(`messages-${selectedThreadId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'whatsapp_messages',
+                    filter: `wa_id=eq.${selectedThreadId}`
+                },
+                (payload) => {
+                    setMessages((prev) => [...prev, payload.new]);
+                }
+            )
+            .subscribe();
+
+        loadMessages(selectedThreadId);
+
+        return () => {
+            supabase.removeChannel(messageChannel);
+        };
+
     }, [selectedThreadId, loadMessages]);
 
-    useEffect(() => {
-        if (!isAllowed) return;
-        const interval = setInterval(() => {
-            refreshAll();
-        }, 15000);
-        return () => clearInterval(interval);
-    }, [isAllowed, refreshAll]);
 
     if (!isAllowed) {
         return (
@@ -277,55 +382,23 @@ const Inbox = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 pb-12">
-            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                <div>
-                    <p className="text-xs uppercase tracking-[0.35em] text-neutral-400">WhatsApp</p>
-                 
-                </div>
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={refreshAll}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider rounded-full border border-black/10 bg-white hover:bg-neutral-50 transition"
-                    >
-                        <RefreshCw size={14} />
-                        Refresh
-                    </button>
-                    <div className="rounded-full border border-black/10 px-3 py-2 text-xs text-neutral-500 bg-white">
-                        {loadingThreads ? 'Sync...' : `${threads.length} threads`}
-                    </div>
-                </div>
-            </div>
+        <div className="font-product text-neutral-900 h-[calc(100vh-55px)] flex overflow-hidden bg-white">
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
-                <div className="rounded-2xl bg-white border border-black/5 shadow-lg p-4">
-                    <p className="text-xs uppercase tracking-widest text-neutral-400">Open</p>
-                    <p className="text-2xl font-semibold text-emerald-600 mt-2">{stats.open}</p>
-                </div>
-                <div className="rounded-2xl bg-white border border-black/5 shadow-lg p-4">
-                    <p className="text-xs uppercase tracking-widest text-neutral-400">Pending</p>
-                    <p className="text-2xl font-semibold text-amber-600 mt-2">{stats.pending}</p>
-                </div>
-                <div className="rounded-2xl bg-white border border-black/5 shadow-lg p-4">
-                    <p className="text-xs uppercase tracking-widest text-neutral-400">Closed</p>
-                    <p className="text-2xl font-semibold text-neutral-600 mt-2">{stats.closed}</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6 mt-8">
-                <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-3xl bg-white border border-black/5 shadow-xl flex flex-col min-h-[580px]"
+            {/* Main Content Grid */}
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-[360px_1fr] min-h-0">
+                {/* List Side */}
+                <div
+                    className={`flex-col h-full overflow-hidden border-r border-neutral-200 ${selectedThreadId ? 'hidden lg:flex' : 'flex'
+                        }`}
                 >
-                    <div className="p-4 border-b border-black/5">
+                    <div className="p-4 border-b border-black/5 shrink-0">
                         <div className="flex items-center gap-2">
                             <div className="relative flex-1">
                                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
                                 <input
                                     value={searchTerm}
                                     onChange={(event) => setSearchTerm(event.target.value)}
-                                    placeholder="Buscar por nombre o numero"
+                                    placeholder="Buscar..."
                                     className="w-full rounded-full border border-black/10 bg-neutral-50 pl-9 pr-3 py-2 text-sm focus:border-black/40 focus:bg-white transition"
                                 />
                             </div>
@@ -341,7 +414,7 @@ const Inbox = () => {
                             </select>
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                         {loadingThreads && (
                             <div className="text-xs text-neutral-400 px-2">Cargando bandeja...</div>
                         )}
@@ -357,17 +430,15 @@ const Inbox = () => {
                                 <button
                                     key={thread.wa_id}
                                     onClick={() => setSelectedThreadId(thread.wa_id)}
-                                    className={`w-full text-left rounded-2xl border px-3 py-3 transition ${
-                                        isActive
-                                            ? 'border-black/10 bg-black text-white shadow-lg'
-                                            : 'border-black/5 bg-white hover:bg-neutral-50'
-                                    }`}
+                                    className={`w-full text-left rounded-2xl border px-3 py-3 transition ${isActive
+                                        ? 'border-black/10 bg-black text-white shadow-lg'
+                                        : 'border-black/5 bg-white hover:bg-neutral-50'
+                                        }`}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div
-                                            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${
-                                                isActive ? 'bg-white/10 text-white' : 'bg-neutral-100 text-neutral-700'
-                                            }`}
+                                            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${isActive ? 'bg-white/10 text-white' : 'bg-neutral-100 text-neutral-700'
+                                                }`}
                                         >
                                             {getInitial(displayName)}
                                         </div>
@@ -376,7 +447,7 @@ const Inbox = () => {
                                                 <p className={`text-sm font-semibold truncate ${isActive ? 'text-white' : 'text-neutral-900'}`}>
                                                     {displayName}
                                                 </p>
-                                                <span className={`text-[10px] ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
+                                                <span className={`text-[10px] shrink-0 ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
                                                     {formatTimestamp(thread.last_message_at)}
                                                 </span>
                                             </div>
@@ -397,17 +468,23 @@ const Inbox = () => {
                             );
                         })}
                     </div>
-                </motion.div>
+                </div>
 
-                <motion.div
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-3xl bg-white border border-black/5 shadow-xl flex flex-col min-h-[580px]"
+                {/* Chat Side */}
+                <div
+                    className={`flex-col h-full overflow-hidden bg-[#efeae2] ${!selectedThreadId ? 'hidden lg:flex' : 'flex'
+                        }`}
                 >
                     {selectedThread ? (
                         <>
-                            <div className="p-5 border-b border-black/5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div className="p-3 bg-neutral-100 border-b border-neutral-200 flex flex-col gap-4 md:flex-row md:items-center md:justify-between shrink-0 h-[60px]">
                                 <div className="flex items-center gap-3">
+                                    <button
+                                        onClick={() => setSelectedThreadId(null)}
+                                        className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
+                                    >
+                                        <ArrowLeft size={20} />
+                                    </button>
                                     <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center font-semibold">
                                         {getInitial(selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id)}
                                     </div>
@@ -454,7 +531,7 @@ const Inbox = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 bg-gradient-to-b from-white via-white to-neutral-50">
+                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat bg-fixed">
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
                                 )}
@@ -464,22 +541,60 @@ const Inbox = () => {
                                 {messages.map((message) => {
                                     const isOutbound = message.direction === 'outbound';
                                     const bubbleClass = isOutbound
-                                        ? 'ml-auto bg-black text-white'
-                                        : 'mr-auto bg-neutral-100 text-neutral-900';
+                                        ? 'ml-auto bg-[#d9fdd3] text-neutral-900 rounded-tr-none shadow-sm'
+                                        : 'mr-auto bg-white text-neutral-900 rounded-tl-none shadow-sm';
+
+                                    const renderContent = () => {
+                                        if (message.type === 'text' || !message.type) {
+                                            return <p className="whitespace-pre-wrap">{message.body}</p>;
+                                        }
+
+                                        const url = message.body;
+                                        const [mediaUrl, caption] = (url || '').split('|');
+                                        const cleanUrl = mediaUrl || url;
+
+                                        if (message.type === 'image') {
+                                            return (
+                                                <div className="space-y-1">
+                                                    <img src={cleanUrl} alt="Sent image" className="rounded-lg max-w-full max-h-64 object-cover" />
+                                                    {caption && <p>{caption}</p>}
+                                                </div>
+                                            );
+                                        }
+                                        if (message.type === 'video') {
+                                            return (
+                                                <div className="space-y-1">
+                                                    <video src={cleanUrl} controls className="rounded-lg max-w-full max-h-64" />
+                                                    {caption && <p>{caption}</p>}
+                                                </div>
+                                            );
+                                        }
+                                        if (message.type === 'audio') {
+                                            return <audio src={cleanUrl} controls className="w-full min-w-[200px]" />;
+                                        }
+                                        if (message.type === 'document' || message.type === 'file') {
+                                            return (
+                                                <a href={cleanUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 underline break-all">
+                                                    <Paperclip size={14} />
+                                                    {caption || 'Descargar archivo'}
+                                                </a>
+                                            );
+                                        }
+                                        return <p className="italic text-xs">[Tipo no soportado: {message.type}]</p>;
+                                    };
+
                                     return (
-                                        <div key={message.id || message.message_id} className="flex flex-col">
-                                            <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${bubbleClass}`}>
-                                                <p className="whitespace-pre-wrap">
-                                                    {message.body || (message.type ? `[${message.type}]` : 'Mensaje')}
-                                                </p>
+                                        <div key={message.id || message.message_id} className="flex flex-col max-w-[85%]">
+                                            <div className={`relative px-3 py-2 text-sm rounded-lg ${bubbleClass}`}>
+                                                {renderContent()}
                                                 <div
-                                                    className={`mt-2 flex items-center justify-between gap-3 text-[10px] ${
-                                                        isOutbound ? 'text-white/60' : 'text-neutral-500'
-                                                    }`}
+                                                    className={`mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500`}
                                                 >
                                                     <span>{formatTime(message.timestamp)}</span>
                                                     {isOutbound && message.status ? (
-                                                        <span className="uppercase tracking-widest">{message.status}</span>
+                                                        <span className="">
+                                                            {isOutbound ? <span className={message.status === 'read' ? 'text-blue-500 font-bold' : 'text-neutral-500'}>✓✓</span> : null}
+                                                        </span>
                                                     ) : null}
                                                 </div>
                                             </div>
@@ -488,34 +603,58 @@ const Inbox = () => {
                                 })}
                             </div>
 
-                            <div className="border-t border-black/5 p-4">
+                            <div className="border-t border-black/5 p-4 shrink-0 bg-white">
                                 <div className="space-y-3">
-                                    <textarea
-                                        value={messageText}
-                                        onChange={(event) => setMessageText(event.target.value)}
-                                        placeholder="Escribe un mensaje..."
-                                        rows={3}
-                                        className="w-full rounded-2xl border border-black/10 bg-neutral-50 px-4 py-3 text-sm focus:bg-white focus:border-black/30 transition"
-                                    />
-                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                        <label className="flex items-center gap-2 text-xs text-neutral-500">
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-end gap-2 bg-neutral-100 p-2 rounded-lg">
                                             <input
-                                                type="checkbox"
-                                                checked={useTemplate}
-                                                onChange={(event) => setUseTemplate(event.target.checked)}
-                                                className="rounded border-black/10"
+                                                type="file"
+                                                ref={fileInputRef}
+                                                className="hidden"
+                                                onChange={handleFileUpload}
+                                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
                                             />
-                                            Usar template (requerido fuera de 24h)
-                                        </label>
-                                        <button
-                                            onClick={handleSend}
-                                            disabled={sending || (!useTemplate && !messageText.trim())}
-                                            className="inline-flex items-center gap-2 rounded-full bg-black text-white px-4 py-2 text-xs uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-900 transition"
-                                        >
-                                            <Send size={14} />
-                                            {sending ? 'Enviando...' : 'Enviar'}
-                                        </button>
+                                            <button
+                                                className="p-3 text-neutral-500 hover:text-neutral-700 transition"
+                                                title="Adjuntar"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={uploading}
+                                            >
+                                                {uploading ? <RefreshCw size={24} className="animate-spin" /> : <Paperclip size={24} />}
+                                            </button>
+
+                                            <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm border border-transparent focus-within:border-neutral-300 transition flex items-center">
+                                                <textarea
+                                                    value={messageText}
+                                                    onChange={(event) => setMessageText(event.target.value)}
+                                                    placeholder="Escribe un mensaje"
+                                                    rows={1}
+                                                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm resize-none py-1 max-h-32"
+                                                />
+                                            </div>
+
+                                            <button
+                                                onClick={handleSend}
+                                                disabled={sending || (!useTemplate && !messageText.trim())}
+                                                className="p-3 text-neutral-500 hover:text-neutral-700 transition"
+                                            >
+                                                {sending ? <RefreshCw size={24} className="animate-spin" /> : <Send size={24} />}
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 px-2">
+                                            <label className="flex items-center gap-2 text-xs text-neutral-500 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={useTemplate}
+                                                    onChange={(event) => setUseTemplate(event.target.checked)}
+                                                    className="rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
+                                                />
+                                                Usar template
+                                            </label>
+                                        </div>
                                     </div>
+
                                     {useTemplate && (
                                         <div className="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-3">
                                             <input
@@ -555,7 +694,7 @@ const Inbox = () => {
                             </div>
                         </div>
                     )}
-                </motion.div>
+                </div>
             </div>
         </div>
     );

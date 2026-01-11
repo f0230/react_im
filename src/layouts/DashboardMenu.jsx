@@ -23,6 +23,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
+            { icon: MessageSquare, label: 'Inbox', path: '/dashboard/inbox' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/billing' },
             { icon: Settings, label: 'Configuración', path: '/dashboard/settings' },
