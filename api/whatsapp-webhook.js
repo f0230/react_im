@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { getSupabaseAdmin } from './utils/supabaseServer.js';
+import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
 
 function parseJsonBody(req) {
   if (!req.body) return null;

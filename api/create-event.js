@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 import { Resend } from 'resend';
 import fs from 'fs';
 import path from 'path';
-import { getAccessTokenFromRefresh } from './utils/getAccessToken.js';
+import { getAccessTokenFromRefresh } from '../server/utils/getAccessToken.js';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 

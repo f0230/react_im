@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
-import { cleoPrompt } from './prompts/cleoPrompt.js'; // ajustá el path si cambia
+import { cleoPrompt } from '../server/prompts/cleoPrompt.js';
 
 dotenv.config();
 

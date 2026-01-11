@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { getAccessTokenFromRefresh } from './utils/getAccessToken.js';
+import { getAccessTokenFromRefresh } from '../server/utils/getAccessToken.js';
 
 export default async function handler(req, res) {
   console.log('Checking environment variables:', {
