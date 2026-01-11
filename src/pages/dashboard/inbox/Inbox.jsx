@@ -322,7 +322,7 @@ const Inbox = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 h-[calc(100vh-55px)] flex overflow-hidden bg-white">
+        <div className="font-product text-neutral-900 h-[calc(100vh-55px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
 
             {/* Main Content Grid */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[360px_1fr] min-h-0">
@@ -395,8 +395,8 @@ const Inbox = () => {
                 >
                     {selectedThread ? (
                         <>
-                            <div className="p-3 bg-neutral-100 border-b border-neutral-200 flex flex-col gap-4 md:flex-row md:items-center md:justify-between shrink-0 h-[60px]">
-                                <div className="flex items-center gap-3">
+                            <div className="p-3 bg-neutral-100 border-b border-neutral-200 flex items-center justify-between gap-4 shrink-0 h-[60px] flex-nowrap overflow-x-auto">
+                                <div className="flex items-center gap-3 min-w-0">
                                     <button
                                         onClick={() => setSelectedThreadId(null)}
                                         className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
@@ -406,17 +406,17 @@ const Inbox = () => {
                                     <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center font-semibold">
                                         {getInitial(selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id)}
                                     </div>
-                                    <div>
-                                        <p className="text-lg font-semibold text-neutral-900">
+                                    <div className="min-w-0">
+                                        <p className="text-lg font-semibold text-neutral-900 truncate">
                                             {selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id}
                                         </p>
-                                        <div className="flex items-center gap-2 text-xs text-neutral-500">
+                                        <div className="flex items-center gap-2 text-xs text-neutral-500 truncate">
                                             <Phone size={12} />
                                             {selectedThread.wa_id}
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-3 shrink-0 flex-nowrap">
                                     <div className="flex flex-col gap-1">
                                         <span className="text-[10px] uppercase tracking-widest text-neutral-400">Estado</span>
                                         <select
@@ -505,15 +505,8 @@ const Inbox = () => {
                                         <div key={message.id || message.message_id} className="flex flex-col max-w-[85%]">
                                             <div className={`relative px-3 py-2 text-sm rounded-lg ${bubbleClass}`}>
                                                 {renderContent()}
-                                                <div
-                                                    className={`mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500`}
-                                                >
+                                                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
                                                     <span>{formatTime(message.timestamp)}</span>
-                                                    {isOutbound && message.status ? (
-                                                        <span className="">
-                                                            {isOutbound ? <span className={message.status === 'read' ? 'text-blue-500 font-bold' : 'text-neutral-500'}>✓✓</span> : null}
-                                                        </span>
-                                                    ) : null}
                                                 </div>
                                             </div>
                                         </div>
@@ -524,7 +517,7 @@ const Inbox = () => {
                             <div className="border-t border-black/5 p-4 shrink-0 bg-white">
                                 <div className="space-y-3">
                                     <div className="flex flex-col gap-3">
-                                        <div className="flex items-end gap-2 bg-neutral-100 p-2 rounded-lg">
+                                        <div className="flex items-center gap-2">
                                             <input
                                                 type="file"
                                                 ref={fileInputRef}
@@ -533,30 +526,26 @@ const Inbox = () => {
                                                 accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
                                             />
                                             <button
-                                                className="p-3 text-neutral-500 hover:text-neutral-700 transition"
+                                                className="p-2 text-neutral-500 hover:text-neutral-700 transition"
                                                 title="Adjuntar"
                                                 onClick={() => fileInputRef.current?.click()}
                                                 disabled={uploading}
                                             >
                                                 {uploading ? <RefreshCw size={24} className="animate-spin" /> : <Paperclip size={24} />}
                                             </button>
-
-                                            <div className="flex-1 bg-white rounded-full px-4 py-2 shadow-sm border border-transparent focus-within:border-neutral-300 transition flex items-center">
-                                                <textarea
-                                                    value={messageText}
-                                                    onChange={(event) => setMessageText(event.target.value)}
-                                                    placeholder="Escribe un mensaje"
-                                                    rows={1}
-                                                    className="flex-1 bg-transparent border-none focus:ring-0 text-sm resize-none py-1 max-h-32"
-                                                />
-                                            </div>
+                                            <input
+                                                value={messageText}
+                                                onChange={(event) => setMessageText(event.target.value)}
+                                                placeholder="Escribe un mensaje"
+                                                className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none"
+                                            />
 
                                             <button
                                                 onClick={handleSend}
                                                 disabled={sending || !messageText.trim()}
-                                                className="p-3 text-neutral-500 hover:text-neutral-700 transition"
+                                                className="p-2 text-neutral-500 hover:text-neutral-700 transition disabled:opacity-50"
                                             >
-                                                {sending ? <RefreshCw size={24} className="animate-spin" /> : <Send size={24} />}
+                                                <Send size={24} />
                                             </button>
                                         </div>
                                     </div>
