@@ -281,10 +281,7 @@ const Inbox = () => {
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
                     <p className="text-xs uppercase tracking-[0.35em] text-neutral-400">WhatsApp</p>
-                    <h1 className="text-3xl md:text-4xl font-bold text-neutral-900">Inbox</h1>
-                    <p className="text-sm text-neutral-500 mt-2 max-w-xl">
-                        Centraliza las conversaciones y asigna cada chat a un worker o admin desde un solo numero.
-                    </p>
+                 
                 </div>
                 <div className="flex items-center gap-3">
                     <button

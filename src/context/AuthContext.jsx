@@ -11,30 +11,54 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        let isMounted = true;
+
+        const applySession = async (session) => {
+            if (!isMounted) return;
             setUser(session?.user ?? null);
             if (session?.user) {
-                fetchProfile(session.user.id);
+                await fetchProfile(session.user.id);
             } else {
+                setProfile(null);
                 setLoading(false);
             }
-        });
+        };
 
-        // Listen for changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            (_event, session) => {
-                setUser(session?.user ?? null);
-                if (session?.user) {
-                    fetchProfile(session.user.id);
-                } else {
+        const initSession = async () => {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) {
+                    console.warn('Error getting session:', error);
+                    if (isMounted) {
+                        setUser(null);
+                        setProfile(null);
+                        setLoading(false);
+                    }
+                    return;
+                }
+                await applySession(session);
+            } catch (error) {
+                console.error('Error initializing auth session:', error);
+                if (isMounted) {
+                    setUser(null);
                     setProfile(null);
                     setLoading(false);
                 }
             }
+        };
+
+        void initSession();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (_event, session) => {
+                void applySession(session);
+            }
         );
 
-        return () => subscription.unsubscribe();
+        return () => {
+            isMounted = false;
+            subscription.unsubscribe();
+        };
     }, []);
 
     const fetchProfile = async (userId) => {
@@ -47,8 +71,9 @@ export const AuthProvider = ({ children }) => {
 
             if (error) {
                 console.warn('Error fetching profile:', error);
+                setProfile(null);
             } else {
-                setProfile(data);
+                setProfile(data ?? null);
             }
         } catch (error) {
             console.error('Error fetching profile:', error);
