@@ -1,14 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
 import { MessageSquare, Search, RefreshCw, Send, Phone, Paperclip, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
-
-const STATUS_META = {
-    open: { label: 'Open', className: 'bg-emerald-50 text-emerald-700 border border-emerald-200' },
-    pending: { label: 'Pending', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
-    closed: { label: 'Closed', className: 'bg-neutral-100 text-neutral-600 border border-neutral-200' },
-};
 
 const formatTimestamp = (value) => {
     if (!value) return '';
@@ -45,17 +38,12 @@ const Inbox = () => {
     const [assignees, setAssignees] = useState([]);
     const [selectedThreadId, setSelectedThreadId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
     const [loadingThreads, setLoadingThreads] = useState(false);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState('');
     const [sendError, setSendError] = useState('');
     const [messageText, setMessageText] = useState('');
-    const [useTemplate, setUseTemplate] = useState(false);
-    const [templateName, setTemplateName] = useState('');
-    const [templateLang, setTemplateLang] = useState('es');
-    const [templateComponents, setTemplateComponents] = useState('');
     const [uploading, setUploading] = useState(false);
     const fileInputRef = React.useRef(null);
 
@@ -64,19 +52,9 @@ const Inbox = () => {
         [threads, selectedThreadId]
     );
 
-    const assigneeMap = useMemo(() => {
-        return assignees.reduce((acc, user) => {
-            acc[user.id] = user.full_name || user.email || 'User';
-            return acc;
-        }, {});
-    }, [assignees]);
-
     const filteredThreads = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
         return threads.filter((thread) => {
-            if (filterStatus !== 'all' && thread.status !== filterStatus) {
-                return false;
-            }
             if (!term) return true;
             return [
                 thread.client_name,
@@ -87,7 +65,7 @@ const Inbox = () => {
                 .filter(Boolean)
                 .some((value) => value.toLowerCase().includes(term));
         });
-    }, [threads, searchTerm, filterStatus]);
+    }, [threads, searchTerm]);
 
     const loadAssignees = useCallback(async () => {
         const { data, error: supaError } = await supabase
@@ -116,7 +94,7 @@ const Inbox = () => {
             setThreads(data || []);
         }
         if (!background) setLoadingThreads(false);
-    }, [isAllowed, selectedThreadId]);
+    }, [isAllowed]);
 
     const loadMessages = useCallback(
         async (waId, background = false) => {
@@ -232,34 +210,9 @@ const Inbox = () => {
         if (!selectedThreadId || sending) return;
         setSendError('');
 
-        let payload = null;
-        if (useTemplate) {
-            if (!templateName.trim()) {
-                setSendError('Template requerido.');
-                return;
-            }
-            let components = [];
-            if (templateComponents.trim()) {
-                try {
-                    components = JSON.parse(templateComponents);
-                } catch (parseError) {
-                    setSendError('Components JSON invalido.');
-                    return;
-                }
-            }
-            payload = {
-                to: selectedThreadId,
-                template: {
-                    name: templateName.trim(),
-                    language: templateLang.trim() || 'es',
-                    components,
-                },
-            };
-        } else {
-            const body = messageText.trim();
-            if (!body) return;
-            payload = { to: selectedThreadId, text: body };
-        }
+        const body = messageText.trim();
+        if (!body) return;
+        const payload = { to: selectedThreadId, text: body };
 
         setSending(true);
         try {
@@ -285,10 +238,6 @@ const Inbox = () => {
     }, [
         selectedThreadId,
         sending,
-        useTemplate,
-        templateName,
-        templateLang,
-        templateComponents,
         messageText,
     ]);
 
@@ -318,20 +267,6 @@ const Inbox = () => {
                     });
                 }
             )
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'whatsapp_messages' },
-                (payload) => {
-                    const newMessage = payload.new;
-                    setMessages((prev) => {
-                        // Only add if it belongs to the currently viewed thread
-                        // We can't easily access selectedThreadId here in closure without proper dependency handling
-                        // So we'll rely on a check inside the state setter or use a ref, or just add it if we are looking at it.
-                        return [...prev, newMessage];
-                    });
-                    // Also refresh threads to update 'last message' if needed, but the threat subscription handles that.
-                }
-            )
             .subscribe();
 
         return () => {
@@ -341,7 +276,9 @@ const Inbox = () => {
 
     // Better message filtering for current thread in Realtime
     useEffect(() => {
-        if (!selectedThreadId) return;
+        if (!selectedThreadId || !isAllowed) return;
+
+        setMessages([]);
 
         const messageChannel = supabase
             .channel(`messages-${selectedThreadId}`)
@@ -354,7 +291,10 @@ const Inbox = () => {
                     filter: `wa_id=eq.${selectedThreadId}`
                 },
                 (payload) => {
-                    setMessages((prev) => [...prev, payload.new]);
+                    setMessages((prev) => {
+                        if (prev.some((message) => message.id === payload.new.id)) return prev;
+                        return [...prev, payload.new];
+                    });
                 }
             )
             .subscribe();
@@ -365,7 +305,7 @@ const Inbox = () => {
             supabase.removeChannel(messageChannel);
         };
 
-    }, [selectedThreadId, loadMessages]);
+    }, [selectedThreadId, loadMessages, isAllowed]);
 
 
     if (!isAllowed) {
@@ -392,26 +332,14 @@ const Inbox = () => {
                         }`}
                 >
                     <div className="p-4 border-b border-black/5 shrink-0">
-                        <div className="flex items-center gap-2">
-                            <div className="relative flex-1">
-                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                <input
-                                    value={searchTerm}
-                                    onChange={(event) => setSearchTerm(event.target.value)}
-                                    placeholder="Buscar..."
-                                    className="w-full rounded-full border border-black/10 bg-neutral-50 pl-9 pr-3 py-2 text-sm focus:border-black/40 focus:bg-white transition"
-                                />
-                            </div>
-                            <select
-                                value={filterStatus}
-                                onChange={(event) => setFilterStatus(event.target.value)}
-                                className="rounded-full border border-black/10 bg-neutral-50 px-3 py-2 text-xs uppercase tracking-wide text-neutral-600"
-                            >
-                                <option value="all">Todos</option>
-                                <option value="open">Open</option>
-                                <option value="pending">Pending</option>
-                                <option value="closed">Closed</option>
-                            </select>
+                        <div className="relative">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                            <input
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                                placeholder="Buscar..."
+                                className="w-full rounded-full border border-black/10 bg-neutral-50 pl-9 pr-3 py-2 text-sm focus:border-black/40 focus:bg-white transition"
+                            />
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
@@ -422,8 +350,6 @@ const Inbox = () => {
                             <div className="text-sm text-neutral-400 px-2">No hay conversaciones.</div>
                         )}
                         {filteredThreads.map((thread) => {
-                            const statusMeta = STATUS_META[thread.status] || STATUS_META.open;
-                            const assigneeName = thread.assigned_to ? assigneeMap[thread.assigned_to] : null;
                             const displayName = thread.client_name || thread.client_phone || thread.wa_id || 'Cliente';
                             const isActive = thread.wa_id === selectedThreadId;
                             return (
@@ -454,14 +380,6 @@ const Inbox = () => {
                                             <p className={`text-xs truncate ${isActive ? 'text-white/70' : 'text-neutral-500'}`}>
                                                 {thread.last_message || 'Sin mensajes'}
                                             </p>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <span className={`text-[10px] uppercase px-2 py-0.5 rounded-full ${statusMeta.className}`}>
-                                                    {statusMeta.label}
-                                                </span>
-                                                <span className={`text-[10px] ${isActive ? 'text-white/70' : 'text-neutral-400'}`}>
-                                                    {assigneeName ? `Asignado: ${assigneeName}` : 'Sin asignar'}
-                                                </span>
-                                            </div>
                                         </div>
                                     </div>
                                 </button>
@@ -472,7 +390,7 @@ const Inbox = () => {
 
                 {/* Chat Side */}
                 <div
-                    className={`flex-col h-full overflow-hidden bg-[#efeae2] ${!selectedThreadId ? 'hidden lg:flex' : 'flex'
+                    className={`flex-col h-full overflow-hidden bg-white ${!selectedThreadId ? 'hidden lg:flex' : 'flex'
                         }`}
                 >
                     {selectedThread ? (
@@ -531,7 +449,7 @@ const Inbox = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat bg-fixed">
+                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar bg-neutral-50">
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
                                 )}
@@ -635,49 +553,13 @@ const Inbox = () => {
 
                                             <button
                                                 onClick={handleSend}
-                                                disabled={sending || (!useTemplate && !messageText.trim())}
+                                                disabled={sending || !messageText.trim()}
                                                 className="p-3 text-neutral-500 hover:text-neutral-700 transition"
                                             >
                                                 {sending ? <RefreshCw size={24} className="animate-spin" /> : <Send size={24} />}
                                             </button>
                                         </div>
-
-                                        <div className="flex items-center gap-2 px-2">
-                                            <label className="flex items-center gap-2 text-xs text-neutral-500 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={useTemplate}
-                                                    onChange={(event) => setUseTemplate(event.target.checked)}
-                                                    className="rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
-                                                />
-                                                Usar template
-                                            </label>
-                                        </div>
                                     </div>
-
-                                    {useTemplate && (
-                                        <div className="grid grid-cols-1 md:grid-cols-[1fr_120px] gap-3">
-                                            <input
-                                                value={templateName}
-                                                onChange={(event) => setTemplateName(event.target.value)}
-                                                placeholder="template_name"
-                                                className="rounded-xl border border-black/10 bg-neutral-50 px-3 py-2 text-sm focus:bg-white focus:border-black/30 transition"
-                                            />
-                                            <input
-                                                value={templateLang}
-                                                onChange={(event) => setTemplateLang(event.target.value)}
-                                                placeholder="es"
-                                                className="rounded-xl border border-black/10 bg-neutral-50 px-3 py-2 text-sm focus:bg-white focus:border-black/30 transition"
-                                            />
-                                            <textarea
-                                                value={templateComponents}
-                                                onChange={(event) => setTemplateComponents(event.target.value)}
-                                                placeholder='components JSON opcional: [{"type":"body","parameters":[{"type":"text","text":"Juan"}]}]'
-                                                rows={2}
-                                                className="md:col-span-2 rounded-xl border border-black/10 bg-neutral-50 px-3 py-2 text-xs focus:bg-white focus:border-black/30 transition"
-                                            />
-                                        </div>
-                                    )}
                                     {sendError && <p className="text-xs text-red-600">{sendError}</p>}
                                     {error && <p className="text-xs text-amber-600">{error}</p>}
                                 </div>

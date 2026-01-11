@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
         const applySession = async (session) => {
             if (!isMounted) return;
             setUser(session?.user ?? null);
+            supabase.realtime?.setAuth(session?.access_token ?? '');
             if (session?.user) {
                 await fetchProfile(session.user.id);
             } else {

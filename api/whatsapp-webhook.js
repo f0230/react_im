@@ -60,6 +60,29 @@ function isSignatureValid(req, rawBody) {
   );
 }
 
+async function forwardToN8n(payload) {
+  const webhookUrl = process.env.N8N_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Webhook-Source': 'grupodte-whatsapp',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      console.error('n8n webhook error:', response.status, text);
+    }
+  } catch (error) {
+    console.error('n8n webhook error:', error);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     const mode = req.query['hub.mode'];
@@ -93,6 +116,8 @@ export default async function handler(req, res) {
   if (body.object !== 'whatsapp_business_account') {
     return res.status(200).send('IGNORED');
   }
+
+  await forwardToN8n(body);
 
   const supabase = getSupabaseAdmin();
   const entries = Array.isArray(body.entry) ? body.entry : [];
