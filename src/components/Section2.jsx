@@ -1,9 +1,7 @@
 // Section2.jsx optimizado
 import React from "react";
-import OptimizedImage from "@/components/OptimizedImage";
-import bgMobileProfe from "../assets/ProfMov.webp";
-import bgWebProfe from "../assets/Profeweb.webp";
 import { Link } from 'react-router-dom';
+import Plasma from "./bg/Plasma";
 
 
 const Section2 = ({ onContactClick }) => {
@@ -13,26 +11,24 @@ const Section2 = ({ onContactClick }) => {
       aria-label="Sección sobre profesionales"
     >
       <div className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px] h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] xl:h-[700px] mt-[5px] sm:mt-[0px] overflow-hidden">
-        <picture className="absolute inset-0 z-0">
-          <OptimizedImage
-            src={bgWebProfe}
-            mobileSrc={bgMobileProfe}
-            alt="Fondo profesionales DTE"
-            className="w-full h-full"
-            decoding="async"
-            loading="lazy"
+        <div className="absolute inset-0 z-0" aria-hidden="true">
+          <Plasma
+            color="#f2f2f2"
+            speed={0.4}
+            direction="forward"
+            scale={0.6}
+            opacity={0.8}
+            mouseInteractive={false}
           />
-
-
-        </picture>
+        </div>
 
         <div className="relative z-10 w-full mx-auto h-full flex flex-col items-center justify-center text-center">
-          <h1 className="text-white text-[30px] sm:text-[40px] md:text-[50px] lg:text-[60px] font-normal leading-none">
-            <span className="block md:inline">+ ideas</span>
-            <span className="block md:inline md:ml-2">+ profesionales</span>
+          <h1 className="text-white text-[30px] sm:text-[40px] md:text-[50px]  lg:text-[60px] font-normal leading-none">
+            <span className="block md:inline text-black  ">+ ideas</span>
+            <span className="block md:inline md:ml-2 text-black ">+ profesionales</span>
           </h1>
 
-          <p className="w-[222px] md:w-[400px] font-normal text-[12px] md:text-[17px] text-white mt-4 sm:mt-6 md:mt-8 leading-none">
+          <p className=" text-black w-[222px] md:w-[400px] font-normal text-[12px] md:text-[17px]  mt-4 sm:mt-6 md:mt-8 leading-none">
             DTE ahora es un grupo que busca sumarse a otras empresas para apoyar el crecimiento y buscar el máximo beneficio. Somos más profesionales.
           </p>
 

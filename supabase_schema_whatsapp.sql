@@ -6,6 +6,9 @@ create table public.whatsapp_threads (
   client_phone text,
   last_message text,
   last_message_at timestamp with time zone,
+  short_context jsonb,
+  short_context_text text,
+  short_context_updated_at timestamp with time zone,
   status text check (status in ('open', 'pending', 'closed')) default 'open',
   assigned_to uuid references public.profiles(id),
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
@@ -13,6 +16,7 @@ create table public.whatsapp_threads (
 
 create index if not exists whatsapp_threads_wa_id_idx on public.whatsapp_threads (wa_id);
 create index if not exists whatsapp_threads_assigned_to_idx on public.whatsapp_threads (assigned_to);
+create index if not exists whatsapp_threads_short_context_updated_idx on public.whatsapp_threads (short_context_updated_at);
 
 -- WhatsApp messages (inbound/outbound)
 create table public.whatsapp_messages (
@@ -91,6 +95,57 @@ create policy "Admins and Workers can insert messages"
 
 create policy "Admins and Workers can update messages"
   on public.whatsapp_messages for update
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role in ('admin', 'worker')
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role in ('admin', 'worker')
+    )
+  );
+
+-- Thread projects (many projects per WhatsApp thread)
+create table public.thread_projects (
+  id uuid default uuid_generate_v4() primary key,
+  wa_id text not null references public.whatsapp_threads(wa_id) on delete cascade,
+  project_id uuid not null references public.projects(id) on delete cascade,
+  last_touched_at timestamp with time zone,
+  confidence numeric check (confidence >= 0 and confidence <= 1),
+  source text check (source in ('auto', 'manual')) default 'auto',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique (wa_id, project_id)
+);
+
+create index if not exists thread_projects_wa_id_idx on public.thread_projects (wa_id);
+create index if not exists thread_projects_project_id_idx on public.thread_projects (project_id);
+create index if not exists thread_projects_last_touched_idx on public.thread_projects (last_touched_at);
+
+alter table public.thread_projects enable row level security;
+
+create policy "Admins and Workers can view thread projects"
+  on public.thread_projects for select
+  using (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role in ('admin', 'worker')
+    )
+  );
+
+create policy "Admins and Workers can insert thread projects"
+  on public.thread_projects for insert
+  with check (
+    exists (
+      select 1 from public.profiles
+      where id = auth.uid() and role in ('admin', 'worker')
+    )
+  );
+
+create policy "Admins and Workers can update thread projects"
+  on public.thread_projects for update
   using (
     exists (
       select 1 from public.profiles

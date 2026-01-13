@@ -15,6 +15,7 @@ import grupodte from "../assets/LOGODTE.svg";
 import xclose from "../assets/x-close.svg";
 
 const rotatingWords = ["negocio", "empresa", "marca", "proyecto", "futuro"];
+const whatsappLink = "https://wa.me/59899123456?text=Hola,%20quisiera%20hacer%20una%20consulta";
 
 const HeroSection = ({ onContactClick }) => {
   const [showPopup, setShowPopup] = useState(false);
@@ -110,7 +111,7 @@ const HeroSection = ({ onContactClick }) => {
                     animate={{ opacity: 1, backdropFilter: "blur(5px)", rotate: 0, y: 0 }}
                     exit={{ opacity: 0, backdropFilter: "blur(0px)", rotate: 2, y: 10 }}
                     transition={{ duration: 1.65, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute bottom-2 transform -translate-x-1/2 w-[250px] h-[100px] bg-black shadow-lg p-4 flex flex-col justify-between z-30 md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:h-[150px]"
+                    className="absolute bottom-2 transform -translate-x-1/2 w-[250px] min-h-[110px] h-auto bg-black shadow-lg p-4 flex flex-col justify-between z-30 md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:min-h-[150px]"
                     role="dialog"
                     aria-label="Mensaje de bienvenida"
                   >
@@ -121,6 +122,14 @@ const HeroSection = ({ onContactClick }) => {
                           <span className="inline-block -mt-2">Bienvenido</span>
                         </h2>
                         <p className="mt-1">si tiene alguna consulta contáctenos</p>
+                        <a
+                          href={whatsappLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-[#0DD122] py-1.5 text-[11px] font-semibold text-black transition hover:bg-[#1ebe5d] md:py-2 md:text-[15px]"
+                        >
+                          Contactanos por WhatsApp
+                        </a>
                       </div>
                     </FadeContent>
 
