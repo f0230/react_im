@@ -64,18 +64,18 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true,
+        drop_console: false, // Habilitar logs para diagnóstico en producción
         drop_debugger: true,
       },
     },
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) return 'vendor';
-          if (id.includes('/src/components/')) return 'components';
-          if (id.includes('/src/pages/')) return 'pages';
-          if (id.includes('/src/utils/')) return 'utils';
-        },
+        // manualChunks(id) {
+        //   if (id.includes('node_modules')) return 'vendor';
+        //   if (id.includes('/src/components/')) return 'components';
+        //   if (id.includes('/src/pages/')) return 'pages';
+        //   if (id.includes('/src/utils/')) return 'utils';
+        // },
       },
     },
   },

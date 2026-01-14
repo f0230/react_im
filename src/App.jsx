@@ -7,7 +7,23 @@ import LoadingFallback from "@/components/ui/LoadingFallback";
 
 
 
-const Home = lazy(() => import("@/pages/Home"));
+const lazyLog = (importFn, name) => {
+  return lazy(async () => {
+    try {
+      const module = await importFn();
+      console.log(`[LazyLog] Loaded ${name}:`, module);
+      if (!module || !module.default) {
+        console.error(`[LazyLog] Module ${name} has no default export!`, module);
+      }
+      return module;
+    } catch (error) {
+      console.error(`[LazyLog] Error loading ${name}:`, error);
+      throw error;
+    }
+  });
+};
+
+const Home = lazyLog(() => import("@/pages/Home"), "Home");
 const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Services = lazy(() => import("@/pages/Services"));
