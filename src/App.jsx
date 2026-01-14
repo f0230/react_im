@@ -24,43 +24,65 @@ const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
 const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
 const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
 import { AuthProvider } from "@/context/AuthContext";
+import { UIProvider, useUI } from "@/context/UIContext";
 import PortalLayout from "@/layouts/PortalLayout";
 import { Navigate } from "react-router-dom";
+
+const AppContent = () => {
+  const { isNavbarOpen } = useUI();
+
+  return (
+    <div className="relative min-h-screen">
+      <ScrollToTop />
+
+      {/* Overlay de efecto blur 2px */}
+      {isNavbarOpen && (
+        <div
+          className="fixed inset-0 z-40 backdrop-blur-[2px] bg-black/10 transition-all duration-300"
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
+
+      <Suspense fallback={<LoadingFallback type="spinner" />}>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/Nosotros" element={<About />} />
+          <Route path="/Contacto" element={<Contact />} />
+          <Route path="/servicios" element={<Services />} />
+          <Route path="/despega" element={<LandingDespega />} />
+          <Route path="/tyc" element={<Terminos />} />
+          <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
+          <Route path="/desarrollo" element={<Development />} />
+          <Route path="/dte" element={<LandingDTE />} />
+          <Route path="/admin" element={<AdminLogin />} />
+
+          {/* Private Portal Routes */}
+          <Route path="/dashboard" element={<PortalLayout />}>
+            <Route index element={<DashboardHome />} />
+            <Route path="clients" element={<Clients />} />
+            <Route path="projects" element={<Projects />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="inbox" element={<Inbox />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Settings />} /> {/* Reusing Settings for Profile for now */}
+
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
+    </div>
+  );
+};
 
 const App = () => {
   return (
     <Router>
-      <AuthProvider>
-        <ScrollToTop />
-        <Suspense fallback={<LoadingFallback type="spinner" />}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/Nosotros" element={<About />} />
-            <Route path="/Contacto" element={<Contact />} />
-            <Route path="/servicios" element={<Services />} />
-            <Route path="/despega" element={<LandingDespega />} />
-            <Route path="/tyc" element={<Terminos />} />
-            <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
-            <Route path="/desarrollo" element={<Development />} />
-            <Route path="/dte" element={<LandingDTE />} />
-            <Route path="/admin" element={<AdminLogin />} />
-
-            {/* Private Portal Routes */}
-            <Route path="/dashboard" element={<PortalLayout />}>
-              <Route index element={<DashboardHome />} />
-              <Route path="clients" element={<Clients />} />
-              <Route path="projects" element={<Projects />} />
-              <Route path="invoices" element={<Invoices />} />
-              <Route path="inbox" element={<Inbox />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="profile" element={<Settings />} /> {/* Reusing Settings for Profile for now */}
-
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Route>
-          </Routes>
-        </Suspense>
-      </AuthProvider>
+      <UIProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </UIProvider>
     </Router>
   );
 };

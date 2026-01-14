@@ -2,10 +2,12 @@
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useTranslation } from 'react-i18next';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const SimultaneousWords = () => {
+    const { t, i18n } = useTranslation();
     const containerRef = useRef(null);
 
     useEffect(() => {
@@ -50,11 +52,10 @@ const SimultaneousWords = () => {
         return () => {
             tl.kill();
         };
-    }, []);
+    }, [i18n.language]);
 
-    const title = 'en DTE';
-    const paragraph =
-        'Nos dedicamos a impulsar el crecimiento y el éxito de nuestros clientes a través del desarrollo, ejecución y asesoramiento de proyectos. Nuestro enfoque es brindar soluciones que se adapten a las necesidades específicas de cada negocio. Contamos con un equipo multidisciplinario capacitado que se enfoca en el crecimiento profesional de nuestros clientes. Tenemos una estructura de organización centralizada que nos permite encargarnos de todas las partes importantes de un proyecto, asegurando un enfoque integral y eficiente. En DTE, también nos destacamos por ser asesores interdisciplinarios, lo que significa que abordamos los negocios desde todas sus perspectivas. Estamos preparados para enfrentar cualquier desafío que se presente de manera profesional y creativa. Nuestra forma de trabajo se basa en la organización y la comunicación constante con nuestros clientes. Creemos firmemente que una buena comunicación y una organización interna sólida son fundamentales para ejecutar estrategias de manera efectiva y obtener resultados exitosos.';
+    const title = t('textEnDte.title');
+    const paragraph = t('textEnDte.paragraph');
 
     const titleWords = title.split(' ');
     const paragraphWords = paragraph.split(' ');
@@ -62,7 +63,7 @@ const SimultaneousWords = () => {
     return (
         <section
             className="relative w-full flex justify-center items-center border-y-2 border-black overflow-hidden py-10 md:py-16"
-            aria-label="Texto institucional sobre DTE"
+            aria-label={t('textEnDte.aria')}
         >
             <article
                 ref={containerRef}

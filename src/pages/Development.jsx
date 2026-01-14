@@ -1,36 +1,35 @@
+```
 import React from 'react';
-import ScrollStack, { ScrollStackItem } from '../components/ui/ScrollStack';
-import ProjectCard from '../components/ProjectCard';
+import PageWrapper from '../components/layout/PageWrapper';
 import DevelopmentHero from '../components/DevelopmentHero';
+import ProjectCard from '../components/ProjectCard';
+import developmentProjects from '../data/developmentProjects';
 import MoreContent from '../components/MoreContent';
 import CleoWidget from '../components/CleoChat';
-import Navbar from '../components/Navbar';
-import developmentProjects from '../data/developmentProjects';
+import { useTranslation } from "react-i18next";
 
 const Development = () => {
-
+  const { t } = useTranslation();
   return (
-    <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative">
-      <Navbar />
-      <div className="relative w-full justify-center items-center flex h-[500px]">
-        <DevelopmentHero />
-      </div>
-      <div className="relative w-full">
-        <ScrollStack>
-          {developmentProjects.map((project) => (
-            <ScrollStackItem key={project.id}>
-              <ProjectCard project={project} />
-            </ScrollStackItem>
+    <div className="font-product">
+      <DevelopmentHero />
+      <PageWrapper>
+        <div className="md:grid-cols-2 grid gap-4 p-4 lg:p-0">
+          {developmentProjects.map((project, index) => (
+            <ProjectCard
+              key={index}
+              title={t(project.titleKey)}
+              description={t(project.descriptionKey)}
+              id={project.id}
+            />
           ))}
-        </ScrollStack>
-      </div>
- 
-        <MoreContent />
-
-      
+          <MoreContent text={t("development.moreContent")} />
+        </div>
+      </PageWrapper>
       <CleoWidget />
     </div>
   );
 };
 
 export default Development;
+```

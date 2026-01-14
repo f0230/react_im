@@ -5,9 +5,11 @@ import logo from "../assets/Group 255.svg";
 import { Link, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useTranslation } from "react-i18next";
 
 import { menuItems } from "@/config/nav";
 import LoginModal from "./LoginModal";
+import { useUI } from "@/context/UIContext";
 
 
 gsap.registerPlugin(ScrollTrigger);
@@ -15,11 +17,13 @@ gsap.registerPlugin(ScrollTrigger);
 
 
 const Navbar = () => {
+    const { t, i18n } = useTranslation();
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isMenuVisible, setIsMenuVisible] = useState(false);
     const [showNavbar, setShowNavbar] = useState(true);
     const [hasScrolled, setHasScrolled] = useState(false);
     const navigate = useNavigate();
+    const { setIsNavbarOpen } = useUI();
 
     const handleMenuItemClick = (url) => {
         const menu = document.getElementById("mobile-menu");
@@ -54,9 +58,16 @@ const Navbar = () => {
     const lastScrollYRef = useRef(0);
     const menuRef = useRef();
     const glowRef = useRef();
+    const currentLang = (i18n.resolvedLanguage || i18n.language || "es").split("-")[0];
 
     const toggleMenu = () => setIsMenuOpen((prev) => !prev);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const setLanguage = (lng) => i18n.changeLanguage(lng);
+    const languageButtonClass = (lng) =>
+        `text-[11px] px-2 py-1 rounded-full border transition ${currentLang === lng
+            ? "bg-white text-black border-white"
+            : "text-white border-white/40 hover:border-white"
+        }`;
 
     useEffect(() => {
         const handleScroll = () => {
@@ -93,7 +104,8 @@ const Navbar = () => {
         if (isMenuOpen) {
             setIsMenuVisible(true);
         }
-    }, [isMenuOpen]);
+        setIsNavbarOpen(isMenuOpen);
+    }, [isMenuOpen, setIsNavbarOpen]);
 
     useEffect(() => {
         if (isMenuOpen && isMenuVisible) {
@@ -203,17 +215,37 @@ const Navbar = () => {
                                     to={item.url}
                                     className="text-white text-sm font-bold hover:underline"
                                 >
-                                    {item.text}
+                                    {t(item.key)}
                                 </Link>
                             </li>
                         ))}
+                        <li aria-label={t("nav.languageLabel")}>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    className={languageButtonClass("es")}
+                                    onClick={() => setLanguage("es")}
+                                    aria-pressed={currentLang === "es"}
+                                >
+                                    ES
+                                </button>
+                                <button
+                                    type="button"
+                                    className={languageButtonClass("en")}
+                                    onClick={() => setLanguage("en")}
+                                    aria-pressed={currentLang === "en"}
+                                >
+                                    EN
+                                </button>
+                            </div>
+                        </li>
                         {/* Login Button Desktop */}
                         <li>
                             <button
                                 onClick={() => setIsLoginOpen(true)}
                                 className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors border border-white/10 flex items-center gap-2"
                             >
-                                <span>Portal Clientes</span>
+                                <span>{t("nav.portalClients")}</span>
 
                             </button>
                         </li>
@@ -248,11 +280,32 @@ const Navbar = () => {
                                         onClick={() => handleMenuItemClick(item.url)}
                                         className="text-white text-[13px] leading-tight font-product font-normal tracking-wide block hover:scale-105 transition-transform duration-300"
                                     >
-                                        {item.text}
+                                        {t(item.key)}
                                     </button>
 
                                 </li>
                             ))}
+                            <li className="menu-item opacity-0 transform">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-white text-[11px]">{t("nav.languageLabel")}</span>
+                                    <button
+                                        type="button"
+                                        className={languageButtonClass("es")}
+                                        onClick={() => setLanguage("es")}
+                                        aria-pressed={currentLang === "es"}
+                                    >
+                                        ES
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={languageButtonClass("en")}
+                                        onClick={() => setLanguage("en")}
+                                        aria-pressed={currentLang === "en"}
+                                    >
+                                        EN
+                                    </button>
+                                </div>
+                            </li>
                             {/* Login Button Mobile */}
                             <li className="menu-item opacity-0 transform pt-4">
                                 <button
@@ -262,7 +315,7 @@ const Navbar = () => {
                                     }}
                                     className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px]"
                                 >
-                                    Acceso Clientes
+                                    {t("nav.accessClients")}
                                 </button>
                             </li>
                         </ul>

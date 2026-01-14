@@ -1,0 +1,363 @@
+{
+  "nav": {
+    "services": "Services",
+    "development": "Development",
+    "portalClients": "Client Portal",
+    "accessClients": "Client Access",
+    "languageLabel": "Language"
+  },
+  "layout": {
+    "seo": {
+      "defaultTitle": "Grupo DTE | Creative and Tech Solutions",
+      "defaultDescription": "Digital agency focused on development, marketing, and automation for growing companies."
+    },
+    "footerLoading": "Loading footer..."
+  },
+  "footer": {
+    "contactTitle": "Contact us",
+    "headline": "Let’s work together",
+    "subheadline": "and go further",
+    "ctaMeeting": "Schedule a meeting",
+    "ctaWhatsapp": "Let’s talk on WhatsApp",
+    "copyright": "© 2025 Grupo DTE",
+    "terms": "Terms and Conditions",
+    "builtBy": "Built by DTE",
+    "privacy": "Privacy Policy"
+  },
+  "section1": {
+    "aria": {
+      "hero": "Hero section",
+      "bgMobileAlt": "Mobile hero background",
+      "bgDesktopAlt": "Desktop hero background",
+      "logoAlt": "Grupo DTE logo",
+      "popup": "Welcome message",
+      "close": "Close message",
+      "closePopupAlt": "Close popup"
+    },
+    "titleLine": "we boost your",
+    "rotatingWords": [
+      "business",
+      "company",
+      "brand",
+      "project",
+      "future"
+    ],
+    "subtitle": "We develop strategic solutions",
+    "ctaContact": "Contact us",
+    "ctaServices": "Services",
+    "popupTitleLine1": "Hi!",
+    "popupTitleLine2": "Welcome",
+    "popupSubtitle": "if you have any questions, contact us",
+    "popupCta": "Contact us on WhatsApp",
+    "whatsappMessage": "Hi, I’d like to make an inquiry"
+  },
+  "section2": {
+    "aria": "Professionals section",
+    "titleLine1": "+ ideas",
+    "titleLine2": "+ professionals",
+    "description": "DTE is now a group that seeks to join with other companies to support growth and maximize value. We are more professional.",
+    "ctaContact": "Contact us",
+    "ctaServices": "Services"
+  },
+  "section3": {
+    "aria": {
+      "label": "DTE campaign and proposal",
+      "bgAlt": "DTE does it background",
+      "logoAlt": "Grupo DTE logo",
+      "bannerDesktopAlt": "Campaign banner desktop",
+      "bannerMobileAlt": "Campaign banner mobile"
+    },
+    "leftTitle": "projects + ideas",
+    "leftDescription": "We help you make strategic decisions so your new project grows with focus, coherence, and results.",
+    "ctaAria": "See more about spaces",
+    "cta": "See more",
+    "rightTitle": "Campaigns",
+    "rightDescription": "creative and strategic that connect with your audience",
+    "ctaContact": "Contact us"
+  },
+  "section4": {
+    "aria": "Spaces and content section",
+    "spacesTitle": "SPACES",
+    "spacesDescription": "We create physical and digital environments with their own identity.",
+    "contentTitle": "CONTENT",
+    "contentDescription": "We generate strategic material that connects and communicates.",
+    "cta": "See more",
+    "ctaAria": "See more about services",
+    "ariaSpacesDesktopAlt": "Spaces Desktop Image",
+    "ariaSpacesMobileAlt": "Spaces Mobile Image",
+    "ariaContentDesktopAlt": "Content Desktop Image",
+    "ariaContentMobileAlt": "Content Mobile Image"
+  },
+  "section5": {
+    "aria": {
+      "services": "Additional DTE services",
+      "popup": "Contact message",
+      "close": "Close message",
+      "closePopupAlt": "Close popup"
+    },
+    "headline": "and +",
+    "list": "Architecture, economics, legal advice, logistics...",
+    "popupTitle": "Want to talk about your project?",
+    "popupSubtitle": "We put together a quick, clear diagnosis.",
+    "popupCta": "Schedule a diagnosis"
+  },
+  "section8": {
+    "aria": "Final contact and portfolio section",
+    "title": "Want to talk about your project?",
+    "description": "We boost brands with strategy, design, and cutting-edge technology.",
+    "ctaContact": "Contact us",
+    "ctaMore": "Learn more",
+    "ctaMoreAria": "Learn more about us"
+  },
+  "sectionDteAutomation": {
+    "aria": "DTE automation carousel",
+    "slides": {
+      "dteLoHaceAlt": "DTE does it",
+      "automationAlt": "Automation"
+    }
+  },
+  "carousel": {
+    "aria": "Success stories section",
+    "ariaRegion": "Horizontal client carousel",
+    "titlePrefix": "We are",
+    "titleBold": "ideal",
+    "titleSuffix": "for",
+    "slides": {
+      "pymes": {
+        "title": "SMEs",
+        "text": "If your goal is to formalize your structure, improve your processes, and start communicating as a consolidated company, we are your ideal partner. We help you organize your identity and technology so that growth isn't chaos, but an opportunity. We accompany you in taking the step from a business to a professional company."
+      },
+      "empresas": {
+        "title": "Companies",
+        "text": "If your brand is already positioned but you feel it's time to evolve, we are here to accompany you. We help you renew your identity, update your communication, and align yourself with current market challenges, without losing what makes you valuable. Because growing also implies adapting, and doing it with strategy makes the difference."
+      },
+      "emprendedores": {
+        "title": "Entrepreneurs",
+        "text": "If you're starting out, have a clear idea but don't know where to begin with your brand, we are the team you need. We help you build your identity from scratch, with a strategy that differentiates you from the beginning. We accompany you every step of the way, so your brand starts off right and with strength."
+      }
+    }
+  },
+  "textEnDte": {
+    "aria": "Institutional text about DTE",
+    "title": "at DTE",
+    "paragraph": "We know that every brand is a world and every project a different challenge. That's why we don't believe in generic solutions. We take the time to understand your business, your goals, and your values, to design a strategy that actually works for you. Because when your brand grows, we do too."
+  },
+  "sectionCardSwap": {
+    "aria": "Dynamic cards section",
+    "title": "This is how DTE thinks and works",
+    "description": "Strategy, design, and technology powered by artificial intelligence applied to real business.",
+    "cards": {
+      "strategy": {
+        "title": "Strategy",
+        "content": "We think before we execute. We use AI to analyze your business, market, and data, and define business models, funnels, pricing, and digital roadmap with real logic."
+      },
+      "design": {
+        "title": "Design",
+        "content": "We design with intention. AI helps us explore concepts, validate visual decisions, and accelerate creative processes without losing human judgment."
+      },
+      "technology": {
+        "title": "Technology",
+        "content": "We build intelligent systems. Web apps, automations, integrations, and AI agents that work for you 24/7."
+      },
+      "performance": {
+        "title": "Performance",
+        "content": "We measure, learn, and improve. AI analyzes results, detects opportunities, and optimizes campaigns, processes, and conversions in real time."
+      }
+    },
+    "popup": {
+      "aria": "Contact message",
+      "title": "Hi!",
+      "subtitle": "Want to talk about your project?",
+      "description": "We put together a quick and clear diagnosis.",
+      "cta": "Schedule a diagnosis",
+      "closeAria": "Close message",
+      "closeAlt": "Close popup"
+    }
+  },
+  "development": {
+    "hero": {
+      "title": "Our Development Portfolio",
+      "description": "Here you can see some of the projects we have worked on, combining cutting-edge technologies like React, Supabase, Vercel, and AI to create innovative solutions."
+    },
+    "projects": {
+      "imSeguros": {
+        "title": "Policy Software for IM Seguros",
+        "description": "An application for managing insurance policies, facilitating the tracking and administration of clients and contracts."
+      },
+      "sheiki": {
+        "title": "Sheiki.uy Ecommerce",
+        "description": "E-commerce with payment integration, inventory management, and optimized user experience."
+      },
+      "finex": {
+        "title": "Online Token Transaction Management",
+        "description": "Platform for managing online token transactions, oriented towards gaming and loyalty systems."
+      },
+      "demicheri": {
+        "title": "Training App",
+        "description": "PWA mobile application for students and administration interface for trainers, facilitating the management of routines and progress tracking."
+      }
+    },
+    "moreContent": "More projects coming soon..."
+  },
+  "servicesPage": {
+    "seo": {
+      "title": "Services | Grupo DTE",
+      "description": "Learn about our web development, marketing automation, and custom design services for modern companies."
+    },
+    "title": "Service Listing",
+    "description": "We offer a wide range of services to help your company grow and stand out in the digital world. From web development to marketing automation, we have the perfect solution for your needs.",
+    "items": {
+      "intro": "At DTE we work with companies that seek to professionalize, grow, and consolidate their identity. We do it from an integral, creative, and strategic approach, accompanying projects from idea to execution.",
+      "projectDev": {
+        "title": "Project Development",
+        "text": "We accompany companies in the design, planning, and execution of specific projects that drive their growth and consolidation."
+      },
+      "redesign": {
+        "title": "Existing Brand Redesign",
+        "text": "If you already have a brand and want to take it to the next level, we work on redefining its visual identity, message, and strategic positioning."
+      },
+      "spaces": {
+        "title": "Space Design and Creation",
+        "text": "We transform physical spaces so they reflect your brand's DNA. From offices to commercial premises, we make every corner communicate who you are."
+      },
+      "identity": {
+        "title": "Brand Identity",
+        "text": "We create brands from scratch or strengthen existing ones. We define purpose, values, communication tone, and visual aesthetics that convey coherence and professionalism."
+      },
+      "sales": {
+        "title": "Sales Driving Campaigns",
+        "text": "We design commercial campaigns that not only communicate but convert. Strategy, creativity, and execution to reach your customers and increase your results."
+      },
+      "support": {
+        "title": "Comprehensive Support",
+        "text": "We follow you closely: we work side by side at every step of the process to ensure that ideas come to fruition and generate real impact."
+      },
+      "proPlans": {
+        "title": "Custom Professionalization Plans",
+        "text": "We evaluate the company's current state and design a roadmap for its evolution."
+      },
+      "consultancy": {
+        "title": "Strategic Consultancy by Area (Commercial, Operations, HR, etc.)",
+        "text": "Focused support according to the specific challenges of each sector."
+      },
+      "restructuring": {
+        "title": "Organizational Restructuring",
+        "text": "Optimization of roles, processes, and internal structures to improve efficiency and clarity."
+      },
+      "manual": {
+        "title": "Brand Manual",
+        "text": "Clear guidelines for using the logo, typography, colors, tone of voice, etc."
+      },
+      "internalComm": {
+        "title": "Professionalized Internal Communication",
+        "text": "Strategies so that teams are informed, aligned, and committed."
+      },
+      "socialMedia": {
+        "title": "Social Media Management and Strategic Content",
+        "text": "Development of content with identity to connect with the target audience."
+      },
+      "spaceIdentity": {
+        "title": "Identity-based Space Design (Offices, Shops, Showrooms)",
+        "text": "Environments that convey the brand's spirit and improve the experience for the customer or the team."
+      },
+      "corpEvents": {
+        "title": "Identity-based Corporate Events",
+        "text": "Design of face-to-face or virtual experiences aligned with the brand."
+      },
+      "ambiance": {
+        "title": "Settings for Campaigns or Launches",
+        "text": "Scenographies or temporary installations that accompany commercial or communication actions."
+      },
+      "naming": {
+        "title": "Naming Development (Brand name, products, or new lines)",
+        "text": "Strategic and creative process to choose names with meaning and recall."
+      },
+      "productIdeation": {
+        "title": "Coherent Product or Service Ideation with the Brand",
+        "text": "Support in designing new business lines with strong identity."
+      },
+      "internalCampaigns": {
+        "title": "Internal Campaigns to Align and Motivate Teams",
+        "text": "Creative actions that reinforce culture, values, and objectives from within."
+      },
+      "webDesign": {
+        "title": "Web Design and Development",
+        "text": "We create websites that not only look good but communicate who you are as a brand, function well, and are ready to scale."
+      },
+      "wordpress": {
+        "title": "WordPress Sites",
+        "text": "Custom design with brand identity. Self-managed sites. Basic SEO optimization. Integration with social networks, forms, newsletters, and more."
+      },
+      "react": {
+        "title": "Custom React Sites",
+        "text": "Modern and scalable development. Personalized interactive experiences. Integration with external systems or apps. Ideal for companies seeking high performance and flexibility."
+      },
+      "digitalProjectSupport": {
+        "title": "Comprehensive Support in Digital Project Development",
+        "text": "We guide you from planning to publication and maintenance. We think of every detail: aesthetics, functionality, content, and strategy."
+      }
+    }
+  },
+  "landingDespega": {
+    "hero": {
+      "title": "DTE does it. And now it does it better.",
+      "description": "We are the agency that transforms brands with ideas that work.",
+      "cta": "I want my brand to take off"
+    },
+    "argument": {
+      "title": "At DTE we don't do empty marketing.",
+      "description": "We do design, strategy, and content that sell.",
+      "details": "After years of work, we came back more professional, more agile, more creative. And the best part: with a team that executes real ideas, not just draws them."
+    },
+    "benefit": {
+      "title": "Want to know what we would do with your brand?",
+      "description": "We give you a 100% personalized creative session. No commitment. Just value."
+    },
+    "form": {
+      "title": "Your takeoff starts here.",
+      "placeholders": {
+        "name": "Your name",
+        "brand": "Your brand name",
+        "web": "Web or social networks",
+        "objective": "What would you like to achieve?",
+        "email": "Email",
+        "whatsapp": "WhatsApp"
+      },
+      "cta": "I want my free creative session"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "DTE Platform",
+      "description": "Access the portal to manage all your projects in one place.",
+      "googleCta": "Continue with Google",
+      "error": "Error logging in. Please try again."
+    },
+    "completeProfile": {
+      "title": "Welcome to DTE!",
+      "description": "To provide you with a better experience, please complete your details.",
+      "labels": {
+        "fullName": "Full Name",
+        "company": "Company / Project",
+        "phone": "WhatsApp",
+        "source": "How did you hear about us?"
+      },
+      "placeholders": {
+        "name": "Your name",
+        "company": "Your company name",
+        "phone": "598 9 1234 5678",
+        "source": "Select an option"
+      },
+      "sources": {
+        "website": "Website",
+        "referral": "Referral",
+        "social": "Social Media",
+        "whatsapp": "WhatsApp",
+        "other": "Other"
+      },
+      "error": "Error saving data. Please try again.",
+      "saving": "Saving...",
+      "cta": "Start now"
+    }
+  }
+}

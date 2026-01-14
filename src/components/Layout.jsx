@@ -5,10 +5,12 @@ import { useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import StepperModal from "@/components/StepperModal";
 import { useInView } from "react-intersection-observer";
+import { useTranslation } from "react-i18next";
 
 const Footer = lazy(() => import("@/components/Footer"));
 
 const Layout = ({ children }) => {
+    const { t } = useTranslation();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
     const [footerVisible, setFooterVisible] = useState(false);
@@ -16,8 +18,8 @@ const Layout = ({ children }) => {
     const { pathname } = useLocation();
     const siteUrl = "https://grupodte.com";
     const currentUrl = `${siteUrl}${pathname}`;
-    const defaultTitle = "Grupo DTE | Soluciones Creativas y Tecnológicas";
-    const defaultDescription = "Agencia digital especializada en desarrollo, marketing y automatización para empresas en crecimiento.";
+    const defaultTitle = t("layout.seo.defaultTitle");
+    const defaultDescription = t("layout.seo.defaultDescription");
     const ogImage = `${siteUrl}/og-default.jpg`;
 
     useEffect(() => {
@@ -58,7 +60,7 @@ const Layout = ({ children }) => {
             <div ref={ref} className="absolute bottom-0 w-full h-10 pointer-events-none" />
 
             {footerVisible && (
-                <Suspense fallback={<div className="text-center py-10">Cargando footer...</div>}>
+                <Suspense fallback={<div className="text-center py-10">{t("layout.footerLoading")}</div>}>
                     <Footer setIsModalOpen={setIsModalOpen} />
                 </Suspense>
             )}

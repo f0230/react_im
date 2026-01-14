@@ -7,10 +7,12 @@ import BannerMovilDTE from "../assets/BgMov_dtelohace.webp";
 import BannerWebDTE from "../assets/BgWeb_dtelohace.webp";
 import { Link } from "react-router-dom";
 import logoDTE from '../assets/dte_lohace.webp';
+import { useTranslation } from "react-i18next";
 
 
 
 const Section3 = ({ onContactClick }) => {
+  const { t } = useTranslation();
   const bannerWebRef = useRef(null);
   const bannerMobileRef = useRef(null);
   const firstSectionRef = useRef(null);
@@ -57,7 +59,7 @@ const Section3 = ({ onContactClick }) => {
   return (
     <section
       className="font-product relative w-full flex justify-center items-start px-2 z-10 mt-2"
-      aria-label="Campaña y propuesta DTE"
+      aria-label={t("section3.aria.label")}
     >
       <div className="relative w-full max-w-[1440px] overflow-hidden mt-1 sm:mt-0">
         <div className="flex flex-col md:flex-row w-full gap-2">
@@ -68,26 +70,26 @@ const Section3 = ({ onContactClick }) => {
           >
             <picture className="absolute inset-0 -z-10">
               <source media="(min-width: 768px)" srcSet={BannerWebDTE} />
-              <img src={BannerMovilDTE} alt="Fondo DTE lo hace" className="w-full h-full object-cover" />
+              <img src={BannerMovilDTE} alt={t("section3.aria.bgAlt")} className="w-full h-full object-cover" />
             </picture>
 
             <div className="h-full flex flex-col justify-center items-center text-center">
              <div className="flex items-center w-[200px] px-2">
-                     <img src={logoDTE} alt="Logo Grupo DTE" />
+                     <img src={logoDTE} alt={t("section3.aria.logoAlt")} />
                    </div>
 
               <h3 className="mt-[-10px] md:mt-[-20px] mb-5 text-black text-[20px] md:text-[40px] font-normal">
-                proyectos + ideas
+                {t("section3.leftTitle")}
               </h3>
               <p className="mb-10 md:mb-[75px] w-[250px] md:w-[323px] text-[12px] md:text-[17px] text-gray-600 leading-none">
-                Te ayudamos a tomar decisiones estratégicas para que tu nuevo proyecto crezca con foco, coherencia y resultados.
+                {t("section3.leftDescription")}
               </p>
               <Link to="/servicios">
                 <button
                   className="relative text-sm md:text-base w-28 h-8 md:w-40 md:h-10 bg-blue-500 text-white rounded-full hover:bg-blue-400 transition duration-300 mb-6"
-                  aria-label="Ver más sobre espacios"
+                  aria-label={t("section3.ctaAria")}
                 >
-                  Ver más
+                  {t("section3.cta")}
                 </button>
               </Link>
             </div>
@@ -96,12 +98,12 @@ const Section3 = ({ onContactClick }) => {
           {/* Imagen + contenido */}
           <div className="w-full md:w-1/2 h-[510px] sm:h-[600px] md:h-[625px] relative overflow-hidden flex items-center justify-center">
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 md:p-10 z-20">
-              <h2 className="text-white text-[40px] md:text-[60px] font-normal">Campañas</h2>
+              <h2 className="text-white text-[40px] md:text-[60px] font-normal">{t("section3.rightTitle")}</h2>
               <p className="mb-10 w-[250px] text-[12px] md:text-[17px] text-white leading-none">
-                creativas y estratégicas que conectan con tu público
+                {t("section3.rightDescription")}
               </p>
               <button onClick={onContactClick} className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
-                Contáctanos
+                {t("section3.ctaContact")}
               </button>
             </div>
 
@@ -109,7 +111,7 @@ const Section3 = ({ onContactClick }) => {
             <div className="absolute inset-0 hidden sm:block z-10 opacity-0 translate-y-10" ref={bannerWebRef}>
               <OptimizedImage
                 src={BannerWeb}
-                alt="Banner campaña desktop"
+                alt={t("section3.aria.bannerDesktopAlt")}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -120,7 +122,7 @@ const Section3 = ({ onContactClick }) => {
             <div className="absolute inset-0 sm:hidden z-10 opacity-0 translate-y-10" ref={bannerMobileRef}>
               <OptimizedImage
                 src={BannerMovil}
-                alt="Banner campaña móvil"
+                alt={t("section3.aria.bannerMobileAlt")}
                 className="w-full h-full object-cover"
                 loading="lazy"
                 decoding="async"

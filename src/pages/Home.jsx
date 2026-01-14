@@ -13,7 +13,6 @@ const SimultaneousWords = lazy(() => import("@/components/TextEnDTE"));
 const InfiniteCarousel = lazy(() => import("@/components/Slide"));
 const Section7 = lazy(() => import("@/components/Section8"));
 const SectionDteAutomation = lazy(() => import("@/components/SectionDteAutomation"));
-const SectionCardSwap = lazy(() => import("@/components/SectionCardSwap"));
 const CurvedLoop = lazy(() => import("@/components/CurvedLoop"));
 
 
@@ -22,28 +21,23 @@ const Home = () => {
   return (
 
     <Layout>
-    <div className="w-full overflow-x-hidden max-w-[1920px] mx-auto relative">
-      
+      <div className="w-full overflow-x-hidden max-w-[1440px] mx-auto relative">
+
         <div className="relative w-full">
-          
+
           <HeroSection onContactClick={() => setIsModalOpen(true)} />
         </div>
         <div className="relative w-full">
           <Section2 onContactClick={() => setIsModalOpen(true)} />
         </div>
-        <div className="relative w-full">
-          <SectionDteAutomation onContactClick={() => setIsModalOpen(true)} />
-        </div>
-        <div className="relative w-full">
-          <SectionCardSwap onContactClick={() => setIsModalOpen(true)} />
-       
-        </div>
+
+
         <div className="relative w-full">
           <Section3 onContactClick={() => setIsModalOpen(true)} />
         </div>
         <div className="relative w-full">
           <Section4 />
-          
+
         </div>
         <div className="relative w-full">
           <CurvedLoop
@@ -55,9 +49,9 @@ const Home = () => {
           />
         </div>
         <div className="relative w-full">
-          <Section5 />
+          <Section5 onContactClick={() => setIsModalOpen(true)} />
         </div>
-  
+
         <div className="relative w-full">
           <SimultaneousWords />
         </div>
@@ -68,8 +62,8 @@ const Home = () => {
           <Section7 onContactClick={() => setIsModalOpen(true)} />
         </div>
         <ScrollToTopButton />
-    </div>
-    <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      </div>
+      <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </Layout>
   );
 };

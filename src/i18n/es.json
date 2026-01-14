@@ -1,0 +1,363 @@
+{
+  "nav": {
+    "services": "Servicios",
+    "development": "Desarrollo",
+    "portalClients": "Portal Clientes",
+    "accessClients": "Acceso Clientes",
+    "languageLabel": "Idioma"
+  },
+  "layout": {
+    "seo": {
+      "defaultTitle": "Grupo DTE | Soluciones Creativas y Tecnológicas",
+      "defaultDescription": "Agencia digital especializada en desarrollo, marketing y automatización para empresas en crecimiento."
+    },
+    "footerLoading": "Cargando footer..."
+  },
+  "footer": {
+    "contactTitle": "Contáctanos",
+    "headline": "Trabajemos juntos",
+    "subheadline": "y llegá más lejos",
+    "ctaMeeting": "Agenda una reunión",
+    "ctaWhatsapp": "Hablemos por Whatsapp",
+    "copyright": "© 2025 Grupo DTE",
+    "terms": "Términos y Condiciones",
+    "builtBy": "Desarrollado por DTE",
+    "privacy": "Política de Privacidad"
+  },
+  "section1": {
+    "aria": {
+      "hero": "Sección hero",
+      "bgMobileAlt": "Fondo hero para móvil",
+      "bgDesktopAlt": "Fondo hero para escritorio",
+      "logoAlt": "Logo de Grupo DTE",
+      "popup": "Mensaje de bienvenida",
+      "close": "Cerrar mensaje",
+      "closePopupAlt": "Cerrar popup"
+    },
+    "titleLine": "impulsamos tu",
+    "rotatingWords": [
+      "negocio",
+      "empresa",
+      "marca",
+      "proyecto",
+      "futuro"
+    ],
+    "subtitle": "Desarrollamos soluciones estratégicas",
+    "ctaContact": "Contactanos",
+    "ctaServices": "Servicios",
+    "popupTitleLine1": "Hola!",
+    "popupTitleLine2": "Bienvenido",
+    "popupSubtitle": "si tiene alguna consulta contáctenos",
+    "popupCta": "Contactanos por WhatsApp",
+    "whatsappMessage": "Hola, quisiera hacer una consulta"
+  },
+  "section2": {
+    "aria": "Sección sobre profesionales",
+    "titleLine1": "+ ideas",
+    "titleLine2": "+ profesionales",
+    "description": "DTE ahora es un grupo que busca sumarse a otras empresas para apoyar el crecimiento y buscar el máximo beneficio. Somos más profesionales.",
+    "ctaContact": "Contactanos",
+    "ctaServices": "Servicios"
+  },
+  "section3": {
+    "aria": {
+      "label": "Campaña y propuesta DTE",
+      "bgAlt": "Fondo DTE lo hace",
+      "logoAlt": "Logo Grupo DTE",
+      "bannerDesktopAlt": "Banner campaña desktop",
+      "bannerMobileAlt": "Banner campaña móvil"
+    },
+    "leftTitle": "proyectos + ideas",
+    "leftDescription": "Te ayudamos a tomar decisiones estratégicas para que tu nuevo proyecto crezca con foco, coherencia y resultados.",
+    "ctaAria": "Ver más sobre espacios",
+    "cta": "Ver más",
+    "rightTitle": "Campañas",
+    "rightDescription": "creativas y estratégicas que conectan con tu público",
+    "ctaContact": "Contáctanos"
+  },
+  "section4": {
+    "aria": "Sección de espacios y contenidos",
+    "spacesTitle": "ESPACIOS",
+    "spacesDescription": "Creamos entornos físicos y digitales con identidad propia.",
+    "contentTitle": "CONTENIDOS",
+    "contentDescription": "Generamos material estratégico que conecta y comunica.",
+    "cta": "Ver más",
+    "ctaAria": "Ver más sobre servicios",
+    "ariaSpacesDesktopAlt": "Imagen de Espacios Desktop",
+    "ariaSpacesMobileAlt": "Imagen de Espacios Móvil",
+    "ariaContentDesktopAlt": "Imagen de Contenidos Desktop",
+    "ariaContentMobileAlt": "Imagen de Contenidos Móvil"
+  },
+  "section5": {
+    "aria": {
+      "services": "Servicios adicionales DTE",
+      "popup": "Mensaje de contacto",
+      "close": "Cerrar mensaje",
+      "closePopupAlt": "Cerrar popup"
+    },
+    "headline": "y +",
+    "list": "Arquitectura, económica, asesoramiento legal, logística...",
+    "popupTitle": "¿Hablamos de tu proyecto?",
+    "popupSubtitle": "Armamos un diagnóstico rápido y claro.",
+    "popupCta": "Agendá un diagnóstico"
+  },
+  "section8": {
+    "aria": "Sección final de contacto y portafolio",
+    "title": "¿Hablamos de tu proyecto?",
+    "description": "Potenciamos marcas con estrategia, diseño y tecnología de vanguardia.",
+    "ctaContact": "Contáctanos",
+    "ctaMore": "Saber más",
+    "ctaMoreAria": "Saber más sobre nosotros"
+  },
+  "sectionDteAutomation": {
+    "aria": "Carrusel de automatización DTE",
+    "slides": {
+      "dteLoHaceAlt": "DTE lo hace",
+      "automationAlt": "Automatización"
+    }
+  },
+  "carousel": {
+    "aria": "Sección de casos de éxito",
+    "ariaRegion": "Carrusel horizontal de clientes",
+    "titlePrefix": "Somos",
+    "titleBold": "ideal",
+    "titleSuffix": "para",
+    "slides": {
+      "pymes": {
+        "title": "Pymes",
+        "text": "Si tu objetivo es formalizar tu estructura, mejorar tus procesos y empezar a comunicar como una empresa consolidada, somos tu socio ideal. Te ayudamos a organizar tu identidad y tecnología para que el crecimiento no sea un caos, sino una oportunidad. Te acompañamos a dar el paso de negocio a empresa profesional."
+      },
+      "empresas": {
+        "title": "Empresas",
+        "text": "Si tu marca ya está posicionada pero sentís que es momento de evolucionar, estamos para acompañarte. Te ayudamos a renovar tu identidad, actualizar tu comunicación y alinearte a los desafíos actuales del mercado, sin perder lo que te hace valioso. Porque crecer también implica adaptarse, y hacerlo con estrategia marca la diferencia."
+      },
+      "emprendedores": {
+        "title": "Emprendedores",
+        "text": "Si estás empezando, tenés una idea clara pero no sabés por dónde arrancar con tu marca, somos el equipo que necesitás. Te ayudamos a construir tu identidad desde cero, con una estrategia que te diferencie desde el principio. Te acompañamos en cada paso, para que tu marca arranque bien y con fuerza."
+      }
+    }
+  },
+  "textEnDte": {
+    "aria": "Texto institucional sobre DTE",
+    "title": "en DTE",
+    "paragraph": "Sabemos que cada marca es un mundo y cada proyecto un desafío diferente. Por eso, no creemos en soluciones genéricas. Nos tomamos el tiempo para entender tu negocio, tus objetivos y tus valores, para así diseñar una estrategia que realmente funcione para vos. Porque cuando tu marca crece, nosotros también."
+  },
+  "sectionCardSwap": {
+    "aria": "Sección tarjetas dinámicas",
+    "title": "Así piensa y trabaja DTE",
+    "description": "Estrategia, diseño y tecnología potenciados por inteligencia artificial aplicada a negocio real.",
+    "cards": {
+      "strategy": {
+        "title": "Estrategia",
+        "content": "Pensamos antes de ejecutar. Usamos IA para analizar tu negocio, mercado y datos, y definir modelos de negocio, funnels, pricing y roadmap digital con lógica real."
+      },
+      "design": {
+        "title": "Diseño",
+        "content": "Diseñamos con intención. La IA nos ayuda a explorar conceptos, validar decisiones visuales y acelerar procesos creativos sin perder criterio humano."
+      },
+      "technology": {
+        "title": "Tecnología",
+        "content": "Construimos sistemas inteligentes. Web apps, automatizaciones, integraciones y agentes de IA que trabajan por vos 24/7."
+      },
+      "performance": {
+        "title": "Performance",
+        "content": "Medimos, aprendemos y mejoramos. La IA analiza resultados, detecta oportunidades y optimiza campañas, procesos y conversiones en tiempo real."
+      }
+    },
+    "popup": {
+      "aria": "Mensaje de contacto",
+      "title": "Hola!",
+      "subtitle": "¿Hablamos de tu proyecto?",
+      "description": "Armamos un diagnóstico rápido y claro.",
+      "cta": "Agendá un diagnóstico",
+      "closeAria": "Cerrar mensaje",
+      "closeAlt": "Cerrar popup"
+    }
+  },
+  "development": {
+    "hero": {
+      "title": "Nuestro Portafolio de Desarrollo",
+      "description": "Aquí puedes ver algunos de los proyectos en los que hemos trabajado, combinando tecnologías de vanguardia como React, Supabase, Vercel y AI para crear soluciones innovadoras."
+    },
+    "projects": {
+      "imSeguros": {
+        "title": "Software de Pólizas para IM Seguros",
+        "description": "Una aplicación para la gestión de pólizas de seguros, facilitando el seguimiento y la administración de clientes y contratos."
+      },
+      "sheiki": {
+        "title": "Ecommerce de Sheiki.uy",
+        "description": "E-commerce con integración de pagos, gestión de inventario y experiencia de usuario optimizada"
+      },
+      "finex": {
+        "title": "Gestión de Transacciones de Fichas Online",
+        "description": "Plataforma para la gestión de transacciones de fichas online, orientada a sistemas de juego y fidelización."
+      },
+      "demicheri": {
+        "title": "App de Entrenamiento",
+        "description": "Aplicación móvil PWA para alumnos e interfase de administración para entrenadores, facilitando la gestión de rutinas y seguimiento del progreso."
+      }
+    },
+    "moreContent": "Más proyectos próximamente..."
+  },
+  "servicesPage": {
+    "seo": {
+      "title": "Servicios | Grupo DTE",
+      "description": "Conocé nuestros servicios de desarrollo web, automatización de marketing y diseño personalizado para empresas modernas."
+    },
+    "title": "Listado de Servicios",
+    "description": "Ofrecemos una aplia gama de servicios para ayudar a tu empresa a crecer y destacar en el mundo digital. Desde desarrollo web hasta automatización de marketing, tenemos la solución perfecta para tus necesidades.",
+    "items": {
+      "intro": "En DTE trabajamos junto a empresas que buscan profesionalizarse, crecer y consolidar su identidad. Lo hacemos desde un enfoque integral, creativo y estratégico, acompañando proyectos desde la idea hasta la ejecución.",
+      "projectDev": {
+        "title": "Desarrollo de Proyectos",
+        "text": "Acompañamos a empresas en el diseño, planificación y ejecución de proyectos específicos que impulsan su crecimiento y consolidación."
+      },
+      "redesign": {
+        "title": "Rediseño de Marcas Existentes",
+        "text": "Si ya tenés una marca y querés llevarla al siguiente nivel, trabajamos en redefinir su identidad visual, mensaje y posicionamiento estratégico."
+      },
+      "spaces": {
+        "title": "Diseño y Creación de Espacios",
+        "text": "Transformamos espacios físicos para que reflejen el ADN de tu marca. Desde oficinas hasta locales comerciales, hacemos que cada rincón comunique quién sos."
+      },
+      "identity": {
+        "title": "Identidad de Marca",
+        "text": "Creamos marcas desde cero o fortalecemos las ya existentes. Definimos propósito, valores, tono comunicacional y estética visual que transmitan coherencia y profesionalismo."
+      },
+      "sales": {
+        "title": "Campañas para Impulsar Ventas",
+        "text": "Diseñamos campañas comerciales que no solo comunican, sino que convierten. Estrategia, creatividad y ejecución para llegar a tus clientes y aumentar tus resultados."
+      },
+      "support": {
+        "title": "Acompañamiento Integral",
+        "text": "Te seguimos de cerca: trabajamos codo a codo en cada paso del proceso para asegurarnos de que las ideas se concreten y generen impacto real."
+      },
+      "proPlans": {
+        "title": "Planes de profesionalización personalizados",
+        "text": "Evaluamos el estado actual de la empresa y diseñamos una hoja de ruta para su evolución."
+      },
+      "consultancy": {
+        "title": "Consultoría estratégica por áreas (comercial, operaciones, RRHH, etc.)",
+        "text": "Acompañamiento focalizado según los desafíos específicos de cada sector."
+      },
+      "restructuring": {
+        "title": "Reestructuración organizacional",
+        "text": "Optimización de roles, procesos y estructuras internas para mejorar eficiencia y claridad."
+      },
+      "manual": {
+        "title": "Manual de marca",
+        "text": "Lineamientos claros de uso de logotipo, tipografías, colores, tono de voz, etc."
+      },
+      "internalComm": {
+        "title": "Comunicación interna profesionalizada",
+        "text": "Estrategias para que los equipos estén informados, alineados y comprometidos."
+      },
+      "socialMedia": {
+        "title": "Gestión de redes sociales y contenido estratégico",
+        "text": "Desarrollo de contenido con identidad para conectar con el público objetivo."
+      },
+      "spaceIdentity": {
+        "title": "Diseño de espacios con identidad (oficinas, tiendas, showrooms)",
+        "text": "Ambientes que transmiten el espíritu de la marca y mejoran la experiencia del cliente o del equipo."
+      },
+      "corpEvents": {
+        "title": "Eventos corporativos con identidad",
+        "text": "Diseño de experiencias presenciales o virtuales alineadas con la marca."
+      },
+      "ambiance": {
+        "title": "Ambientaciones para campañas o lanzamientos",
+        "text": "Escenografías o instalaciones temporales que acompañan acciones comerciales o comunicacionales."
+      },
+      "naming": {
+        "title": "Desarrollo de naming (nombre de marca, productos o líneas nuevas)",
+        "text": "Proceso estratégico y creativo para elegir nombres con sentido y recordación."
+      },
+      "productIdeation": {
+        "title": "Ideación de productos o servicios coherentes con la marca",
+        "text": "Acompañamiento en el diseño de nuevas líneas de negocio con identidad fuerte."
+      },
+      "internalCampaigns": {
+        "title": "Campañas internas para alinear y motivar equipos",
+        "text": "Acciones creativas que refuercen cultura, valores y objetivos desde adentro."
+      },
+      "webDesign": {
+        "title": "Diseño y Desarrollo Web",
+        "text": "Creamos sitios web que no solo se ven bien, sino que comunican quién sos como marca, funcionan bien y están preparados para escalar."
+      },
+      "wordpress": {
+        "title": "Sitios en WordPress",
+        "text": "Diseño personalizado con identidad de marca. Webs autoadministrables. Optimización SEO básica. Integración con redes, formularios, newsletters y más."
+      },
+      "react": {
+        "title": "Sitios a medida en React",
+        "text": "Desarrollo moderno y escalable. Experiencias interactivas personalizadas. Integración con sistemas o apps externas. Ideal para empresas que buscan alta performance y flexibilidad."
+      },
+      "digitalProjectSupport": {
+        "title": "Acompañamiento integral en el desarrollo de proyectos digitales",
+        "text": "Te guiamos desde la planificación hasta la publicación y mantenimiento. Pensamos en cada detalle: estética, funcionalidad, contenido y estrategia."
+      }
+    }
+  },
+  "landingDespega": {
+    "hero": {
+      "title": "DTE lo hace. Y ahora lo hace mejor.",
+      "description": "Somos la agencia que transforma marcas con ideas que funcionan.",
+      "cta": "Quiero que mi marca despegue"
+    },
+    "argument": {
+      "title": "En DTE no hacemos marketing vacío.",
+      "description": "Hacemos diseño, estrategia y contenido que venden.",
+      "details": "Después de años de trabajo, volvimos más profesionales, más ágiles, más creativos. Y lo mejor: con un equipo que ejecuta ideas reales, no solo las dibuja."
+    },
+    "benefit": {
+      "title": "¿Querés saber qué haríamos con tu marca?",
+      "description": "Te regalamos una sesión creativa 100% personalizada. Sin compromiso. Solo valor."
+    },
+    "form": {
+      "title": "Tu despegue empieza acá.",
+      "placeholders": {
+        "name": "Tu nombre",
+        "brand": "Nombre de tu marca",
+        "web": "Web o redes sociales",
+        "objective": "¿Qué te gustaría lograr?",
+        "email": "Email",
+        "whatsapp": "WhatsApp"
+      },
+      "cta": "Quiero mi sesión creativa gratuita"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "DTE Platform",
+      "description": "Accede al portal para gestionar todos tus proyectos en un solo lugar.",
+      "googleCta": "Continuar con Google",
+      "error": "Error al iniciar sesión. Intenta nuevamente."
+    },
+    "completeProfile": {
+      "title": "¡Bienvenido a DTE!",
+      "description": "Para brindarte una mejor experiencia, por favor completa tus datos.",
+      "labels": {
+        "fullName": "Nombre Completo",
+        "company": "Empresa / Proyecto",
+        "phone": "WhatsApp",
+        "source": "¿Cómo nos conociste?"
+      },
+      "placeholders": {
+        "name": "Tu nombre",
+        "company": "Nombre de tu empresa",
+        "phone": "598 9 1234 5678",
+        "source": "Selecciona una opción"
+      },
+      "sources": {
+        "website": "Sitio Web",
+        "referral": "Recomendación",
+        "social": "Redes Sociales",
+        "whatsapp": "WhatsApp",
+        "other": "Otro"
+      },
+      "error": "Error al guardar los datos. Intenta nuevamente.",
+      "saving": "Guardando...",
+      "cta": "Comenzar ahora"
+    }
+  }
+}

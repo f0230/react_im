@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
+import { useTranslation } from "react-i18next";
 
 const LoginModal = ({ isOpen, onClose }) => {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
@@ -24,7 +26,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             if (error) throw error;
         } catch (err) {
             console.error('Login error:', err);
-            setError('Error al iniciar sesión. Intenta nuevamente.');
+            setError(t("auth.login.error"));
             setLoading(false);
         }
     };
@@ -61,7 +63,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                                 DTE <span className="text-skyblue">Platform</span>
                             </h2>
                             <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-xs mx-auto text-sm font-inter">
-                                Accede al portal para gestionar todos tus proyectos en un solo lugar.
+                                {t("auth.login.description")}
                             </p>
 
                             <div className="flex flex-col gap-4 max-w-xs mx-auto">
@@ -79,7 +81,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                                             className="w-5 h-5"
                                         />
                                     )}
-                                    <span>Continuar con Google</span>
+                                    <span>{t("auth.login.googleCta")}</span>
                                 </button>
 
                                 {error && (

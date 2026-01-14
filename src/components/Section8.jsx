@@ -1,62 +1,45 @@
-// Section8.jsx optimizado con comentarios en línea
 import React from "react";
-import Noise from './ui/Noise'; // Componente que renderiza un efecto de ruido visual animado
-import GaleriaScroll from '../components/GaleriaScroll'; // Galería horizontal tipo carrusel scrollable
-import CompuFondo from '../assets/compu_fondo.webp'; // Imagen de fondo del hero
+import BlurText from "./ui/TextBlur";
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
-const Section8 = ({ onContactClick }) => {
+const Section8 = ({ onMoreClick, onContactClick }) => {
+    const { t, i18n } = useTranslation();
     return (
-        // Contenedor principal de la sección, con fuente personalizada y accesibilidad descriptiva
-        <section className="w-full bg-black text-white font-product" aria-label="Planes personalizados">
-
-            {/* HERO - bloque superior con fondo, texto y botones */}
-            <header
-                className="relative flex flex-col items-center justify-center h-[600px] md:h-[900px] w-full overflow-hidden"
-                style={{
-                    backgroundImage: `url(${CompuFondo})`, // Fondo principal hero
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                }}
-            >
-                {/* Capa de overlay oscura con blur y patrón de ruido encima del fondo */}
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] mix-blend-soft-light" />
-                    <Noise
-                        patternSize={250} // Tamaño del patrón
-                        patternScaleX={1} // Escala horizontal
-                        patternScaleY={1} // Escala vertical
-                        patternRefreshInterval={4} // Intervalo de refresco en frames
-                        patternAlpha={40} // Transparencia
+        <section
+            className="p-4 py-20 px-4 md:px-0 w-full flex flex-col justify-center items-center text-center font-product"
+            aria-label={t("section8.aria")}
+        >
+            <div className="max-w-4xl">
+                <h2 className="text-2xl md:text-[50px] font-bold text-black mb-6 leading-none">
+                    <BlurText
+                        key={i18n.language}
+                        text={t("section8.title")}
+                        delay={100}
+                        animateBy="words"
+                        className="text-4xl md:text-5xl font-bold mb-4"
                     />
+                </h2>
+                <p className="text-black text-[14px] md:text-[20px] mb-10 max-w-2xl mx-auto leading-none">
+                    {t("section8.description")}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                    <button
+                        onClick={onContactClick}
+                        className="w-full sm:w-auto px-10 py-4 bg-black text-white rounded-full hover:bg-gray-800 transition-colors font-bold text-lg"
+                    >
+                        {t("section8.ctaContact")}
+                    </button>
+
+                    <Link
+                        to="/servicios"
+                        onClick={onMoreClick}
+                        className="w-full sm:w-auto px-10 py-4 border-2 border-black text-black rounded-full hover:bg-black hover:text-white transition-all font-bold text-lg"
+                        aria-label={t("section8.ctaMoreAria")}
+                    >
+                        {t("section8.ctaMore")}
+                    </Link>
                 </div>
-
-                {/* Contenido textual y botones del hero */}
-                <div className="relative z-10 text-center px-4 max-w-sm md:max-w-lg">
-                    <h1 className="text-[30px] sm:text-5xl md:text-[60px] leading-none mb-6 md:mb-8 font-normal">
-                        Planes que se adaptan
-                    </h1>
-
-                    <p className="text-base md:text-lg leading-[1.4] font-normal">
-                        Nos adaptamos a tus necesidades y presupuesto. Creemos que, sin importar el alcance del proyecto, siempre podemos trabajar juntos para obtener resultados excepcionales...
-                    </p>
-
-                    {/* Botones principales: CTA de contacto y más información */}
-                    <div className="mt-6 md:mt-10 flex justify-center gap-2 flex-wrap">
-                        <button onClick={onContactClick} className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
-                                Contactanos
-                              </button>
-                        <a href="#info" aria-label="Ver más información">
-                            <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-full hover:bg-white/90 transition duration-300">
-                                Más info
-                            </button>
-                        </a>
-                    </div>
-                </div>
-            </header>
-
-            {/* Galería tipo scroll horizontal que acompaña visualmente el hero */}
-            <div className="relative w-full overflow-hidden bg-white">
-                <GaleriaScroll />
             </div>
         </section>
     );

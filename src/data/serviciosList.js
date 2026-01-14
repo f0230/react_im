@@ -1,95 +1,93 @@
 export const servicios = [
   {
-
-    text: 'En DTE trabajamos junto a empresas que buscan profesionalizarse, crecer y consolidar su identidad. Lo hacemos desde un enfoque integral, creativo y estratégico, acompañando proyectos desde la idea hasta la ejecución.',
-  },
-
-  {
-    title: 'Desarrollo de Proyectos',
-    text: 'Acompañamos a empresas en el diseño, planificación y ejecución de proyectos específicos que impulsan su crecimiento y consolidación.',
+    textKey: "servicesPage.items.intro"
   },
   {
-    title: 'Rediseño de Marcas Existentes',
-    text: 'Si ya tenés una marca y querés llevarla al siguiente nivel, trabajamos en redefinir su identidad visual, mensaje y posicionamiento estratégico.',
+    titleKey: "servicesPage.items.projectDev.title",
+    textKey: "servicesPage.items.projectDev.text"
   },
   {
-    title: 'Diseño y Creación de Espacios',
-    text: 'Transformamos espacios físicos para que reflejen el ADN de tu marca. Desde oficinas hasta locales comerciales, hacemos que cada rincón comunique quién sos.',
+    titleKey: "servicesPage.items.redesign.title",
+    textKey: "servicesPage.items.redesign.text"
   },
   {
-    title: 'Identidad de Marca',
-    text: 'Creamos marcas desde cero o fortalecemos las ya existentes. Definimos propósito, valores, tono comunicacional y estética visual que transmitan coherencia y profesionalismo.',
+    titleKey: "servicesPage.items.spaces.title",
+    textKey: "servicesPage.items.spaces.text"
   },
   {
-    title: 'Campañas para Impulsar Ventas',
-    text: 'Diseñamos campañas comerciales que no solo comunican, sino que convierten. Estrategia, creatividad y ejecución para llegar a tus clientes y aumentar tus resultados.',
+    titleKey: "servicesPage.items.identity.title",
+    textKey: "servicesPage.items.identity.text"
   },
   {
-    title: 'Acompañamiento Integral',
-    text: 'Te seguimos de cerca: trabajamos codo a codo en cada paso del proceso para asegurarnos de que las ideas se concreten y generen impacto real.',
+    titleKey: "servicesPage.items.sales.title",
+    textKey: "servicesPage.items.sales.text"
   },
   {
-    title: 'Planes de profesionalización personalizados',
-    text: 'Evaluamos el estado actual de la empresa y diseñamos una hoja de ruta para su evolución.',
+    titleKey: "servicesPage.items.support.title",
+    textKey: "servicesPage.items.support.text"
   },
   {
-    title: 'Consultoría estratégica por áreas (comercial, operaciones, RRHH, etc.)',
-    text: 'Acompañamiento focalizado según los desafíos específicos de cada sector.',
+    titleKey: "servicesPage.items.proPlans.title",
+    textKey: "servicesPage.items.proPlans.text"
   },
   {
-    title: 'Reestructuración organizacional',
-    text: 'Optimización de roles, procesos y estructuras internas para mejorar eficiencia y claridad.',
+    titleKey: "servicesPage.items.consultancy.title",
+    textKey: "servicesPage.items.consultancy.text"
   },
   {
-    title: 'Manual de marca',
-    text: 'Lineamientos claros de uso de logotipo, tipografías, colores, tono de voz, etc.',
+    titleKey: "servicesPage.items.restructuring.title",
+    textKey: "servicesPage.items.restructuring.text"
   },
   {
-    title: 'Comunicación interna profesionalizada',
-    text: 'Estrategias para que los equipos estén informados, alineados y comprometidos.',
+    titleKey: "servicesPage.items.manual.title",
+    textKey: "servicesPage.items.manual.text"
   },
   {
-    title: 'Gestión de redes sociales y contenido estratégico',
-    text: 'Desarrollo de contenido con identidad para conectar con el público objetivo.',
+    titleKey: "servicesPage.items.internalComm.title",
+    textKey: "servicesPage.items.internalComm.text"
   },
   {
-    title: 'Diseño de espacios con identidad (oficinas, tiendas, showrooms)',
-    text: 'Ambientes que transmiten el espíritu de la marca y mejoran la experiencia del cliente o del equipo.',
+    titleKey: "servicesPage.items.socialMedia.title",
+    textKey: "servicesPage.items.socialMedia.text"
   },
   {
-    title: 'Eventos corporativos con identidad',
-    text: 'Diseño de experiencias presenciales o virtuales alineadas con la marca.',
+    titleKey: "servicesPage.items.spaceIdentity.title",
+    textKey: "servicesPage.items.spaceIdentity.text"
   },
   {
-    title: 'Ambientaciones para campañas o lanzamientos',
-    text: 'Escenografías o instalaciones temporales que acompañan acciones comerciales o comunicacionales.',
+    titleKey: "servicesPage.items.corpEvents.title",
+    textKey: "servicesPage.items.corpEvents.text"
   },
   {
-    title: 'Desarrollo de naming (nombre de marca, productos o líneas nuevas)',
-    text: 'Proceso estratégico y creativo para elegir nombres con sentido y recordación.',
+    titleKey: "servicesPage.items.ambiance.title",
+    textKey: "servicesPage.items.ambiance.text"
   },
   {
-    title: 'Ideación de productos o servicios coherentes con la marca',
-    text: 'Acompañamiento en el diseño de nuevas líneas de negocio con identidad fuerte.',
+    titleKey: "servicesPage.items.naming.title",
+    textKey: "servicesPage.items.naming.text"
   },
   {
-    title: 'Campañas internas para alinear y motivar equipos',
-    text: 'Acciones creativas que refuercen cultura, valores y objetivos desde adentro.',
+    titleKey: "servicesPage.items.productIdeation.title",
+    textKey: "servicesPage.items.productIdeation.text"
   },
   {
-    title: 'Diseño y Desarrollo Web',
-    text: 'Creamos sitios web que no solo se ven bien, sino que comunican quién sos como marca, funcionan bien y están preparados para escalar.',
+    titleKey: "servicesPage.items.internalCampaigns.title",
+    textKey: "servicesPage.items.internalCampaigns.text"
   },
   {
-    title: 'Sitios en WordPress',
-    text: 'Diseño personalizado con identidad de marca. Webs autoadministrables. Optimización SEO básica. Integración con redes, formularios, newsletters y más.',
+    titleKey: "servicesPage.items.webDesign.title",
+    textKey: "servicesPage.items.webDesign.text"
   },
   {
-    title: 'Sitios a medida en React',
-    text: 'Desarrollo moderno y escalable. Experiencias interactivas personalizadas. Integración con sistemas o apps externas. Ideal para empresas que buscan alta performance y flexibilidad.',
+    titleKey: "servicesPage.items.wordpress.title",
+    textKey: "servicesPage.items.wordpress.text"
   },
   {
-    title: 'Acompañamiento integral en el desarrollo de proyectos digitales',
-    text: 'Te guiamos desde la planificación hasta la publicación y mantenimiento. Pensamos en cada detalle: estética, funcionalidad, contenido y estrategia.',
+    titleKey: "servicesPage.items.react.title",
+    textKey: "servicesPage.items.react.text"
   },
+  {
+    titleKey: "servicesPage.items.digitalProjectSupport.title",
+    textKey: "servicesPage.items.digitalProjectSupport.text"
+  }
 ];

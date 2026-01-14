@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom';
 import gsap from 'gsap';
 import logoDTE from '../assets/dte_lohace.webp';
 import { contactInfo } from '@/config/branding';
+import { useTranslation } from 'react-i18next';
 
 const Footer = ({ setIsModalOpen }) => {
+  const { t } = useTranslation();
   const footerRef = useRef();
 
   useLayoutEffect(() => {
@@ -28,9 +30,9 @@ const Footer = ({ setIsModalOpen }) => {
       <div className="max-w-[1080px] mx-auto flex flex-col md:flex-row justify-between items-center h-[300px] md:h-[500px] px-8">
         <div className="hidden md:flex flex-col justify-between w-full md:w-1/2 h-full py-8">
           <div>
-            <p className="text-[34px] text-neutral-500">Contáctanos</p>
-            <h2 className="text-[45px] md:text-[60px] leading-none">Trabajemos juntos</h2>
-            <p className="md:text-[30px] text-normal">y llegá más lejos</p>
+            <p className="text-[34px] text-neutral-500">{t("footer.contactTitle")}</p>
+            <h2 className="text-[45px] md:text-[60px] leading-none">{t("footer.headline")}</h2>
+            <p className="md:text-[30px] text-normal">{t("footer.subheadline")}</p>
           </div>
           <div className="text-[30px]">
             <p className="text-black">{contactInfo.email}</p>
@@ -54,7 +56,7 @@ const Footer = ({ setIsModalOpen }) => {
               href="#"
               className="bg-black text-white text-[22px] h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition cursor-pointer"
             >
-              Agenda una reunión
+              {t("footer.ctaMeeting")}
             </a>
             <a
               href="https://wa.me/59896219905"
@@ -62,7 +64,7 @@ const Footer = ({ setIsModalOpen }) => {
               rel="noopener noreferrer"
               className="bg-black text-white text-[22px] h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition"
             >
-              Hablemos por Whatsapp
+              {t("footer.ctaWhatsapp")}
             </a>
           </div>
         </div>
@@ -73,23 +75,23 @@ const Footer = ({ setIsModalOpen }) => {
         {/* Columna izquierda */}
         <div className="text-left">
           <p className="text-[10px] text-neutral-500">
-            © 2025 Grupo DTE 
+            {t("footer.copyright")}
           </p>
           <Link to="/tyc" className="text-[10px] text-neutral-500 hover:text-black transition">
-            Términos y Condiciones
+            {t("footer.terms")}
           </Link>
         </div>
 
         {/* Columna central */}
         <div className="text-center text-[10px] text-neutral-500 flex flex-wrap justify-center gap-x-2 gap-y-1">
-          <span>Desarrollado por DTE</span>
+          <span>{t("footer.builtBy")}</span>
         </div>
 
         {/* Columna derecha */}
         <div className="text-right">
           <p className="text-[10px] text-neutral-500">{contactInfo.country}</p>
           <Link to="/politica-privacidad" className="text-[10px] text-neutral-500 hover:text-black transition">
-            Política de Privacidad
+            {t("footer.privacy")}
           </Link>
         </div>
       </div>

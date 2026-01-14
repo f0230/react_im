@@ -5,6 +5,7 @@ import ErrorBoundary from './ErrorBoundary.jsx';
 import './index.css';
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { HelmetProvider } from 'react-helmet-async';
+import './i18n';
 
 
 

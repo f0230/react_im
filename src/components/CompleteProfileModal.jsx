@@ -3,8 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, User, Building2, Phone, Compass } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from "react-i18next";
 
 const CompleteProfileModal = ({ isOpen, onClose }) => {
+    const { t } = useTranslation();
     const { user, profile, refreshClient } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -71,7 +73,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
             onClose();
         } catch (err) {
             console.error('Error saving profile:', err);
-            setError('Error al guardar los datos. Intenta nuevamente.');
+            setError(t("auth.completeProfile.error"));
         } finally {
             setLoading(false);
         }
@@ -102,16 +104,16 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                 >
                     <div className="p-8">
                         <div className="mb-6 text-center">
-                            <h2 className="text-2xl font-bold text-neutral-900 mb-2">¡Bienvenido a DTE!</h2>
+                            <h2 className="text-2xl font-bold text-neutral-900 mb-2">{t("auth.completeProfile.title")}</h2>
                             <p className="text-neutral-500 text-sm">
-                                Para brindarte una mejor experiencia, por favor completa tus datos.
+                                {t("auth.completeProfile.description")}
                             </p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-1">
                                 <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
-                                    Nombre Completo
+                                    {t("auth.completeProfile.labels.fullName")}
                                 </label>
                                 <div className="relative">
                                     <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -121,7 +123,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                                         name="full_name"
                                         value={formData.full_name}
                                         onChange={handleChange}
-                                        placeholder="Tu nombre"
+                                        placeholder={t("auth.completeProfile.placeholders.name")}
                                         className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter"
                                     />
                                 </div>
@@ -129,7 +131,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
                             <div className="space-y-1">
                                 <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
-                                    Empresa / Proyecto
+                                    {t("auth.completeProfile.labels.company")}
                                 </label>
                                 <div className="relative">
                                     <Building2 size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -139,7 +141,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                                         name="company_name"
                                         value={formData.company_name}
                                         onChange={handleChange}
-                                        placeholder="Nombre de tu empresa"
+                                        placeholder={t("auth.completeProfile.placeholders.company")}
                                         className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter"
                                     />
                                 </div>
@@ -147,7 +149,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
                             <div className="space-y-1">
                                 <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
-                                    WhatsApp
+                                    {t("auth.completeProfile.labels.phone")}
                                 </label>
                                 <div className="relative">
                                     <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -157,7 +159,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleChange}
-                                        placeholder="598 9 1234 5678"
+                                        placeholder={t("auth.completeProfile.placeholders.phone")}
                                         className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter"
                                     />
                                 </div>
@@ -165,7 +167,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
                             <div className="space-y-1">
                                 <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
-                                    ¿Cómo nos conociste?
+                                    {t("auth.completeProfile.labels.source")}
                                 </label>
                                 <div className="relative">
                                     <Compass size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
@@ -176,12 +178,12 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                                         onChange={handleChange}
                                         className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
                                     >
-                                        <option value="" disabled>Selecciona una opción</option>
-                                        <option value="website">Sitio Web</option>
-                                        <option value="referral">Recomendación</option>
-                                        <option value="social">Redes Sociales</option>
-                                        <option value="whatsapp">WhatsApp</option>
-                                        <option value="other">Otro</option>
+                                        <option value="" disabled>{t("auth.completeProfile.placeholders.source")}</option>
+                                        <option value="website">{t("auth.completeProfile.sources.website")}</option>
+                                        <option value="referral">{t("auth.completeProfile.sources.referral")}</option>
+                                        <option value="social">{t("auth.completeProfile.sources.social")}</option>
+                                        <option value="whatsapp">{t("auth.completeProfile.sources.whatsapp")}</option>
+                                        <option value="other">{t("auth.completeProfile.sources.other")}</option>
                                     </select>
                                 </div>
                             </div>
@@ -198,7 +200,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                                 className="w-full bg-black text-white font-bold py-4 rounded-2xl hover:bg-neutral-800 transition-all shadow-xl shadow-black/10 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
                             >
                                 {loading && <Loader2 size={18} className="animate-spin" />}
-                                {loading ? 'Guardando...' : 'Comenzar ahora'}
+                                {loading ? t("auth.completeProfile.saving") : t("auth.completeProfile.cta")}
                             </button>
                         </form>
                     </div>
