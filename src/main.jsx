@@ -23,15 +23,15 @@ document.addEventListener('DOMContentLoaded', () => {
       root.render(
         <React.StrictMode>
           <HelmetProvider>
-          <ErrorBoundary> 
+            <ErrorBoundary>
 
 
-            <App />
-          
+              <App />
 
-            <SpeedInsights /> {/* ✅ insertado aquí */}
-          </ErrorBoundary>
-        </HelmetProvider>
+
+              {typeof SpeedInsights === 'function' && <SpeedInsights />} {/* ✅ insertado aquí con chequeo */}
+            </ErrorBoundary>
+          </HelmetProvider>
         </React.StrictMode>
       );
       console.log('React app mounted successfully');

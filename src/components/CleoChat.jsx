@@ -59,8 +59,8 @@ const CleoWidget = () => {
 
             // Intentar enviar a n8n primero, fallback a OpenAI
             let response;
-            const n8nWebhookUrl = process.env.REACT_APP_N8N_WEBHOOK_URL || 'https://your-n8n-instance.com/webhook/cloe-chat';
-            
+            const n8nWebhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://your-n8n-instance.com/webhook/cloe-chat';
+
             try {
                 // Enviar a n8n
                 const n8nResponse = await fetch(n8nWebhookUrl, {
@@ -85,19 +85,19 @@ const CleoWidget = () => {
                 }
             } catch (n8nError) {
                 console.log('N8N no disponible, usando OpenAI como fallback:', n8nError.message);
-                
+
                 // Fallback a OpenAI
                 const openAIResponse = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         messages: [...messages, userMessage],
                         conversationId: currentConversationId
                     }),
                 });
 
                 if (!openAIResponse.ok) throw new Error(`OpenAI HTTP error: ${openAIResponse.status}`);
-                
+
                 const openAIData = await openAIResponse.json();
                 response = openAIData.reply;
             }
@@ -107,7 +107,7 @@ const CleoWidget = () => {
             } else {
                 throw new Error('No response received');
             }
-            
+
         } catch (err) {
             console.error('Error en sendMessage:', err);
             setMessages((prev) => [
