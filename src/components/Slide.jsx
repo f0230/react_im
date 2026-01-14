@@ -136,7 +136,7 @@ const Section6 = () => {
           role="region"
           aria-label={t('carousel.ariaRegion')}
         >
-          {slides.map((slide, index) => (
+          {slides?.map((slide, index) => (
             <div
               key={index}
               ref={(el) => (slideRefs.current[index] = el)}

@@ -209,7 +209,7 @@ const Navbar = () => {
 
                     {/* Ítems desktop */}
                     <ul className="hidden md:flex items-center gap-6">
-                        {menuItems.map((item, i) => (
+                        {menuItems?.map((item, i) => (
                             <li key={i}>
                                 <Link
                                     to={item.url}
@@ -271,7 +271,7 @@ const Navbar = () => {
                     />
                     <nav className="w-full max-w-md ">
                         <ul className="flex flex-col items-start space-y-4">
-                            {menuItems.map((item, i) => (
+                            {menuItems?.map((item, i) => (
                                 <li
                                     key={i}
                                     className="menu-item text-right opacity-0 transform"

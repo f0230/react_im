@@ -71,7 +71,7 @@ const SimultaneousWords = () => {
             >
                 <header>
                     <h2 className="text-[30px] md:text-3xl font-bold font-product flex flex-wrap gap-2 mb-4">
-                        {titleWords.map((word, i) => (
+                        {titleWords?.map((word, i) => (
                             <span key={i} className="title-word inline-block whitespace-nowrap">
                                 {word}
                             </span>
@@ -80,7 +80,7 @@ const SimultaneousWords = () => {
                 </header>
                 <section>
                     <p className="text-[17px] md:text-[17px] font-product font-normal flex flex-wrap gap-1 leading-none">
-                        {paragraphWords.map((word, i) => (
+                        {paragraphWords?.map((word, i) => (
                             <span key={i} className="paragraph-word inline-block whitespace-nowrap">
                                 {word}
                             </span>
