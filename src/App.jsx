@@ -7,23 +7,7 @@ import LoadingFallback from "@/components/ui/LoadingFallback";
 
 
 
-const lazyLog = (importFn, name) => {
-  return lazy(async () => {
-    try {
-      const module = await importFn();
-      console.log(`[LazyLog] Loaded ${name}:`, module);
-      if (!module || !module.default) {
-        console.error(`[LazyLog] Module ${name} has no default export!`, module);
-      }
-      return module;
-    } catch (error) {
-      console.error(`[LazyLog] Error loading ${name}:`, error);
-      throw error;
-    }
-  });
-};
-
-const Home = lazyLog(() => import("@/pages/Home"), "Home");
+const Home = lazy(() => import("@/pages/Home"));
 const About = lazy(() => import("@/pages/About"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Services = lazy(() => import("@/pages/Services"));
@@ -38,6 +22,7 @@ const Clients = lazy(() => import("@/pages/dashboard/crm/Clients"));
 const Projects = lazy(() => import("@/pages/dashboard/projects/Projects"));
 const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
 const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
+const AppointmentsTab = lazy(() => import("@/components/AppointmentsTab"));
 const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
 import { AuthProvider } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
@@ -80,6 +65,7 @@ const AppContent = () => {
             <Route path="projects" element={<Projects />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="inbox" element={<Inbox />} />
+            <Route path="appointments" element={<AppointmentsTab />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Settings />} /> {/* Reusing Settings for Profile for now */}
 

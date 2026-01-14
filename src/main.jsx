@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </HelmetProvider>
         </React.StrictMode>
       );
-      console.log('React app mounted successfully');
+
     } catch (error) {
       console.error('Error mounting React app:', error);
     }

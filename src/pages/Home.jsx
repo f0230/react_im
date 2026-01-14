@@ -4,29 +4,16 @@ import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 import StepperModal from "@/components/StepperModal";
 import Layout from "@/components/Layout";
 
-const lazyLog = (importFn, name) => {
-  return lazy(async () => {
-    try {
-      const module = await importFn();
-      console.log(`[HomeLazyLog] Loaded ${name}:`, module);
-      return module;
-    } catch (error) {
-      console.error(`[HomeLazyLog] Error loading ${name}:`, error);
-      throw error;
-    }
-  });
-};
-
-const HeroSection = lazyLog(() => import("@/components/Section1"), "HeroSection");
-const Section2 = lazyLog(() => import("@/components/Section2"), "Section2");
-const Section3 = lazyLog(() => import("@/components/Section3"), "Section3");
-const Section4 = lazyLog(() => import("@/components/Section4"), "Section4");
-const Section5 = lazyLog(() => import("@/components/Section5"), "Section5");
-const SimultaneousWords = lazyLog(() => import("@/components/TextEnDTE"), "SimultaneousWords");
-const InfiniteCarousel = lazyLog(() => import("@/components/Slide"), "InfiniteCarousel");
-const Section7 = lazyLog(() => import("@/components/Section8"), "Section7");
-const SectionDteAutomation = lazyLog(() => import("@/components/SectionDteAutomation"), "SectionDteAutomation");
-const CurvedLoop = lazyLog(() => import("@/components/CurvedLoop"), "CurvedLoop");
+const HeroSection = lazy(() => import("@/components/Section1"));
+const Section2 = lazy(() => import("@/components/Section2"));
+const Section3 = lazy(() => import("@/components/Section3"));
+const Section4 = lazy(() => import("@/components/Section4"));
+const Section5 = lazy(() => import("@/components/Section5"));
+const SimultaneousWords = lazy(() => import("@/components/TextEnDTE"));
+const InfiniteCarousel = lazy(() => import("@/components/Slide"));
+const Section7 = lazy(() => import("@/components/Section8"));
+const SectionDteAutomation = lazy(() => import("@/components/SectionDteAutomation"));
+const CurvedLoop = lazy(() => import("@/components/CurvedLoop"));
 
 
 const Home = () => {

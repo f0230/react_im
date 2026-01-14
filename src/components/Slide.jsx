@@ -1,20 +1,25 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Autoplay, EffectCoverflow, Keyboard, Mousewheel } from 'swiper/modules';
+import { useTranslation } from 'react-i18next';
 import CarouselSlide from './CarouselSlide';
 import SlideContent from './SlideContent';
+
+// Assets
 import Slider1 from '../assets/PYMES.webp';
 import Slider2 from '../assets/EMPRESAS.webp';
 import Slider3 from '../assets/EM_ESTABLAECIDAS.webp';
 import MSlider1 from '../assets/PYMES_M.webp';
 import MSlider2 from '../assets/EMPRESAS_M.webp';
 import MSlider3 from '../assets/EM_ESTABLAECIDAS_M.webp';
-import { useTranslation } from 'react-i18next';
+
+// Swiper styles
+import 'swiper/css';
+import 'swiper/css/effect-coverflow';
 
 const Section6 = () => {
   const { t, i18n } = useTranslation();
   const [isMobile, setIsMobile] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const carouselRef = useRef(null);
-  const slideRefs = useRef([]);
 
   // Detección responsiva más precisa
   useEffect(() => {
@@ -23,64 +28,6 @@ const Section6 = () => {
     handleResize();
     mq.addEventListener('change', handleResize);
     return () => mq.removeEventListener('change', handleResize);
-  }, []);
-
-  // Scroll tracking
-  useEffect(() => {
-    const el = carouselRef.current;
-    if (!el) return;
-
-    const handleScroll = () => {
-      const scrollX = el.scrollLeft;
-      const slideWidth = slideRefs.current[0]?.offsetWidth || 1;
-      const index = Math.round(scrollX / slideWidth);
-      setActiveIndex(index);
-    };
-
-    el.addEventListener('scroll', handleScroll);
-    return () => el.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Drag horizontal
-  useEffect(() => {
-    const el = carouselRef.current;
-    if (!el) return;
-
-    let isDown = false;
-    let startX = 0;
-    let scrollLeft = 0;
-
-    const handleMouseDown = (e) => {
-      isDown = true;
-      el.classList.add('active');
-      startX = e.pageX - el.offsetLeft;
-      scrollLeft = el.scrollLeft;
-    };
-
-    const handleMouseUp = () => {
-      isDown = false;
-      el.classList.remove('active');
-    };
-
-    const handleMouseMove = (e) => {
-      if (!isDown) return;
-      e.preventDefault();
-      const x = e.pageX - el.offsetLeft;
-      const walk = (x - startX) * 1.5;
-      el.scrollLeft = scrollLeft - walk;
-    };
-
-    el.addEventListener('mousedown', handleMouseDown);
-    el.addEventListener('mouseleave', handleMouseUp);
-    el.addEventListener('mouseup', handleMouseUp);
-    el.addEventListener('mousemove', handleMouseMove);
-
-    return () => {
-      el.removeEventListener('mousedown', handleMouseDown);
-      el.removeEventListener('mouseleave', handleMouseUp);
-      el.removeEventListener('mouseup', handleMouseUp);
-      el.removeEventListener('mousemove', handleMouseMove);
-    };
   }, []);
 
   const slides = useMemo(() => [
@@ -129,26 +76,43 @@ const Section6 = () => {
         </h2>
       </div>
 
-      <div className="w-full overflow-hidden relative px-2">
-        <div
-          ref={carouselRef}
-          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] overflow-x-scroll snap-x snap-mandatory scroll-smooth flex rounded-lg no-scrollbar cursor-grab active:cursor-grabbing"
-          role="region"
-          aria-label={t('carousel.ariaRegion')}
+      <div className="w-full relative px-2 ">
+        <Swiper
+          modules={[Autoplay, EffectCoverflow, Keyboard, Mousewheel]}
+          effect={'coverflow'}
+          grabCursor={true}
+          centeredSlides={true}
+          loop={true}
+          slidesPerView={'auto'}
+          coverflowEffect={{
+            rotate: 0,
+            stretch: 0,
+            depth: 100,
+            modifier: 2.5,
+            slideShadows: false,
+          }}
+          autoplay={{
+            delay: 5000,
+            disableOnInteraction: false,
+          }}
+          keyboard={{ enabled: true }}
+          mousewheel={{ forceToAxis: true }}
+          className="w-full h-[320px] sm:h-[400px] md:h-[420px] lg:h-[550px] py-4"
         >
-          {slides?.map((slide, index) => (
-            <div
+          {slides.map((slide, index) => (
+            <SwiperSlide
               key={index}
-              ref={(el) => (slideRefs.current[index] = el)}
-              className="w-full md:w-[750px] lg:w-[1000px] xl:w-[1300px] flex-shrink-0 snap-center"
+              className="w-full md:w-[750px] lg:w-[1000px] xl:w-[1300px] flex-shrink-0"
             >
-              <CarouselSlide
-                slide={slide}
-                isActive={index === activeIndex}
-              />
-            </div>
+              {({ isActive }) => (
+                <CarouselSlide
+                  slide={slide}
+                  isActive={isActive}
+                />
+              )}
+            </SwiperSlide>
           ))}
-        </div>
+        </Swiper>
       </div>
     </section>
   );

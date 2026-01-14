@@ -4,11 +4,14 @@ import { useCalendarAvailability } from "./useCalendarAvailability";
 import { createCalendarEvent } from "@/services/calendar";
 import { createHubspotLead } from "@/services/hubspot";
 import { isValidPhone } from "@/utils/phone-validation";
-import { useAuthUser } from "@/hooks/useAuthUser";
+import { useAuth } from "@/context/AuthContext";
+import { useUI } from "@/context/UIContext";
+// import { useAuthUser } from "@/hooks/useAuthUser"; // REMOVED (or keep if needed for other things, but we use useAuth for auth check)
 
 export const useAppointmentForm = ({ user }) => {
     const { busySlots, fetchBusy, checkAvailability } = useCalendarAvailability();
-    const { accessToken } = useAuthUser();
+    const { user: supabaseUser } = useAuth(); // Use Supabase User
+    const accessToken = !!supabaseUser; // Boolean check for now, or true if user exists
     const [formData, setFormData] = useState({
         name: "",
         email: "",
@@ -117,6 +120,8 @@ export const useAppointmentForm = ({ user }) => {
         }, 400);
     };
 
+    const { isLoginModalOpen, setIsLoginModalOpen } = useUI(); // NEW: Need to import useUI
+
     const handleFinalSubmit = async () => {
         const { datetime, phone, message, name, email } = formData;
 
@@ -125,6 +130,13 @@ export const useAppointmentForm = ({ user }) => {
 
         if (hasErrors) {
             setFieldErrors(errors);
+            return;
+        }
+
+        // Auth Check
+        if (!supabaseUser) {
+            localStorage.setItem("pendingAppointment", JSON.stringify(formData));
+            setIsLoginModalOpen(true);
             return;
         }
 
@@ -144,7 +156,9 @@ export const useAppointmentForm = ({ user }) => {
                 startTime: datetime.toISOString(),
                 endTime: new Date(datetime.getTime() + 60 * 60 * 1000).toISOString(),
                 email,
-                userAccessToken: accessToken
+                // userAccessToken: accessToken, // REMOVED previously
+                userId: supabaseUser.id, // NEW
+                phone
             });
 
             console.log("📤 Enviando a HubSpot:", formData);

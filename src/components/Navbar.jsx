@@ -23,7 +23,7 @@ const Navbar = () => {
     const [showNavbar, setShowNavbar] = useState(true);
     const [hasScrolled, setHasScrolled] = useState(false);
     const navigate = useNavigate();
-    const { setIsNavbarOpen } = useUI();
+    const { setIsNavbarOpen, isLoginModalOpen, setIsLoginModalOpen } = useUI();
 
     const handleMenuItemClick = (url) => {
         const menu = document.getElementById("mobile-menu");
@@ -61,7 +61,7 @@ const Navbar = () => {
     const currentLang = (i18n.resolvedLanguage || i18n.language || "es").split("-")[0];
 
     const toggleMenu = () => setIsMenuOpen((prev) => !prev);
-    const [isLoginOpen, setIsLoginOpen] = useState(false);
+    // REMOVED local isLoginOpen state
     const setLanguage = (lng) => i18n.changeLanguage(lng);
     const languageButtonClass = (lng) =>
         `text-[11px] px-2 py-1 rounded-full border transition ${currentLang === lng
@@ -96,9 +96,9 @@ const Navbar = () => {
     }, []);
 
     useEffect(() => {
-        document.body.style.overflow = isMenuOpen || isLoginOpen ? "hidden" : "auto";
+        document.body.style.overflow = isMenuOpen || isLoginModalOpen ? "hidden" : "auto";
         return () => (document.body.style.overflow = "auto");
-    }, [isMenuOpen, isLoginOpen]);
+    }, [isMenuOpen, isLoginModalOpen]);
 
     useEffect(() => {
         if (isMenuOpen) {
@@ -242,7 +242,7 @@ const Navbar = () => {
                         {/* Login Button Desktop */}
                         <li>
                             <button
-                                onClick={() => setIsLoginOpen(true)}
+                                onClick={() => setIsLoginModalOpen(true)}
                                 className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors border border-white/10 flex items-center gap-2"
                             >
                                 <span>{t("nav.portalClients")}</span>
@@ -311,7 +311,7 @@ const Navbar = () => {
                                 <button
                                     onClick={() => {
                                         setIsMenuOpen(false);
-                                        setIsLoginOpen(true);
+                                        setIsLoginModalOpen(true);
                                     }}
                                     className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px]"
                                 >
@@ -323,7 +323,7 @@ const Navbar = () => {
                 </div>
             )}
 
-            <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
+            <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
         </>
     );
 };

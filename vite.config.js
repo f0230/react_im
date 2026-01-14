@@ -64,18 +64,13 @@ export default defineConfig({
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: false, // Habilitar logs para diagnóstico en producción
+        drop_console: true, // Limpiar logs para producción final
         drop_debugger: true,
       },
     },
     rollupOptions: {
       output: {
-        // manualChunks(id) {
-        //   if (id.includes('node_modules')) return 'vendor';
-        //   if (id.includes('/src/components/')) return 'components';
-        //   if (id.includes('/src/pages/')) return 'pages';
-        //   if (id.includes('/src/utils/')) return 'utils';
-        // },
+        // Usar estrategia de bundling por defecto de Vite para mayor estabilidad en producción
       },
     },
   },

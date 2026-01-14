@@ -23,15 +23,22 @@ export const checkAvailability = async (date) => {
 };
 
 // 🔹 3. Crear evento en Google Calendar (token se gestiona en el backend)
-export const createCalendarEvent = async ({ name, summary, description, startTime, endTime, email }) => {
-    const response = await axios.post("/api/create-event", {
-        name,
-        summary,
-        description,
-        startTime,
-        endTime,
-        email
-    });
-
-    return response.data;
+export const createCalendarEvent = async ({ name, summary, description, startTime, endTime, email, userAccessToken, userId, phone }) => {
+    try {
+        const response = await axios.post("/api/create-event", {
+            name,
+            summary,
+            description,
+            startTime,
+            endTime,
+            email,
+            userAccessToken, // Might not be needed by backend, but keeping for now
+            userId, // NEW
+            phone   // NEW
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error creating event:", error);
+        throw error;
+    }
 };

@@ -51,7 +51,7 @@ const Section5 = ({ onContactClick }) => {
 
     return (
         <section
-            className="font-product relative w-full flex h-[550px] md:h-[350px] justify-center items-center z-50"
+            className="font-product relative w-full flex h-[550px] md:h-[350px] justify-center items-center"
             aria-label={t("section5.aria.services")}
             ref={sectionRef}
         >
@@ -116,4 +116,4 @@ const Section5 = ({ onContactClick }) => {
 };
 
 export default Section5;
-    
+
