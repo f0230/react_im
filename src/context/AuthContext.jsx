@@ -3,11 +3,38 @@ import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext({});
 
+const PROFILE_CACHE_KEY = 'dte.profile.v1';
+
+const readCachedProfile = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+        const stored = window.localStorage?.getItem(PROFILE_CACHE_KEY);
+        if (!stored) return null;
+        return JSON.parse(stored);
+    } catch (error) {
+        console.warn('AuthProvider: Failed to parse cached profile', error);
+        return null;
+    }
+};
+
+const writeCachedProfile = (profileData) => {
+    if (typeof window === 'undefined') return;
+    try {
+        if (profileData) {
+            window.localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profileData));
+        } else {
+            window.localStorage.removeItem(PROFILE_CACHE_KEY);
+        }
+    } catch (error) {
+        console.warn('AuthProvider: Failed to persist profile', error);
+    }
+};
+
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState(null);
+    const [profile, setProfile] = useState(readCachedProfile());
     const [client, setClient] = useState(null);
     const [loading, setLoading] = useState(true);
     const [profileStatus, setProfileStatus] = useState('idle'); // idle | loading | ready | missing | error
@@ -51,6 +78,7 @@ export const AuthProvider = ({ children }) => {
 
                 console.log('👤 AuthProvider: Profile loaded', profileData.role);
                 setProfile(profileData ?? null);
+                writeCachedProfile(profileData ?? null);
                 setProfileStatus('ready');
                 setProfileError(null);
 
@@ -85,6 +113,7 @@ export const AuthProvider = ({ children }) => {
 
         setProfile(null);
         setClient(null);
+        writeCachedProfile(null);
 
         const isNotFound = finalError?.code === 'PGRST116' || /No rows/.test(finalError?.message ?? '');
         if (isNotFound) {
@@ -111,6 +140,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(null);
                 setProfile(null);
                 setClient(null);
+                writeCachedProfile(null);
                 setProfileStatus('idle');
                 setProfileError(null);
                 setLoading(false); // <--- Add this!
@@ -154,18 +184,19 @@ export const AuthProvider = ({ children }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
                 console.log('🔄 AuthProvider: onAuthStateChange event:', _event);
-                if (isMounted) {
-                    if (_event === 'SIGNED_OUT') {
-                        setUser(null);
-                        setProfile(null);
-                        setClient(null);
-                        setLoading(false);
-                        setProfileStatus('idle');
-                        setProfileError(null);
-                    } else if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION' || _event === 'TOKEN_REFRESHED') {
-                        await applySession(session);
+                    if (isMounted) {
+                        if (_event === 'SIGNED_OUT') {
+                            setUser(null);
+                            setProfile(null);
+                            setClient(null);
+                            setLoading(false);
+                            setProfileStatus('idle');
+                            setProfileError(null);
+                            writeCachedProfile(null);
+                        } else if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION' || _event === 'TOKEN_REFRESHED') {
+                            await applySession(session);
+                        }
                     }
-                }
             }
         );
 
@@ -216,6 +247,7 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             setProfile(null);
             setClient(null);
+            writeCachedProfile(null);
             setLoading(false);
             console.log('👋 AuthProvider: User signed out and state cleared');
         }
