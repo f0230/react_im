@@ -53,10 +53,8 @@ export const AuthProvider = ({ children }) => {
 
     const applySession = useCallback(async (session) => {
         const timeout = setTimeout(() => {
-            if (loading) {
-                console.warn('⏱️ AuthProvider: Session apply taking too long, forcing load finish');
-                setLoading(false);
-            }
+            console.warn('⏱️ AuthProvider: Session apply taking too long, forcing load finish');
+            setLoading(false);
         }, 5000); // 5s budget for profile fetch
 
         try {
@@ -77,7 +75,7 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
             console.log('✅ AuthProvider: Auth flow finished');
         }
-    }, [fetchProfile, loading]);
+    }, [fetchProfile]);
 
     useEffect(() => {
         let isMounted = true;

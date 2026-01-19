@@ -19,12 +19,20 @@ export default async function handler(req, res) {
       redirect_uri: process.env.GOOGLE_REDIRECT_URI
     });
 
-    // Aquí podrías guardar el refresh_token en una base de datos si quisieras.
-    if (!tokens.refresh_token) {
-      console.warn('No se recibió refresh_token (es posible que ya se haya autorizado este usuario antes)');
+    // Exponer el refresh_token para arreglar el error 'invalid_grant'
+    if (tokens.refresh_token) {
+      return res.status(200).json({
+        success: true,
+        message: "✅ NUEVO REFRESH TOKEN GENERADO. COPIA ESTO A TUS VARIABLES DE ENTORNO EN VERCEL.",
+        refresh_token: tokens.refresh_token,
+        access_token: tokens.access_token
+      });
     }
 
-    res.send('Token recibido correctamente. Ya podés usar el API de Google Calendar.');
+    res.status(200).json({
+      warning: "No se recibió refresh_token. ¿Usaste el endpoint /api/google-auth-init?",
+      tokens
+    });
   } catch (err) {
     console.error('❌ Error en getToken:', err.response?.data || err.message || err);
     res.status(500).json({
