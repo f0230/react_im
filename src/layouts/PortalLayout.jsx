@@ -32,6 +32,22 @@ const PortalLayout = () => {
         return <Navigate to="/" replace />;
     }
 
+    // Guard: User is authenticated but profile is missing (race condition or trigger delay)
+    if (!loading && user && !profile) {
+        return (
+            <div className="h-screen w-full flex flex-col items-center justify-center gap-4 bg-[#f2f2f2] font-product">
+                <LoadingFallback type="spinner" />
+                <p className="text-zinc-500 text-sm">Sincronizando perfil...</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+                >
+                    Recargar página
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-[#f2f2f2] font-product">
             <DashboardNavbar />

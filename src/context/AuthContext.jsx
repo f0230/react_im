@@ -12,19 +12,35 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     const fetchProfile = useCallback(async (userId) => {
-        try {
-            console.log('🔍 AuthProvider: Fetching profile for', userId);
-            // Fetch profile
-            const { data: profileData, error: profileError } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', userId)
-                .single();
+        let attempts = 0;
+        const maxAttempts = 3;
 
-            if (profileError) {
-                console.warn('⚠️ AuthProvider: Profile record not found or error', profileError.message);
-                setProfile(null);
-            } else {
+        while (attempts < maxAttempts) {
+            attempts++;
+            try {
+                console.log(`🔍 AuthProvider: Fetching profile for ${userId} (Attempt ${attempts}/${maxAttempts})`);
+
+                const { data: profileData, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', userId)
+                    .single();
+
+                if (profileError) {
+                    // Only retry if it's a "no rows" error (implies trigger hasn't finished)
+                    // PGRST116 is 'The result contains 0 rows'
+                    if (attempts < maxAttempts && (profileError.code === 'PGRST116' || !profileData)) {
+                        console.warn('⚠️ AuthProvider: Profile not ready, retrying in 1s...');
+                        await new Promise(r => setTimeout(r, 1000));
+                        continue;
+                    }
+
+                    console.warn('⚠️ AuthProvider: Profile record not found or error', profileError.message);
+                    setProfile(null);
+                    setClient(null);
+                    return; // Stop if error is permanent or retries exhausted
+                }
+
                 console.log('👤 AuthProvider: Profile loaded', profileData.role);
                 setProfile(profileData ?? null);
 
@@ -45,9 +61,16 @@ export const AuthProvider = ({ children }) => {
                 } else {
                     setClient(null);
                 }
+
+                return; // Success, exit loop
+
+            } catch (error) {
+                console.error('❌ AuthProvider: Critical error in fetchProfile:', error);
+                if (attempts === maxAttempts) {
+                    setProfile(null);
+                    setClient(null);
+                }
             }
-        } catch (error) {
-            console.error('❌ AuthProvider: Critical error in fetchProfile:', error);
         }
     }, []);
 

@@ -113,10 +113,13 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Invalid signature' });
   }
 
+  console.log('--- Webhook Recibido ---');
   if (body.object !== 'whatsapp_business_account') {
+    console.log('Objeto ignorado:', body.object);
     return res.status(200).send('IGNORED');
   }
 
+  console.log('Reenviando a n8n...');
   await forwardToN8n(body);
 
   const supabase = getSupabaseAdmin();
