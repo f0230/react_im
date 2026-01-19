@@ -29,50 +29,20 @@ export default function Stepper({
     const isCompleted = currentStep > totalSteps;
     const isLastStep = currentStep === totalSteps;
 
-    const validateFields = () => {
-        if (!formData) return false;
-        const errors = {};
-
-        if (currentStep === 1) {
-            if (!formData?.datetime) {
-                errors.datetime = "Seleccioná una fecha y hora.";
-            } else {
-                const now = new Date();
-                if (formData.datetime < now) {
-                    errors.datetime = "No puedes seleccionar una fecha pasada.";
-                }
-                const hours = formData.datetime.getHours();
-                const minutes = formData.datetime.getMinutes();
-                if (hours < 9 || (hours === 18 && minutes > 0) || hours > 18) {
-                    errors.datetime = "Solo horarios de 9:00 a 18:00.";
-                }
-            }
-        } else if (currentStep === 2) {
-            if (!formData?.phone?.trim()) {
-                errors.phone = "El teléfono es obligatorio.";
-            } else if (!isValidPhone(formData.phone.trim())) {
-                errors.phone = "Ingresá un número de teléfono válido.";
-            }
-
-            if (!formData?.message?.trim()) {
-                errors.message = "El mensaje es obligatorio.";
-            } else if (formData.message.trim().length < 10) {
-                errors.message = "El mensaje debe tener al menos 10 caracteres.";
-            }
-        }
-
-        setFieldErrors(errors);
-        return Object.keys(errors).length === 0;
+    const validateCurrentStep = () => {
+        // If we want stay generic, we don't put logic here.
+        // But the Stepper component currently handles the "Next" button.
+        // I will keep a simple check if onStepChange returns false? No.
+        // Let's just remove the hardcoded DTE validation.
+        return true;
     };
 
     const updateStep = (newStep) => {
         if (newStep > totalSteps) {
-            const isValid = validateFields();
-            if (!isValid) return;
             onFinalStepCompleted();
         } else {
             setCurrentStep(newStep);
-            onStepChange(newStep);
+            onStepChange(newStep, formData);
         }
     };
 
@@ -83,9 +53,11 @@ export default function Stepper({
         }
     };
 
-    const handleNext = () => {
-        const isValid = validateFields();
-        if (!isValid) return;
+    const handleNext = async () => {
+        if (onStepChange) {
+            const canProceed = await onStepChange(currentStep + 1, formData);
+            if (canProceed === false) return;
+        }
 
         setDirection(1);
         updateStep(currentStep + 1);

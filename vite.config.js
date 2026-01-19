@@ -60,17 +60,29 @@ export default defineConfig({
     target: 'esnext',
     outDir: 'dist',
     assetsDir: 'assets',
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500,
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Limpiar logs para producción final
+        drop_console: true,
         drop_debugger: true,
       },
     },
     rollupOptions: {
       output: {
-        // Usar estrategia de bundling por defecto de Vite para mayor estabilidad en producción
+        // Code splitting agresivo para reducir bundle inicial
+        manualChunks: {
+          // Vendor crítico - carga primero
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // Animaciones - carga diferida
+          'vendor-animations': ['framer-motion', 'gsap'],
+          // i18n - carga diferida
+          'vendor-i18n': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+          // UI libs
+          'vendor-ui': ['lucide-react', 'swiper'],
+          // Supabase/Auth
+          'vendor-backend': ['@supabase/supabase-js', '@react-oauth/google'],
+        },
       },
     },
   },

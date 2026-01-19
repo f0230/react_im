@@ -1,23 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 
 const isMobileDevice = () => typeof window !== 'undefined' && window.innerWidth < 768;
 
-export const OptimizedImage = ({ src, mobileSrc, alt, className = '', width, height }) => {
-    const [imageSrc, setImageSrc] = useState('/placeholder.png');
-
-    useEffect(() => {
-        const selectedSrc = isMobileDevice() && mobileSrc ? mobileSrc : src;
-        setImageSrc(selectedSrc);
+export const OptimizedImage = ({
+    src,
+    mobileSrc,
+    alt,
+    className = '',
+    width,
+    height,
+    loading = 'lazy',
+    fetchpriority,
+    decoding = 'async'
+}) => {
+    // Calcular src una vez, sin estado para evitar re-renders y flash
+    const imageSrc = useMemo(() => {
+        return isMobileDevice() && mobileSrc ? mobileSrc : src;
     }, [src, mobileSrc]);
 
     return (
         <img
             src={imageSrc}
             alt={alt}
-            loading="lazy"
+            loading={loading}
             width={width}
             height={height}
-            decoding="async"
+            decoding={decoding}
+            fetchpriority={fetchpriority}
             className={`${className} object-cover`}
         />
     );

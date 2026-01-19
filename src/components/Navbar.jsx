@@ -6,10 +6,12 @@ import { Link, useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useTranslation } from "react-i18next";
+import { User, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 
 import { menuItems } from "@/config/nav";
 import LoginModal from "./LoginModal";
 import { useUI } from "@/context/UIContext";
+import { useAuth } from "@/context/AuthContext";
 
 
 gsap.registerPlugin(ScrollTrigger);
@@ -22,8 +24,11 @@ const Navbar = () => {
     const [isMenuVisible, setIsMenuVisible] = useState(false);
     const [showNavbar, setShowNavbar] = useState(true);
     const [hasScrolled, setHasScrolled] = useState(false);
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const navigate = useNavigate();
     const { setIsNavbarOpen, isLoginModalOpen, setIsLoginModalOpen } = useUI();
+    const { user, signOut } = useAuth();
+    const userMenuRef = useRef(null);
 
     const handleMenuItemClick = (url) => {
         const menu = document.getElementById("mobile-menu");
@@ -52,7 +57,19 @@ const Navbar = () => {
         });
     };
 
+    // Close user menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+                setIsUserMenuOpen(false);
+            }
+        };
 
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
 
 
     const lastScrollYRef = useRef(0);
@@ -82,6 +99,7 @@ const Navbar = () => {
 
             lastScrollYRef.current = currentScrollY;
             setIsMenuOpen(false);
+            setIsUserMenuOpen(false);
         };
 
         const onScroll = () => setHasScrolled(window.scrollY > 10);
@@ -185,6 +203,12 @@ const Navbar = () => {
         }
     }, [isMenuOpen, isMenuVisible]);
 
+    const handleSignOut = async () => {
+        await signOut();
+        setIsUserMenuOpen(false);
+        navigate('/');
+    };
+
     return (
         <>
             {/* Navbar principal */}
@@ -239,15 +263,48 @@ const Navbar = () => {
                                 </button>
                             </div>
                         </li>
-                        {/* Login Button Desktop */}
-                        <li>
-                            <button
-                                onClick={() => setIsLoginModalOpen(true)}
-                                className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors border border-white/10 flex items-center gap-2"
-                            >
-                                <span>{t("nav.portalClients")}</span>
+                        {/* Login Button / User Menu Desktop */}
+                        <li className="relative" ref={userMenuRef}>
+                            {user ? (
+                                <>
+                                    <button
+                                        onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                                        className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors border border-white/10 flex items-center gap-2"
+                                    >
+                                        <User size={14} />
+                                        <span>User</span>
+                                        <ChevronDown size={12} className={`transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
+                                    </button>
 
-                            </button>
+                                    {/* User Dropdown */}
+                                    {isUserMenuOpen && (
+                                        <div className="absolute top-full right-0 mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl overflow-hidden py-1 z-50">
+                                            <Link
+                                                to="/dashboard"
+                                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/5 transition-colors"
+                                                onClick={() => setIsUserMenuOpen(false)}
+                                            >
+                                                <LayoutDashboard size={16} />
+                                                Dashboard
+                                            </Link>
+                                            <button
+                                                onClick={handleSignOut}
+                                                className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 transition-colors text-left"
+                                            >
+                                                <LogOut size={16} />
+                                                Logout
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => setIsLoginModalOpen(true)}
+                                    className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors border border-white/10 flex items-center gap-2"
+                                >
+                                    <span>{t("nav.portalClients")}</span>
+                                </button>
+                            )}
                         </li>
                     </ul>
 
@@ -306,17 +363,42 @@ const Navbar = () => {
                                     </button>
                                 </div>
                             </li>
-                            {/* Login Button Mobile */}
-                            <li className="menu-item opacity-0 transform pt-4">
-                                <button
-                                    onClick={() => {
-                                        setIsMenuOpen(false);
-                                        setIsLoginModalOpen(true);
-                                    }}
-                                    className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px]"
-                                >
-                                    {t("nav.accessClients")}
-                                </button>
+                            {/* Login Button / User Actions Mobile */}
+                            <li className="menu-item opacity-0 transform pt-4 flex flex-col gap-3 w-full items-end">
+                                {user ? (
+                                    <>
+                                        <button
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                navigate('/dashboard');
+                                            }}
+                                            className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px] flex items-center justify-center gap-2"
+                                        >
+                                            <LayoutDashboard size={18} />
+                                            Dashboard
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setIsMenuOpen(false);
+                                                handleSignOut();
+                                            }}
+                                            className="text-red-400 text-sm font-medium hover:text-red-300 transition-colors pr-4 py-2 flex items-center gap-2"
+                                        >
+                                            <LogOut size={16} />
+                                            Logout
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        onClick={() => {
+                                            setIsMenuOpen(false);
+                                            setIsLoginModalOpen(true);
+                                        }}
+                                        className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px]"
+                                    >
+                                        {t("nav.accessClients")}
+                                    </button>
+                                )}
                             </li>
                         </ul>
                     </nav>

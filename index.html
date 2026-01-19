@@ -5,20 +5,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="...código...">
-
     <meta name="facebook-domain-verification" content="gbey0wswjh4dxsnent69326864qllh" />
 
     <title>Grupo DTE</title>
   
     <link rel="icon" type="image/svg+xml" href="/src/assets/iconodte.svg" />
+    
+    <!-- Preconnect críticos -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Preload de recursos críticos para LCP -->
+    <link rel="preload" as="image" href="/src/assets/PORTADA_1.webp" media="(min-width: 768px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/src/assets/PORTADA_1_MOVIL.webp" media="(max-width: 767px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/src/assets/LOGODTE.svg" fetchpriority="high" />
+    
+    <!-- Fuentes con display=swap para no bloquear render -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
   
-    <!-- Font Awesome -->
+    <!-- Font Awesome - carga diferida para no bloquear render -->
+    <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" 
+      integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
+      crossorigin="anonymous" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
       integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg=="
-      crossorigin="anonymous" referrerpolicy="no-referrer" />
+      crossorigin="anonymous" referrerpolicy="no-referrer" media="print" onload="this.media='all'" />
   </head>
   
 

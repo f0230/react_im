@@ -34,23 +34,29 @@ const HeroSection = ({ onContactClick }) => {
         <AnimatedContent distance={150} direction="vertical" reverse={false} config={{ tension: 80, friction: 20 }} initialOpacity={0.2} animateOpacity scale={1}>
 
           <div className="relative w-full h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] overflow-hidden mt-[45px] sm:mt-0 mx-auto" style={{ zIndex: 20 }}>
-            {/* Imágenes de fondo */}
+            {/* Imágenes de fondo - LCP: carga prioritaria */}
             <div className="absolute inset-0 block md:hidden">
-              <OptimizedImage
+              <img
                 src={bgMobileImg}
                 alt={t("section1.aria.bgMobileAlt")}
                 className="w-full h-full object-cover"
-                loading="lazy"
-                decoding="async"
+                loading="eager"
+                decoding="sync"
+                fetchpriority="high"
+                width={600}
+                height={500}
               />
             </div>
             <div className="absolute inset-0 hidden md:block">
-              <OptimizedImage
+              <img
                 src={bgDesktopImg}
                 alt={t("section1.aria.bgDesktopAlt")}
                 className="w-full h-full object-cover"
-                loading="lazy"
-                decoding="async"
+                loading="eager"
+                decoding="sync"
+                fetchpriority="high"
+                width={1440}
+                height={700}
               />
             </div>
 
@@ -93,18 +99,18 @@ const HeroSection = ({ onContactClick }) => {
                 <div className="mt-4 md:mt-8 flex flex-wrap justify-center gap-2 md:gap-4">
                   <AnimatedContent distance={60} direction="horizontal" reverse config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={900} className="inline-block">
                     <button onClick={onContactClick} className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
-                        {t("section1.ctaContact")}
-                      </button>
+                      {t("section1.ctaContact")}
+                    </button>
                   </AnimatedContent>
 
-                  
+
 
                   <AnimatedContent distance={60} direction="horizontal" reverse={false} config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={1050} className="inline-block">
                     <Link to="/servicios">
-                  <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 transition">
+                      <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 transition">
                         {t("section1.ctaServices")}
                       </button></Link>
-                    
+
                   </AnimatedContent>
                 </div>
 

@@ -1,5 +1,6 @@
 // ✅ calendar.js simplificado sin uso de token
 import axios from "axios";
+import { supabase } from "../lib/supabaseClient";
 
 // 🔹 1. Obtener slots ocupados para renderizar en DatePicker
 export const getBusySlots = async (start, end) => {
@@ -22,9 +23,13 @@ export const checkAvailability = async (date) => {
     return response.data.available;
 };
 
-// 🔹 3. Crear evento en Google Calendar (token se gestiona en el backend)
-export const createCalendarEvent = async ({ name, summary, description, startTime, endTime, email, userAccessToken, userId, phone }) => {
+// 🔹 3. Crear evento en Google Calendar
+export const createCalendarEvent = async ({ name, summary, description, startTime, endTime, email, userId, phone }) => {
     try {
+        // Obtener el token de sesión actual
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+
         const response = await axios.post("/api/create-event", {
             name,
             summary,
@@ -32,9 +37,13 @@ export const createCalendarEvent = async ({ name, summary, description, startTim
             startTime,
             endTime,
             email,
-            userAccessToken, // Might not be needed by backend, but keeping for now
-            userId, // NEW
-            phone   // NEW
+            userAccessToken: token, // Legacy param kept just in case
+            userId,
+            phone
+        }, {
+            headers: {
+                'Authorization': token ? `Bearer ${token}` : ''
+            }
         });
         return response.data;
     } catch (error) {
