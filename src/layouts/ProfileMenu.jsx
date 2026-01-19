@@ -1,11 +1,18 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const ProfileMenu = ({ isOpen, onClose }) => {
     const { user, profile, signOut } = useAuth();
+    const navigate = useNavigate();
+
+    const handleSignOut = async () => {
+        onClose();
+        await signOut();
+        navigate('/');
+    };
 
     // Prefer Google metadata for avatar/name as it's often more up to date or readily available
     const avatarUrl = user?.user_metadata?.avatar_url || profile?.avatar_url;
@@ -77,7 +84,7 @@ const ProfileMenu = ({ isOpen, onClose }) => {
                             <div className="h-px bg-white/5 my-2 mx-2" />
 
                             <button
-                                onClick={() => { signOut(); onClose(); }}
+                                onClick={handleSignOut}
                                 className="w-full flex items-center gap-3 px-4 py-3 rounded-[15px] text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
                             >
                                 <LogOut size={18} />

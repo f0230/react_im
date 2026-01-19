@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, Menu, X, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
     const { profile, signOut } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
+    const navigate = useNavigate();
+
+    const handleSignOut = async () => {
+        setIsOpen(false);
+        await signOut();
+        navigate('/');
+    };
 
     const role = profile?.role || 'client';
 
@@ -41,7 +48,7 @@ const Sidebar = () => {
                 {isOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
-                <div className={`
+            <div className={`
         fixed inset-y-0 left-0 z-40 w-64 bg-black text-white transition-transform duration-300 ease-in-out transform
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         md:translate-x-0 md:static md:h-screen flex flex-col border-r border-white/10
@@ -81,7 +88,7 @@ const Sidebar = () => {
 
                 <div className="p-6 border-t border-white/10 font-product">
                     <button
-                        onClick={signOut}
+                        onClick={handleSignOut}
                         className="flex items-center gap-4 px-6 py-3.5 w-full text-gray-400 hover:bg-white/5 hover:text-red-400 rounded-[30px] transition-all duration-300"
                     >
                         <LogOut size={22} />
