@@ -10,39 +10,49 @@ export const AuthProvider = ({ children }) => {
     const [profile, setProfile] = useState(null);
     const [client, setClient] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [profileStatus, setProfileStatus] = useState('idle'); // idle | loading | ready | missing | error
+    const [profileError, setProfileError] = useState(null);
 
     const fetchProfile = useCallback(async (userId) => {
-        let attempts = 0;
         const maxAttempts = 3;
+        let attempts = 0;
+        let finalError = null;
+
+        setProfileStatus('loading');
+        setProfileError(null);
 
         while (attempts < maxAttempts) {
             attempts++;
             try {
                 console.log(`🔍 AuthProvider: Fetching profile for ${userId} (Attempt ${attempts}/${maxAttempts})`);
 
-                const { data: profileData, error: profileError } = await supabase
+                const { data: profileData, error: responseError } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('id', userId)
                     .single();
 
-                if (profileError) {
-                    // Only retry if it's a "no rows" error (implies trigger hasn't finished)
-                    // PGRST116 is 'The result contains 0 rows'
-                    if (attempts < maxAttempts && (profileError.code === 'PGRST116' || !profileData)) {
+                if (responseError) {
+                    finalError = responseError;
+                    console.error('❌ AuthProvider: Profile fetch error:', {
+                        code: responseError.code,
+                        message: responseError.message,
+                        userId
+                    });
+
+                    if (attempts < maxAttempts && (responseError.code === 'PGRST116' || !profileData)) {
                         console.warn('⚠️ AuthProvider: Profile not ready, retrying in 1s...');
                         await new Promise(r => setTimeout(r, 1000));
                         continue;
                     }
 
-                    console.warn('⚠️ AuthProvider: Profile record not found or error', profileError.message);
-                    setProfile(null);
-                    setClient(null);
-                    return; // Stop if error is permanent or retries exhausted
+                    break;
                 }
 
                 console.log('👤 AuthProvider: Profile loaded', profileData.role);
                 setProfile(profileData ?? null);
+                setProfileStatus('ready');
+                setProfileError(null);
 
                 // Fetch client record if role is client
                 if (profileData?.role === 'client') {
@@ -62,16 +72,30 @@ export const AuthProvider = ({ children }) => {
                     setClient(null);
                 }
 
-                return; // Success, exit loop
+                return profileData ?? null; // Success
 
             } catch (error) {
+                finalError = error;
                 console.error('❌ AuthProvider: Critical error in fetchProfile:', error);
                 if (attempts === maxAttempts) {
-                    setProfile(null);
-                    setClient(null);
+                    break;
                 }
             }
         }
+
+        setProfile(null);
+        setClient(null);
+
+        const isNotFound = finalError?.code === 'PGRST116' || /No rows/.test(finalError?.message ?? '');
+        if (isNotFound) {
+            setProfileStatus('missing');
+            setProfileError(new Error('No se encontró tu perfil o aún está en proceso de creación.'));
+        } else {
+            setProfileStatus('error');
+            setProfileError(finalError ?? new Error('No se pudo cargar tu perfil.'));
+        }
+
+        return null;
     }, []);
 
     const applySession = useCallback(async (session) => {
@@ -87,6 +111,8 @@ export const AuthProvider = ({ children }) => {
                 setUser(null);
                 setProfile(null);
                 setClient(null);
+                setProfileStatus('idle');
+                setProfileError(null);
                 setLoading(false); // <--- Add this!
                 return;
             }
@@ -134,6 +160,8 @@ export const AuthProvider = ({ children }) => {
                         setProfile(null);
                         setClient(null);
                         setLoading(false);
+                        setProfileStatus('idle');
+                        setProfileError(null);
                     } else if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION' || _event === 'TOKEN_REFRESHED') {
                         await applySession(session);
                     }
@@ -159,6 +187,21 @@ export const AuthProvider = ({ children }) => {
         }
     }, [user]);
 
+    const refreshProfile = useCallback(async () => {
+        if (!user) return null;
+        if (loading) {
+            console.log('ℹ️ AuthProvider: Already loading profile, skipping refresh');
+            return null;
+        }
+
+        setLoading(true);
+        try {
+            return await fetchProfile(user.id);
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchProfile, user, loading]);
+
     const signOut = useCallback(async () => {
         try {
             console.log('🔄 AuthProvider: Initiating sign out...');
@@ -183,9 +226,12 @@ export const AuthProvider = ({ children }) => {
         profile,
         client,
         loading,
-        signOut,
+        profileStatus,
+        profileError,
         refreshClient,
-    }), [user, profile, client, loading, signOut, refreshClient]);
+        refreshProfile,
+        signOut,
+    }), [user, profile, client, loading, profileStatus, profileError, refreshClient, refreshProfile, signOut]);
 
     return (
         <AuthContext.Provider value={value}>

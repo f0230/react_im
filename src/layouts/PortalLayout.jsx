@@ -5,10 +5,18 @@ import { useAuth } from '../context/AuthContext';
 import LoadingFallback from '../components/ui/LoadingFallback';
 import CompleteProfileModal from '../components/CompleteProfileModal';
 import { AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 
 const PortalLayout = () => {
-    const { user, profile, client, loading } = useAuth();
+    const {
+        user,
+        profile,
+        client,
+        loading,
+        profileStatus,
+        profileError,
+        refreshProfile,
+        signOut,
+    } = useAuth();
     const [showProfileModal, setShowProfileModal] = useState(false);
 
     useEffect(() => {
@@ -34,28 +42,43 @@ const PortalLayout = () => {
         return <Navigate to="/" replace />;
     }
 
-    // Guard: User is authenticated but profile is missing (race condition or trigger delay)
-    if (!loading && user && !profile) {
+    const shouldShowProfileError =
+        !loading &&
+        user &&
+        !profile &&
+        (profileStatus === 'missing' || profileStatus === 'error');
+
+    const errorTitle = profileStatus === 'missing' ? 'Perfil en proceso' : 'Error de Perfil';
+    const errorBody =
+        profileError?.message ||
+        (profileStatus === 'missing'
+            ? 'Todavía no se detecta tu perfil en la base de datos; intentamos reintentar automáticamente.'
+            : 'No pudimos leer tu perfil. Podría ser un problema de permisos (RLS).');
+
+    if (shouldShowProfileError) {
         return (
-            <div className="h-screen w-full flex flex-col items-center justify-center gap-4 bg-[#f2f2f2] font-product">
+            <div className="h-screen w-full flex flex-col items-center justify-center gap-4 bg-[#f2f2f2] font-product px-4 text-center">
                 <div className="bg-red-50 p-4 rounded-full">
                     <AlertCircle className="w-8 h-8 text-red-500" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-800">Error de Perfil</h2>
+                <h2 className="text-xl font-bold text-gray-800">{errorTitle}</h2>
                 <p className="text-zinc-500 text-sm max-w-md text-center">
-                    No pudimos encontrar tu perfil de usuario. Esto puede ocurrir si es tu primera vez y el sistema tardó en crearlo.
+                    {errorBody}
+                    <br />
+                    ID: {user.id}
                 </p>
-                <div className="flex gap-3 mt-2">
+                <div className="flex gap-3 mt-2 flex-wrap justify-center">
                     <button
-                        onClick={() => window.location.reload()}
+                        onClick={() => {
+                            void refreshProfile();
+                        }}
                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
                     >
                         Intentar nuevamente
                     </button>
                     <button
                         onClick={() => {
-                            supabase.auth.signOut();
-                            window.location.reload();
+                            signOut();
                         }}
                         className="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
                     >
