@@ -4,6 +4,8 @@ import DashboardNavbar from './DashboardNavbar';
 import { useAuth } from '../context/AuthContext';
 import LoadingFallback from '../components/ui/LoadingFallback';
 import CompleteProfileModal from '../components/CompleteProfileModal';
+import { AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 const PortalLayout = () => {
     const { user, profile, client, loading } = useAuth();
@@ -36,14 +38,30 @@ const PortalLayout = () => {
     if (!loading && user && !profile) {
         return (
             <div className="h-screen w-full flex flex-col items-center justify-center gap-4 bg-[#f2f2f2] font-product">
-                <LoadingFallback type="spinner" />
-                <p className="text-zinc-500 text-sm">Sincronizando perfil...</p>
-                <button
-                    onClick={() => window.location.reload()}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
-                >
-                    Recargar página
-                </button>
+                <div className="bg-red-50 p-4 rounded-full">
+                    <AlertCircle className="w-8 h-8 text-red-500" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">Error de Perfil</h2>
+                <p className="text-zinc-500 text-sm max-w-md text-center">
+                    No pudimos encontrar tu perfil de usuario. Esto puede ocurrir si es tu primera vez y el sistema tardó en crearlo.
+                </p>
+                <div className="flex gap-3 mt-2">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                        Intentar nuevamente
+                    </button>
+                    <button
+                        onClick={() => {
+                            supabase.auth.signOut();
+                            window.location.reload();
+                        }}
+                        className="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                    >
+                        Cerrar sesión
+                    </button>
+                </div>
             </div>
         );
     }

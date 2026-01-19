@@ -344,9 +344,24 @@ const Inbox = () => {
                     </div>
                     <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                         {loadingThreads && (
-                            <div className="text-xs text-neutral-400 px-2">Cargando bandeja...</div>
+                            <div className="text-xs text-neutral-400 px-2 flex items-center gap-2">
+                                <RefreshCw size={12} className="animate-spin" />
+                                Cargando bandeja...
+                            </div>
                         )}
-                        {!loadingThreads && filteredThreads.length === 0 && (
+                        {error && !loadingThreads && (
+                            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                                <p className="font-semibold mb-1">Error de carga</p>
+                                {error}
+                                <button
+                                    onClick={() => loadThreads()}
+                                    className="block mt-2 underline font-medium hover:text-amber-900"
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
+                        )}
+                        {!loadingThreads && !error && filteredThreads.length === 0 && (
                             <div className="text-sm text-neutral-400 px-2">No hay conversaciones.</div>
                         )}
                         {filteredThreads.map((thread) => {

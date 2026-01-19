@@ -83,9 +83,11 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log('🔐 AuthProvider: Applying session', session?.user?.email || 'No User');
             if (!session?.user) {
+                console.log('ℹ️ AuthProvider: No user session found');
                 setUser(null);
                 setProfile(null);
                 setClient(null);
+                setLoading(false); // <--- Add this!
                 return;
             }
 
