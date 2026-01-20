@@ -1,23 +1,46 @@
 // Home.jsx optimizado
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 import StepperModal from "@/components/StepperModal";
 import Layout from "@/components/Layout";
 
-const HeroSection = lazy(() => import("@/components/Section1"));
-const Section2 = lazy(() => import("@/components/Section2"));
+import HeroSection from "@/components/Section1";
+import Section2 from "@/components/Section2";
 const Section3 = lazy(() => import("@/components/Section3"));
 const Section4 = lazy(() => import("@/components/Section4"));
 const Section5 = lazy(() => import("@/components/Section5"));
 const SimultaneousWords = lazy(() => import("@/components/TextEnDTE"));
 const InfiniteCarousel = lazy(() => import("@/components/Slide"));
 const Section7 = lazy(() => import("@/components/Section8"));
-const SectionDteAutomation = lazy(() => import("@/components/SectionDteAutomation"));
 const CurvedLoop = lazy(() => import("@/components/CurvedLoop"));
 
+const LazySection = ({ children }) => (
+  <Suspense fallback={null}>{children}</Suspense>
+);
 
 const Home = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [renderDeferred, setRenderDeferred] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let idleId;
+    const start = () => setRenderDeferred(true);
+
+    if ('requestIdleCallback' in window) {
+      idleId = window.requestIdleCallback(start, { timeout: 1500 });
+    } else {
+      idleId = window.setTimeout(start, 1200);
+    }
+
+    return () => {
+      if ('cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId);
+      } else {
+        clearTimeout(idleId);
+      }
+    };
+  }, []);
   return (
 
     <Layout>
@@ -32,35 +55,53 @@ const Home = () => {
         </div>
 
 
-        <div className="relative w-full">
-          <Section3 onContactClick={() => setIsModalOpen(true)} />
-        </div>
-        <div className="relative w-full">
-          <Section4 />
+        {renderDeferred && (
+          <>
+            <div className="relative w-full">
+              <LazySection>
+                <Section3 onContactClick={() => setIsModalOpen(true)} />
+              </LazySection>
+            </div>
+            <div className="relative w-full">
+              <LazySection>
+                <Section4 />
+              </LazySection>
 
-        </div>
-        <div className="relative w-full">
-          <CurvedLoop
-            marqueeText="BE ✦ Creative ✦ With ✦ DTE ✦"
-            speed={3}
-            curveAmount={300}
-            direction="right"
-            interactive={true}
-          />
-        </div>
-        <div className="relative w-full">
-          <Section5 onContactClick={() => setIsModalOpen(true)} />
-        </div>
+            </div>
+            <div className="relative w-full">
+              <LazySection>
+                <CurvedLoop
+                  marqueeText="BE ✦ Creative ✦ With ✦ DTE ✦"
+                  speed={3}
+                  curveAmount={300}
+                  direction="right"
+                  interactive={true}
+                />
+              </LazySection>
+            </div>
+            <div className="relative w-full">
+              <LazySection>
+                <Section5 onContactClick={() => setIsModalOpen(true)} />
+              </LazySection>
+            </div>
 
-        <div className="relative w-full">
-          <SimultaneousWords />
-        </div>
-        <div className="relative w-full">
-          <InfiniteCarousel />
-        </div>
-        <div className="relative w-full">
-          <Section7 onContactClick={() => setIsModalOpen(true)} />
-        </div>
+            <div className="relative w-full">
+              <LazySection>
+                <SimultaneousWords />
+              </LazySection>
+            </div>
+            <div className="relative w-full">
+              <LazySection>
+                <InfiniteCarousel />
+              </LazySection>
+            </div>
+            <div className="relative w-full">
+              <LazySection>
+                <Section7 onContactClick={() => setIsModalOpen(true)} />
+              </LazySection>
+            </div>
+          </>
+        )}
         <ScrollToTopButton />
       </div>
       <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />

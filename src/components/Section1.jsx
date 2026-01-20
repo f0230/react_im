@@ -7,6 +7,7 @@ import FadeContent from './ui/FadeContent';
 import OptimizedImage from "@/components/OptimizedImage";
 import { Link } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
+import { Helmet } from "react-helmet-async";
 
 
 
@@ -29,6 +30,12 @@ const HeroSection = ({ onContactClick }) => {
   }, []);
 
   return (
+    <>
+      <Helmet>
+        <link rel="preload" as="image" href={bgDesktopImg} media="(min-width: 768px)" fetchpriority="high" />
+        <link rel="preload" as="image" href={bgMobileImg} media="(max-width: 767px)" fetchpriority="high" />
+        <link rel="preload" as="image" href={grupodte} fetchpriority="high" />
+      </Helmet>
     <section className="font-product relative w-full flex justify-center items-start px-2 z-10" aria-label={t("section1.aria.hero")}>
       <div className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px] sm:h-[600px] md:h-[700px] lg:h-[700px] overflow-hidden mx-auto">
         <AnimatedContent distance={150} direction="vertical" reverse={false} config={{ tension: 80, friction: 20 }} initialOpacity={0.2} animateOpacity scale={1}>
@@ -41,7 +48,7 @@ const HeroSection = ({ onContactClick }) => {
                 alt={t("section1.aria.bgMobileAlt")}
                 className="w-full h-full object-cover"
                 loading="eager"
-                decoding="sync"
+                decoding="async"
                 fetchpriority="high"
                 width={600}
                 height={500}
@@ -53,7 +60,7 @@ const HeroSection = ({ onContactClick }) => {
                 alt={t("section1.aria.bgDesktopAlt")}
                 className="w-full h-full object-cover"
                 loading="eager"
-                decoding="sync"
+                decoding="async"
                 fetchpriority="high"
                 width={1440}
                 height={700}
@@ -166,6 +173,7 @@ const HeroSection = ({ onContactClick }) => {
         </AnimatedContent>
       </div>
     </section>
+    </>
   );
 };
 

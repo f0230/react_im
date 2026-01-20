@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import OptimizedImage from "./OptimizedImage";
 import HamburgerButton from "./ui/HamburgerButton";
 import logo from "../assets/Group 255.svg";
 import { Link, useNavigate } from "react-router-dom";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useTranslation } from "react-i18next";
 import { User, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 
@@ -12,9 +10,6 @@ import { menuItems } from "@/config/nav";
 import LoginModal from "./LoginModal";
 import { useUI } from "@/context/UIContext";
 import { useAuth } from "@/context/AuthContext";
-
-
-gsap.registerPlugin(ScrollTrigger);
 
 
 
@@ -29,12 +24,33 @@ const Navbar = () => {
     const { setIsNavbarOpen, isLoginModalOpen, setIsLoginModalOpen } = useUI();
     const { user, signOut } = useAuth();
     const userMenuRef = useRef(null);
+    const gsapRef = useRef(null);
 
-    const handleMenuItemClick = (url) => {
+    const ensureGsap = useCallback(async () => {
+        if (gsapRef.current) return gsapRef.current;
+        const gsapModule = await import("gsap");
+        const scrollTriggerModule = await import("gsap/ScrollTrigger");
+        const gsap = gsapModule.default || gsapModule.gsap || gsapModule;
+        const ScrollTrigger =
+            scrollTriggerModule.ScrollTrigger || scrollTriggerModule.default || scrollTriggerModule;
+        gsap.registerPlugin(ScrollTrigger);
+        gsapRef.current = gsap;
+        return gsap;
+    }, []);
+
+    const handleMenuItemClick = async (url) => {
         const menu = document.getElementById("mobile-menu");
 
         // Protege si no se encuentra el menú
         if (!menu) {
+            navigate(url);
+            return;
+        }
+
+        const gsap = await ensureGsap().catch(() => null);
+        if (!gsap) {
+            setIsMenuOpen(false);
+            setIsMenuVisible(false);
             navigate(url);
             return;
         }
@@ -126,8 +142,14 @@ const Navbar = () => {
     }, [isMenuOpen, setIsNavbarOpen]);
 
     useEffect(() => {
-        if (isMenuOpen && isMenuVisible) {
-            const ctx = gsap.context(() => {
+        let ctx;
+        let cancelled = false;
+
+        const runOpen = async () => {
+            const gsap = await ensureGsap().catch(() => null);
+            if (!gsap || cancelled) return;
+
+            ctx = gsap.context(() => {
                 gsap.fromTo(
                     "#mobile-menu",
                     {
@@ -181,11 +203,15 @@ const Navbar = () => {
                     });
                 }
             }, menuRef);
+        };
 
-            return () => ctx.revert();
-        }
+        const runClose = async () => {
+            const gsap = await ensureGsap().catch(() => null);
+            if (!gsap || cancelled) {
+                setIsMenuVisible(false);
+                return;
+            }
 
-        if (!isMenuOpen && isMenuVisible) {
             const tl = gsap.timeline({
                 onComplete: () => setIsMenuVisible(false),
             });
@@ -198,10 +224,36 @@ const Navbar = () => {
                 duration: 0.6,
                 ease: "power2.out",
             });
+        };
 
+        if (isMenuOpen && isMenuVisible) runOpen();
+        if (!isMenuOpen && isMenuVisible) runClose();
 
+        return () => {
+            cancelled = true;
+            ctx?.revert();
+        };
+    }, [isMenuOpen, isMenuVisible, ensureGsap]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        let idleId;
+        const warmup = () => ensureGsap().catch(() => null);
+
+        if ('requestIdleCallback' in window) {
+            idleId = window.requestIdleCallback(warmup, { timeout: 2000 });
+        } else {
+            idleId = window.setTimeout(warmup, 2000);
         }
-    }, [isMenuOpen, isMenuVisible]);
+
+        return () => {
+            if ('cancelIdleCallback' in window) {
+                window.cancelIdleCallback(idleId);
+            } else {
+                clearTimeout(idleId);
+            }
+        };
+    }, [ensureGsap]);
 
     const handleSignOut = async () => {
         await signOut();

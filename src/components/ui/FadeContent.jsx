@@ -1,8 +1,4 @@
-import { useRef, useEffect } from 'react';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
+import { useEffect, useRef, useState } from 'react';
 
 const FadeContent = ({
     children,
@@ -10,40 +6,42 @@ const FadeContent = ({
     delay = 0,
     blur = false,
     initialOpacity = 0,
+    duration = 900,
+    easing = 'ease-out',
     ...props
 }) => {
     const ref = useRef();
+    const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
-        const el = ref.current;
+        const node = ref.current;
+        if (!node) return;
 
-        const animation = gsap.fromTo(
-            el,
-            {
-                opacity: initialOpacity,
-                y: 40,
-                filter: blur ? 'blur(8px)' : 'none', // 🔽 blur más liviano
+        const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        if (prefersReducedMotion) {
+            setIsVisible(true);
+            return;
+        }
+
+        if (!('IntersectionObserver' in window)) {
+            setIsVisible(true);
+            return;
+        }
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setIsVisible(true);
+                    observer.disconnect();
+                }
             },
-            {
-                opacity: 1,
-                y: 0,
-                filter: 'blur(0px)',
-                delay: delay / 1000,
-                duration: 0.9,
-                ease: 'power2.out',
-                scrollTrigger: {
-                    trigger: el,
-                    start: 'top 85%',
-                    toggleActions: 'play none none reverse',
-                },
-            }
+            { rootMargin: '0px 0px -10% 0px', threshold: 0.1 }
         );
 
-        return () => {
-            animation.scrollTrigger?.kill(); // ✅ cleanup del trigger
-            animation.kill(); // ✅ cleanup de la animación
-        };
-    }, [delay, blur, initialOpacity]);
+        observer.observe(node);
+
+        return () => observer.disconnect();
+    }, []);
 
     const safeProps = { ...props };
     delete safeProps.blur;
@@ -54,7 +52,16 @@ const FadeContent = ({
     return (
         <div
             ref={ref}
-            style={{ willChange: 'opacity, transform' }} // ✅ mejora rendimiento de animación
+            style={{
+                willChange: 'opacity, transform, filter',
+                opacity: isVisible ? 1 : initialOpacity,
+                transform: isVisible ? 'translateY(0)' : 'translateY(40px)',
+                filter: isVisible ? 'blur(0px)' : blur ? 'blur(8px)' : 'none',
+                transitionProperty: 'opacity, transform, filter',
+                transitionDuration: `${duration}ms`,
+                transitionTimingFunction: easing,
+                transitionDelay: `${delay}ms`,
+            }}
             className={`${className} ${blur ? 'backdrop-blur-sm' : ''}`}
             {...safeProps}
         >
