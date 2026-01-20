@@ -166,7 +166,10 @@ const PortalLayout = () => {
                 isOpen={showProfileModal}
                 onClose={() => setShowProfileModal(false)}
                 onComplete={() => {
-                    navigate('/dashboard/projects', { replace: true });
+                    navigate('/dashboard/projects', {
+                        replace: true,
+                        state: { showCreateProject: true },
+                    });
                 }}
             />
         </div>

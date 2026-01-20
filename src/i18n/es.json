@@ -331,11 +331,28 @@
       "title": "Proyectos",
       "subtitle": "Gestiona tus proyectos desde aquí.",
       "error": "No pudimos cargar los proyectos. Intenta nuevamente.",
+      "newButton": "Nuevo proyecto",
       "emptyTitle": "Crea tu primer proyecto",
       "emptyDescription": "Todavía no tenés proyectos creados. Cuando inicies uno, lo vas a ver acá.",
       "untitled": "Proyecto sin título",
       "projectLabel": "Proyecto #{id}",
-      "createdAt": "Creado: {date}"
+      "createdAt": "Creado: {date}",
+      "create": {
+        "title": "Crear proyecto",
+        "firstTitle": "Crea tu primer proyecto",
+        "description": "Danos una idea general para comenzar a trabajar contigo.",
+        "close": "Cerrar",
+        "fields": {
+          "titleLabel": "Nombre del proyecto",
+          "titlePlaceholder": "Ej: Web para mi empresa",
+          "descriptionLabel": "Descripción (opcional)",
+          "descriptionPlaceholder": "Contanos brevemente qué necesitás."
+        },
+        "cta": "Crear proyecto",
+        "cancel": "Cancelar",
+        "saving": "Creando...",
+        "error": "No pudimos crear el proyecto. Intenta nuevamente."
+      }
     }
   },
   "auth": {

@@ -331,11 +331,28 @@
       "title": "Projects",
       "subtitle": "Manage your projects from here.",
       "error": "We couldn't load the projects. Please try again.",
+      "newButton": "New project",
       "emptyTitle": "Create your first project",
       "emptyDescription": "You don't have any projects yet. When you start one, it will appear here.",
       "untitled": "Untitled project",
       "projectLabel": "Project #{id}",
-      "createdAt": "Created: {date}"
+      "createdAt": "Created: {date}",
+      "create": {
+        "title": "Create project",
+        "firstTitle": "Create your first project",
+        "description": "Share a quick summary so we can get started.",
+        "close": "Close",
+        "fields": {
+          "titleLabel": "Project name",
+          "titlePlaceholder": "e.g. Company website",
+          "descriptionLabel": "Description (optional)",
+          "descriptionPlaceholder": "Tell us briefly what you need."
+        },
+        "cta": "Create project",
+        "cancel": "Cancel",
+        "saving": "Creating...",
+        "error": "We couldn't create the project. Please try again."
+      }
     }
   },
   "auth": {

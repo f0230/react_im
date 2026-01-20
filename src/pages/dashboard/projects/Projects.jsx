@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Briefcase } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import CreateProjectModal from '@/components/CreateProjectModal';
 
 const getProjectTitle = (project, fallback) => {
     return project?.title || project?.name || project?.project_name || fallback;
@@ -23,9 +25,14 @@ const formatDate = (value) => {
 const Projects = () => {
     const { t } = useTranslation();
     const { user, client } = useAuth();
+    const location = useLocation();
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [shouldPromptCreate, setShouldPromptCreate] = useState(
+        Boolean(location.state?.showCreateProject)
+    );
 
     const clientId = client?.id;
     const userId = user?.id;
@@ -73,15 +80,55 @@ const Projects = () => {
         fetchProjects();
     }, [fetchProjects]);
 
+    useEffect(() => {
+        if (location.state?.showCreateProject) {
+            setShouldPromptCreate(true);
+        }
+    }, [location.state]);
+
+    useEffect(() => {
+        if (!loading && projects.length === 0 && shouldPromptCreate) {
+            setIsCreateModalOpen(true);
+            setShouldPromptCreate(false);
+        }
+    }, [loading, projects.length, shouldPromptCreate]);
+
+    const handleProjectCreated = useCallback(
+        (project) => {
+            setIsCreateModalOpen(false);
+            if (project) {
+                setProjects((prev) => {
+                    if (!project?.id) return [project, ...prev];
+                    const exists = prev.some((item) => item?.id === project.id);
+                    if (exists) return prev;
+                    return [project, ...prev];
+                });
+                return;
+            }
+            fetchProjects();
+        },
+        [fetchProjects]
+    );
+
     return (
         <div className="font-product text-neutral-900 pb-16">
-            <div className="mb-8">
-                <h1 className="text-2xl md:text-3xl font-bold text-neutral-900">
-                    {t('dashboard.projects.title')}
-                </h1>
-                <p className="text-sm text-neutral-500 mt-1">
-                    {t('dashboard.projects.subtitle')}
-                </p>
+            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-neutral-900">
+                        {t('dashboard.projects.title')}
+                    </h1>
+                    <p className="text-sm text-neutral-500 mt-1">
+                        {t('dashboard.projects.subtitle')}
+                    </p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 hover:bg-neutral-800 transition-all"
+                >
+                    <Briefcase size={18} />
+                    {t('dashboard.projects.newButton')}
+                </button>
             </div>
 
             {loading ? (
@@ -101,6 +148,14 @@ const Projects = () => {
                     <p className="mt-2 text-sm text-neutral-500">
                         {t('dashboard.projects.emptyDescription')}
                     </p>
+                    <button
+                        type="button"
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="mt-6 inline-flex items-center justify-center gap-2 rounded-2xl bg-black px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 hover:bg-neutral-800 transition-all"
+                    >
+                        <Briefcase size={18} />
+                        {t('dashboard.projects.create.cta')}
+                    </button>
                 </div>
             ) : (
                 <div className="grid gap-4 md:gap-6">
@@ -144,6 +199,13 @@ const Projects = () => {
                     })}
                 </div>
             )}
+
+            <CreateProjectModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onCreated={handleProjectCreated}
+                isFirstProject={projects.length === 0}
+            />
         </div>
     );
 };
