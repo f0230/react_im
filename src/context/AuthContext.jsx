@@ -1,457 +1,210 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext({});
 
-const PROFILE_CACHE_KEY = 'dte.profile.v1';
-const CLIENT_CACHE_KEY = 'dte.client.v1';
-
-const readCachedProfile = () => {
-    if (typeof window === 'undefined') return null;
-    try {
-        const stored = window.localStorage?.getItem(PROFILE_CACHE_KEY);
-        if (!stored) return null;
-        const parsed = JSON.parse(stored);
-        if (parsed?.userId && parsed?.profile) return parsed;
-        if (parsed?.id) {
-            return { userId: parsed.id, profile: parsed };
-        }
-        return null;
-    } catch (error) {
-        console.warn('AuthProvider: Failed to parse cached profile', error);
-        return null;
-    }
-};
-
-const writeCachedProfile = (userId, profileData) => {
-    if (typeof window === 'undefined') return;
-    try {
-        if (profileData && userId) {
-            window.localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify({ userId, profile: profileData }));
-        } else {
-            window.localStorage.removeItem(PROFILE_CACHE_KEY);
-        }
-    } catch (error) {
-        console.warn('AuthProvider: Failed to persist profile', error);
-    }
-};
-
-const readCachedClient = () => {
-    if (typeof window === 'undefined') return null;
-    try {
-        const stored = window.localStorage?.getItem(CLIENT_CACHE_KEY);
-        if (!stored) return null;
-        const parsed = JSON.parse(stored);
-        if (parsed?.userId) {
-            return { userId: parsed.userId, client: parsed.client ?? null };
-        }
-        return null;
-    } catch (error) {
-        console.warn('AuthProvider: Failed to parse cached client', error);
-        return null;
-    }
-};
-
-const writeCachedClient = (userId, clientData) => {
-    if (typeof window === 'undefined') return;
-    try {
-        if (userId && clientData) {
-            window.localStorage.setItem(CLIENT_CACHE_KEY, JSON.stringify({ userId, client: clientData }));
-        } else {
-            window.localStorage.removeItem(CLIENT_CACHE_KEY);
-        }
-    } catch (error) {
-        console.warn('AuthProvider: Failed to persist client', error);
-    }
-};
-
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-    const cachedProfile = readCachedProfile();
-    const cachedClient = readCachedClient();
     const [user, setUser] = useState(null);
-    const [profile, setProfile] = useState(cachedProfile?.profile ?? null);
-    const [client, setClient] = useState(
-        cachedClient?.userId && cachedProfile?.userId && cachedClient.userId === cachedProfile.userId
-            ? cachedClient.client
-            : null
-    );
+    const [profile, setProfile] = useState(null);
+    const [client, setClient] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [authReady, setAuthReady] = useState(false);
+    const [profileLoading, setProfileLoading] = useState(false);
+
+    // Compatibility states for PortalLayout
     const [profileStatus, setProfileStatus] = useState('idle'); // idle | loading | ready | missing | error
     const [profileError, setProfileError] = useState(null);
 
-    const authReadyRef = useRef(false);
-    const activeUserIdRef = useRef(cachedProfile?.userId ?? null);
-    const profileRequestIdRef = useRef(0);
-    const debugEnabledRef = useRef(false);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        try {
-            debugEnabledRef.current = window.localStorage?.getItem('dte.auth.debug') === '1';
-        } catch (error) {
-            debugEnabledRef.current = false;
+    // Fetch profile and client data
+    const fetchProfileData = useCallback(async (currentUser) => {
+        if (!currentUser) {
+            setProfile(null);
+            setClient(null);
+            setProfileStatus('idle');
+            setProfileError(null);
+            return;
         }
-    }, []);
 
-    const debugLog = useCallback((...args) => {
-        if (!debugEnabledRef.current) return;
-        console.log(...args);
-    }, []);
-
-    const markAuthReady = useCallback(() => {
-        if (authReadyRef.current) return;
-        authReadyRef.current = true;
-        setAuthReady(true);
-        setLoading(false);
-    }, []);
-
-    const clearSupabaseAuthStorage = useCallback(() => {
-        if (typeof window === 'undefined') return;
         try {
-            const keys = Object.keys(window.localStorage || {});
-            keys.forEach((key) => {
-                if (key.startsWith('sb-') && (key.endsWith('-auth-token') || key.endsWith('-auth-token-code-verifier'))) {
-                    window.localStorage.removeItem(key);
-                }
-            });
-        } catch (error) {
-            console.warn('AuthProvider: Failed to clear auth storage', error);
-        }
-    }, []);
+            setProfileLoading(true);
+            setProfileStatus('loading');
+            setProfileError(null);
 
-    const clearSessionState = useCallback(() => {
-        activeUserIdRef.current = null;
-        profileRequestIdRef.current += 1;
-        setUser(null);
-        setProfile(null);
-        setClient(null);
-        setProfileStatus('idle');
-        setProfileError(null);
-        writeCachedProfile(null, null);
-        writeCachedClient(null, null);
-    }, []);
+            // 1. Fetch Profile
+            // Retry logic for profile creation latency
+            let profileData = null;
+            let attempts = 0;
+            const maxAttempts = 3;
+            let lastError = null;
 
-    const fetchProfile = useCallback(async (userId) => {
-        const maxAttempts = 3;
-        let attempts = 0;
-        let finalError = null;
-        const requestId = (profileRequestIdRef.current += 1);
-        activeUserIdRef.current = userId;
-
-        const isStale = () =>
-            requestId !== profileRequestIdRef.current || activeUserIdRef.current !== userId;
-
-        setProfileStatus('loading');
-        setProfileError(null);
-
-        while (attempts < maxAttempts) {
-            attempts++;
-            try {
-                console.log(`🔍 AuthProvider: Fetching profile for ${userId} (Attempt ${attempts}/${maxAttempts})`);
-
-                const { data: profileData, error: responseError } = await supabase
+            while (attempts < maxAttempts && !profileData) {
+                const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
-                    .eq('id', userId)
+                    .eq('id', currentUser.id)
                     .single();
 
-                if (isStale()) {
-                    return null;
-                }
-
-                if (responseError) {
-                    finalError = responseError;
-                    console.error('❌ AuthProvider: Profile fetch error:', {
-                        code: responseError.code,
-                        message: responseError.message,
-                        userId
-                    });
-
-                    if (attempts < maxAttempts && (responseError.code === 'PGRST116' || !profileData)) {
-                        console.warn('⚠️ AuthProvider: Profile not ready, retrying in 1s...');
-                        await new Promise(r => setTimeout(r, 1000));
-                        continue;
+                if (!error && data) {
+                    profileData = data;
+                } else {
+                    lastError = error;
+                    // If error is not "row not found", checking if we should retry or fail immediately?
+                    // PGRST116 is row not found.
+                    if (error.code === 'PGRST116') {
+                        // It might be created async, so we retry.
                     }
 
-                    break;
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+                    }
                 }
+            }
 
-                console.log('👤 AuthProvider: Profile loaded', profileData.role);
-                setProfile(profileData ?? null);
-                writeCachedProfile(userId, profileData ?? null);
+            if (profileData) {
+                setProfile(profileData);
                 setProfileStatus('ready');
-                setProfileError(null);
 
-                // Fetch client record if role is client
-                if (profileData?.role === 'client') {
-                    console.log('🔍 AuthProvider: Fetching client record...');
-                    const { data: clientData, error: clientError } = await supabase
+                // 2. Fetch Client (if applicable)
+                if (profileData.role === 'client') {
+                    const { data: clientData } = await supabase
                         .from('clients')
                         .select('*')
-                        .eq('user_id', userId)
+                        .eq('user_id', currentUser.id)
                         .order('created_at', { ascending: false })
                         .limit(1)
                         .maybeSingle();
 
-                    if (isStale()) {
-                        return null;
-                    }
-
-                    if (clientError) {
-                        console.warn('⚠️ AuthProvider: Error fetching client data:', clientError);
-                    } else {
-                        console.log('💼 AuthProvider: Client data result:', !!clientData);
-                        setClient(clientData ?? null);
-                        writeCachedClient(userId, clientData ?? null);
-                    }
+                    setClient(clientData);
                 } else {
                     setClient(null);
-                    writeCachedClient(userId, null);
                 }
 
-                return profileData ?? null; // Success
-
-            } catch (error) {
-                finalError = error;
-                console.error('❌ AuthProvider: Critical error in fetchProfile:', error);
-                if (attempts === maxAttempts) {
-                    break;
-                }
-            }
-        }
-
-        setProfile(null);
-        setClient(null);
-        writeCachedProfile(null, null);
-        writeCachedClient(null, null);
-
-        const isNotFound = finalError?.code === 'PGRST116' || /No rows/.test(finalError?.message ?? '');
-        if (!isStale()) {
-            if (isNotFound) {
-                setProfileStatus('missing');
-                setProfileError(new Error('No se encontró tu perfil o aún está en proceso de creación.'));
             } else {
-                setProfileStatus('error');
-                setProfileError(finalError ?? new Error('No se pudo cargar tu perfil.'));
-            }
-        }
+                setProfile(null);
+                setClient(null);
 
-        return null;
+                if (lastError && lastError.code === 'PGRST116') {
+                    setProfileStatus('missing');
+                } else {
+                    setProfileStatus('error');
+                    setProfileError(lastError || new Error('Profile fetch failed'));
+                }
+            }
+
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+            setProfileStatus('error');
+            setProfileError(error);
+        } finally {
+            setProfileLoading(false);
+        }
     }, []);
 
-    const applySession = useCallback(async (session) => {
-        const timeout = !authReadyRef.current
-            ? setTimeout(() => {
-                console.warn('⏱️ AuthProvider: Session apply taking too long, forcing load finish');
-                markAuthReady();
-            }, 5000)
-            : null;
-        try {
-            console.log('🔐 AuthProvider: Applying session', session?.user?.email || 'No User');
-            debugLog('AuthProvider: applySession start', {
-                eventUser: session?.user?.id ?? null,
-                activeUser: activeUserIdRef.current ?? null
-            });
-            if (!session?.user) {
-                console.log('ℹ️ AuthProvider: No user session found (skip apply)');
-                markAuthReady();
-                return;
-            }
+    // Initial Session Check & Subscription
+    useEffect(() => {
+        let mounted = true;
 
-            if (activeUserIdRef.current && activeUserIdRef.current !== session.user.id) {
+        const initAuth = async () => {
+            try {
+                // Get initial session
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (mounted) {
+                    if (session?.user) {
+                        setUser(session.user);
+                        await fetchProfileData(session.user);
+                    } else {
+                        setUser(null);
+                        setProfile(null);
+                        setClient(null);
+                    }
+                }
+            } catch (error) {
+                console.error('Auth initialization error:', error);
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        initAuth();
+
+        // Listen for changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('Auth state change:', event, session?.user?.email);
+
+            if (!mounted) return;
+
+            if (session?.user) {
+                // Only update if user changed to avoid loops, or if it's a sign-in event
+                setUser((prev) => {
+                    if (prev?.id !== session.user.id) {
+                        fetchProfileData(session.user);
+                        return session.user;
+                    }
+                    return prev;
+                });
+
+                // If we have a user but no profile yet (e.g. slight race on initial load), fetch it
+                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                    // Force refresh profile on explicit sign in to ensure latest data
+                    fetchProfileData(session.user);
+                }
+
+            } else {
+                setUser(null);
                 setProfile(null);
                 setClient(null);
                 setProfileStatus('idle');
                 setProfileError(null);
-                writeCachedProfile(null, null);
-                writeCachedClient(null, null);
             }
 
-            setUser(session.user);
-            await fetchProfile(session.user.id);
-        } catch (error) {
-            console.error('❌ AuthProvider: Error in applySession:', error);
-        } finally {
-            if (timeout) clearTimeout(timeout);
-            markAuthReady();
-            debugLog('AuthProvider: applySession done', {
-                user: session?.user?.id ?? null,
-                profileStatus
-            });
-            console.log('✅ AuthProvider: Auth flow finished');
-        }
-    }, [fetchProfile, markAuthReady, debugLog, profileStatus]);
-
-    useEffect(() => {
-        let isMounted = true;
-
-        const initSession = async () => {
-            try {
-                console.log('🚀 AuthProvider: App Start - Initializing session...');
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error) {
-                    console.warn('⚠️ AuthProvider: getSession error', error.message);
-                }
-                debugLog('AuthProvider: getSession result', {
-                    hasSession: !!session,
-                    userId: session?.user?.id ?? null
-                });
-                if (isMounted) {
-                    if (session?.user) {
-                        await applySession(session);
-                    } else {
-                        // Fallback: try to recover a session from storage (refresh flow).
-                        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-                        debugLog('AuthProvider: refreshSession result', {
-                            hasSession: !!refreshData?.session,
-                            error: refreshError?.message ?? null
-                        });
-                        if (refreshData?.session?.user) {
-                            await applySession(refreshData.session);
-                        } else {
-                            clearSessionState();
-                            markAuthReady();
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error('❌ AuthProvider: Error in initSession:', error);
-                if (isMounted) markAuthReady();
-            }
-        };
-
-        void initSession();
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                console.log('🔄 AuthProvider: onAuthStateChange event:', _event);
-                debugLog('AuthProvider: onAuthStateChange', {
-                    event: _event,
-                    userId: session?.user?.id ?? null
-                });
-                if (isMounted) {
-                    if (_event === 'SIGNED_OUT') {
-                        clearSessionState();
-                        markAuthReady();
-                        return;
-                    }
-                    if (_event === 'INITIAL_SESSION' && !session?.user) {
-                        // Avoid clearing or finalizing on a null initial session; getSession will finalize.
-                        return;
-                    }
-                    if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION' || _event === 'TOKEN_REFRESHED') {
-                        await applySession(session);
-                    }
-                }
-            }
-        );
+            setLoading(false);
+        });
 
         return () => {
-            isMounted = false;
+            mounted = false;
             subscription.unsubscribe();
         };
-    }, [applySession, clearSessionState, markAuthReady, debugLog]);
-
-    const refreshClient = useCallback(async (fallbackClient = null) => {
-        if (!user) return null;
-        const { data, error } = await supabase
-            .from('clients')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        if (!error && data) {
-            setClient(data);
-            writeCachedClient(user.id, data);
-            return data;
-        }
-        if (!error && !data) {
-            if (fallbackClient) {
-                const hydrated = {
-                    user_id: user.id,
-                    email: user.email,
-                    ...fallbackClient,
-                };
-                setClient(hydrated);
-                writeCachedClient(user.id, hydrated);
-                return hydrated;
-            }
-            setClient(null);
-            writeCachedClient(user.id, null);
-            return null;
-        }
-        if (fallbackClient) {
-            const hydrated = {
-                user_id: user.id,
-                email: user.email,
-                ...fallbackClient,
-            };
-            setClient(hydrated);
-            writeCachedClient(user.id, hydrated);
-            return hydrated;
-        }
-        return null;
-    }, [user]);
-
-    const refreshProfile = useCallback(async () => {
-        if (!user) return null;
-        if (profileStatus === 'loading') {
-            console.log('ℹ️ AuthProvider: Already loading profile, skipping refresh');
-            return null;
-        }
-
-        return await fetchProfile(user.id);
-    }, [fetchProfile, user, profileStatus]);
+    }, [fetchProfileData]);
 
     const signOut = useCallback(async () => {
-        let hadError = false;
+        setLoading(true);
         try {
-            console.log('🔄 AuthProvider: Initiating sign out...');
-            const { error } = await supabase.auth.signOut();
-            if (error) {
-                hadError = true;
-                console.warn('⚠️ AuthProvider: Supabase signOut error', error.message);
-            }
+            await supabase.auth.signOut();
+            setUser(null);
+            setProfile(null);
+            setClient(null);
+            setProfileStatus('idle');
+            setProfileError(null);
         } catch (error) {
-            hadError = true;
-            console.error('❌ AuthProvider: Critical error during signOut:', error);
+            console.error('Sign out error:', error);
         } finally {
-            if (hadError) {
-                try {
-                    await supabase.auth.signOut({ scope: 'local' });
-                } catch (error) {
-                    console.warn('⚠️ AuthProvider: Local signOut fallback failed', error);
-                }
-            }
-            clearSupabaseAuthStorage();
-            clearSessionState();
-            markAuthReady();
-            console.log('👋 AuthProvider: User signed out and state cleared');
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                debugLog('AuthProvider: post-signOut session', { hasSession: !!session });
-            } catch (error) {
-                debugLog('AuthProvider: post-signOut getSession failed', error);
-            }
+            setLoading(false);
         }
-    }, [clearSessionState, clearSupabaseAuthStorage, debugLog, markAuthReady]);
+    }, []);
 
-    const value = useMemo(() => ({
+    const refreshProfile = useCallback(async () => {
+        if (user) {
+            await fetchProfileData(user);
+        }
+    }, [user, fetchProfileData]);
+
+    const value = {
         user,
         profile,
         client,
-        loading,
-        authReady,
+        loading: loading || profileLoading, // Combined loading state for smoother UX on initial load
+        authReady: !loading, // Backward compatibility
         profileStatus,
         profileError,
-        refreshClient,
-        refreshProfile,
         signOut,
-    }), [user, profile, client, loading, authReady, profileStatus, profileError, refreshClient, refreshProfile, signOut]);
+        refreshProfile,
+        refreshClient: refreshProfile // Map to same refresh for simplicity
+    };
 
     return (
         <AuthContext.Provider value={value}>

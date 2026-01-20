@@ -12,12 +12,14 @@ const Section2 = ({ onContactClick }) => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    const isMobile = window.matchMedia?.('(pointer: coarse)')?.matches;
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     const saveData = connection?.saveData;
     const effectiveType = connection?.effectiveType || '';
     const slowConnection = /(^|-)2g/.test(effectiveType) || effectiveType === 'slow-2g';
 
-    if (prefersReducedMotion || saveData || slowConnection) return;
+    // On mobile, ignore saveData/slowConnection to allow the plasma to render.
+    if (prefersReducedMotion || (!isMobile && (saveData || slowConnection))) return;
 
     let idleId;
     const start = () => setShowPlasma(true);
