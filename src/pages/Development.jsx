@@ -5,7 +5,6 @@ import DevelopmentHero from '../components/DevelopmentHero';
 import ProjectCard from '../components/ProjectCard';
 import developmentProjects from '../data/developmentProjects';
 import MoreContent from '../components/MoreContent';
-import CleoWidget from '../components/CleoChat';
 import { useTranslation } from "react-i18next";
 
 const Development = () => {
@@ -26,7 +25,6 @@ const Development = () => {
           <MoreContent text={t("development.moreContent")} />
         </div>
       </PageWrapper>
-      <CleoWidget />
     </div>
   );
 };

@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { handleChatRequest } from './chat.js';
 import hubspotLeadHandler from './hubspot-lead.js';
 
 dotenv.config();
@@ -13,7 +12,6 @@ app.use(express.json());
 // Adapter to convert Express req/res to Vercel-like handler signature (if needed)
 // Luckily, Vercel default handlers (req, res) are compatible with Express middleware signature.
 
-app.post('/api/chat', handleChatRequest);
 app.post('/api/hubspot-lead', hubspotLeadHandler);
 
 const PORT = process.env.PORT || 3001;

@@ -5,7 +5,6 @@ import ServiceCard from '@/components/ui/ServiceCard';
 import { servicios } from '@/data/serviciosList';
 import TrueFocus from '@/components/ui/TrueFocus';
 import PageWrapper from "@/components/layout/PageWrapper";
-import CleoWidget from "@/components/CleoChat";
 import SEO from '@/components/SEO';
 import BlurText from '../components/ui/TextBlur';
 import { useTranslation } from "react-i18next";
@@ -69,8 +68,6 @@ const Servicios = () => {
                     </main>
                 </PageWrapper>
             </Layout>
-            <CleoWidget />
-
         </>
     );
 };
