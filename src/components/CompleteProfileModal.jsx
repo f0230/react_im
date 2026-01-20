@@ -1,20 +1,73 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, User, Building2, Phone, Compass } from 'lucide-react';
+import { Loader2, User, Phone } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from "react-i18next";
 
-const CompleteProfileModal = ({ isOpen, onClose }) => {
+const DEFAULT_COUNTRY_CODE = '+598';
+const COUNTRY_CODE_OPTIONS = [
+    { value: '+598', label: 'Uruguay (+598)' },
+    { value: '+54', label: 'Argentina (+54)' },
+    { value: '+55', label: 'Brazil (+55)' },
+    { value: '+591', label: 'Bolivia (+591)' },
+    { value: '+56', label: 'Chile (+56)' },
+    { value: '+57', label: 'Colombia (+57)' },
+    { value: '+593', label: 'Ecuador (+593)' },
+    { value: '+51', label: 'Peru (+51)' },
+    { value: '+52', label: 'Mexico (+52)' },
+    { value: '+506', label: 'Costa Rica (+506)' },
+    { value: '+507', label: 'Panama (+507)' },
+    { value: '+595', label: 'Paraguay (+595)' },
+    { value: '+34', label: 'Spain (+34)' },
+    { value: '+1', label: 'United States (+1)' },
+];
+
+const SORTED_COUNTRY_CODES = [...COUNTRY_CODE_OPTIONS]
+    .map((option) => option.value)
+    .sort((a, b) => b.length - a.length);
+
+const parsePhoneForForm = (phone, fallbackCountryCode = DEFAULT_COUNTRY_CODE) => {
+    if (!phone) {
+        return { countryCode: fallbackCountryCode, number: '' };
+    }
+
+    const normalized = String(phone).trim().replace(/[^\d+]/g, '');
+    if (!normalized.startsWith('+')) {
+        return {
+            countryCode: fallbackCountryCode,
+            number: normalized.replace(/\D/g, ''),
+        };
+    }
+
+    const match = SORTED_COUNTRY_CODES.find((code) => normalized.startsWith(code));
+    if (match) {
+        return {
+            countryCode: match,
+            number: normalized.slice(match.length).replace(/\D/g, ''),
+        };
+    }
+
+    return {
+        countryCode: fallbackCountryCode,
+        number: normalized.replace(/\D/g, ''),
+    };
+};
+
+const formatPhoneForSave = (countryCode, number) => {
+    const digits = String(number || '').replace(/\D/g, '');
+    return `${countryCode}${digits}`;
+};
+
+const CompleteProfileModal = ({ isOpen, onClose, onComplete }) => {
     const { t } = useTranslation();
     const { user, profile, client, refreshClient } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
         full_name: '',
-        company_name: '',
-        phone: '',
-        source: '',
+        phone_country: DEFAULT_COUNTRY_CODE,
+        phone_number: '',
     });
     const hasEditedRef = useRef(false);
 
@@ -25,13 +78,19 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
         }
         if (hasEditedRef.current) return;
         if (!profile && !client) return;
-        setFormData(prev => ({
-            ...prev,
-            full_name: profile?.full_name || client?.full_name || prev.full_name || '',
-            phone: client?.phone || profile?.phone || prev.phone || '',
-            company_name: client?.company_name || prev.company_name || '',
-            source: client?.source || prev.source || '',
-        }));
+        setFormData(prev => {
+            const phoneSeed = client?.phone || profile?.phone;
+            const parsedPhone = phoneSeed
+                ? parsePhoneForForm(phoneSeed, prev.phone_country)
+                : { countryCode: prev.phone_country, number: prev.phone_number };
+
+            return {
+                ...prev,
+                full_name: profile?.full_name || client?.full_name || prev.full_name || '',
+                phone_country: parsedPhone.countryCode,
+                phone_number: parsedPhone.number,
+            };
+        });
     }, [profile, client, isOpen]);
 
     const handleSubmit = async (e) => {
@@ -40,6 +99,8 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
         setError(null);
 
         try {
+            const phone = formatPhoneForSave(formData.phone_country, formData.phone_number);
+
             // Check if client already exists to get its ID or decide between insert/update
             const { data: existingClient, error: fetchError } = await supabase
                 .from('clients')
@@ -57,9 +118,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                     .from('clients')
                     .update({
                         full_name: formData.full_name,
-                        company_name: formData.company_name,
-                        phone: formData.phone,
-                        source: formData.source,
+                        phone,
                     })
                     .eq('id', existingClient.id);
             } else {
@@ -68,10 +127,10 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                     .insert({
                         user_id: user.id,
                         full_name: formData.full_name,
-                        company_name: formData.company_name,
+                        company_name: '',
                         email: user.email,
-                        phone: formData.phone,
-                        source: formData.source,
+                        phone,
+                        source: 'other',
                         status: 'lead'
                     });
             }
@@ -81,11 +140,12 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
             await refreshClient({
                 id: existingClient?.id,
                 full_name: formData.full_name,
-                company_name: formData.company_name,
-                phone: formData.phone,
-                source: formData.source,
+                phone,
             });
             onClose();
+            if (onComplete) {
+                onComplete();
+            }
         } catch (err) {
             console.error('Error saving profile:', err);
             setError(t("auth.completeProfile.error"));
@@ -97,6 +157,15 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
     const handleChange = (e) => {
         const { name, value } = e.target;
         hasEditedRef.current = true;
+        if (name === 'phone_number' && value.trim().startsWith('+')) {
+            const parsed = parsePhoneForForm(value, formData.phone_country);
+            setFormData(prev => ({
+                ...prev,
+                phone_country: parsed.countryCode,
+                phone_number: parsed.number,
+            }));
+            return;
+        }
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -137,6 +206,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                                         required
                                         type="text"
                                         name="full_name"
+                                        autoComplete="name"
                                         value={formData.full_name}
                                         onChange={handleChange}
                                         placeholder={t("auth.completeProfile.placeholders.name")}
@@ -147,60 +217,39 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
                             <div className="space-y-1">
                                 <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
-                                    {t("auth.completeProfile.labels.company")}
-                                </label>
-                                <div className="relative">
-                                    <Building2 size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                    <input
-                                        required
-                                        type="text"
-                                        name="company_name"
-                                        value={formData.company_name}
-                                        onChange={handleChange}
-                                        placeholder={t("auth.completeProfile.placeholders.company")}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
                                     {t("auth.completeProfile.labels.phone")}
                                 </label>
-                                <div className="relative">
-                                    <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                    <input
-                                        required
-                                        type="tel"
-                                        name="phone"
-                                        value={formData.phone}
-                                        onChange={handleChange}
-                                        placeholder={t("auth.completeProfile.placeholders.phone")}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
-                                    {t("auth.completeProfile.labels.source")}
-                                </label>
-                                <div className="relative">
-                                    <Compass size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                    <select
-                                        required
-                                        name="source"
-                                        value={formData.source}
-                                        onChange={handleChange}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
-                                    >
-                                        <option value="" disabled>{t("auth.completeProfile.placeholders.source")}</option>
-                                        <option value="website">{t("auth.completeProfile.sources.website")}</option>
-                                        <option value="referral">{t("auth.completeProfile.sources.referral")}</option>
-                                        <option value="social">{t("auth.completeProfile.sources.social")}</option>
-                                        <option value="whatsapp">{t("auth.completeProfile.sources.whatsapp")}</option>
-                                        <option value="other">{t("auth.completeProfile.sources.other")}</option>
-                                    </select>
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <div className="relative sm:w-[180px]">
+                                        <select
+                                            required
+                                            name="phone_country"
+                                            value={formData.phone_country}
+                                            onChange={handleChange}
+                                            aria-label={t("auth.completeProfile.labels.countryCode")}
+                                            className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
+                                        >
+                                            {COUNTRY_CODE_OPTIONS.map((option) => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="relative flex-1">
+                                        <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                        <input
+                                            required
+                                            type="tel"
+                                            name="phone_number"
+                                            autoComplete="tel"
+                                            inputMode="numeric"
+                                            value={formData.phone_number}
+                                            onChange={handleChange}
+                                            placeholder={t("auth.completeProfile.placeholders.phone")}
+                                            className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 

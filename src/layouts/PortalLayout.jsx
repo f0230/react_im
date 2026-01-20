@@ -55,7 +55,7 @@ const PortalLayout = () => {
     useEffect(() => {
         if (!loading && user && profile?.role === 'client') {
             // Show modal if client record is missing or incomplete
-            if (!client || !client.company_name || !client.phone) {
+            if (!client || !client.full_name || !client.phone) {
                 setShowProfileModal(true);
             } else {
                 setShowProfileModal(false);
@@ -165,6 +165,9 @@ const PortalLayout = () => {
             <CompleteProfileModal
                 isOpen={showProfileModal}
                 onClose={() => setShowProfileModal(false)}
+                onComplete={() => {
+                    navigate('/dashboard/projects', { replace: true });
+                }}
             />
         </div>
     );

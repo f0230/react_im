@@ -326,6 +326,18 @@
       "cta": "I want my free creative session"
     }
   },
+  "dashboard": {
+    "projects": {
+      "title": "Projects",
+      "subtitle": "Manage your projects from here.",
+      "error": "We couldn't load the projects. Please try again.",
+      "emptyTitle": "Create your first project",
+      "emptyDescription": "You don't have any projects yet. When you start one, it will appear here.",
+      "untitled": "Untitled project",
+      "projectLabel": "Project #{id}",
+      "createdAt": "Created: {date}"
+    }
+  },
   "auth": {
     "login": {
       "title": "DTE Platform",
@@ -340,12 +352,13 @@
         "fullName": "Full Name",
         "company": "Company / Project",
         "phone": "WhatsApp",
+        "countryCode": "Country code",
         "source": "How did you hear about us?"
       },
       "placeholders": {
         "name": "Your name",
         "company": "Your company name",
-        "phone": "598 9 1234 5678",
+        "phone": "9 1234 5678",
         "source": "Select an option"
       },
       "sources": {
