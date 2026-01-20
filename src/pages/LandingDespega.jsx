@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import OptimizedImage from '@/components/OptimizedImage';
 
 import Navbar from "@/components/Navbar";
-import bgHeroVideo from '@/assets/hero-video-loop.mp4'; // usar imagen si no hay video
+// import bgHeroVideo from '@/assets/hero-video-loop.mp4'; // usar imagen si no hay video
+import bgHeroImage from '@/assets/BgWeb_dtelohace.webp';
 
 import Aurora from '@/components/ui/Aurora';
 import { useTranslation } from "react-i18next";
@@ -29,7 +30,7 @@ const LandingDespega = () => {
 
             {/* Hero Section */}
             <section className="relative h-[100vh] flex items-center justify-center text-center text-white overflow-hidden">
-                <video
+                {/* <video
                     autoPlay
                     loop
                     muted
@@ -37,7 +38,12 @@ const LandingDespega = () => {
                     className="absolute inset-0 w-full h-full object-cover grayscale"
                 >
                     <source src={bgHeroVideo} type="video/mp4" />
-                </video>
+                </video> */}
+                <img
+                    src={bgHeroImage}
+                    alt="Hero Background"
+                    className="absolute inset-0 w-full h-full object-cover grayscale"
+                />
                 <div className="absolute inset-0 " />
                 <div className="relative z-10 max-w-3xl px-4">
                     <h1 className="text-4xl md:text-6xl font-bold" dangerouslySetInnerHTML={{ __html: t("landingDespega.hero.title").replace('.', '. <br/>') }} />
