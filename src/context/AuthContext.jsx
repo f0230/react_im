@@ -251,8 +251,6 @@ export const AuthProvider = ({ children }) => {
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error) {
                     console.warn('⚠️ AuthProvider: getSession error', error.message);
-                    if (isMounted) markAuthReady();
-                    return;
                 }
                 debugLog('AuthProvider: getSession result', {
                     hasSession: !!session,
@@ -262,8 +260,18 @@ export const AuthProvider = ({ children }) => {
                     if (session?.user) {
                         await applySession(session);
                     } else {
-                        clearSessionState();
-                        markAuthReady();
+                        // Fallback: try to recover a session from storage (refresh flow).
+                        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+                        debugLog('AuthProvider: refreshSession result', {
+                            hasSession: !!refreshData?.session,
+                            error: refreshError?.message ?? null
+                        });
+                        if (refreshData?.session?.user) {
+                            await applySession(refreshData.session);
+                        } else {
+                            clearSessionState();
+                            markAuthReady();
+                        }
                     }
                 }
             } catch (error) {
