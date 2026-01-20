@@ -214,8 +214,7 @@ export const AuthProvider = ({ children }) => {
                 activeUser: activeUserIdRef.current ?? null
             });
             if (!session?.user) {
-                console.log('ℹ️ AuthProvider: No user session found');
-                clearSessionState();
+                console.log('ℹ️ AuthProvider: No user session found (skip apply)');
                 markAuthReady();
                 return;
             }
@@ -241,7 +240,7 @@ export const AuthProvider = ({ children }) => {
             });
             console.log('✅ AuthProvider: Auth flow finished');
         }
-    }, [fetchProfile, markAuthReady, clearSessionState, debugLog, profileStatus]);
+    }, [fetchProfile, markAuthReady, debugLog, profileStatus]);
 
     useEffect(() => {
         let isMounted = true;
@@ -260,7 +259,12 @@ export const AuthProvider = ({ children }) => {
                     userId: session?.user?.id ?? null
                 });
                 if (isMounted) {
-                    await applySession(session);
+                    if (session?.user) {
+                        await applySession(session);
+                    } else {
+                        clearSessionState();
+                        markAuthReady();
+                    }
                 }
             } catch (error) {
                 console.error('❌ AuthProvider: Error in initSession:', error);
@@ -277,14 +281,20 @@ export const AuthProvider = ({ children }) => {
                     event: _event,
                     userId: session?.user?.id ?? null
                 });
-                    if (isMounted) {
-                        if (_event === 'SIGNED_OUT') {
-                            clearSessionState();
-                            markAuthReady();
-                        } else if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION' || _event === 'TOKEN_REFRESHED') {
-                            await applySession(session);
-                        }
+                if (isMounted) {
+                    if (_event === 'SIGNED_OUT') {
+                        clearSessionState();
+                        markAuthReady();
+                        return;
                     }
+                    if (_event === 'INITIAL_SESSION' && !session?.user) {
+                        // Avoid clearing or finalizing on a null initial session; getSession will finalize.
+                        return;
+                    }
+                    if (_event === 'SIGNED_IN' || _event === 'INITIAL_SESSION' || _event === 'TOKEN_REFRESHED') {
+                        await applySession(session);
+                    }
+                }
             }
         );
 

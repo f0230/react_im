@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, User, Building2, Phone, Compass } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
@@ -16,16 +16,20 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
         phone: '',
         source: '',
     });
+    const hasEditedRef = useRef(false);
 
     useEffect(() => {
-        if (profile) {
-            setFormData(prev => ({
-                ...prev,
-                full_name: profile.full_name || '',
-                phone: profile.phone || '',
-            }));
+        if (!isOpen) {
+            hasEditedRef.current = false;
+            return;
         }
-    }, [profile]);
+        if (!profile || hasEditedRef.current) return;
+        setFormData(prev => ({
+            ...prev,
+            full_name: profile.full_name || '',
+            phone: profile.phone || '',
+        }));
+    }, [profile, isOpen]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -81,6 +85,7 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        hasEditedRef.current = true;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
