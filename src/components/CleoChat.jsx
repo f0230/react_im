@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import StepperModal from '@/components/StepperModal';
 
 const CleoWidget = () => {
     const [messages, setMessages] = useState([
@@ -12,22 +11,11 @@ const CleoWidget = () => {
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const [modalState, setModalState] = useState({ isOpen: false, trigger: null });
     const [conversationId, setConversationId] = useState(null);
     const messagesEndRef = useRef(null);
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, []);
-
-    const openModal = useCallback((trigger) => {
-        if (!modalState.isOpen) {
-            setModalState({ isOpen: true, trigger });
-        }
-    }, [modalState.isOpen]);
-
-    const closeModal = useCallback(() => {
-        setModalState({ isOpen: false, trigger: null });
     }, []);
 
     const sendMessage = useCallback(async (text) => {
@@ -39,17 +27,6 @@ const CleoWidget = () => {
         setIsLoading(true);
 
         try {
-            const userRequestedForm = /\b(formulario|agendar|coordinar reunión|quiero hablar con alguien|necesito contacto)\b/i.test(text);
-
-            if (userRequestedForm) {
-                setMessages((prev) => [
-                    ...prev,
-                    { role: 'assistant', content: '¡Claro! 😊 Abrí el formulario para coordinar.' }
-                ]);
-                openModal('user');
-                return;
-            }
-
             // Generar ID de conversación si no existe
             let currentConversationId = conversationId;
             if (!currentConversationId) {
@@ -117,7 +94,7 @@ const CleoWidget = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [messages, openModal, conversationId]);
+    }, [messages, conversationId]);
 
     const handleSend = useCallback((e) => {
         e.preventDefault();
@@ -127,8 +104,7 @@ const CleoWidget = () => {
     const openChat = useCallback(() => setIsChatOpen(true), []);
     const closeChat = useCallback(() => {
         setIsChatOpen(false);
-        closeModal();
-    }, [closeModal]);
+    }, []);
 
     useEffect(() => {
         scrollToBottom();
@@ -249,14 +225,6 @@ const CleoWidget = () => {
                 )}
             </AnimatePresence>
 
-            <AnimatePresence>
-                {modalState.isOpen && (
-                    <StepperModal
-                        isOpen={modalState.isOpen}
-                        onClose={closeModal}
-                    />
-                )}
-            </AnimatePresence>
         </>
     );
 };

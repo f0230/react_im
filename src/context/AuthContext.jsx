@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 const AuthContext = createContext({});
 
 const PROFILE_CACHE_KEY = 'dte.profile.v1';
+const CLIENT_CACHE_KEY = 'dte.client.v1';
 
 const readCachedProfile = () => {
     if (typeof window === 'undefined') return null;
@@ -35,13 +36,47 @@ const writeCachedProfile = (userId, profileData) => {
     }
 };
 
+const readCachedClient = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+        const stored = window.localStorage?.getItem(CLIENT_CACHE_KEY);
+        if (!stored) return null;
+        const parsed = JSON.parse(stored);
+        if (parsed?.userId) {
+            return { userId: parsed.userId, client: parsed.client ?? null };
+        }
+        return null;
+    } catch (error) {
+        console.warn('AuthProvider: Failed to parse cached client', error);
+        return null;
+    }
+};
+
+const writeCachedClient = (userId, clientData) => {
+    if (typeof window === 'undefined') return;
+    try {
+        if (userId && clientData) {
+            window.localStorage.setItem(CLIENT_CACHE_KEY, JSON.stringify({ userId, client: clientData }));
+        } else {
+            window.localStorage.removeItem(CLIENT_CACHE_KEY);
+        }
+    } catch (error) {
+        console.warn('AuthProvider: Failed to persist client', error);
+    }
+};
+
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
     const cachedProfile = readCachedProfile();
+    const cachedClient = readCachedClient();
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(cachedProfile?.profile ?? null);
-    const [client, setClient] = useState(null);
+    const [client, setClient] = useState(
+        cachedClient?.userId && cachedProfile?.userId && cachedClient.userId === cachedProfile.userId
+            ? cachedClient.client
+            : null
+    );
     const [loading, setLoading] = useState(true);
     const [authReady, setAuthReady] = useState(false);
     const [profileStatus, setProfileStatus] = useState('idle'); // idle | loading | ready | missing | error
@@ -96,6 +131,7 @@ export const AuthProvider = ({ children }) => {
         setProfileStatus('idle');
         setProfileError(null);
         writeCachedProfile(null, null);
+        writeCachedClient(null, null);
     }, []);
 
     const fetchProfile = useCallback(async (userId) => {
@@ -156,6 +192,8 @@ export const AuthProvider = ({ children }) => {
                         .from('clients')
                         .select('*')
                         .eq('user_id', userId)
+                        .order('created_at', { ascending: false })
+                        .limit(1)
                         .maybeSingle();
 
                     if (isStale()) {
@@ -164,11 +202,14 @@ export const AuthProvider = ({ children }) => {
 
                     if (clientError) {
                         console.warn('⚠️ AuthProvider: Error fetching client data:', clientError);
+                    } else {
+                        console.log('💼 AuthProvider: Client data result:', !!clientData);
+                        setClient(clientData ?? null);
+                        writeCachedClient(userId, clientData ?? null);
                     }
-                    console.log('💼 AuthProvider: Client data result:', !!clientData);
-                    setClient(clientData ?? null);
                 } else {
                     setClient(null);
+                    writeCachedClient(userId, null);
                 }
 
                 return profileData ?? null; // Success
@@ -185,6 +226,7 @@ export const AuthProvider = ({ children }) => {
         setProfile(null);
         setClient(null);
         writeCachedProfile(null, null);
+        writeCachedClient(null, null);
 
         const isNotFound = finalError?.code === 'PGRST116' || /No rows/.test(finalError?.message ?? '');
         if (!isStale()) {
@@ -225,6 +267,7 @@ export const AuthProvider = ({ children }) => {
                 setProfileStatus('idle');
                 setProfileError(null);
                 writeCachedProfile(null, null);
+                writeCachedClient(null, null);
             }
 
             setUser(session.user);
@@ -312,16 +355,46 @@ export const AuthProvider = ({ children }) => {
         };
     }, [applySession, clearSessionState, markAuthReady, debugLog]);
 
-    const refreshClient = useCallback(async () => {
-        if (!user) return;
+    const refreshClient = useCallback(async (fallbackClient = null) => {
+        if (!user) return null;
         const { data, error } = await supabase
             .from('clients')
             .select('*')
             .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
-        if (!error) {
+        if (!error && data) {
             setClient(data);
+            writeCachedClient(user.id, data);
+            return data;
         }
+        if (!error && !data) {
+            if (fallbackClient) {
+                const hydrated = {
+                    user_id: user.id,
+                    email: user.email,
+                    ...fallbackClient,
+                };
+                setClient(hydrated);
+                writeCachedClient(user.id, hydrated);
+                return hydrated;
+            }
+            setClient(null);
+            writeCachedClient(user.id, null);
+            return null;
+        }
+        if (fallbackClient) {
+            const hydrated = {
+                user_id: user.id,
+                email: user.email,
+                ...fallbackClient,
+            };
+            setClient(hydrated);
+            writeCachedClient(user.id, hydrated);
+            return hydrated;
+        }
+        return null;
     }, [user]);
 
     const refreshProfile = useCallback(async () => {

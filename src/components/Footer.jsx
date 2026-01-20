@@ -6,7 +6,7 @@ import logoDTE from '../assets/dte_lohace.webp';
 import { contactInfo } from '@/config/branding';
 import { useTranslation } from 'react-i18next';
 
-const Footer = ({ setIsModalOpen }) => {
+const Footer = () => {
   const { t } = useTranslation();
   const footerRef = useRef();
 
@@ -49,11 +49,7 @@ const Footer = ({ setIsModalOpen }) => {
           </div>
           <div className="flex flex-col px-4 gap-3 w-[350px]">
             <a
-              onClick={(e) => {
-                e.preventDefault();
-                setIsModalOpen(true);
-              }}
-              href="#"
+              href={`mailto:${contactInfo.email}`}
               className="bg-black text-white text-[22px] h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition cursor-pointer"
             >
               {t("footer.ctaMeeting")}

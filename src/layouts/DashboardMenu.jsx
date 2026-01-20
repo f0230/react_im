@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, MessageSquare, Clock } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const DashboardMenu = ({ isOpen, onClose }) => {
@@ -13,7 +13,6 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Mis Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
-            { icon: Clock, label: 'Citas', path: '/dashboard/appointments' }, // Imported Clock icon
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },

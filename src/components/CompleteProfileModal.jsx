@@ -7,7 +7,7 @@ import { useTranslation } from "react-i18next";
 
 const CompleteProfileModal = ({ isOpen, onClose }) => {
     const { t } = useTranslation();
-    const { user, profile, refreshClient } = useAuth();
+    const { user, profile, client, refreshClient } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
@@ -23,13 +23,16 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
             hasEditedRef.current = false;
             return;
         }
-        if (!profile || hasEditedRef.current) return;
+        if (hasEditedRef.current) return;
+        if (!profile && !client) return;
         setFormData(prev => ({
             ...prev,
-            full_name: profile.full_name || '',
-            phone: profile.phone || '',
+            full_name: profile?.full_name || client?.full_name || prev.full_name || '',
+            phone: client?.phone || profile?.phone || prev.phone || '',
+            company_name: client?.company_name || prev.company_name || '',
+            source: client?.source || prev.source || '',
         }));
-    }, [profile, isOpen]);
+    }, [profile, client, isOpen]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -42,6 +45,8 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
                 .from('clients')
                 .select('id')
                 .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
                 .maybeSingle();
 
             if (fetchError) throw fetchError;
@@ -73,7 +78,13 @@ const CompleteProfileModal = ({ isOpen, onClose }) => {
 
             if (result.error) throw result.error;
 
-            await refreshClient();
+            await refreshClient({
+                id: existingClient?.id,
+                full_name: formData.full_name,
+                company_name: formData.company_name,
+                phone: formData.phone,
+                source: formData.source,
+            });
             onClose();
         } catch (err) {
             console.error('Error saving profile:', err);

@@ -1,9 +1,8 @@
 // Layout.jsx
-import React, { lazy, Suspense, useState, useEffect } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
-import StepperModal from "@/components/StepperModal";
 import { useInView } from "react-intersection-observer";
 import { useTranslation } from "react-i18next";
 
@@ -11,7 +10,6 @@ const Footer = lazy(() => import("@/components/Footer"));
 
 const Layout = ({ children }) => {
     const { t } = useTranslation();
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
     const [footerVisible, setFooterVisible] = useState(false);
 
@@ -61,11 +59,9 @@ const Layout = ({ children }) => {
 
             {footerVisible && (
                 <Suspense fallback={<div className="text-center py-10">{t("layout.footerLoading")}</div>}>
-                    <Footer setIsModalOpen={setIsModalOpen} />
+                    <Footer />
                 </Suspense>
             )}
-
-            <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
         </div>
     );
 };

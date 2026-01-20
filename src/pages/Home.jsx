@@ -1,7 +1,6 @@
 // Home.jsx optimizado
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
-import StepperModal from "@/components/StepperModal";
 import Layout from "@/components/Layout";
 
 import HeroSection from "@/components/Section1";
@@ -19,8 +18,8 @@ const LazySection = ({ children }) => (
 );
 
 const Home = () => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [renderDeferred, setRenderDeferred] = useState(false);
+  const handleContactClick = () => {};
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -48,10 +47,10 @@ const Home = () => {
 
         <div className="relative w-full">
 
-          <HeroSection onContactClick={() => setIsModalOpen(true)} />
+          <HeroSection onContactClick={handleContactClick} />
         </div>
         <div className="relative w-full">
-          <Section2 onContactClick={() => setIsModalOpen(true)} />
+          <Section2 onContactClick={handleContactClick} />
         </div>
 
 
@@ -59,7 +58,7 @@ const Home = () => {
           <>
             <div className="relative w-full">
               <LazySection>
-                <Section3 onContactClick={() => setIsModalOpen(true)} />
+                <Section3 onContactClick={handleContactClick} />
               </LazySection>
             </div>
             <div className="relative w-full">
@@ -81,7 +80,7 @@ const Home = () => {
             </div>
             <div className="relative w-full">
               <LazySection>
-                <Section5 onContactClick={() => setIsModalOpen(true)} />
+                <Section5 onContactClick={handleContactClick} />
               </LazySection>
             </div>
 
@@ -97,14 +96,13 @@ const Home = () => {
             </div>
             <div className="relative w-full">
               <LazySection>
-                <Section7 onContactClick={() => setIsModalOpen(true)} />
+                <Section7 onContactClick={handleContactClick} />
               </LazySection>
             </div>
           </>
         )}
         <ScrollToTopButton />
       </div>
-      <StepperModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </Layout>
   );
 };
