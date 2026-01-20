@@ -1,7 +1,6 @@
 // Stepper.jsx actualizado
 import React, { useState, Children, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { isValidPhone } from "@/utils/phone-validation"; // Ajusta la ruta según tu estructura
 
 export default function Stepper({
     children,
@@ -11,13 +10,14 @@ export default function Stepper({
     formData,
     setFieldErrors,
     stepCircleContainerClassName = "",
-    stepContainerClassName = "",
-    contentClassName = "",
-    footerClassName = "",
+    stepContainerClassName = "p-8",
+    contentClassName = "px-8",
+    footerClassName = "px-8 pb-8",
     backButtonProps = {},
     nextButtonProps = {},
     backButtonText = "Atrás",
     nextButtonText = "Continuar",
+    finalButtonText = "Enviar",
     disableStepIndicators = false,
     renderStepIndicator,
     ...rest
@@ -67,7 +67,7 @@ export default function Stepper({
         <div className="flex min-h-full flex-1 flex-col items-center justify-center p-2" {...rest}>
             {/* (resto del contenido sin cambios) */}
             <div className={`mx-auto w-full rounded-4xl ${stepCircleContainerClassName}`}>
-                <div className={`${stepContainerClassName} flex w-full items-center p-8`}>
+                <div className={`${stepContainerClassName} flex w-full items-center`}>
                     {stepsArray.map((_, index) => {
                         const stepNumber = index + 1;
                         const isNotLastStep = index < totalSteps - 1;
@@ -104,12 +104,12 @@ export default function Stepper({
                     isCompleted={isCompleted}
                     currentStep={currentStep}
                     direction={direction}
-                    className={`space-y-2 px-8 ${contentClassName}`}
+                    className={`space-y-2 ${contentClassName}`}
                 >
                     {stepsArray[currentStep - 1]}
                 </StepContentWrapper>
                 {!isCompleted && (
-                    <div className={`px-8 pb-8 ${footerClassName}`}>
+                    <div className={`${footerClassName}`}>
                         <div className={`mt-10 flex ${currentStep !== 1 ? "justify-between" : "justify-end"}`}>
                             {currentStep !== 1 && (
                                 <button
@@ -127,7 +127,7 @@ export default function Stepper({
                                 className="duration-350 flex items-center justify-center rounded-full bg-green-500 py-1.5 px-3.5 font-medium tracking-tight text-black transition hover:bg-green-600 active:bg-green-700"
                                 {...nextButtonProps}
                             >
-                                {isLastStep ? "Enviar" : nextButtonText}
+                                {isLastStep ? finalButtonText : nextButtonText}
                             </button>
                         </div>
                     </div>

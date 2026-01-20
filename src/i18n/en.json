@@ -340,17 +340,59 @@
       "create": {
         "title": "Create project",
         "firstTitle": "Create your first project",
-        "description": "Share a quick summary so we can get started.",
+        "description": "Help us understand what you need so we can guide you better.",
         "close": "Close",
         "fields": {
           "titleLabel": "Project name",
-          "titlePlaceholder": "e.g. Company website",
-          "descriptionLabel": "Description (optional)",
-          "descriptionPlaceholder": "Tell us briefly what you need."
+          "titlePlaceholder": "e.g. Digital marketing for my business",
+          "needTypeLabel": "How can we help you?",
+          "needTypePlaceholder": "Select an option",
+          "needTypeOptions": {
+            "socialMedia": "Social media",
+            "digitalAds": "Digital advertising",
+            "websiteLanding": "Website / Landing page",
+            "designBranding": "Design / Branding",
+            "automationTech": "Automation / Technology",
+            "content": "Content",
+            "other": "Other"
+          },
+          "objectiveLabel": "What is the main goal of this project?",
+          "objectivePlaceholder": "Select a goal",
+          "objectiveOptions": {
+            "sellMore": "Sell more",
+            "getLeads": "Get clients / leads",
+            "improveBrand": "Improve my brand image",
+            "launchProduct": "Launch a product or service",
+            "optimizeProcess": "Optimize a process",
+            "notSure": "I'm not sure / need guidance"
+          },
+          "descriptionLabel": "Briefly describe what you need",
+          "descriptionPlaceholder": "Describe your business, the problem you want to solve, and any important details.",
+          "urgencyLabel": "When do you need it? (optional)",
+          "urgencyPlaceholder": "Select an option",
+          "urgencyOptions": {
+            "noRush": "No rush",
+            "nextWeeks": "In the next few weeks",
+            "asap": "As soon as possible",
+            "specificDate": "Specific date"
+          },
+          "budgetLabel": "Do you have an estimated budget? (optional)",
+          "budgetPlaceholder": "Select an option",
+          "budgetOptions": {
+            "unknown": "I don't know yet",
+            "low": "Low",
+            "medium": "Medium",
+            "high": "High",
+            "adviseMe": "I'd like guidance"
+          }
         },
         "cta": "Create project",
         "cancel": "Cancel",
+        "back": "Back",
+        "next": "Continue",
         "saving": "Creating...",
+        "errorMissingRequired": "Please complete the required fields.",
+        "errorMissingDate": "Please select a specific date.",
         "error": "We couldn't create the project. Please try again."
       }
     }

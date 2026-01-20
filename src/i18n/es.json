@@ -340,17 +340,59 @@
       "create": {
         "title": "Crear proyecto",
         "firstTitle": "Crea tu primer proyecto",
-        "description": "Danos una idea general para comenzar a trabajar contigo.",
+        "description": "Queremos entender tu necesidad para ayudarte mejor.",
         "close": "Cerrar",
         "fields": {
           "titleLabel": "Nombre del proyecto",
-          "titlePlaceholder": "Ej: Web para mi empresa",
-          "descriptionLabel": "Descripción (opcional)",
-          "descriptionPlaceholder": "Contanos brevemente qué necesitás."
+          "titlePlaceholder": "Ej: Marketing digital para mi empresa",
+          "needTypeLabel": "¿En qué te podemos ayudar?",
+          "needTypePlaceholder": "Selecciona una opción",
+          "needTypeOptions": {
+            "socialMedia": "Redes sociales",
+            "digitalAds": "Publicidad digital",
+            "websiteLanding": "Página web / Landing",
+            "designBranding": "Diseño / Branding",
+            "automationTech": "Automatización / Tecnología",
+            "content": "Contenido",
+            "other": "Otro"
+          },
+          "objectiveLabel": "¿Cuál es el objetivo de este proyecto?",
+          "objectivePlaceholder": "Selecciona un objetivo",
+          "objectiveOptions": {
+            "sellMore": "Vender más",
+            "getLeads": "Conseguir clientes / leads",
+            "improveBrand": "Mejorar mi imagen de marca",
+            "launchProduct": "Lanzar un producto o servicio",
+            "optimizeProcess": "Optimizar un proceso",
+            "notSure": "No estoy seguro / necesito asesoría"
+          },
+          "descriptionLabel": "Cuéntanos brevemente qué necesitas",
+          "descriptionPlaceholder": "Describe tu negocio, qué problema quieres resolver y cualquier detalle importante.",
+          "urgencyLabel": "¿Para cuándo lo necesitas? (opcional)",
+          "urgencyPlaceholder": "Selecciona una opción",
+          "urgencyOptions": {
+            "noRush": "Sin prisa",
+            "nextWeeks": "En las próximas semanas",
+            "asap": "Lo antes posible",
+            "specificDate": "Fecha específica"
+          },
+          "budgetLabel": "¿Tienes un presupuesto estimado? (opcional)",
+          "budgetPlaceholder": "Selecciona una opción",
+          "budgetOptions": {
+            "unknown": "Aún no lo sé",
+            "low": "Bajo",
+            "medium": "Medio",
+            "high": "Alto",
+            "adviseMe": "Prefiero que me asesoren"
+          }
         },
         "cta": "Crear proyecto",
         "cancel": "Cancelar",
+        "back": "Atrás",
+        "next": "Continuar",
         "saving": "Creando...",
+        "errorMissingRequired": "Completa los campos obligatorios.",
+        "errorMissingDate": "Selecciona una fecha específica.",
         "error": "No pudimos crear el proyecto. Intenta nuevamente."
       }
     }

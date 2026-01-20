@@ -59,6 +59,19 @@ const formatPhoneForSave = (countryCode, number) => {
     return `${countryCode}${digits}`;
 };
 
+const sendProfileCompleteEmail = async ({ email, full_name, phone }) => {
+    if (!email) return;
+    try {
+        await fetch('/api/profile-complete-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, full_name, phone }),
+        });
+    } catch (err) {
+        console.warn('Profile email failed:', err);
+    }
+};
+
 const CompleteProfileModal = ({ isOpen, onClose, onComplete }) => {
     const { t } = useTranslation();
     const { user, profile, client, refreshClient } = useAuth();
@@ -139,6 +152,11 @@ const CompleteProfileModal = ({ isOpen, onClose, onComplete }) => {
 
             await refreshClient({
                 id: existingClient?.id,
+                full_name: formData.full_name,
+                phone,
+            });
+            void sendProfileCompleteEmail({
+                email: user.email,
                 full_name: formData.full_name,
                 phone,
             });
