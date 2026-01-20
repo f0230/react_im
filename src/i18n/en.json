@@ -330,19 +330,39 @@
     "projects": {
       "title": "Projects",
       "subtitle": "Manage your projects from here.",
+      "subtitles": {
+        "client": "Your projects and requests in one place.",
+        "worker": "Projects assigned to you.",
+        "admin": "Full view of clients, projects, and assignments."
+      },
       "error": "We couldn't load the projects. Please try again.",
       "newButton": "New project",
       "emptyTitle": "Create your first project",
       "emptyDescription": "You don't have any projects yet. When you start one, it will appear here.",
       "untitled": "Untitled project",
-      "projectLabel": "Project #{id}",
-      "createdAt": "Created: {date}",
+      "projectLabel": "Project",
+      "clientLabel": "Client",
+      "assignedWorkers": "Assigned workers",
+      "assignedSummary": "{{count}} assigned",
+      "assignButton": "Add team",
+      "assignSaving": "Saving assignments...",
+      "assignError": "We couldn't update the assignments.",
+      "teamModal": {
+        "title": "Add team",
+        "description": "Select the workers assigned to this project.",
+        "select": "Select",
+        "selected": "Assigned",
+        "close": "Save and close"
+      },
+      "createdAt": "Created: {{date}}",
       "create": {
         "title": "Create project",
         "firstTitle": "Create your first project",
         "description": "Help us understand what you need so we can guide you better.",
         "close": "Close",
         "fields": {
+          "clientLabel": "Client",
+          "clientPlaceholder": "Select a client",
           "titleLabel": "Project name",
           "titlePlaceholder": "e.g. Digital marketing for my business",
           "needTypeLabel": "How can we help you?",
@@ -394,6 +414,17 @@
         "errorMissingRequired": "Please complete the required fields.",
         "errorMissingDate": "Please select a specific date.",
         "error": "We couldn't create the project. Please try again."
+      },
+      "detail": {
+        "label": "Project",
+        "title": "Project details",
+        "back": "Back to project",
+        "tabs": {
+          "services": "Services",
+          "reports": "Reports",
+          "invoices": "Invoices"
+        },
+        "empty": "Section coming soon."
       }
     }
   },

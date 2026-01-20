@@ -13,11 +13,20 @@ const isColumnError = (error) => {
     return error?.code === '42703' || /column/i.test(message) || /does not exist/i.test(message);
 };
 
-const CreateProjectModal = ({ isOpen, onClose, onCreated, isFirstProject = false }) => {
+const CreateProjectModal = ({
+    isOpen,
+    onClose,
+    onCreated,
+    isFirstProject = false,
+    role,
+    clients = [],
+}) => {
     const { t } = useTranslation();
     const { user, client } = useAuth();
+    const isAdmin = role === 'admin';
     const [formData, setFormData] = useState({
         title: '',
+        client_id: '',
         need_type: '',
         objective: '',
         description: '',
@@ -32,6 +41,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated, isFirstProject = false
         if (isOpen) {
             setFormData({
                 title: '',
+                client_id: '',
                 need_type: '',
                 objective: '',
                 description: '',
@@ -42,6 +52,11 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated, isFirstProject = false
             setError(null);
         }
     }, [isOpen]);
+
+    const selectedClient = useMemo(() => {
+        if (!isAdmin) return null;
+        return clients.find((item) => item.id === formData.client_id) || null;
+    }, [clients, formData.client_id, isAdmin]);
 
     const payloadVariants = useMemo(() => {
         const description = formData.description.trim();
@@ -54,8 +69,10 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated, isFirstProject = false
             budget_range: formData.budget_range || null,
         };
         const base = {};
-        if (user?.id) base.user_id = user.id;
-        if (client?.id) base.client_id = client.id;
+        const resolvedUserId = isAdmin ? selectedClient?.user_id : user?.id;
+        const resolvedClientId = isAdmin ? selectedClient?.id : client?.id;
+        if (resolvedUserId) base.user_id = resolvedUserId;
+        if (resolvedClientId) base.client_id = resolvedClientId;
         if (payload.need_type) base.need_type = payload.need_type;
         if (payload.objective) base.objective = payload.objective;
         if (payload.description) base.description = payload.description;
@@ -96,7 +113,12 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated, isFirstProject = false
         setError(null);
 
         if (nextStep === 2) {
-            if (!formData.title.trim() || !formData.need_type || !formData.objective) {
+            if (
+                !formData.title.trim() ||
+                !formData.need_type ||
+                !formData.objective ||
+                (isAdmin && !formData.client_id)
+            ) {
                 setError(t('dashboard.projects.create.errorMissingRequired'));
                 return false;
             }
@@ -258,6 +280,33 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated, isFirstProject = false
                             footerClassName="pt-4"
                         >
                             <div className="space-y-4">
+                                {isAdmin && (
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
+                                            {t('dashboard.projects.create.fields.clientLabel')}
+                                        </label>
+                                        <select
+                                            required
+                                            name="client_id"
+                                            value={formData.client_id}
+                                            onChange={handleChange}
+                                            className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
+                                        >
+                                            <option value="">
+                                                {t('dashboard.projects.create.fields.clientPlaceholder')}
+                                            </option>
+                                            {clients.map((item) => {
+                                                const label = item.company_name || item.full_name || item.email || item.id;
+                                                return (
+                                                    <option key={item.id} value={item.id}>
+                                                        {label}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                    </div>
+                                )}
+
                                 <div className="space-y-1">
                                     <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
                                         {t('dashboard.projects.create.fields.titleLabel')}

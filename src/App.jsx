@@ -19,7 +19,12 @@ const LandingDTE = lazy(() => import("@/pages/LandingDTE"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
 const Clients = lazy(() => import("@/pages/dashboard/crm/Clients"));
+const ClientDetail = lazy(() => import("@/pages/dashboard/crm/ClientDetail"));
 const Projects = lazy(() => import("@/pages/dashboard/projects/Projects"));
+const ProjectDetailLayout = lazy(() => import("@/pages/dashboard/projects/ProjectDetailLayout"));
+const ProjectServices = lazy(() => import("@/pages/dashboard/projects/ProjectServices"));
+const ProjectReports = lazy(() => import("@/pages/dashboard/projects/ProjectReports"));
+const ProjectInvoices = lazy(() => import("@/pages/dashboard/projects/ProjectInvoices"));
 const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
 const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
 const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
@@ -58,10 +63,15 @@ const AppContent = () => {
           <Route path="/admin" element={<AdminLogin />} />
 
           {/* Private Portal Routes */}
-          <Route path="/dashboard" element={<PortalLayout />}>
-            <Route index element={<DashboardHome />} />
-            <Route path="clients" element={<Clients />} />
-            <Route path="projects" element={<Projects />} />
+            <Route path="/dashboard" element={<PortalLayout />}>
+              <Route index element={<DashboardHome />} />
+              <Route path="clients" element={<Clients />} />
+              <Route path="clients/:clientId" element={<ClientDetail />} />
+              <Route path="projects" element={<Projects />} />
+            <Route path="projects/:projectId" element={<ProjectDetailLayout />} />
+            <Route path="projects/:projectId/services" element={<ProjectServices />} />
+            <Route path="projects/:projectId/reports" element={<ProjectReports />} />
+            <Route path="projects/:projectId/invoices" element={<ProjectInvoices />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="inbox" element={<Inbox />} />
             <Route path="settings" element={<Settings />} />

@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Users, Search, RefreshCw, Mail, Phone } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import LoadingFallback from '@/components/ui/LoadingFallback';
 
 const STATUS_META = {
     lead: { label: 'Lead', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
@@ -30,7 +32,7 @@ const getInitial = (name) => {
 };
 
 const Clients = () => {
-    const { profile } = useAuth();
+    const { profile, loading: authLoading, profileStatus } = useAuth();
     const isAllowed = profile?.role === 'admin';
     const [clients, setClients] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -88,6 +90,10 @@ const Clients = () => {
         if (!isAllowed) return;
         loadClients();
     }, [isAllowed, loadClients]);
+
+    if (authLoading || profileStatus === 'loading' || !profile?.role) {
+        return <LoadingFallback type="spinner" />;
+    }
 
     if (!isAllowed) {
         return (
@@ -169,7 +175,11 @@ const Clients = () => {
                             const displayCompany = client.company_name || 'Sin empresa';
                             const displaySource = client.source || 'sin fuente';
                             return (
-                                <div key={client.id} className="px-4 py-4 hover:bg-neutral-50 transition">
+                                <Link
+                                    key={client.id}
+                                    to={`/dashboard/clients/${client.id}`}
+                                    className="block px-4 py-4 hover:bg-neutral-50 transition text-neutral-900"
+                                >
                                     <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="w-10 h-10 rounded-full bg-neutral-100 text-neutral-700 flex items-center justify-center text-sm font-semibold shrink-0">
@@ -214,7 +224,7 @@ const Clients = () => {
                                             {client.notes}
                                         </p>
                                     )}
-                                </div>
+                                </Link>
                             );
                         })}
                     </div>

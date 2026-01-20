@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { MessageSquare, Search, RefreshCw, Send, Phone, Paperclip, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 const formatTimestamp = (value) => {
     if (!value) return '';
@@ -32,6 +33,7 @@ const getInitial = (name) => {
 
 const Inbox = () => {
     const { profile } = useAuth();
+    const location = useLocation();
     const isAllowed = profile?.role === 'admin' || profile?.role === 'worker';
     const [threads, setThreads] = useState([]);
     const [messages, setMessages] = useState([]);
@@ -46,6 +48,14 @@ const Inbox = () => {
     const [messageText, setMessageText] = useState('');
     const [uploading, setUploading] = useState(false);
     const fileInputRef = React.useRef(null);
+
+    const preselectWaId = useMemo(() => {
+        const params = new URLSearchParams(location.search);
+        const raw = params.get('wa');
+        if (!raw) return null;
+        const normalized = raw.replace(/\D/g, '');
+        return normalized || raw;
+    }, [location.search]);
 
     const selectedThread = useMemo(
         () => threads.find((thread) => thread.wa_id === selectedThreadId) || null,
@@ -273,6 +283,21 @@ const Inbox = () => {
             supabase.removeChannel(channel);
         };
     }, [isAllowed, loadAssignees, loadThreads]);
+
+    useEffect(() => {
+        if (!preselectWaId || selectedThreadId || threads.length === 0) return;
+        const match = threads.find((thread) => {
+            if (!thread) return false;
+            const candidates = [thread.wa_id, thread.client_phone].filter(Boolean).map(String);
+            return candidates.some((value) => {
+                if (value === preselectWaId) return true;
+                return value.replace(/\D/g, '') === preselectWaId;
+            });
+        });
+        if (match) {
+            setSelectedThreadId(match.wa_id);
+        }
+    }, [preselectWaId, selectedThreadId, threads]);
 
     // Better message filtering for current thread in Realtime
     useEffect(() => {

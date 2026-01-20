@@ -330,19 +330,39 @@
     "projects": {
       "title": "Proyectos",
       "subtitle": "Gestiona tus proyectos desde aquí.",
+      "subtitles": {
+        "client": "Tus proyectos y solicitudes en un solo lugar.",
+        "worker": "Proyectos asignados para ti.",
+        "admin": "Vista completa de clientes, proyectos y asignaciones."
+      },
       "error": "No pudimos cargar los proyectos. Intenta nuevamente.",
       "newButton": "Nuevo proyecto",
       "emptyTitle": "Crea tu primer proyecto",
       "emptyDescription": "Todavía no tenés proyectos creados. Cuando inicies uno, lo vas a ver acá.",
       "untitled": "Proyecto sin título",
-      "projectLabel": "Proyecto #{id}",
-      "createdAt": "Creado: {date}",
+      "projectLabel": "Proyecto",
+      "clientLabel": "Cliente",
+      "assignedWorkers": "Workers asignados",
+      "assignedSummary": "{{count}} asignados",
+      "assignButton": "Agregar equipo",
+      "assignSaving": "Guardando asignaciones...",
+      "assignError": "No pudimos actualizar las asignaciones.",
+      "teamModal": {
+        "title": "Agregar equipo",
+        "description": "Selecciona los workers que participan en este proyecto.",
+        "select": "Seleccionar",
+        "selected": "Asignado",
+        "close": "Guardar y cerrar"
+      },
+      "createdAt": "Creado: {{date}}",
       "create": {
         "title": "Crear proyecto",
         "firstTitle": "Crea tu primer proyecto",
         "description": "Queremos entender tu necesidad para ayudarte mejor.",
         "close": "Cerrar",
         "fields": {
+          "clientLabel": "Cliente",
+          "clientPlaceholder": "Selecciona un cliente",
           "titleLabel": "Nombre del proyecto",
           "titlePlaceholder": "Ej: Marketing digital para mi empresa",
           "needTypeLabel": "¿En qué te podemos ayudar?",
@@ -394,6 +414,17 @@
         "errorMissingRequired": "Completa los campos obligatorios.",
         "errorMissingDate": "Selecciona una fecha específica.",
         "error": "No pudimos crear el proyecto. Intenta nuevamente."
+      },
+      "detail": {
+        "label": "Proyecto",
+        "title": "Detalle del proyecto",
+        "back": "Volver al proyecto",
+        "tabs": {
+          "services": "Servicios",
+          "reports": "Informes",
+          "invoices": "Facturas"
+        },
+        "empty": "Sección en construcción."
       }
     }
   },
