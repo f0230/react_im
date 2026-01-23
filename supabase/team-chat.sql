@@ -71,12 +71,21 @@ create table if not exists public.team_messages (
     channel_id uuid not null references public.team_channels(id) on delete cascade,
     author_id uuid not null references public.profiles(id) on delete restrict,
     author_name text,
+    message_type text not null default 'text',
+    media_url text,
+    file_name text,
     body text not null,
     created_at timestamptz not null default now()
 );
 
 alter table public.team_messages
     add column if not exists author_name text;
+alter table public.team_messages
+    add column if not exists message_type text not null default 'text';
+alter table public.team_messages
+    add column if not exists media_url text;
+alter table public.team_messages
+    add column if not exists file_name text;
 
 create index if not exists team_messages_channel_idx on public.team_messages (channel_id, created_at);
 
@@ -264,3 +273,7 @@ set author_name = coalesce(p.full_name, p.email, 'Equipo')
 from public.profiles p
 where tm.author_name is null
   and tm.author_id = p.id;
+
+update public.team_messages
+set message_type = 'text'
+where message_type is null;

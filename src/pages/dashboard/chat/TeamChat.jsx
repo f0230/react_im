@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Hash, MessageSquare, Plus, RefreshCw, Search, Send } from 'lucide-react';
+import { Hash, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 
@@ -35,6 +35,30 @@ const buildSlug = (value) => {
         .slice(0, 60);
 };
 
+const linkRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
+
+const renderTextWithLinks = (text) => {
+    if (!text) return null;
+    const parts = text.split(linkRegex);
+    return parts.map((part, index) => {
+        if (linkRegex.test(part)) {
+            const href = part.startsWith('http') ? part : `https://${part}`;
+            return (
+                <a
+                    key={`${part}-${index}`}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline break-all text-blue-600 hover:text-blue-700"
+                >
+                    {part}
+                </a>
+            );
+        }
+        return <span key={`${part}-${index}`}>{part}</span>;
+    });
+};
+
 const TeamChat = () => {
     const { user, profile } = useAuth();
     const isAllowed = profile?.role === 'admin' || profile?.role === 'worker';
@@ -61,6 +85,12 @@ const TeamChat = () => {
     const [isMembersOpen, setIsMembersOpen] = useState(false);
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [savingMembers, setSavingMembers] = useState(false);
+    const [uploadingAudio, setUploadingAudio] = useState(false);
+    const [isRecording, setIsRecording] = useState(false);
+
+    const recorderRef = useRef(null);
+    const streamRef = useRef(null);
+    const audioChunksRef = useRef([]);
 
     const messagesEndRef = useRef(null);
 
@@ -111,7 +141,7 @@ const TeamChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('team_messages')
-            .select('id, body, created_at, author_id, author_name, author:profiles(id, full_name, email, avatar_url)')
+            .select('id, body, created_at, author_id, author_name, message_type, media_url, file_name, author:profiles(id, full_name, email, avatar_url)')
             .eq('channel_id', channelId)
             .order('created_at', { ascending: true });
 
@@ -146,7 +176,7 @@ const TeamChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('team_channel_members')
-            .select('member_id, member:profiles(id, full_name, email, avatar_url, role)')
+            .select('member_id, member:profiles!team_channel_members_member_id_fkey(id, full_name, email, avatar_url, role)')
             .eq('channel_id', channelId);
 
         if (supaError) {
@@ -163,7 +193,7 @@ const TeamChat = () => {
     const fetchMessageById = useCallback(async (messageId) => {
         const { data } = await supabase
             .from('team_messages')
-            .select('id, body, created_at, author_id, author_name, author:profiles(id, full_name, email, avatar_url)')
+            .select('id, body, created_at, author_id, author_name, message_type, media_url, file_name, author:profiles(id, full_name, email, avatar_url)')
             .eq('id', messageId)
             .single();
         return data || null;
@@ -183,6 +213,7 @@ const TeamChat = () => {
                 channel_id: selectedChannelId,
                 author_id: user.id,
                 body,
+                message_type: 'text',
             });
 
         if (supaError) {
@@ -193,6 +224,103 @@ const TeamChat = () => {
 
         setSending(false);
     }, [messageText, selectedChannelId, sending, user?.id]);
+
+    const uploadAudioBlob = useCallback(async (blob, fileName) => {
+        if (!selectedChannelId || !user?.id) return;
+        setUploadingAudio(true);
+        setSendError('');
+
+        try {
+            if (blob.size > 20 * 1024 * 1024) {
+                throw new Error('El audio es demasiado grande (max 20MB).');
+            }
+
+            const mime = blob.type || 'audio/webm';
+            const ext = mime.includes('ogg') ? 'ogg' : mime.includes('mp4') ? 'm4a' : 'webm';
+            const safeName = fileName || `nota-${Date.now()}.${ext}`;
+            const storagePath = `team-chat/${selectedChannelId}/${Date.now()}-${safeName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('chat-media')
+                .upload(storagePath, blob, { contentType: mime });
+
+            if (uploadError) throw uploadError;
+
+            const { data: publicData } = supabase.storage
+                .from('chat-media')
+                .getPublicUrl(storagePath);
+
+            if (!publicData?.publicUrl) throw new Error('No public URL');
+
+            const { error: insertError } = await supabase
+                .from('team_messages')
+                .insert({
+                    channel_id: selectedChannelId,
+                    author_id: user.id,
+                    body: safeName,
+                    message_type: 'audio',
+                    media_url: publicData.publicUrl,
+                    file_name: safeName,
+                });
+
+            if (insertError) throw insertError;
+        } catch (err) {
+            setSendError(err.message || 'No se pudo subir el audio.');
+        } finally {
+            setUploadingAudio(false);
+        }
+    }, [selectedChannelId, user?.id]);
+
+    const stopRecording = useCallback(() => {
+        if (recorderRef.current && recorderRef.current.state !== 'inactive') {
+            recorderRef.current.stop();
+        }
+        setIsRecording(false);
+    }, []);
+
+    const startRecording = useCallback(async () => {
+        if (!selectedChannelId || !user?.id || uploadingAudio) return;
+        setSendError('');
+
+        try {
+            if (typeof MediaRecorder === 'undefined') {
+                throw new Error('Tu navegador no soporta grabación de audio.');
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            streamRef.current = stream;
+
+            const preferredTypes = [
+                'audio/webm;codecs=opus',
+                'audio/webm',
+                'audio/ogg;codecs=opus',
+                'audio/ogg',
+            ];
+            const mimeType = preferredTypes.find((type) => MediaRecorder.isTypeSupported(type));
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+            recorderRef.current = recorder;
+            audioChunksRef.current = [];
+
+            recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            recorder.onstop = async () => {
+                const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+                await uploadAudioBlob(blob);
+                stream.getTracks().forEach((track) => track.stop());
+                streamRef.current = null;
+                recorderRef.current = null;
+                setIsRecording(false);
+            };
+
+            recorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            setSendError(err.message || 'No se pudo acceder al micrófono.');
+        }
+    }, [selectedChannelId, uploadingAudio, uploadAudioBlob, user?.id]);
 
     const handleCreateChannel = useCallback(async () => {
         if (!canCreateChannel || !user?.id || creatingChannel) return;
@@ -525,6 +653,7 @@ const TeamChat = () => {
                                             || message?.author_name
                                             || message?.author?.email
                                             || 'Equipo';
+                                    const isAudio = message?.message_type === 'audio' && message?.media_url;
                                     return (
                                         <div key={message.id} className={`flex flex-col max-w-[85%] ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
                                             <span className="text-[10px] text-neutral-500 mb-1">
@@ -536,7 +665,16 @@ const TeamChat = () => {
                                                     : 'bg-white text-neutral-900 rounded-tl-none'
                                                     }`}
                                             >
-                                                <p className="whitespace-pre-wrap">{message.body}</p>
+                                                {isAudio ? (
+                                                    <div className="space-y-2 min-w-[220px]">
+                                                        <audio controls src={message.media_url} className="w-full" />
+                                                        {message.file_name && (
+                                                            <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <p className="whitespace-pre-wrap">{renderTextWithLinks(message.body)}</p>
+                                                )}
                                                 <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
                                                     <span>{formatTime(message.created_at)}</span>
                                                 </div>
@@ -550,6 +688,25 @@ const TeamChat = () => {
                             <div className="border-t border-black/5 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0 bg-white sticky bottom-0 shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]">
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">
+                                        <button
+                                            className={`p-2 transition disabled:opacity-50 ${uploadingAudio ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700'}`}
+                                            title={isRecording ? 'Detener grabación' : 'Grabar nota de voz'}
+                                            onClick={() => {
+                                                if (isRecording) {
+                                                    stopRecording();
+                                                } else {
+                                                    startRecording();
+                                                }
+                                            }}
+                                            disabled={uploadingAudio}
+                                        >
+                                            {uploadingAudio
+                                                ? <RefreshCw size={20} className="animate-spin" />
+                                                : isRecording
+                                                    ? <Square size={20} />
+                                                    : <Mic size={20} />
+                                            }
+                                        </button>
                                         <textarea
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
