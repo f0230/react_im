@@ -111,7 +111,7 @@ const TeamChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('team_messages')
-            .select('id, body, created_at, author_id, author:profiles(id, full_name, email, avatar_url)')
+            .select('id, body, created_at, author_id, author_name, author:profiles(id, full_name, email, avatar_url)')
             .eq('channel_id', channelId)
             .order('created_at', { ascending: true });
 
@@ -163,7 +163,7 @@ const TeamChat = () => {
     const fetchMessageById = useCallback(async (messageId) => {
         const { data } = await supabase
             .from('team_messages')
-            .select('id, body, created_at, author_id, author:profiles(id, full_name, email, avatar_url)')
+            .select('id, body, created_at, author_id, author_name, author:profiles(id, full_name, email, avatar_url)')
             .eq('id', messageId)
             .single();
         return data || null;
@@ -436,12 +436,6 @@ const TeamChat = () => {
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
-                        {loadingChannels && (
-                            <div className="text-xs text-neutral-400 px-2 flex items-center gap-2">
-                                <RefreshCw size={12} className="animate-spin" />
-                                Cargando canales...
-                            </div>
-                        )}
                         {error && !loadingChannels && (
                             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
                                 <p className="font-semibold mb-1">Error de carga</p>
@@ -500,9 +494,7 @@ const TeamChat = () => {
                                             <Hash size={16} className="text-neutral-400" />
                                             <span className="truncate">{selectedChannel.name}</span>
                                         </p>
-                                        <p className="text-xs text-neutral-500 truncate">
-                                            Conversaciones internas del equipo
-                                        </p>
+                                  
                                     </div>
                                     {canCreateChannel && (
                                         <button
@@ -527,14 +519,17 @@ const TeamChat = () => {
                                 )}
                                 {messages.map((message) => {
                                     const isOutbound = message.author_id === user?.id;
-                                    const authorName = message?.author?.full_name || message?.author?.email || 'Equipo';
+                                    const authorName = isOutbound
+                                        ? 'Tú'
+                                        : message?.author?.full_name
+                                            || message?.author_name
+                                            || message?.author?.email
+                                            || 'Equipo';
                                     return (
                                         <div key={message.id} className={`flex flex-col max-w-[85%] ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                            {!isOutbound && (
-                                                <span className="text-[10px] text-neutral-500 mb-1">
-                                                    {authorName}
-                                                </span>
-                                            )}
+                                            <span className="text-[10px] text-neutral-500 mb-1">
+                                                {authorName}
+                                            </span>
                                             <div
                                                 className={`relative px-3 py-2 text-sm rounded-lg shadow-sm ${isOutbound
                                                     ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none'

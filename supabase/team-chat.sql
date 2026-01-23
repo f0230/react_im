@@ -70,11 +70,43 @@ create table if not exists public.team_messages (
     id uuid primary key default gen_random_uuid(),
     channel_id uuid not null references public.team_channels(id) on delete cascade,
     author_id uuid not null references public.profiles(id) on delete restrict,
+    author_name text,
     body text not null,
     created_at timestamptz not null default now()
 );
 
+alter table public.team_messages
+    add column if not exists author_name text;
+
 create index if not exists team_messages_channel_idx on public.team_messages (channel_id, created_at);
+
+-- Ensure author_name is captured on insert (works even if profiles RLS is strict)
+create or replace function public.set_team_message_author_name()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    resolved_name text;
+begin
+    if new.author_name is null then
+        select coalesce(full_name, email, 'Equipo')
+        into resolved_name
+        from public.profiles
+        where id = new.author_id;
+
+        new.author_name := coalesce(resolved_name, 'Equipo');
+    end if;
+    return new;
+end;
+$$;
+
+drop trigger if exists team_messages_set_author_name on public.team_messages;
+create trigger team_messages_set_author_name
+before insert on public.team_messages
+for each row
+execute function public.set_team_message_author_name();
 
 alter table public.team_channels enable row level security;
 alter table public.team_channel_members enable row level security;
@@ -225,3 +257,10 @@ on conflict (slug) do nothing;
 update public.team_channels
 set is_public = true
 where slug = 'general';
+
+-- Backfill author_name for existing messages
+update public.team_messages tm
+set author_name = coalesce(p.full_name, p.email, 'Equipo')
+from public.profiles p
+where tm.author_name is null
+  and tm.author_id = p.id;
