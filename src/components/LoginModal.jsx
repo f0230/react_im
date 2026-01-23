@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from "react-i18next";
+import dteWhite from '../assets/dte-white.svg';
 
 const LoginModal = ({ isOpen, onClose }) => {
     const { t } = useTranslation();
@@ -40,14 +41,14 @@ const LoginModal = ({ isOpen, onClose }) => {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-md"
                     />
 
                     <motion.div
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                        className="relative w-full max-w-[1080px] h-[600px] bg-[#111] rounded-[10px] shadow-2xl overflow-hidden justify-center items-center flex"
+                        className="relative w-full max-w-[840px] h-[550px] bg-[#111] rounded-[10px] shadow-2xl overflow-hidden justify-center items-center flex"
                     >
                         <button
                             onClick={onClose}
@@ -59,8 +60,13 @@ const LoginModal = ({ isOpen, onClose }) => {
                         <div className="p-8 pt-10 text-center">
 
 
-                            <h2 className="text-[25px] md:text-[45px] font-bold mb-2 text-white ">
-                                DTE <span className="text-skyblue">Platform</span>
+                            <h2 className="text-[25px] md:text-[45px] font-bold mb-2 text-white inline-flex items-center justify-center gap-2">
+                                <img
+                                    src={dteWhite}
+                                    alt="DTE"
+                                    className="h-[24px] md:h-[40px] w-auto"
+                                />
+                                <span className="text-green">Platform</span>
                             </h2>
                             <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-xs mx-auto text-sm font-inter">
                                 {t("auth.login.description")}
@@ -70,7 +76,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                                 <button
                                     onClick={handleGoogleLogin}
                                     disabled={loading}
-                                    className="flex items-center justify-center gap-3 w-full bg-black dark:bg-white text-white dark:text-black border border-transparent hover:scale-[1.02] active:scale-[0.98] font-bold py-3.5 px-4 rounded-[30px] transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                                    className="flex items-center justify-center gap-3 w-full bg-black text-white dark:text-black border border-transparent hover:scale-[1.02] active:scale-[0.98] font-bold py-3.5 px-4 rounded-[30px] transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
                                 >
                                     {loading ? (
                                         <Loader2 className="w-5 h-5 animate-spin" />

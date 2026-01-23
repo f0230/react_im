@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { MessageSquare, Search, RefreshCw, Send, Phone, Paperclip, ArrowLeft } from 'lucide-react';
+import { MessageSquare, Search, RefreshCw, Send, Phone, Paperclip, ArrowLeft, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation } from 'react-router-dom';
+import ClientDetail from '@/pages/dashboard/crm/ClientDetail';
 
 const formatTimestamp = (value) => {
     if (!value) return '';
@@ -26,6 +27,11 @@ const formatTime = (value) => {
     }).format(date);
 };
 
+const normalizePhone = (value) => {
+    if (!value) return '';
+    return String(value).replace(/\D/g, '');
+};
+
 const getInitial = (name) => {
     if (!name) return 'C';
     return name.trim().charAt(0).toUpperCase();
@@ -47,6 +53,9 @@ const Inbox = () => {
     const [sendError, setSendError] = useState('');
     const [messageText, setMessageText] = useState('');
     const [uploading, setUploading] = useState(false);
+    const [aiToggleLoading, setAiToggleLoading] = useState(false);
+    const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+    const [clientIdByWa, setClientIdByWa] = useState({});
     const fileInputRef = React.useRef(null);
 
     const preselectWaId = useMemo(() => {
@@ -61,6 +70,9 @@ const Inbox = () => {
         () => threads.find((thread) => thread.wa_id === selectedThreadId) || null,
         [threads, selectedThreadId]
     );
+    const resolvedClientId = selectedThreadId ? clientIdByWa[selectedThreadId] : null;
+    const selectedClientId =
+        selectedThread?.client_id || selectedThread?.clientId || resolvedClientId || null;
 
     const filteredThreads = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
@@ -144,6 +156,59 @@ const Inbox = () => {
         },
         [selectedThreadId]
     );
+
+    const findClientByPhone = useCallback(async (rawPhone) => {
+        const normalized = normalizePhone(rawPhone);
+        if (!normalized) return null;
+
+        const results = [];
+        const { data: exactData } = await supabase
+            .from('clients')
+            .select('id, phone')
+            .eq('phone', rawPhone)
+            .limit(3);
+
+        if (Array.isArray(exactData)) results.push(...exactData);
+
+        const { data: likeData } = await supabase
+            .from('clients')
+            .select('id, phone')
+            .ilike('phone', `%${normalized}%`)
+            .limit(10);
+
+        if (Array.isArray(likeData)) results.push(...likeData);
+
+        const match = results.find((client) => normalizePhone(client?.phone) === normalized);
+        return match?.id || null;
+    }, []);
+
+    const handleAiToggle = useCallback(async () => {
+        if (!selectedThreadId || aiToggleLoading) return;
+        const nextValue = !Boolean(selectedThread?.ai_enabled);
+        setThreads((prev) =>
+            prev.map((thread) =>
+                thread.wa_id === selectedThreadId ? { ...thread, ai_enabled: nextValue } : thread
+            )
+        );
+        setAiToggleLoading(true);
+        try {
+            await updateThread({ ai_enabled: nextValue });
+            await fetch('/api/whatsapp-ai-toggle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wa_id: selectedThreadId,
+                    client_id: selectedClientId,
+                    thread_id: selectedThread?.id,
+                    ai_enabled: nextValue,
+                }),
+            });
+        } catch (toggleError) {
+            console.error('AI toggle error:', toggleError);
+        } finally {
+            setAiToggleLoading(false);
+        }
+    }, [aiToggleLoading, selectedClientId, selectedThread?.ai_enabled, selectedThread?.id, selectedThreadId, updateThread]);
 
     const handleFileUpload = async (event) => {
         const file = event.target.files?.[0];
@@ -332,6 +397,37 @@ const Inbox = () => {
 
     }, [selectedThreadId, loadMessages, isAllowed]);
 
+    useEffect(() => {
+        if (!selectedThreadId || !selectedThread) return;
+        if (selectedThread.client_id || resolvedClientId) return;
+        const phone = selectedThread.client_phone || selectedThread.wa_id;
+        if (!phone) return;
+
+        let cancelled = false;
+
+        (async () => {
+            const clientId = await findClientByPhone(phone);
+            if (cancelled || !clientId) return;
+            setClientIdByWa((prev) => ({ ...prev, [selectedThreadId]: clientId }));
+            if (!selectedThread.client_id) {
+                await updateThread({ client_id: clientId });
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [findClientByPhone, resolvedClientId, selectedThread, selectedThreadId, updateThread]);
+
+    useEffect(() => {
+        if (!isClientModalOpen) return undefined;
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, [isClientModalOpen]);
+
 
     if (!isAllowed) {
         return (
@@ -347,7 +443,7 @@ const Inbox = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 h-[calc(100vh-55px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
+        <div className="font-product text-neutral-900 h-[calc(100vh-55px)] h-[calc(100svh-55px)] h-[calc(100dvh-55px)] min-h-[calc(100svh-55px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
 
             {/* Main Content Grid */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[360px_1fr] min-h-0">
@@ -435,56 +531,93 @@ const Inbox = () => {
                 >
                     {selectedThread ? (
                         <>
-                            <div className="p-3 bg-neutral-100 border-b border-neutral-200 flex items-center justify-between gap-4 shrink-0 h-[60px] flex-nowrap overflow-x-auto">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <button
-                                        onClick={() => setSelectedThreadId(null)}
-                                        className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
-                                    >
-                                        <ArrowLeft size={20} />
-                                    </button>
-                                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center font-semibold">
-                                        {getInitial(selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id)}
+                            <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white/90 backdrop-blur">
+                                <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <button
+                                            onClick={() => setSelectedThreadId(null)}
+                                            className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
+                                            aria-label="Volver"
+                                        >
+                                            <ArrowLeft size={20} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsClientModalOpen(true)}
+                                            className="group flex items-center gap-3 min-w-0 text-left"
+                                        >
+                                            <div className="relative">
+                                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-50 to-sky-50 text-emerald-700 flex items-center justify-center font-semibold shadow-sm ring-1 ring-emerald-100">
+                                                    {getInitial(selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id)}
+                                                </div>
+                                                <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-white shadow-sm flex items-center justify-center">
+                                                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                                                </span>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-base font-semibold text-neutral-900 truncate group-hover:text-black">
+                                                    {selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id}
+                                                </p>
+                                                <div className="flex items-center gap-2 text-xs text-neutral-500 truncate">
+                                                    <Phone size={12} />
+                                                    {selectedThread.wa_id}
+                                                    <span className="text-[10px] text-neutral-400">• Ver perfil</span>
+                                                </div>
+                                            </div>
+                                        </button>
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="text-lg font-semibold text-neutral-900 truncate">
-                                            {selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id}
-                                        </p>
-                                        <div className="flex items-center gap-2 text-xs text-neutral-500 truncate">
-                                            <Phone size={12} />
-                                            {selectedThread.wa_id}
+                                    <div className="hidden md:flex flex-wrap items-center gap-3">
+                                        <div className="flex flex-col gap-1 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                                            <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">Estado</span>
+                                            <select
+                                                value={selectedThread.status || 'open'}
+                                                onChange={(event) => updateThread({ status: event.target.value })}
+                                                className="bg-transparent text-xs uppercase tracking-wide text-neutral-700 focus:outline-none"
+                                            >
+                                                <option value="open">Open</option>
+                                                <option value="pending">Pending</option>
+                                                <option value="closed">Closed</option>
+                                            </select>
                                         </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 shrink-0 flex-nowrap">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] uppercase tracking-widest text-neutral-400">Estado</span>
-                                        <select
-                                            value={selectedThread.status || 'open'}
-                                            onChange={(event) => updateThread({ status: event.target.value })}
-                                            className="rounded-full border border-black/10 bg-neutral-50 px-3 py-2 text-xs uppercase tracking-wide text-neutral-700"
-                                        >
-                                            <option value="open">Open</option>
-                                            <option value="pending">Pending</option>
-                                            <option value="closed">Closed</option>
-                                        </select>
-                                    </div>
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] uppercase tracking-widest text-neutral-400">Asignar</span>
-                                        <select
-                                            value={selectedThread.assigned_to || ''}
-                                            onChange={(event) =>
-                                                updateThread({ assigned_to: event.target.value || null })
-                                            }
-                                            className="rounded-full border border-black/10 bg-neutral-50 px-3 py-2 text-xs text-neutral-700"
-                                        >
-                                            <option value="">Sin asignar</option>
-                                            {assignees.map((assignee) => (
-                                                <option key={assignee.id} value={assignee.id}>
-                                                    {assignee.full_name || assignee.email}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="flex flex-col gap-1 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                                            <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">Asignar</span>
+                                            <select
+                                                value={selectedThread.assigned_to || ''}
+                                                onChange={(event) =>
+                                                    updateThread({ assigned_to: event.target.value || null })
+                                                }
+                                                className="bg-transparent text-xs text-neutral-700 focus:outline-none"
+                                            >
+                                                <option value="">Sin asignar</option>
+                                                {assignees.map((assignee) => (
+                                                    <option key={assignee.id} value={assignee.id}>
+                                                        {assignee.full_name || assignee.email}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">AI Bot</span>
+                                                <span className="text-xs text-neutral-600">
+                                                    {selectedThread?.ai_enabled ? 'Activado' : 'Desactivado'}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                role="switch"
+                                                aria-checked={Boolean(selectedThread?.ai_enabled)}
+                                                onClick={handleAiToggle}
+                                                disabled={aiToggleLoading}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${selectedThread?.ai_enabled ? 'bg-emerald-500' : 'bg-neutral-300'
+                                                    } ${aiToggleLoading ? 'opacity-60' : ''}`}
+                                            >
+                                                <span
+                                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${selectedThread?.ai_enabled ? 'translate-x-5' : 'translate-x-1'
+                                                        }`}
+                                                />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -554,7 +687,7 @@ const Inbox = () => {
                                 })}
                             </div>
 
-                            <div className="border-t border-black/5 p-4 shrink-0 bg-white">
+                            <div className="border-t border-black/5 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0 bg-white sticky bottom-0 shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]">
                                 <div className="space-y-3">
                                     <div className="flex flex-col gap-3">
                                         <div className="flex items-center gap-2">
@@ -607,6 +740,92 @@ const Inbox = () => {
                     )}
                 </div>
             </div>
+            {isClientModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+                    <div className="relative w-full max-w-5xl h-[85svh] rounded-3xl bg-white shadow-2xl border border-neutral-200 overflow-hidden flex flex-col">
+                        <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-200 bg-white">
+                            <div>
+                                <p className="text-sm font-semibold text-neutral-900">Detalles del cliente</p>
+                                <p className="text-xs text-neutral-500">Vista rapida del CRM</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsClientModalOpen(false)}
+                                className="p-2 rounded-full hover:bg-neutral-100 text-neutral-500"
+                                aria-label="Cerrar"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto bg-neutral-50 p-4">
+                            {selectedThread && (
+                                <div className="mb-4 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div className="flex flex-col gap-1 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                                            <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">Estado</span>
+                                            <select
+                                                value={selectedThread.status || 'open'}
+                                                onChange={(event) => updateThread({ status: event.target.value })}
+                                                className="bg-transparent text-xs uppercase tracking-wide text-neutral-700 focus:outline-none"
+                                            >
+                                                <option value="open">Open</option>
+                                                <option value="pending">Pending</option>
+                                                <option value="closed">Closed</option>
+                                            </select>
+                                        </div>
+                                        <div className="flex flex-col gap-1 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                                            <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">Asignar</span>
+                                            <select
+                                                value={selectedThread.assigned_to || ''}
+                                                onChange={(event) =>
+                                                    updateThread({ assigned_to: event.target.value || null })
+                                                }
+                                                className="bg-transparent text-xs text-neutral-700 focus:outline-none"
+                                            >
+                                                <option value="">Sin asignar</option>
+                                                {assignees.map((assignee) => (
+                                                    <option key={assignee.id} value={assignee.id}>
+                                                        {assignee.full_name || assignee.email}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">AI Bot</span>
+                                            <span className="text-xs text-neutral-600">
+                                                {selectedThread?.ai_enabled ? 'Activado' : 'Desactivado'}
+                                            </span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={Boolean(selectedThread?.ai_enabled)}
+                                            onClick={handleAiToggle}
+                                            disabled={aiToggleLoading}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${selectedThread?.ai_enabled ? 'bg-emerald-500' : 'bg-neutral-300'
+                                                } ${aiToggleLoading ? 'opacity-60' : ''}`}
+                                        >
+                                            <span
+                                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${selectedThread?.ai_enabled ? 'translate-x-5' : 'translate-x-1'
+                                                    }`}
+                                            />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                            {selectedClientId ? (
+                                <ClientDetail clientIdOverride={selectedClientId} hideBackLink />
+                            ) : (
+                                <div className="rounded-2xl border border-dashed border-neutral-200 bg-white p-6 text-sm text-neutral-500">
+                                    Este chat no tiene un cliente asociado para mostrar.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

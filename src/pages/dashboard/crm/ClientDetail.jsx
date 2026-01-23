@@ -28,10 +28,11 @@ const normalizePhone = (value) => {
     return String(value).replace(/\D/g, '');
 };
 
-const ClientDetail = () => {
+const ClientDetail = ({ clientIdOverride = null, hideBackLink = false }) => {
     const { profile, loading: authLoading, profileStatus } = useAuth();
     const isAllowed = profile?.role === 'admin';
-    const { clientId } = useParams();
+    const { clientId: routeClientId } = useParams();
+    const clientId = clientIdOverride || routeClientId;
     const [client, setClient] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -92,13 +93,15 @@ const ClientDetail = () => {
     return (
         <div className="font-product text-neutral-900 space-y-6 pb-8">
             <div className="flex items-center justify-between">
-                <Link
-                    to="/dashboard/clients"
-                    className="inline-flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-900 transition"
-                >
-                    <ArrowLeft size={14} />
-                    Volver al CRM
-                </Link>
+                {!hideBackLink && (
+                    <Link
+                        to="/dashboard/clients"
+                        className="inline-flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-900 transition"
+                    >
+                        <ArrowLeft size={14} />
+                        Volver al CRM
+                    </Link>
+                )}
                 {client && (
                     <span className={`text-[10px] uppercase px-2 py-1 rounded-full ${statusMeta.className}`}>
                         {statusMeta.label}

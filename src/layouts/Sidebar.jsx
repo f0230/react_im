@@ -25,12 +25,14 @@ const Sidebar = () => {
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: MessageSquare, label: 'Inbox', path: '/dashboard/inbox' },
+            { icon: MessageSquare, label: 'Chat interno', path: '/dashboard/team-chat' },
+            { icon: MessageSquare, label: 'WhatsApp', path: '/dashboard/inbox' },
             { icon: FileText, label: 'Tareas', path: '/dashboard/tasks' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
+            { icon: MessageSquare, label: 'Chat interno', path: '/dashboard/team-chat' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/billing' },
             { icon: Settings, label: 'Configuración', path: '/dashboard/settings' },

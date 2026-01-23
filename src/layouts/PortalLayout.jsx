@@ -39,6 +39,7 @@ const PortalLayout = () => {
                 (p) => p === '/dashboard',
                 (p) => p.startsWith('/dashboard/projects'),
                 (p) => p.startsWith('/dashboard/inbox'),
+                (p) => p.startsWith('/dashboard/team-chat'),
                 (p) => p.startsWith('/dashboard/settings'),
                 (p) => p.startsWith('/dashboard/profile'),
             ],

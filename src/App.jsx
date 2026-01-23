@@ -27,6 +27,7 @@ const ProjectReports = lazy(() => import("@/pages/dashboard/projects/ProjectRepo
 const ProjectInvoices = lazy(() => import("@/pages/dashboard/projects/ProjectInvoices"));
 const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
 const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
+const TeamChat = lazy(() => import("@/pages/dashboard/chat/TeamChat"));
 const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
 import { AuthProvider } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
@@ -74,6 +75,7 @@ const AppContent = () => {
             <Route path="projects/:projectId/invoices" element={<ProjectInvoices />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="inbox" element={<Inbox />} />
+            <Route path="team-chat" element={<TeamChat />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Settings />} /> {/* Reusing Settings for Profile for now */}
 

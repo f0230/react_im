@@ -21,7 +21,7 @@ export default {
         
         'greyburger': '#d9d9d9',
         'skyblue': '#0071E3',
-        'green': '#0DD122',
+        'green': '#47D065',
         'crem': '#ACACAC',
         'skysoft': '#AEE4F8',
 
