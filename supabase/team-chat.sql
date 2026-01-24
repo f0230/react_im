@@ -277,3 +277,274 @@ where tm.author_name is null
 update public.team_messages
 set message_type = 'text'
 where message_type is null;
+
+-- -----------------------------------------------------------------------------
+-- Unread tracking + notifications
+-- -----------------------------------------------------------------------------
+
+create table if not exists public.team_channel_reads (
+    channel_id uuid not null references public.team_channels(id) on delete cascade,
+    user_id uuid not null references public.profiles(id) on delete cascade,
+    last_read_at timestamptz not null default '1970-01-01',
+    updated_at timestamptz not null default now(),
+    primary key (channel_id, user_id)
+);
+
+create index if not exists team_channel_reads_user_idx on public.team_channel_reads (user_id);
+create index if not exists team_channel_reads_channel_idx on public.team_channel_reads (channel_id);
+
+create table if not exists public.whatsapp_thread_reads (
+    wa_id text not null,
+    user_id uuid not null references public.profiles(id) on delete cascade,
+    last_read_at timestamptz not null default '1970-01-01',
+    updated_at timestamptz not null default now(),
+    primary key (wa_id, user_id)
+);
+
+create index if not exists whatsapp_thread_reads_user_idx on public.whatsapp_thread_reads (user_id);
+create index if not exists whatsapp_thread_reads_wa_id_idx on public.whatsapp_thread_reads (wa_id);
+
+create table if not exists public.notifications (
+    id uuid primary key default gen_random_uuid(),
+    recipient_id uuid not null references public.profiles(id) on delete cascade,
+    type text not null,
+    title text,
+    body text,
+    data jsonb,
+    created_at timestamptz not null default now(),
+    read_at timestamptz
+);
+
+create index if not exists notifications_recipient_idx on public.notifications (recipient_id, created_at desc);
+create index if not exists notifications_recipient_unread_idx on public.notifications (recipient_id, read_at);
+
+alter table public.team_channel_reads enable row level security;
+alter table public.whatsapp_thread_reads enable row level security;
+alter table public.notifications enable row level security;
+
+drop policy if exists "team_channel_reads_select" on public.team_channel_reads;
+create policy "team_channel_reads_select" on public.team_channel_reads
+for select
+using (user_id = auth.uid());
+
+drop policy if exists "team_channel_reads_insert" on public.team_channel_reads;
+create policy "team_channel_reads_insert" on public.team_channel_reads
+for insert
+with check (user_id = auth.uid());
+
+drop policy if exists "team_channel_reads_update" on public.team_channel_reads;
+create policy "team_channel_reads_update" on public.team_channel_reads
+for update
+using (user_id = auth.uid());
+
+drop policy if exists "whatsapp_thread_reads_select" on public.whatsapp_thread_reads;
+create policy "whatsapp_thread_reads_select" on public.whatsapp_thread_reads
+for select
+using (user_id = auth.uid());
+
+drop policy if exists "whatsapp_thread_reads_insert" on public.whatsapp_thread_reads;
+create policy "whatsapp_thread_reads_insert" on public.whatsapp_thread_reads
+for insert
+with check (user_id = auth.uid());
+
+drop policy if exists "whatsapp_thread_reads_update" on public.whatsapp_thread_reads;
+create policy "whatsapp_thread_reads_update" on public.whatsapp_thread_reads
+for update
+using (user_id = auth.uid());
+
+drop policy if exists "notifications_select" on public.notifications;
+create policy "notifications_select" on public.notifications
+for select
+using (recipient_id = auth.uid());
+
+drop policy if exists "notifications_update" on public.notifications;
+create policy "notifications_update" on public.notifications
+for update
+using (recipient_id = auth.uid());
+
+drop policy if exists "notifications_insert_admin" on public.notifications;
+create policy "notifications_insert_admin" on public.notifications
+for insert
+with check (
+    exists (
+        select 1
+        from public.profiles p
+        where p.id = auth.uid()
+          and p.role in ('admin', 'worker')
+    )
+);
+
+-- Unread counts (team + whatsapp + notifications)
+create or replace function public.get_unread_counts_v1()
+returns table (
+    unread_team bigint,
+    unread_whatsapp bigint,
+    unread_notifications bigint
+)
+language sql
+security definer
+set search_path = public
+as $$
+    select
+        (
+            select count(*)
+            from public.team_messages tm
+            left join public.team_channel_reads tcr
+                on tcr.channel_id = tm.channel_id
+               and tcr.user_id = auth.uid()
+            where tm.created_at > coalesce(tcr.last_read_at, '1970-01-01'::timestamptz)
+              and tm.author_id <> auth.uid()
+              and exists (
+                  select 1
+                  from public.profiles p
+                  where p.id = auth.uid()
+                    and p.role in ('admin', 'worker')
+              )
+              and (
+                  exists (
+                      select 1
+                      from public.team_channels c
+                      where c.id = tm.channel_id
+                        and (c.is_public = true or public.is_team_member(c.id, auth.uid()))
+                  )
+              )
+        ) as unread_team,
+        (
+            select count(*)
+            from public.whatsapp_messages wm
+            left join public.whatsapp_thread_reads wtr
+                on wtr.wa_id = wm.wa_id
+               and wtr.user_id = auth.uid()
+            where wm.timestamp > coalesce(wtr.last_read_at, '1970-01-01'::timestamptz)
+              and wm.direction <> 'outbound'
+              and exists (
+                  select 1
+                  from public.profiles p
+                  where p.id = auth.uid()
+                    and p.role in ('admin', 'worker')
+              )
+        ) as unread_whatsapp,
+        (
+            select count(*)
+            from public.notifications n
+            where n.recipient_id = auth.uid()
+              and n.read_at is null
+        ) as unread_notifications;
+$$;
+
+-- Unread previews for dropdowns
+create or replace function public.get_unread_previews_v1(limit_per_source int default 6)
+returns table (
+    source text,
+    title text,
+    preview text,
+    timestamp timestamptz,
+    unread_count bigint,
+    channel_id uuid,
+    wa_id text,
+    author text
+)
+language sql
+security definer
+set search_path = public
+as $$
+    with accessible_channels as (
+        select c.id, c.name
+        from public.team_channels c
+        where (
+            exists (
+                select 1
+                from public.profiles p
+                where p.id = auth.uid()
+                  and p.role in ('admin', 'worker')
+            )
+        )
+        and (c.is_public = true or public.is_team_member(c.id, auth.uid()))
+    ),
+    team_last as (
+        select
+            tm.channel_id,
+            max(tm.created_at) as last_message_at,
+            (array_agg(tm.body order by tm.created_at desc))[1] as last_body,
+            (array_agg(tm.author_name order by tm.created_at desc))[1] as last_author
+        from public.team_messages tm
+        join accessible_channels ac on ac.id = tm.channel_id
+        group by tm.channel_id
+    ),
+    team_unread as (
+        select
+            tm.channel_id,
+            count(*) as unread_count
+        from public.team_messages tm
+        left join public.team_channel_reads tcr
+            on tcr.channel_id = tm.channel_id
+           and tcr.user_id = auth.uid()
+        where tm.created_at > coalesce(tcr.last_read_at, '1970-01-01'::timestamptz)
+          and tm.author_id <> auth.uid()
+        group by tm.channel_id
+    ),
+    team_rows as (
+        select
+            'team'::text as source,
+            ac.name as title,
+            coalesce(tl.last_body, '') as preview,
+            tl.last_message_at as timestamp,
+            coalesce(tu.unread_count, 0) as unread_count,
+            ac.id as channel_id,
+            null::text as wa_id,
+            tl.last_author as author
+        from accessible_channels ac
+        left join team_last tl on tl.channel_id = ac.id
+        left join team_unread tu on tu.channel_id = ac.id
+        where coalesce(tu.unread_count, 0) > 0
+        order by tl.last_message_at desc
+        limit limit_per_source
+    ),
+    whatsapp_unread as (
+        select
+            wm.wa_id,
+            max(wm.timestamp) as last_inbound_at,
+            count(*) as unread_count
+        from public.whatsapp_messages wm
+        left join public.whatsapp_thread_reads wtr
+            on wtr.wa_id = wm.wa_id
+           and wtr.user_id = auth.uid()
+        where wm.timestamp > coalesce(wtr.last_read_at, '1970-01-01'::timestamptz)
+          and wm.direction <> 'outbound'
+          and exists (
+              select 1
+              from public.profiles p
+              where p.id = auth.uid()
+                and p.role in ('admin', 'worker')
+          )
+        group by wm.wa_id
+    ),
+    whatsapp_last as (
+        select
+            wm.wa_id,
+            max(wm.timestamp) as last_message_at,
+            (array_agg(wm.body order by wm.timestamp desc))[1] as last_body
+        from public.whatsapp_messages wm
+        group by wm.wa_id
+    ),
+    whatsapp_rows as (
+        select
+            'whatsapp'::text as source,
+            coalesce(t.client_name, t.client_phone, t.wa_id) as title,
+            coalesce(wl.last_body, '') as preview,
+            wl.last_message_at as timestamp,
+            wu.unread_count as unread_count,
+            null::uuid as channel_id,
+            wu.wa_id as wa_id,
+            null::text as author
+        from whatsapp_unread wu
+        join public.whatsapp_threads t on t.wa_id = wu.wa_id
+        left join whatsapp_last wl on wl.wa_id = wu.wa_id
+        order by wl.last_message_at desc
+        limit limit_per_source
+    )
+    select * from team_rows
+    union all
+    select * from whatsapp_rows
+    order by timestamp desc;
+$$;

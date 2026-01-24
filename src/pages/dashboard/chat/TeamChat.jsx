@@ -36,6 +36,7 @@ const buildSlug = (value) => {
 };
 
 const linkRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
+const isHttpUrl = (value) => /^https?:\/\//i.test(value);
 
 const renderTextWithLinks = (text) => {
     if (!text) return null;
@@ -91,6 +92,7 @@ const TeamChat = () => {
     const recorderRef = useRef(null);
     const streamRef = useRef(null);
     const audioChunksRef = useRef([]);
+    const lastReadRef = useRef({});
 
     const messagesEndRef = useRef(null);
 
@@ -134,6 +136,26 @@ const TeamChat = () => {
         if (!background) setLoadingChannels(false);
     }, [isAllowed, selectedChannelId]);
 
+    const resolveAudioMessage = useCallback(async (message) => {
+        if (!message || message.message_type !== 'audio' || !message.media_url) return message;
+        if (isHttpUrl(message.media_url)) {
+            return { ...message, resolved_media_url: message.media_url };
+        }
+        const { data, error } = await supabase.storage
+            .from('chat-media')
+            .createSignedUrl(message.media_url, 60 * 60 * 24);
+        if (error) {
+            return { ...message, resolved_media_url: null };
+        }
+        return { ...message, resolved_media_url: data?.signedUrl || null };
+    }, []);
+
+    const hydrateAudioMessages = useCallback(async (items) => {
+        if (!Array.isArray(items) || items.length === 0) return items;
+        const resolved = await Promise.all(items.map(resolveAudioMessage));
+        return resolved;
+    }, [resolveAudioMessage]);
+
     const loadMessages = useCallback(async (channelId, background = false) => {
         if (!channelId || !isAllowed) return;
         if (!background) setLoadingMessages(true);
@@ -148,11 +170,12 @@ const TeamChat = () => {
         if (supaError) {
             if (!background) setError(supaError.message || 'No se pudieron cargar los mensajes.');
         } else {
-            setMessages(data || []);
+            const hydrated = await hydrateAudioMessages(data || []);
+            setMessages(hydrated);
         }
 
         if (!background) setLoadingMessages(false);
-    }, [isAllowed]);
+    }, [hydrateAudioMessages, isAllowed]);
 
     const loadPeople = useCallback(async () => {
         if (!canCreateChannel) return;
@@ -196,8 +219,32 @@ const TeamChat = () => {
             .select('id, body, created_at, author_id, author_name, message_type, media_url, file_name, author:profiles(id, full_name, email, avatar_url)')
             .eq('id', messageId)
             .single();
-        return data || null;
-    }, []);
+        if (!data) return null;
+        return resolveAudioMessage(data);
+    }, [resolveAudioMessage]);
+
+    const markChannelRead = useCallback(
+        async (channelId, timestamp) => {
+            if (!channelId || !user?.id) return;
+            const nextReadAt = timestamp || new Date().toISOString();
+            const previous = lastReadRef.current[channelId];
+            if (previous && new Date(previous) >= new Date(nextReadAt)) return;
+            lastReadRef.current[channelId] = nextReadAt;
+
+            await supabase
+                .from('team_channel_reads')
+                .upsert(
+                    {
+                        channel_id: channelId,
+                        user_id: user.id,
+                        last_read_at: nextReadAt,
+                        updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'channel_id,user_id' }
+                );
+        },
+        [user?.id]
+    );
 
     const handleSend = useCallback(async () => {
         if (!selectedChannelId || sending || !user?.id) return;
@@ -246,12 +293,6 @@ const TeamChat = () => {
 
             if (uploadError) throw uploadError;
 
-            const { data: publicData } = supabase.storage
-                .from('chat-media')
-                .getPublicUrl(storagePath);
-
-            if (!publicData?.publicUrl) throw new Error('No public URL');
-
             const { error: insertError } = await supabase
                 .from('team_messages')
                 .insert({
@@ -259,7 +300,7 @@ const TeamChat = () => {
                     author_id: user.id,
                     body: safeName,
                     message_type: 'audio',
-                    media_url: publicData.publicUrl,
+                    media_url: storagePath,
                     file_name: safeName,
                 });
 
@@ -469,6 +510,7 @@ const TeamChat = () => {
                         if (prev.some((message) => message.id === payload.new.id)) return prev;
                         return [...prev, fullMessage || payload.new];
                     });
+                    markChannelRead(selectedChannelId, payload.new.created_at);
                 }
             )
             .subscribe();
@@ -476,12 +518,24 @@ const TeamChat = () => {
         return () => {
             supabase.removeChannel(messageSubscription);
         };
-    }, [fetchMessageById, isAllowed, loadMessages, selectedChannelId]);
+    }, [fetchMessageById, isAllowed, loadMessages, markChannelRead, selectedChannelId]);
 
     useEffect(() => {
         if (!canCreateChannel || !selectedChannelId) return;
         loadMembers(selectedChannelId);
     }, [canCreateChannel, loadMembers, selectedChannelId]);
+
+    useEffect(() => {
+        if (!selectedChannelId || !user?.id) return;
+        if (messages.length === 0) {
+            markChannelRead(selectedChannelId, new Date().toISOString());
+            return;
+        }
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage?.created_at) {
+            markChannelRead(selectedChannelId, lastMessage.created_at);
+        }
+    }, [markChannelRead, messages, selectedChannelId, user?.id]);
 
     useEffect(() => {
         if (!messagesEndRef.current) return;
@@ -653,7 +707,8 @@ const TeamChat = () => {
                                             || message?.author_name
                                             || message?.author?.email
                                             || 'Equipo';
-                                    const isAudio = message?.message_type === 'audio' && message?.media_url;
+                                    const audioUrl = message?.resolved_media_url || message?.media_url;
+                                    const isAudio = message?.message_type === 'audio' && audioUrl;
                                     return (
                                         <div key={message.id} className={`flex flex-col max-w-[85%] ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
                                             <span className="text-[10px] text-neutral-500 mb-1">
@@ -667,11 +722,13 @@ const TeamChat = () => {
                                             >
                                                 {isAudio ? (
                                                     <div className="space-y-2 min-w-[220px]">
-                                                        <audio controls src={message.media_url} className="w-full" />
+                                                        <audio controls src={audioUrl} className="w-full" />
                                                         {message.file_name && (
                                                             <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
                                                         )}
                                                     </div>
+                                                ) : message?.message_type === 'audio' ? (
+                                                    <p className="text-xs text-neutral-500">Audio no disponible.</p>
                                                 ) : (
                                                     <p className="whitespace-pre-wrap">{renderTextWithLinks(message.body)}</p>
                                                 )}

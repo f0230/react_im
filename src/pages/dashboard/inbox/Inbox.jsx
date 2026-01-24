@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Search, RefreshCw, Send, Phone, Paperclip, ArrowLeft, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
@@ -38,7 +38,7 @@ const getInitial = (name) => {
 };
 
 const Inbox = () => {
-    const { profile } = useAuth();
+    const { profile, user } = useAuth();
     const location = useLocation();
     const isAllowed = profile?.role === 'admin' || profile?.role === 'worker';
     const [threads, setThreads] = useState([]);
@@ -57,6 +57,7 @@ const Inbox = () => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [clientIdByWa, setClientIdByWa] = useState({});
     const fileInputRef = React.useRef(null);
+    const lastReadRef = useRef({});
 
     const preselectWaId = useMemo(() => {
         const params = new URLSearchParams(location.search);
@@ -136,6 +137,29 @@ const Inbox = () => {
             if (!background) setLoadingMessages(false);
         },
         [isAllowed]
+    );
+
+    const markThreadRead = useCallback(
+        async (waId, timestamp) => {
+            if (!waId || !user?.id) return;
+            const nextReadAt = timestamp || new Date().toISOString();
+            const previous = lastReadRef.current[waId];
+            if (previous && new Date(previous) >= new Date(nextReadAt)) return;
+            lastReadRef.current[waId] = nextReadAt;
+
+            await supabase
+                .from('whatsapp_thread_reads')
+                .upsert(
+                    {
+                        wa_id: waId,
+                        user_id: user.id,
+                        last_read_at: nextReadAt,
+                        updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'wa_id,user_id' }
+                );
+        },
+        [user?.id]
     );
 
     const updateThread = useCallback(
@@ -385,6 +409,9 @@ const Inbox = () => {
                         if (prev.some((message) => message.id === payload.new.id)) return prev;
                         return [...prev, payload.new];
                     });
+                    if (payload.new?.direction !== 'outbound') {
+                        markThreadRead(selectedThreadId, payload.new.timestamp);
+                    }
                 }
             )
             .subscribe();
@@ -395,7 +422,19 @@ const Inbox = () => {
             supabase.removeChannel(messageChannel);
         };
 
-    }, [selectedThreadId, loadMessages, isAllowed]);
+    }, [markThreadRead, selectedThreadId, loadMessages, isAllowed]);
+
+    useEffect(() => {
+        if (!selectedThreadId || !user?.id) return;
+        if (messages.length === 0) {
+            markThreadRead(selectedThreadId, new Date().toISOString());
+            return;
+        }
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage?.timestamp) {
+            markThreadRead(selectedThreadId, lastMessage.timestamp);
+        }
+    }, [markThreadRead, messages, selectedThreadId, user?.id]);
 
     useEffect(() => {
         if (!selectedThreadId || !selectedThread) return;
