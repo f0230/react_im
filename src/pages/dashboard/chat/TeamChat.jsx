@@ -231,7 +231,7 @@ const TeamChat = () => {
             if (previous && new Date(previous) >= new Date(nextReadAt)) return;
             lastReadRef.current[channelId] = nextReadAt;
 
-            await supabase
+            const { error } = await supabase
                 .from('team_channel_reads')
                 .upsert(
                     {
@@ -242,6 +242,13 @@ const TeamChat = () => {
                     },
                     { onConflict: 'channel_id,user_id' }
                 );
+            if (error) {
+                console.error('Failed to update team_channel_reads', error);
+                return;
+            }
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('unread:refresh'));
+            }
         },
         [user?.id]
     );

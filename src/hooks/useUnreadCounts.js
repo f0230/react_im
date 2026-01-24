@@ -68,6 +68,10 @@ export const useUnreadCounts = () => {
         }, 350);
     }, [refreshAll]);
 
+    const handleExternalRefresh = useCallback(() => {
+        scheduleRefresh();
+    }, [scheduleRefresh]);
+
     const markAllNotificationsRead = useCallback(async () => {
         if (!user?.id) return;
         await supabase
@@ -114,18 +118,25 @@ export const useUnreadCounts = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_thread_reads' }, scheduleRefresh)
             .subscribe();
 
+        if (typeof window !== 'undefined') {
+            window.addEventListener('unread:refresh', handleExternalRefresh);
+        }
+
         return () => {
             supabase.removeChannel(teamChannel);
             supabase.removeChannel(whatsappChannel);
             supabase.removeChannel(notificationsChannel);
             supabase.removeChannel(teamReadsChannel);
             supabase.removeChannel(whatsappReadsChannel);
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('unread:refresh', handleExternalRefresh);
+            }
             if (refreshTimeout.current) {
                 clearTimeout(refreshTimeout.current);
                 refreshTimeout.current = null;
             }
         };
-    }, [canUse, refreshAll, scheduleRefresh]);
+    }, [canUse, handleExternalRefresh, refreshAll, scheduleRefresh]);
 
     const messageUnreadTotal = counts.unreadTeam + counts.unreadWhatsapp;
 

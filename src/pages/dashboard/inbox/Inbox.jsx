@@ -147,7 +147,7 @@ const Inbox = () => {
             if (previous && new Date(previous) >= new Date(nextReadAt)) return;
             lastReadRef.current[waId] = nextReadAt;
 
-            await supabase
+            const { error } = await supabase
                 .from('whatsapp_thread_reads')
                 .upsert(
                     {
@@ -158,6 +158,13 @@ const Inbox = () => {
                     },
                     { onConflict: 'wa_id,user_id' }
                 );
+            if (error) {
+                console.error('Failed to update whatsapp_thread_reads', error);
+                return;
+            }
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('unread:refresh'));
+            }
         },
         [user?.id]
     );

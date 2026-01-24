@@ -387,42 +387,48 @@ set search_path = public
 as $$
     select
         (
-            select count(*)
-            from public.team_messages tm
-            left join public.team_channel_reads tcr
-                on tcr.channel_id = tm.channel_id
-               and tcr.user_id = auth.uid()
-            where tm.created_at > coalesce(tcr.last_read_at, '1970-01-01'::timestamptz)
-              and tm.author_id <> auth.uid()
-              and exists (
-                  select 1
-                  from public.profiles p
-                  where p.id = auth.uid()
-                    and p.role in ('admin', 'worker')
-              )
-              and (
-                  exists (
+            select count(*) from (
+                select tm.channel_id
+                from public.team_messages tm
+                left join public.team_channel_reads tcr
+                    on tcr.channel_id = tm.channel_id
+                   and tcr.user_id = auth.uid()
+                where tm.created_at > coalesce(tcr.last_read_at, '1970-01-01'::timestamptz)
+                  and tm.author_id <> auth.uid()
+                  and exists (
                       select 1
-                      from public.team_channels c
-                      where c.id = tm.channel_id
-                        and (c.is_public = true or public.is_team_member(c.id, auth.uid()))
+                      from public.profiles p
+                      where p.id = auth.uid()
+                        and p.role in ('admin', 'worker')
                   )
-              )
+                  and (
+                      exists (
+                          select 1
+                          from public.team_channels c
+                          where c.id = tm.channel_id
+                            and (c.is_public = true or public.is_team_member(c.id, auth.uid()))
+                      )
+                  )
+                group by tm.channel_id
+            ) as team_unread_channels
         ) as unread_team,
         (
-            select count(*)
-            from public.whatsapp_messages wm
-            left join public.whatsapp_thread_reads wtr
-                on wtr.wa_id = wm.wa_id
-               and wtr.user_id = auth.uid()
-            where wm.timestamp > coalesce(wtr.last_read_at, '1970-01-01'::timestamptz)
-              and wm.direction <> 'outbound'
-              and exists (
-                  select 1
-                  from public.profiles p
-                  where p.id = auth.uid()
-                    and p.role in ('admin', 'worker')
-              )
+            select count(*) from (
+                select wm.wa_id
+                from public.whatsapp_messages wm
+                left join public.whatsapp_thread_reads wtr
+                    on wtr.wa_id = wm.wa_id
+                   and wtr.user_id = auth.uid()
+                where wm.timestamp > coalesce(wtr.last_read_at, '1970-01-01'::timestamptz)
+                  and wm.direction <> 'outbound'
+                  and exists (
+                      select 1
+                      from public.profiles p
+                      where p.id = auth.uid()
+                        and p.role in ('admin', 'worker')
+                  )
+                group by wm.wa_id
+            ) as whatsapp_unread_threads
         ) as unread_whatsapp,
         (
             select count(*)
@@ -438,7 +444,7 @@ returns table (
     source text,
     title text,
     preview text,
-    timestamp timestamptz,
+    event_at timestamptz,
     unread_count bigint,
     channel_id uuid,
     wa_id text,
@@ -488,7 +494,7 @@ as $$
             'team'::text as source,
             ac.name as title,
             coalesce(tl.last_body, '') as preview,
-            tl.last_message_at as timestamp,
+            tl.last_message_at as event_at,
             coalesce(tu.unread_count, 0) as unread_count,
             ac.id as channel_id,
             null::text as wa_id,
@@ -532,7 +538,7 @@ as $$
             'whatsapp'::text as source,
             coalesce(t.client_name, t.client_phone, t.wa_id) as title,
             coalesce(wl.last_body, '') as preview,
-            wl.last_message_at as timestamp,
+            wl.last_message_at as event_at,
             wu.unread_count as unread_count,
             null::uuid as channel_id,
             wu.wa_id as wa_id,
@@ -546,5 +552,5 @@ as $$
     select * from team_rows
     union all
     select * from whatsapp_rows
-    order by timestamp desc;
+    order by event_at desc;
 $$;

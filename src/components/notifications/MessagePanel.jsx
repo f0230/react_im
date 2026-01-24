@@ -70,7 +70,7 @@ const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [] }) =
                                                 <div className="flex items-center justify-between gap-2">
                                                     <p className="text-xs font-semibold text-white truncate">{item.title}</p>
                                                     <span className="text-[10px] text-white/40 shrink-0">
-                                                        {formatTimestamp(item.timestamp)}
+                                                    {formatTimestamp(item.event_at)}
                                                     </span>
                                                 </div>
                                                 <p className="text-[11px] text-white/60 truncate">
@@ -102,7 +102,7 @@ const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [] }) =
                                                 <div className="flex items-center justify-between gap-2">
                                                     <p className="text-xs font-semibold text-white truncate">{item.title}</p>
                                                     <span className="text-[10px] text-white/40 shrink-0">
-                                                        {formatTimestamp(item.timestamp)}
+                                                    {formatTimestamp(item.event_at)}
                                                     </span>
                                                 </div>
                                                 <p className="text-[11px] text-white/60 truncate">{item.preview}</p>
