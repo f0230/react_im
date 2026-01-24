@@ -187,13 +187,25 @@ export const Plasma = ({
   direction = 'forward',
   scale = 1,
   opacity = 1,
-  mouseInteractive = true
+  mouseInteractive = true,
+  maxDpr = 1.5,
+  maxFps = 45,
+  pauseWhenOffscreen = true
 }) => {
   const containerRef = useRef(null);
   const mousePos = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!containerRef.current) return;
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (prefersReducedMotion) return;
+
+    const deviceMemory = navigator.deviceMemory || 0;
+    const hardwareConcurrency = navigator.hardwareConcurrency || 0;
+    const lowEnd = (deviceMemory && deviceMemory <= 4) || (hardwareConcurrency && hardwareConcurrency <= 4);
+    const resolvedMaxDpr = lowEnd ? Math.min(maxDpr, 1) : maxDpr;
+    const resolvedFps = lowEnd ? Math.min(maxFps, 30) : maxFps;
+    const minFrameMs = resolvedFps > 0 ? 1000 / resolvedFps : 0;
 
     const useCustomColor = color ? 1.0 : 0.0;
     const customColorRgb = color ? hexToRgb(color) : [1, 1, 1];
@@ -215,7 +227,7 @@ export const Plasma = ({
         webgl: supportsWebGL2 ? 2 : 1,
         alpha: true,
         antialias: false,
-        dpr: Math.min(window.devicePixelRatio || 1, 2)
+        dpr: Math.min(window.devicePixelRatio || 1, resolvedMaxDpr)
       });
     } catch (err) {
       console.warn('WebGL unavailable for Plasma', err);
@@ -279,8 +291,32 @@ export const Plasma = ({
     setSize();
 
     let raf = 0;
+    let running = false;
+    let inView = !pauseWhenOffscreen;
+    let lastTime = 0;
     const t0 = performance.now();
+
+    const stop = () => {
+      running = false;
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
+    };
+
+    const start = () => {
+      if (running) return;
+      running = true;
+      raf = requestAnimationFrame(loop);
+    };
+
     const loop = t => {
+      if (!running) return;
+      if (minFrameMs > 0 && t - lastTime < minFrameMs) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
+      lastTime = t;
       let timeValue = (t - t0) * 0.001;
       if (direction === 'pingpong') {
         const pingpongDuration = 10;
@@ -297,13 +333,49 @@ export const Plasma = ({
       renderer.render({ scene: mesh });
       raf = requestAnimationFrame(loop);
     };
-    raf = requestAnimationFrame(loop);
+
+    const updateRunState = () => {
+      if (!pauseWhenOffscreen) return;
+      const pageVisible = document.visibilityState !== 'hidden';
+      if (inView && pageVisible) {
+        start();
+      } else {
+        stop();
+      }
+    };
+
+    let io;
+    if (pauseWhenOffscreen && 'IntersectionObserver' in window) {
+      io = new IntersectionObserver(
+        ([entry]) => {
+          inView = !!entry?.isIntersecting;
+          updateRunState();
+        },
+        { threshold: 0.05 }
+      );
+      io.observe(containerRef.current);
+    }
+
+    const handleVisibility = () => updateRunState();
+    if (pauseWhenOffscreen) {
+      document.addEventListener('visibilitychange', handleVisibility);
+    }
+
+    if (!pauseWhenOffscreen) {
+      start();
+    } else {
+      updateRunState();
+    }
 
     return () => {
-      cancelAnimationFrame(raf);
+      stop();
+      io?.disconnect();
       ro.disconnect();
       if (mouseInteractive && containerRef.current) {
         containerRef.current.removeEventListener('mousemove', handleMouseMove);
+      }
+      if (pauseWhenOffscreen) {
+        document.removeEventListener('visibilitychange', handleVisibility);
       }
       try {
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -312,7 +384,7 @@ export const Plasma = ({
         console.warn('Canvas already removed from container');
       }
     };
-  }, [color, speed, direction, scale, opacity, mouseInteractive]);
+  }, [color, speed, direction, scale, opacity, mouseInteractive, maxDpr, maxFps, pauseWhenOffscreen]);
 
   return <div ref={containerRef} className="w-full h-full overflow-hidden relative" />;
 };

@@ -76,17 +76,9 @@ const LoginModal = ({ isOpen, onClose }) => {
                                 <button
                                     onClick={handleGoogleLogin}
                                     disabled={loading}
-                                    className="flex items-center justify-center gap-3 w-full bg-black text-white dark:text-black border border-transparent hover:scale-[1.02] active:scale-[0.98] font-bold py-3.5 px-4 rounded-[30px] transition-all duration-300 shadow-lg disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                                    className="flex items-center justify-center gap-3 w-full bg-black text-white  hover:scale-[1.02] active:scale-[0.98] font-bold py-3.5 px-4 rounded-[5px]"
                                 >
-                                    {loading ? (
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                    ) : (
-                                        <img
-                                            src="https://www.svgrepo.com/show/475656/google-color.svg"
-                                            alt="Google"
-                                            className="w-5 h-5"
-                                        />
-                                    )}
+                               
                                     <span>{t("auth.login.googleCta")}</span>
                                 </button>
 

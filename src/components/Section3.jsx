@@ -18,41 +18,77 @@ const Section3 = ({ onContactClick }) => {
   const firstSectionRef = useRef(null);
 
   useEffect(() => {
-    const loadGSAP = async () => {
-      const gsap = (await import("gsap")).default;
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      gsap.registerPlugin(ScrollTrigger);
+    let ctx;
+    let cancelled = false;
 
-      const animate = (ref) => {
+    const revealFallback = () => {
+      [firstSectionRef, bannerWebRef, bannerMobileRef].forEach((ref) => {
         if (ref.current) {
-          gsap.fromTo(
-            ref.current,
-            { opacity: 0.95, y: 50 },
-            {
-              opacity: 1,
-              y: 0,
-              ease: "power2.out",
-              duration: 1,
-              scrollTrigger: {
-                trigger: ref.current,
-                start: "top 100%",
-                end: "bottom 70%",
-                scrub: 1,
-              },
-            }
-          );
+          ref.current.style.opacity = "1";
+          ref.current.style.transform = "none";
         }
-      };
+      });
+    };
 
-      [firstSectionRef, bannerWebRef, bannerMobileRef].forEach(animate);
+    const loadGSAP = async () => {
+      try {
+        const gsapModule = await import("gsap");
+        const scrollTriggerModule = await import("gsap/ScrollTrigger");
+        const gsap = gsapModule.gsap || gsapModule.default || gsapModule;
+        const ScrollTrigger =
+          scrollTriggerModule.ScrollTrigger ||
+          scrollTriggerModule.default ||
+          scrollTriggerModule;
+
+        if (cancelled || !gsap || !ScrollTrigger) {
+          revealFallback();
+          return;
+        }
+
+        gsap.registerPlugin(ScrollTrigger);
+
+        const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+        if (prefersReducedMotion) {
+          revealFallback();
+          return;
+        }
+
+        ctx = gsap.context(() => {
+          const animate = (ref) => {
+            if (ref.current) {
+              gsap.fromTo(
+                ref.current,
+                { opacity: 0.95, y: 50 },
+                {
+                  opacity: 1,
+                  y: 0,
+                  ease: "power2.out",
+                  duration: 1,
+                  scrollTrigger: {
+                    trigger: ref.current,
+                    start: "top 100%",
+                    end: "bottom 70%",
+                    scrub: 1,
+                  },
+                }
+              );
+            }
+          };
+
+          [firstSectionRef, bannerWebRef, bannerMobileRef].forEach(animate);
+        });
+
+        ScrollTrigger.refresh();
+      } catch (error) {
+        revealFallback();
+      }
     };
 
     loadGSAP();
 
     return () => {
-      if (window.ScrollTrigger) {
-        window.ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-      }
+      cancelled = true;
+      if (ctx) ctx.revert();
     };
   }, []);
 

@@ -21,29 +21,43 @@ const Section4 = () => {
 
   useEffect(() => {
     const refs = [spaceWebRef, spaceMobileRef, contWebRef, contMobileRef];
-    refs.forEach((ref) => {
-      if (ref.current) {
-        gsap.fromTo(
-          ref.current,
-          { opacity: 0.95, y: 50 },
-          {
-            opacity: 1,
-            y: 0,
-            ease: "power2.out",
-            duration: 1,
-            scrollTrigger: {
-              trigger: ref.current.parentElement,
-              start: "top 100%",
-              end: "bottom 70%",
-              scrub: 1,
-            },
-          }
-        );
-      }
+    const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+
+    if (prefersReducedMotion) {
+      refs.forEach((ref) => {
+        if (ref.current) {
+          ref.current.style.opacity = "1";
+          ref.current.style.transform = "none";
+        }
+      });
+      return undefined;
+    }
+
+    const ctx = gsap.context(() => {
+      refs.forEach((ref) => {
+        if (ref.current) {
+          gsap.fromTo(
+            ref.current,
+            { opacity: 0.95, y: 50 },
+            {
+              opacity: 1,
+              y: 0,
+              ease: "power2.out",
+              duration: 1,
+              scrollTrigger: {
+                trigger: ref.current.parentElement,
+                start: "top 100%",
+                end: "bottom 70%",
+                scrub: 1,
+              },
+            }
+          );
+        }
+      });
     });
 
     return () => {
-      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
+      ctx.revert();
     };
   }, []);
 
