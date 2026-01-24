@@ -4,6 +4,7 @@ import DashboardNavbar from './DashboardNavbar';
 import { useAuth } from '../context/AuthContext';
 import LoadingFallback from '../components/ui/LoadingFallback';
 import CompleteProfileModal from '../components/CompleteProfileModal';
+import CreateProjectModal from '../components/CreateProjectModal';
 import { AlertCircle } from 'lucide-react';
 
 const PortalLayout = () => {
@@ -19,8 +20,10 @@ const PortalLayout = () => {
         signOut,
     } = useAuth();
     const [showProfileModal, setShowProfileModal] = useState(false);
+    const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
+    const role = profile?.role;
 
     const isAuthReady = typeof authReady === 'boolean' ? authReady : !loading;
 
@@ -54,7 +57,7 @@ const PortalLayout = () => {
     }, [profile?.role, location.pathname]);
 
     useEffect(() => {
-        if (!loading && user && profile?.role === 'client') {
+        if (!loading && user && role === 'client') {
             // Show modal if client record is missing or incomplete
             if (!client || !client.full_name || !client.phone) {
                 setShowProfileModal(true);
@@ -62,7 +65,7 @@ const PortalLayout = () => {
                 setShowProfileModal(false);
             }
         }
-    }, [loading, user, profile, client]);
+    }, [loading, user, role, client]);
 
     if (!isAuthReady) {
         return (
@@ -167,11 +170,15 @@ const PortalLayout = () => {
                 isOpen={showProfileModal}
                 onClose={() => setShowProfileModal(false)}
                 onComplete={() => {
-                    navigate('/dashboard/projects', {
-                        replace: true,
-                        state: { showCreateProject: true },
-                    });
+                    setShowCreateProjectModal(true);
                 }}
+            />
+
+            <CreateProjectModal
+                isOpen={showCreateProjectModal}
+                onClose={() => setShowCreateProjectModal(false)}
+                onCreated={() => setShowCreateProjectModal(false)}
+                role={role}
             />
         </div>
     );

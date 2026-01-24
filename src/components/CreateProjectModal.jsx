@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Briefcase, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import Stepper from '@/components/Form/Stepper';
+import MultiUseSelect from '@/components/MultiUseSelect';
 
 const TITLE_FIELDS = ['title', 'name', 'project_name'];
 
@@ -24,6 +25,20 @@ const CreateProjectModal = ({
     const { t } = useTranslation();
     const { user, client } = useAuth();
     const isAdmin = role === 'admin';
+    const labelClass = 'text-[22px] text-[#000000] text-center block';
+    const inputClass =
+        'w-full bg-[#DBDBDB] h-[51px] rounded-[5px] py-3 px-4 text-[14px] md:text-[18px] lg:text-[22px] text-[#8A8A8A] font-inter';
+    const textareaClass =
+        'w-full bg-[#DBDBDB] rounded-[5px] py-3 px-4 text-[14px] md:text-[18px] lg:text-[22px] text-[#8A8A8A] font-inter resize-none';
+    const selectButtonClass = 'h-[51px] rounded-[5px] text-[14px] md:text-[18px] lg:text-[22px]';
+    const selectOptionClass = 'text-[14px] md:text-[18px] lg:text-[22px]';
+    const selectSharedProps = {
+        variant: 'modal',
+        modalScope: 'anchor',
+        modalAlign: 'right',
+        optionClassName: selectOptionClass,
+        listClassName: 'sm:w-[320px]',
+    };
     const [formData, setFormData] = useState({
         title: '',
         client_id: '',
@@ -203,9 +218,18 @@ const CreateProjectModal = ({
             return { ...prev, [name]: value };
         });
     };
+    const handleSelectChange = (name) => (value) => {
+        setError(null);
+        setFormData((prev) => {
+            if (name === 'urgency' && value !== 'specific_date') {
+                return { ...prev, urgency: value, urgency_date: '' };
+            }
+            return { ...prev, [name]: value };
+        });
+    };
 
     const errorBlock = error ? (
-        <p className="text-red-500 text-xs text-center bg-red-50 p-3 rounded-xl border border-red-100">
+        <p className="w-full max-w-[600px] text-red-500 text-xs text-center bg-red-50 p-3 rounded-xl border border-red-100">
             {error}
         </p>
     ) : null;
@@ -214,7 +238,7 @@ const CreateProjectModal = ({
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 font-product">
+            <div className="fixed inset-0 z-[110] flex items-center justify-center font-product">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -224,10 +248,11 @@ const CreateProjectModal = ({
                 />
 
                 <motion.div
-                    initial={{ scale: 0.96, opacity: 0, y: 20 }}
-                    animate={{ scale: 1, opacity: 1, y: 0 }}
-                    exit={{ scale: 0.96, opacity: 0, y: 20 }}
-                    className="relative w-full max-w-[520px] bg-white rounded-3xl shadow-2xl overflow-hidden"
+                    initial={{ scale: 0.98, opacity: 0, x: 80 }}
+                    animate={{ scale: 1, opacity: 1, x: 0 }}
+                    exit={{ scale: 0.98, opacity: 0, x: 80 }}
+                    transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                    className="relative w-full h-full bg-[#E8E8E8] overflow-y-auto overflow-x-hidden"
                 >
                     <button
                         onClick={onClose}
@@ -237,17 +262,14 @@ const CreateProjectModal = ({
                         <X size={18} />
                     </button>
 
-                    <div className="p-6 sm:p-8 max-h-[85vh] overflow-y-auto">
-                        <div className="mb-6 text-center">
-                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-600">
-                                <Briefcase size={20} />
-                            </div>
-                            <h2 className="text-2xl font-bold text-neutral-900 mt-4">
+                    <div className="max-w-[600px] mx-auto w-full flex flex-col items-center justify-center  p-6 sm:p-12 leading-none">
+                        <div className="mb-6 text-center ">
+                            <h2 className="text-[25px] md:text-[35px] lg:text-[45px] font-bold text-[#000000] mt-4 leading-none">
                                 {isFirstProject
                                     ? t('dashboard.projects.create.firstTitle')
                                     : t('dashboard.projects.create.title')}
                             </h2>
-                            <p className="text-neutral-500 text-sm mt-2">
+                            <p className="text-[#777777] text-[14px] mt-2">
                                 {t('dashboard.projects.create.description')}
                             </p>
                         </div>
@@ -273,42 +295,54 @@ const CreateProjectModal = ({
                                 type: 'button',
                                 disabled: loading,
                                 className:
-                                    'duration-350 flex items-center justify-center rounded-full bg-black py-2.5 px-4 font-semibold text-white transition hover:bg-neutral-800 active:bg-neutral-900 disabled:opacity-70 disabled:cursor-not-allowed',
+                                    'duration-350 flex items-center justify-center gap-2 w-full max-w-[220px] mx-auto bg-[#0DD122] py-3.5 px-6 font-bold text-white rounded-2xl transition hover:bg-green active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed',
                             }}
-                            stepContainerClassName="px-0 pt-2 pb-6"
+                            stepCircleContainerClassName="w-full max-w-[350px] mx-auto"
+                            stepContainerClassName="px-0 pt-2 pb-6 justify-between"
                             contentClassName="px-0"
                             footerClassName="pt-4"
+                            actionsClassName="mt-8 flex justify-center"
+                            contentOverflow="visible"
+                            renderStepIndicator={({ step, currentStep }) => {
+                                const isActive = step <= currentStep;
+                                return (
+                                    <div
+                                        className={`h-[36px] w-[36px] rounded-full ${
+                                            isActive ? 'bg-[#0DD122]' : 'bg-[#9E9E9E]'
+                                        }`}
+                                    />
+                                );
+                            }}
+                            renderStepConnector={({ isComplete }) => (
+                                <div className="relative mx-2 h-[4px] flex-1 rounded-full bg-[#CFCFCF] overflow-hidden">
+                                    {isComplete && <span className="absolute inset-0 bg-[#0DD122]" />}
+                                </div>
+                            )}
                         >
-                            <div className="space-y-4">
+                            <div className="space-y-4 w-full max-w-[300px] mx-auto">
                                 {isAdmin && (
                                     <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
+                                        <label className={labelClass}>
                                             {t('dashboard.projects.create.fields.clientLabel')}
                                         </label>
-                                        <select
-                                            required
-                                            name="client_id"
+                                        <MultiUseSelect
+                                            {...selectSharedProps}
+                                            options={clients.map((item) => ({
+                                                value: item.id,
+                                                label: item.company_name || item.full_name || item.email || item.id,
+                                            }))}
                                             value={formData.client_id}
-                                            onChange={handleChange}
-                                            className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
-                                        >
-                                            <option value="">
-                                                {t('dashboard.projects.create.fields.clientPlaceholder')}
-                                            </option>
-                                            {clients.map((item) => {
-                                                const label = item.company_name || item.full_name || item.email || item.id;
-                                                return (
-                                                    <option key={item.id} value={item.id}>
-                                                        {label}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
+                                            onChange={handleSelectChange('client_id')}
+                                            placeholder={t('dashboard.projects.create.fields.clientPlaceholder')}
+                                            getOptionLabel={(option) => option.label}
+                                            getOptionValue={(option) => option.value}
+                                            buttonClassName={selectButtonClass}
+                                        />
                                     </div>
                                 )}
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
+                                    <label className={labelClass}>
                                         {t('dashboard.projects.create.fields.titleLabel')}
                                     </label>
                                     <input
@@ -319,87 +353,102 @@ const CreateProjectModal = ({
                                         value={formData.title}
                                         onChange={handleChange}
                                         placeholder={t('dashboard.projects.create.fields.titlePlaceholder')}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter"
+                                        className={inputClass}
                                     />
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
+                                    <label className={labelClass}>
                                         {t('dashboard.projects.create.fields.needTypeLabel')}
                                     </label>
-                                    <select
-                                        required
-                                        name="need_type"
+                                    <MultiUseSelect
+                                        {...selectSharedProps}
+                                        options={[
+                                            {
+                                                value: 'social_media',
+                                                label: t('dashboard.projects.create.fields.needTypeOptions.socialMedia'),
+                                            },
+                                            {
+                                                value: 'digital_ads',
+                                                label: t('dashboard.projects.create.fields.needTypeOptions.digitalAds'),
+                                            },
+                                            {
+                                                value: 'website_landing',
+                                                label: t('dashboard.projects.create.fields.needTypeOptions.websiteLanding'),
+                                            },
+                                            {
+                                                value: 'design_branding',
+                                                label: t('dashboard.projects.create.fields.needTypeOptions.designBranding'),
+                                            },
+                                            {
+                                                value: 'automation_tech',
+                                                label: t('dashboard.projects.create.fields.needTypeOptions.automationTech'),
+                                            },
+                                            {
+                                                value: 'content',
+                                                label: t('dashboard.projects.create.fields.needTypeOptions.content'),
+                                            },
+                                            {
+                                                value: 'other',
+                                                label: t('dashboard.projects.create.fields.needTypeOptions.other'),
+                                            },
+                                        ]}
                                         value={formData.need_type}
-                                        onChange={handleChange}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
-                                    >
-                                        <option value="">{t('dashboard.projects.create.fields.needTypePlaceholder')}</option>
-                                        <option value="social_media">
-                                            {t('dashboard.projects.create.fields.needTypeOptions.socialMedia')}
-                                        </option>
-                                        <option value="digital_ads">
-                                            {t('dashboard.projects.create.fields.needTypeOptions.digitalAds')}
-                                        </option>
-                                        <option value="website_landing">
-                                            {t('dashboard.projects.create.fields.needTypeOptions.websiteLanding')}
-                                        </option>
-                                        <option value="design_branding">
-                                            {t('dashboard.projects.create.fields.needTypeOptions.designBranding')}
-                                        </option>
-                                        <option value="automation_tech">
-                                            {t('dashboard.projects.create.fields.needTypeOptions.automationTech')}
-                                        </option>
-                                        <option value="content">
-                                            {t('dashboard.projects.create.fields.needTypeOptions.content')}
-                                        </option>
-                                        <option value="other">
-                                            {t('dashboard.projects.create.fields.needTypeOptions.other')}
-                                        </option>
-                                    </select>
+                                        onChange={handleSelectChange('need_type')}
+                                        placeholder={t('dashboard.projects.create.fields.needTypePlaceholder')}
+                                        getOptionLabel={(option) => option.label}
+                                        getOptionValue={(option) => option.value}
+                                        buttonClassName={selectButtonClass}
+                                    />
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
+                                    <label className={labelClass}>
                                         {t('dashboard.projects.create.fields.objectiveLabel')}
                                     </label>
-                                    <select
-                                        required
-                                        name="objective"
+                                    <MultiUseSelect
+                                        {...selectSharedProps}
+                                        options={[
+                                            {
+                                                value: 'sell_more',
+                                                label: t('dashboard.projects.create.fields.objectiveOptions.sellMore'),
+                                            },
+                                            {
+                                                value: 'get_leads',
+                                                label: t('dashboard.projects.create.fields.objectiveOptions.getLeads'),
+                                            },
+                                            {
+                                                value: 'improve_brand',
+                                                label: t('dashboard.projects.create.fields.objectiveOptions.improveBrand'),
+                                            },
+                                            {
+                                                value: 'launch_product',
+                                                label: t('dashboard.projects.create.fields.objectiveOptions.launchProduct'),
+                                            },
+                                            {
+                                                value: 'optimize_process',
+                                                label: t('dashboard.projects.create.fields.objectiveOptions.optimizeProcess'),
+                                            },
+                                            {
+                                                value: 'not_sure',
+                                                label: t('dashboard.projects.create.fields.objectiveOptions.notSure'),
+                                            },
+                                        ]}
                                         value={formData.objective}
-                                        onChange={handleChange}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
-                                    >
-                                        <option value="">
-                                            {t('dashboard.projects.create.fields.objectivePlaceholder')}
-                                        </option>
-                                        <option value="sell_more">
-                                            {t('dashboard.projects.create.fields.objectiveOptions.sellMore')}
-                                        </option>
-                                        <option value="get_leads">
-                                            {t('dashboard.projects.create.fields.objectiveOptions.getLeads')}
-                                        </option>
-                                        <option value="improve_brand">
-                                            {t('dashboard.projects.create.fields.objectiveOptions.improveBrand')}
-                                        </option>
-                                        <option value="launch_product">
-                                            {t('dashboard.projects.create.fields.objectiveOptions.launchProduct')}
-                                        </option>
-                                        <option value="optimize_process">
-                                            {t('dashboard.projects.create.fields.objectiveOptions.optimizeProcess')}
-                                        </option>
-                                        <option value="not_sure">
-                                            {t('dashboard.projects.create.fields.objectiveOptions.notSure')}
-                                        </option>
-                                    </select>
+                                        onChange={handleSelectChange('objective')}
+                                        placeholder={t('dashboard.projects.create.fields.objectivePlaceholder')}
+                                        getOptionLabel={(option) => option.label}
+                                        getOptionValue={(option) => option.value}
+                                        buttonClassName={selectButtonClass}
+                                    />
                                 </div>
 
                                 {errorBlock}
                             </div>
 
-                            <div className="space-y-4">
+                            <div className="space-y-4 w-full max-w-[300px] mx-auto">
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
+                                    <label className={labelClass}>
                                         {t('dashboard.projects.create.fields.descriptionLabel')}
                                     </label>
                                     <textarea
@@ -409,36 +458,41 @@ const CreateProjectModal = ({
                                         onChange={handleChange}
                                         placeholder={t('dashboard.projects.create.fields.descriptionPlaceholder')}
                                         rows={5}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter resize-none"
+                                        className={textareaClass}
                                     />
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
+                                    <label className={labelClass}>
                                         {t('dashboard.projects.create.fields.urgencyLabel')}
                                     </label>
-                                    <select
-                                        name="urgency"
+                                    <MultiUseSelect
+                                        {...selectSharedProps}
+                                        options={[
+                                            {
+                                                value: 'no_rush',
+                                                label: t('dashboard.projects.create.fields.urgencyOptions.noRush'),
+                                            },
+                                            {
+                                                value: 'next_weeks',
+                                                label: t('dashboard.projects.create.fields.urgencyOptions.nextWeeks'),
+                                            },
+                                            {
+                                                value: 'asap',
+                                                label: t('dashboard.projects.create.fields.urgencyOptions.asap'),
+                                            },
+                                            {
+                                                value: 'specific_date',
+                                                label: t('dashboard.projects.create.fields.urgencyOptions.specificDate'),
+                                            },
+                                        ]}
                                         value={formData.urgency}
-                                        onChange={handleChange}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
-                                    >
-                                        <option value="">
-                                            {t('dashboard.projects.create.fields.urgencyPlaceholder')}
-                                        </option>
-                                        <option value="no_rush">
-                                            {t('dashboard.projects.create.fields.urgencyOptions.noRush')}
-                                        </option>
-                                        <option value="next_weeks">
-                                            {t('dashboard.projects.create.fields.urgencyOptions.nextWeeks')}
-                                        </option>
-                                        <option value="asap">
-                                            {t('dashboard.projects.create.fields.urgencyOptions.asap')}
-                                        </option>
-                                        <option value="specific_date">
-                                            {t('dashboard.projects.create.fields.urgencyOptions.specificDate')}
-                                        </option>
-                                    </select>
+                                        onChange={handleSelectChange('urgency')}
+                                        placeholder={t('dashboard.projects.create.fields.urgencyPlaceholder')}
+                                        getOptionLabel={(option) => option.label}
+                                        getOptionValue={(option) => option.value}
+                                        buttonClassName={selectButtonClass}
+                                    />
                                     {formData.urgency === 'specific_date' && (
                                         <input
                                             required
@@ -446,40 +500,46 @@ const CreateProjectModal = ({
                                             name="urgency_date"
                                             value={formData.urgency_date}
                                             onChange={handleChange}
-                                            className="w-full mt-2 bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter"
+                                            className={`${inputClass} mt-2`}
                                         />
                                     )}
                                 </div>
 
                                 <div className="space-y-1">
-                                    <label className="text-xs font-semibold text-neutral-400 uppercase tracking-widest ml-1">
+                                    <label className={labelClass}>
                                         {t('dashboard.projects.create.fields.budgetLabel')}
                                     </label>
-                                    <select
-                                        name="budget_range"
+                                    <MultiUseSelect
+                                        {...selectSharedProps}
+                                        options={[
+                                            {
+                                                value: 'unknown',
+                                                label: t('dashboard.projects.create.fields.budgetOptions.unknown'),
+                                            },
+                                            {
+                                                value: 'low',
+                                                label: t('dashboard.projects.create.fields.budgetOptions.low'),
+                                            },
+                                            {
+                                                value: 'medium',
+                                                label: t('dashboard.projects.create.fields.budgetOptions.medium'),
+                                            },
+                                            {
+                                                value: 'high',
+                                                label: t('dashboard.projects.create.fields.budgetOptions.high'),
+                                            },
+                                            {
+                                                value: 'advise_me',
+                                                label: t('dashboard.projects.create.fields.budgetOptions.adviseMe'),
+                                            },
+                                        ]}
                                         value={formData.budget_range}
-                                        onChange={handleChange}
-                                        className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-neutral-900 transition-all font-inter appearance-none"
-                                    >
-                                        <option value="">
-                                            {t('dashboard.projects.create.fields.budgetPlaceholder')}
-                                        </option>
-                                        <option value="unknown">
-                                            {t('dashboard.projects.create.fields.budgetOptions.unknown')}
-                                        </option>
-                                        <option value="low">
-                                            {t('dashboard.projects.create.fields.budgetOptions.low')}
-                                        </option>
-                                        <option value="medium">
-                                            {t('dashboard.projects.create.fields.budgetOptions.medium')}
-                                        </option>
-                                        <option value="high">
-                                            {t('dashboard.projects.create.fields.budgetOptions.high')}
-                                        </option>
-                                        <option value="advise_me">
-                                            {t('dashboard.projects.create.fields.budgetOptions.adviseMe')}
-                                        </option>
-                                    </select>
+                                        onChange={handleSelectChange('budget_range')}
+                                        placeholder={t('dashboard.projects.create.fields.budgetPlaceholder')}
+                                        getOptionLabel={(option) => option.label}
+                                        getOptionValue={(option) => option.value}
+                                        buttonClassName={selectButtonClass}
+                                    />
                                 </div>
 
                                 {errorBlock}

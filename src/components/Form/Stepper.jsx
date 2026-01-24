@@ -13,6 +13,7 @@ export default function Stepper({
     stepContainerClassName = "p-8",
     contentClassName = "px-8",
     footerClassName = "px-8 pb-8",
+    actionsClassName = "",
     backButtonProps = {},
     nextButtonProps = {},
     backButtonText = "Atrás",
@@ -20,6 +21,8 @@ export default function Stepper({
     finalButtonText = "Enviar",
     disableStepIndicators = false,
     renderStepIndicator,
+    renderStepConnector,
+    contentOverflow = "hidden",
     ...rest
 }) {
     const [currentStep, setCurrentStep] = useState(initialStep);
@@ -64,7 +67,7 @@ export default function Stepper({
     };
 
     return (
-        <div className="flex min-h-full flex-1 flex-col items-center justify-center p-2" {...rest}>
+        <div className="flex min-h-full w-full flex-1 flex-col items-center justify-center p-2" {...rest}>
             {/* (resto del contenido sin cambios) */}
             <div className={`mx-auto w-full rounded-4xl ${stepCircleContainerClassName}`}>
                 <div className={`${stepContainerClassName} flex w-full items-center`}>
@@ -94,7 +97,15 @@ export default function Stepper({
                                     />
                                 )}
                                 {isNotLastStep && (
-                                    <StepConnector isComplete={currentStep > stepNumber} />
+                                    renderStepConnector ? (
+                                        renderStepConnector({
+                                            step: stepNumber,
+                                            currentStep,
+                                            isComplete: currentStep > stepNumber,
+                                        })
+                                    ) : (
+                                        <StepConnector isComplete={currentStep > stepNumber} />
+                                    )
                                 )}
                             </React.Fragment>
                         );
@@ -104,13 +115,19 @@ export default function Stepper({
                     isCompleted={isCompleted}
                     currentStep={currentStep}
                     direction={direction}
+                    contentOverflow={contentOverflow}
                     className={`space-y-2 ${contentClassName}`}
                 >
                     {stepsArray[currentStep - 1]}
                 </StepContentWrapper>
                 {!isCompleted && (
                     <div className={`${footerClassName}`}>
-                        <div className={`mt-10 flex ${currentStep !== 1 ? "justify-between" : "justify-end"}`}>
+                        <div
+                            className={
+                                actionsClassName ||
+                                `mt-10 flex ${currentStep !== 1 ? "justify-between" : "justify-end"}`
+                            }
+                        >
                             {currentStep !== 1 && (
                                 <button
                                     onClick={handleBack}
@@ -140,12 +157,12 @@ export default function Stepper({
 // ... (resto del código sin cambios) ...
 
 
-function StepContentWrapper({ isCompleted, currentStep, direction, children, className }) {
+function StepContentWrapper({ isCompleted, currentStep, direction, children, className, contentOverflow }) {
     const [parentHeight, setParentHeight] = useState(0);
 
     return (
         <motion.div
-            style={{ position: "relative", overflow: "hidden" }}
+            style={{ position: "relative", overflow: contentOverflow }}
             animate={{ height: isCompleted ? 0 : parentHeight }}
             transition={{ type: "spring", duration: 0.4 }}
             className={className}

@@ -154,6 +154,11 @@ export const AuthProvider = ({ children }) => {
                     fetchProfileData(session.user);
                 }
 
+                if (event === 'SIGNED_IN') {
+                    // Signal app-wide redirect to dashboard after login
+                    sessionStorage.setItem('postLoginRedirect', '1');
+                }
+
             } else {
                 setUser(null);
                 setProfile(null);

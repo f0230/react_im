@@ -1,6 +1,6 @@
 // App.jsx
-import React, { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React, { Suspense, lazy, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
 
@@ -29,13 +29,26 @@ const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
 const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
 const TeamChat = lazy(() => import("@/pages/dashboard/chat/TeamChat"));
 const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
 import PortalLayout from "@/layouts/PortalLayout";
 import { Navigate } from "react-router-dom";
 
 const AppContent = () => {
   const { isNavbarOpen } = useUI();
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const shouldRedirect = sessionStorage.getItem('postLoginRedirect') === '1';
+    if (shouldRedirect && user) {
+      sessionStorage.removeItem('postLoginRedirect');
+      if (!location.pathname.startsWith('/dashboard')) {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [user, location.pathname, navigate]);
 
   return (
     <div className="relative min-h-screen">
