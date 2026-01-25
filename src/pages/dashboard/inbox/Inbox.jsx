@@ -671,7 +671,10 @@ const Inbox = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50">
+                            <div
+                                className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50"
+                                style={{ paddingBottom: 'calc(1rem + var(--keyboard-offset, 0px))' }}
+                            >
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
                                 )}
@@ -736,7 +739,10 @@ const Inbox = () => {
                                 })}
                             </div>
 
-                            <div className="border-t border-black/5 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0 bg-white sticky bottom-0 shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]">
+                            <div
+                                className="border-t border-black/5 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0 bg-white sticky bottom-0 shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
+                                style={{ bottom: 'var(--keyboard-offset, 0px)' }}
+                            >
                                 <div className="space-y-3">
                                     <div className="flex flex-col gap-3">
                                         <div className="flex items-center gap-2">

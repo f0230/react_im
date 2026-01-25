@@ -1,8 +1,20 @@
 import { useEffect } from 'react';
 
-const getViewportHeight = () => {
-    if (typeof window === 'undefined') return 0;
-    return window.visualViewport?.height || window.innerHeight;
+const getViewportMetrics = () => {
+    if (typeof window === 'undefined') return { height: 0, offsetTop: 0 };
+    const viewport = window.visualViewport;
+    return {
+        height: viewport?.height || window.innerHeight,
+        offsetTop: viewport?.offsetTop || 0,
+    };
+};
+
+const isTextInputFocused = () => {
+    if (typeof document === 'undefined') return false;
+    const active = document.activeElement;
+    if (!active) return false;
+    const tag = active.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || active.isContentEditable;
 };
 
 const useViewportHeight = (enabled = true) => {
@@ -11,18 +23,35 @@ const useViewportHeight = (enabled = true) => {
 
         const root = document.documentElement;
         const viewport = window.visualViewport;
+        let baseHeight = getViewportMetrics().height;
+
+        const setVars = (height, keyboardOffset = 0) => {
+            root.style.setProperty('--app-height', `${height}px`);
+            root.style.setProperty('--keyboard-offset', `${Math.max(0, keyboardOffset)}px`);
+        };
 
         const update = () => {
-            const height = getViewportHeight();
-            if (height) {
-                root.style.setProperty('--app-height', `${height}px`);
+            const { height, offsetTop } = getViewportMetrics();
+            if (isTextInputFocused()) {
+                const keyboardOffset = baseHeight - height - offsetTop;
+                setVars(baseHeight, keyboardOffset);
+                return;
             }
+            baseHeight = height;
+            setVars(baseHeight, 0);
         };
 
         update();
 
+        const handleFocusOut = () => {
+            // Give the viewport a moment to settle after the keyboard closes.
+            window.setTimeout(update, 50);
+        };
+
         window.addEventListener('resize', update);
         window.addEventListener('orientationchange', update);
+        document.addEventListener('focusin', update);
+        document.addEventListener('focusout', handleFocusOut);
         if (viewport) {
             viewport.addEventListener('resize', update);
         }
@@ -30,6 +59,8 @@ const useViewportHeight = (enabled = true) => {
         return () => {
             window.removeEventListener('resize', update);
             window.removeEventListener('orientationchange', update);
+            document.removeEventListener('focusin', update);
+            document.removeEventListener('focusout', handleFocusOut);
             if (viewport) {
                 viewport.removeEventListener('resize', update);
             }
