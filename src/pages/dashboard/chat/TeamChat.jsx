@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Hash, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
+import { ArrowLeft, Hash, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import useViewportHeight from '@/hooks/useViewportHeight';
 
 const formatTimestamp = (value) => {
     if (!value) return '';
@@ -95,6 +96,8 @@ const TeamChat = () => {
     const lastReadRef = useRef({});
 
     const messagesEndRef = useRef(null);
+
+    useViewportHeight(isAllowed);
 
     const selectedChannel = useMemo(
         () => channels.find((channel) => channel.id === selectedChannelId) || null,
@@ -563,9 +566,9 @@ const TeamChat = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 h-[calc(100vh-55px)] h-[calc(100svh-55px)] h-[calc(100dvh-55px)] min-h-[calc(100svh-55px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
+        <div className="font-product text-neutral-900 h-[calc(var(--app-height,100vh)-45px)] min-h-[calc(var(--app-height,100vh)-45px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-0">
-                <div className={`flex-col h-full overflow-hidden border-r border-neutral-200 ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
+                <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-200 ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-black/5 space-y-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
@@ -624,7 +627,7 @@ const TeamChat = () => {
                             </div>
                         )}
                     </div>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar overscroll-y-contain">
                         {error && !loadingChannels && (
                             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
                                 <p className="font-semibold mb-1">Error de carga</p>
@@ -673,17 +676,23 @@ const TeamChat = () => {
                     </div>
                 </div>
 
-                <div className={`flex-col h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
+                <div className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     {selectedChannel ? (
                         <>
                             <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white/90 backdrop-blur">
                                 <div className="px-4 py-3 flex items-center justify-between gap-4">
-                                    <div className="min-w-0">
-                                        <p className="text-base font-semibold text-neutral-900 flex items-center gap-2">
+                                    <div className="min-w-0 flex items-center gap-2">
+                                        <button
+                                            onClick={() => setSelectedChannelId(null)}
+                                            className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
+                                            aria-label="Volver"
+                                        >
+                                            <ArrowLeft size={20} />
+                                        </button>
+                                        <p className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0">
                                             <Hash size={16} className="text-neutral-400" />
                                             <span className="truncate">{selectedChannel.name}</span>
                                         </p>
-                                  
                                     </div>
                                     {canCreateChannel && (
                                         <button
@@ -699,7 +708,7 @@ const TeamChat = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar bg-neutral-50">
+                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50">
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
                                 )}

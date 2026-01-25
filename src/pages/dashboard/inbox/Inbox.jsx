@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation } from 'react-router-dom';
 import ClientDetail from '@/pages/dashboard/crm/ClientDetail';
+import useViewportHeight from '@/hooks/useViewportHeight';
 
 const formatTimestamp = (value) => {
     if (!value) return '';
@@ -58,6 +59,8 @@ const Inbox = () => {
     const [clientIdByWa, setClientIdByWa] = useState({});
     const fileInputRef = React.useRef(null);
     const lastReadRef = useRef({});
+
+    useViewportHeight(isAllowed);
 
     const preselectWaId = useMemo(() => {
         const params = new URLSearchParams(location.search);
@@ -489,13 +492,13 @@ const Inbox = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 h-[calc(100vh-55px)] h-[calc(100svh-55px)] h-[calc(100dvh-55px)] min-h-[calc(100svh-55px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
+        <div className="font-product text-neutral-900 h-[calc(var(--app-height,100vh)-45px)] min-h-[calc(var(--app-height,100vh)-45px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
 
             {/* Main Content Grid */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[360px_1fr] min-h-0">
                 {/* List Side */}
                 <div
-                    className={`flex-col h-full overflow-hidden border-r border-neutral-200 ${selectedThreadId ? 'hidden lg:flex' : 'flex'
+                    className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-200 ${selectedThreadId ? 'hidden lg:flex' : 'flex'
                         }`}
                 >
                     <div className="p-4 border-b border-black/5 shrink-0">
@@ -509,7 +512,7 @@ const Inbox = () => {
                             />
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar overscroll-y-contain">
                         {loadingThreads && (
                             <div className="text-xs text-neutral-400 px-2 flex items-center gap-2">
                                 <RefreshCw size={12} className="animate-spin" />
@@ -572,7 +575,7 @@ const Inbox = () => {
 
                 {/* Chat Side */}
                 <div
-                    className={`flex-col h-full overflow-hidden bg-white ${!selectedThreadId ? 'hidden lg:flex' : 'flex'
+                    className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedThreadId ? 'hidden lg:flex' : 'flex'
                         }`}
                 >
                     {selectedThread ? (
@@ -668,7 +671,7 @@ const Inbox = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar bg-neutral-50">
+                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50">
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
                                 )}
