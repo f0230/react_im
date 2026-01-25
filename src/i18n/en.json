@@ -342,19 +342,27 @@
       "untitled": "Untitled project",
       "projectLabel": "Project",
       "clientLabel": "Client",
-      "assignedWorkers": "Assigned workers",
+      "assignedWorkers": "Assigned team",
       "assignedSummary": "{{count}} assigned",
       "assignButton": "Add team",
+      "teamLabel": "Team",
       "assignSaving": "Saving assignments...",
       "assignError": "We couldn't update the assignments.",
       "teamModal": {
         "title": "Add team",
-        "description": "Select the workers assigned to this project.",
+        "description": "Select the people assigned to this project.",
         "select": "Select",
         "selected": "Assigned",
-        "close": "Save and close"
+        "close": "Save and close",
+        "roleAdmin": "Admin",
+        "roleWorker": "Worker"
       },
       "createdAt": "Created: {{date}}",
+      "cards": {
+        "services": "Tasks, deliverables, and next steps.",
+        "reports": "Progress and results reports.",
+        "invoices": "Invoice history and payments."
+      },
       "create": {
         "title": "Create project",
         "firstTitle": "Create your project",

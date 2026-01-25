@@ -1,8 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, Settings, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import PopoverPanel from '../components/ui/PopoverPanel';
+import { POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
 
 const DashboardMenu = ({ isOpen, onClose }) => {
     const { profile, signOut } = useAuth();
@@ -35,44 +36,33 @@ const DashboardMenu = ({ isOpen, onClose }) => {
     const navLinks = menuItems[role] || menuItems.client;
 
     return (
-        <AnimatePresence>
-            {isOpen && (
-                <>
-                    {/* Invisible backdrop to close on click outside */}
-                    <div className="fixed inset-0 z-40" onClick={onClose} />
-
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="absolute top-full right-0 mt-4 w-[240px] bg-[#111] border border-white/10 rounded-[20px] shadow-2xl z-50 overflow-hidden"
-                    >
-
-
-                        <div className="p-2 space-y-1">
-                            {navLinks.map((item) => (
-                                <NavLink
-                                    key={item.path}
-                                    to={item.path}
-                                    end={item.path === '/dashboard'}
-                                    onClick={onClose}
-                                    className={({ isActive }) => `
+        <PopoverPanel
+            isOpen={isOpen}
+            onClose={onClose}
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            className={POPOVER_PANEL_CLASS}
+        >
+            <div className="p-2 space-y-1">
+                {navLinks.map((item) => (
+                    <NavLink
+                        key={item.path}
+                        to={item.path}
+                        end={item.path === '/dashboard'}
+                        onClick={onClose}
+                        className={({ isActive }) => `
                                 flex items-center gap-2.5 px-3 py-2.5 rounded-[15px] transition-all duration-200 group
                                 ${isActive
-                                            ? 'bg-white/10 text-white font-bold'
-                                            : 'text-gray-400 hover:bg-white/5 hover:text-white'}
+                                ? 'bg-white/10 text-white font-bold'
+                                : 'text-gray-400 hover:bg-white/5 hover:text-white'}
                             `}
-                                >
-                                    <item.icon size={18} className="group-hover:text-skyblue transition-colors" />
-                                    <span className="font-product text-sm">{item.label}</span>
-                                </NavLink>
-                            ))}
-                        </div>
-                    </motion.div>
-                </>
-            )}
-        </AnimatePresence>
+                    >
+                        <item.icon size={18} className="group-hover:text-skyblue transition-colors" />
+                        <span className="font-product text-sm">{item.label}</span>
+                    </NavLink>
+                ))}
+            </div>
+        </PopoverPanel>
     );
 };
 

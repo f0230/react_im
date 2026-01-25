@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Briefcase, Users } from 'lucide-react';
+import { Briefcase, Plus, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import CreateProjectModal from '@/components/CreateProjectModal';
+import facImage from '@/assets/Dahsboardx/fac.webp';
+import informImage from '@/assets/Dahsboardx/inform.webp';
+import servicesImage from '@/assets/Dahsboardx/ser.webp';
 
 const getProjectTitle = (project, fallback) => {
     return project?.title || project?.name || project?.project_name || fallback;
@@ -15,6 +18,25 @@ const getProjectTitle = (project, fallback) => {
 const getProjectDescription = (project) => {
     return project?.description || project?.summary || project?.details || '';
 };
+
+const getInitials = (value) => {
+    if (!value) return 'DTE';
+    const words = value.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+    return words
+        .slice(0, 2)
+        .map((word) => word[0])
+        .join('')
+        .toUpperCase();
+};
+
+const gradientClasses = [
+    'from-lime-400 to-emerald-600',
+    'from-sky-400 to-indigo-600',
+    'from-amber-400 to-orange-600',
+    'from-rose-400 to-red-600',
+    'from-teal-400 to-cyan-600',
+];
 
 const formatDate = (value) => {
     if (!value) return null;
@@ -35,7 +57,7 @@ const Projects = () => {
     const [shouldPromptCreate, setShouldPromptCreate] = useState(
         Boolean(location.state?.showCreateProject)
     );
-    const [workers, setWorkers] = useState([]);
+    const [teamMembers, setTeamMembers] = useState([]);
     const [clients, setClients] = useState([]);
     const [assignments, setAssignments] = useState({});
     const [assignmentSaving, setAssignmentSaving] = useState({});
@@ -63,7 +85,7 @@ const Projects = () => {
         const fetchByColumn = async (column, value) => {
             return await supabase
                 .from('projects')
-                .select('*')
+                .select('*, project_assignments (worker_id)')
                 .eq(column, value)
                 .order('created_at', { ascending: false });
         };
@@ -77,7 +99,7 @@ const Projects = () => {
         } else if (role === 'worker') {
             response = await supabase
                 .from('project_assignments')
-                .select('project:projects(*)')
+                .select('project:projects(*, project_assignments (worker_id))')
                 .eq('worker_id', userId)
                 .order('created_at', { ascending: false });
         } else if (clientId) {
@@ -108,20 +130,24 @@ const Projects = () => {
         setLoading(false);
     }, [clientId, userId, role]);
 
-    const fetchWorkers = useCallback(async () => {
-        if (!isAdmin) return;
-        const { data, error: fetchError } = await supabase
+    const fetchTeamMembers = useCallback(async (memberIds = []) => {
+        let query = supabase
             .from('profiles')
             .select('id, full_name, email, role')
-            .eq('role', 'worker')
-            .order('created_at', { ascending: false });
+            .in('role', ['worker', 'admin']);
+
+        if (memberIds.length) {
+            query = query.in('id', memberIds);
+        }
+
+        const { data, error: fetchError } = await query.order('created_at', { ascending: false });
 
         if (fetchError) {
-            console.error('Error loading workers:', fetchError);
+            console.error('Error loading team members:', fetchError);
             return;
         }
-        setWorkers(data || []);
-    }, [isAdmin]);
+        setTeamMembers(data || []);
+    }, []);
 
     const fetchClients = useCallback(async () => {
         if (!isAdmin) return;
@@ -141,9 +167,21 @@ const Projects = () => {
     }, [fetchProjects]);
 
     useEffect(() => {
-        fetchWorkers();
         fetchClients();
-    }, [fetchWorkers, fetchClients]);
+    }, [fetchClients]);
+
+    useEffect(() => {
+        if (isAdmin) {
+            fetchTeamMembers();
+            return;
+        }
+        const memberIds = Array.from(new Set(Object.values(assignments).flat()));
+        if (memberIds.length) {
+            fetchTeamMembers(memberIds);
+        } else {
+            setTeamMembers([]);
+        }
+    }, [assignments, fetchTeamMembers, isAdmin]);
 
     useEffect(() => {
         if (location.state?.showCreateProject) {
@@ -176,7 +214,6 @@ const Projects = () => {
     );
 
     useEffect(() => {
-        if (!isAdmin) return;
         const map = {};
         projects.forEach((project) => {
             const ids = (project?.project_assignments || [])
@@ -185,7 +222,7 @@ const Projects = () => {
             if (project?.id) map[project.id] = ids;
         });
         setAssignments(map);
-    }, [isAdmin, projects]);
+    }, [projects]);
 
     const handleAssignmentsChange = async (projectId, nextIds) => {
         if (!projectId) return;
@@ -247,6 +284,33 @@ const Projects = () => {
         return t('dashboard.projects.subtitle');
     }, [isAdmin, isWorker, isClient, t]);
 
+    const actionCards = useMemo(
+        () => [
+            {
+                key: 'services',
+                label: t('dashboard.projects.detail.tabs.services'),
+                description: t('dashboard.projects.cards.services'),
+                image: servicesImage,
+                suffix: 'services',
+            },
+            {
+                key: 'reports',
+                label: t('dashboard.projects.detail.tabs.reports'),
+                description: t('dashboard.projects.cards.reports'),
+                image: informImage,
+                suffix: 'reports',
+            },
+            {
+                key: 'invoices',
+                label: t('dashboard.projects.detail.tabs.invoices'),
+                description: t('dashboard.projects.cards.invoices'),
+                image: facImage,
+                suffix: 'invoices',
+            },
+        ],
+        [t]
+    );
+
     return (
         <div className="font-product text-neutral-900 pb-16">
             <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -299,111 +363,144 @@ const Projects = () => {
                     )}
                 </div>
             ) : (
-                <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden">
+                <>
                     {projects.map((project, index) => {
                         const projectId = project?.id ?? project?.uuid ?? project?.project_id;
                         const projectKey = projectId ?? index;
                         const createdAt = formatDate(project?.created_at);
                         const status = project?.status || project?.stage || project?.state;
+                        const title = getProjectTitle(project, t('dashboard.projects.untitled'));
                         const clientLabel = project?.clients
                             ? project.clients.company_name || project.clients.full_name || project.clients.email
                             : null;
                         const assignedIds = assignments[project?.id] || [];
                         const assignedCount = assignedIds.length;
-                        const isLast = index === projects.length - 1;
+                        const colorClass = gradientClasses[index % gradientClasses.length];
+                        const projectAvatar =
+                            project?.profile_image_url || project?.avatar_url || project?.logo_url;
+                        const projectTeam = assignedIds
+                            .map((id) => teamMembers.find((member) => member.id === id))
+                            .filter(Boolean);
 
                         return (
                             <div
                                 key={projectKey}
-                                role="button"
-                                tabIndex={projectId ? 0 : -1}
-                                onClick={() => {
-                                    if (projectId) {
-                                        navigate(`/dashboard/projects/${projectId}`);
-                                    }
-                                }}
-                                onKeyDown={(event) => {
-                                    if (!projectId) return;
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                        event.preventDefault();
-                                        navigate(`/dashboard/projects/${projectId}`);
-                                    }
-                                }}
-                                className={`flex flex-col gap-3 px-4 py-3 sm:px-5 sm:py-4 ${
-                                    isLast ? '' : 'border-b border-neutral-200'
-                                } ${projectId ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
+                                className="mb-6 w-full rounded-[10px] bg-[#D9D9D9] overflow-hidden grid grid-cols-2 gap-[5px] p-2 md:flex md:flex-row min-h-[220px] md:gap-0 transition-shadow hover:shadow-lg"
                             >
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <div className="flex flex-col gap-1">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-xs uppercase tracking-[0.2em] text-neutral-400">
-                                                {t('dashboard.projects.projectLabel', { id: project?.id || projectKey })}
-                                            </span>
-                                            {status && (
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600">
-                                                    {status}
-                                                </span>
+                                {/* LEFT SECTION: Project Info */}
+                                <div className="col-span-1 h-[208px] md:h-auto p-6 flex flex-col items-center justify-center text-center md:flex-1 md:items-stretch md:justify-center md:text-left md:p-8 relative md:border-r border-white/20">
+                                    <div className="flex flex-col items-center gap-4 md:flex-row md:gap-6">
+                                        {/* Avatar */}
+                                        <div
+                                            role="button"
+                                            tabIndex={projectId ? 0 : -1}
+                                            onClick={() => projectId && navigate(`/dashboard/projects/${projectId}`)}
+                                            className={`relative shrink-0 ${projectId ? 'cursor-pointer' : ''}`}
+                                        >
+                                            {projectAvatar ? (
+                                                <img
+                                                    src={projectAvatar}
+                                                    alt={title}
+                                                    className="h-24 w-24 md:h-28 md:w-28 rounded-full object-cover shadow-sm bg-white"
+                                                />
+                                            ) : (
+                                                <div
+                                                    className={`flex h-24 w-24 md:h-28 md:w-28 items-center justify-center rounded-full bg-gradient-to-br ${colorClass} text-2xl font-bold text-black shadow-sm`}
+                                                >
+                                                    {getInitials(title)}
+                                                </div>
                                             )}
                                         </div>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-semibold text-neutral-900">
-                                                {getProjectTitle(project, t('dashboard.projects.untitled'))}
-                                            </span>
-                                            {createdAt && (
-                                                <span className="text-xs text-neutral-400">
-                                                    {t('dashboard.projects.createdAt', { date: createdAt })}
-                                                </span>
-                                            )}
-                                        </div>
-                                        {getProjectDescription(project) && (
-                                            <p className="text-sm text-neutral-500 leading-snug">
-                                                {getProjectDescription(project)}
-                                            </p>
-                                        )}
-                                        {isAdmin && clientLabel && (
-                                            <p className="text-xs text-neutral-500">
-                                                {t('dashboard.projects.clientLabel')}: {clientLabel}
-                                            </p>
-                                        )}
-                                    </div>
-                                    {isAdmin && (
-                                        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600">
-                                                {t('dashboard.projects.assignedSummary', { count: assignedCount })}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={(event) => {
-                                                    event.stopPropagation();
-                                                    openTeamModal(project);
-                                                }}
-                                                onKeyDown={(event) => event.stopPropagation()}
-                                                className="inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 px-3 py-1.5 text-[11px] font-semibold text-neutral-700 hover:bg-neutral-50 transition"
+
+                                        {/* Title & Team */}
+                                        <div className="flex flex-col gap-3 items-center md:items-start md:gap-4">
+                                            <h3
+                                                onClick={() => projectId && navigate(`/dashboard/projects/${projectId}`)}
+                                                className={`text-xl md:text-3xl font-bold text-neutral-800 leading-tight ${projectId ? 'cursor-pointer hover:text-neutral-600 transition-colors' : ''}`}
                                             >
-                                                <Users size={13} />
-                                                {t('dashboard.projects.assignButton')}
-                                            </button>
+                                                {title}
+                                            </h3>
+
+                                            <div className="flex flex-col items-center md:items-start gap-1">
+                                                <span className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">
+                                                    {t('dashboard.projects.teamLabel') || 'Equipo'}
+                                                </span>
+                                                <div className="flex items-center -space-x-2">
+                                                    {projectTeam.slice(0, 4).map((member) => {
+                                                        const label = member.full_name || member.email || member.id;
+                                                        return (
+                                                            <div
+                                                                key={member.id}
+                                                                className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-white text-[10px] font-bold text-neutral-700 shadow-sm"
+                                                                title={label}
+                                                            >
+                                                                {getInitials(label)}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {assignedCount > 4 && (
+                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-neutral-100 text-[10px] font-bold text-neutral-500 shadow-sm">
+                                                            +{assignedCount - 4}
+                                                        </div>
+                                                    )}
+                                                    {isAdmin && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                openTeamModal(project);
+                                                            }}
+                                                            className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 hover:bg-[#e4e4e4] hover:text-black transition shadow-sm"
+                                                            aria-label={t('dashboard.projects.assignButton')}
+                                                        >
+                                                            <Plus size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                                {!isAdmin && (
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {status && (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-neutral-100 text-neutral-600">
-                                                {status}
-                                            </span>
-                                        )}
-                                        {createdAt && (
-                                            <span className="text-xs text-neutral-400">
-                                                {t('dashboard.projects.createdAt', { date: createdAt })}
-                                            </span>
-                                        )}
                                     </div>
-                                )}
+                                </div>
+
+                                {/* RIGHT SECTION: Action Cards */}
+                                <div className="contents md:flex md:w-auto md:min-w-[450px] gap-2 ">
+                                    {actionCards.map(({ key, label, description, image, suffix }) => (
+                                        <div
+                                            key={key}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (projectId) {
+                                                    navigate(`/dashboard/projects/${projectId}/${suffix}`);
+                                                }
+                                            }}
+                                            className="h-[208px] md:h-auto rounded-[10px] group relative flex flex-col items-center justify-center bg-[#EBEBEB] p-4 md:flex-1 md:min-w-[140px] text-center "
+                                        >
+                                            <div className="mb-3 transition-transform duration-300 group-hover:scale-105">
+                                                <img
+                                                    src={image}
+                                                    alt={label}
+                                                    className="h-16 w-auto md:h-20 object-contain opacity-80 group-hover:opacity-100 transition-opacity"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <h4 className="text-sm md:text-base font-medium text-neutral-800">
+                                                    {label}
+                                                </h4>
+                                                <p className="mt-1 hidden md:block text-[10px] text-neutral-500 leading-tight max-w-[120px]">
+                                                    {description}
+                                                </p>
+                                                {/* Mobile Description Check */}
+                                                <p className="mt-1 md:hidden text-[10px] text-neutral-500 leading-tight max-w-[100px]">
+                                                    {description}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         );
                     })}
-                </div>
+                </>
             )}
 
             <CreateProjectModal
@@ -445,27 +542,35 @@ const Projects = () => {
                                 </div>
 
                                 <div className="mt-5 space-y-2">
-                                    {workers.map((worker) => {
-                                        const label = worker.full_name || worker.email || worker.id;
-                                        const isSelected = teamSelection.includes(worker.id);
+                                    {teamMembers.map((member) => {
+                                        const label = member.full_name || member.email || member.id;
+                                        const isSelected = teamSelection.includes(member.id);
+                                        const roleLabel =
+                                            member.role === 'admin'
+                                                ? t('dashboard.projects.teamModal.roleAdmin')
+                                                : t('dashboard.projects.teamModal.roleWorker');
                                         return (
                                             <button
-                                                key={worker.id}
+                                                key={member.id}
                                                 type="button"
                                                 onClick={() => {
                                                     setTeamSelection((prev) =>
-                                                        prev.includes(worker.id)
-                                                            ? prev.filter((id) => id !== worker.id)
-                                                            : [...prev, worker.id]
+                                                        prev.includes(member.id)
+                                                            ? prev.filter((id) => id !== member.id)
+                                                            : [...prev, member.id]
                                                     );
                                                 }}
-                                                className={`w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition ${
-                                                    isSelected
-                                                        ? 'border-black bg-black text-white'
-                                                        : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
-                                                }`}
+                                                className={`w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition ${isSelected
+                                                    ? 'border-black bg-black text-white'
+                                                    : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
+                                                    }`}
                                             >
-                                                <span className="font-medium">{label}</span>
+                                                <span className="font-medium">
+                                                    {label}
+                                                    <span className="ml-2 text-[10px] uppercase tracking-[0.2em] text-current/70">
+                                                        {roleLabel}
+                                                    </span>
+                                                </span>
                                                 <span className="text-xs uppercase tracking-[0.2em]">
                                                     {isSelected
                                                         ? t('dashboard.projects.teamModal.selected')

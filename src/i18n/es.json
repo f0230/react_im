@@ -342,19 +342,27 @@
       "untitled": "Proyecto sin título",
       "projectLabel": "Proyecto",
       "clientLabel": "Cliente",
-      "assignedWorkers": "Workers asignados",
+      "assignedWorkers": "Equipo asignado",
       "assignedSummary": "{{count}} asignados",
       "assignButton": "Agregar equipo",
+      "teamLabel": "Equipo",
       "assignSaving": "Guardando asignaciones...",
       "assignError": "No pudimos actualizar las asignaciones.",
       "teamModal": {
         "title": "Agregar equipo",
-        "description": "Selecciona los workers que participan en este proyecto.",
+        "description": "Selecciona las personas que participan en este proyecto.",
         "select": "Seleccionar",
         "selected": "Asignado",
-        "close": "Guardar y cerrar"
+        "close": "Guardar y cerrar",
+        "roleAdmin": "Admin",
+        "roleWorker": "Worker"
       },
       "createdAt": "Creado: {{date}}",
+      "cards": {
+        "services": "Tareas, entregables y próximos pasos.",
+        "reports": "Reportes de avances y resultados.",
+        "invoices": "Historial de facturas y pagos."
+      },
       "create": {
         "title": "Crear proyecto",
         "firstTitle": "Crea tu ",
