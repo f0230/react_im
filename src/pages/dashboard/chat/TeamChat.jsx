@@ -708,7 +708,7 @@ const TeamChat = () => {
 
                             <div
                                 className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
-                                style={{ paddingBottom: 'calc(1rem + var(--keyboard-offset, 0px))' }}
+                                style={{ paddingBottom: '1rem' }}
                             >
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
@@ -721,9 +721,9 @@ const TeamChat = () => {
                                     const authorName = isOutbound
                                         ? 'Tú'
                                         : message?.author?.full_name
-                                            || message?.author_name
-                                            || message?.author?.email
-                                            || 'Equipo';
+                                        || message?.author_name
+                                        || message?.author?.email
+                                        || 'Equipo';
                                     const audioUrl = message?.resolved_media_url || message?.media_url;
                                     const isAudio = message?.message_type === 'audio' && audioUrl;
                                     return (
@@ -761,7 +761,6 @@ const TeamChat = () => {
 
                             <div
                                 className="border-t border-black/5 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0 bg-white sticky bottom-0 shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
-                                style={{ bottom: 'var(--keyboard-offset, 0px)' }}
                             >
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">

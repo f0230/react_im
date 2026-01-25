@@ -1,68 +1,43 @@
 import { useEffect } from 'react';
 
-const getViewportMetrics = () => {
-    if (typeof window === 'undefined') return { height: 0, offsetTop: 0 };
-    const viewport = window.visualViewport;
-    return {
-        height: viewport?.height || window.innerHeight,
-        offsetTop: viewport?.offsetTop || 0,
-    };
-};
-
-const isTextInputFocused = () => {
-    if (typeof document === 'undefined') return false;
-    const active = document.activeElement;
-    if (!active) return false;
-    const tag = active.tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || active.isContentEditable;
-};
-
 const useViewportHeight = (enabled = true) => {
     useEffect(() => {
         if (!enabled || typeof window === 'undefined') return undefined;
 
-        const root = document.documentElement;
+        const setHeight = () => {
+            const viewport = window.visualViewport;
+            // Fallback to innerHeight if visualViewport is not supported (older browsers)
+            // But for modern mobile, visualViewport.height tells us the height *above* the keyboard.
+            const height = viewport ? viewport.height : window.innerHeight;
+
+            // Set the variable to the current visible height
+            document.documentElement.style.setProperty('--app-height', `${height}px`);
+
+            // We can also track offsetTop if we ever need to correct fixed elements, 
+            // but for a full-screen flex layout, just height is usually enough 
+            // if we don't try to be clever with fixed positioning relative to the bottom.
+        };
+
         const viewport = window.visualViewport;
-        let baseHeight = getViewportMetrics().height;
 
-        const setVars = (height, keyboardOffset = 0) => {
-            root.style.setProperty('--app-height', `${height}px`);
-            root.style.setProperty('--keyboard-offset', `${Math.max(0, keyboardOffset)}px`);
-        };
+        setHeight();
 
-        const update = () => {
-            const { height, offsetTop } = getViewportMetrics();
-            if (isTextInputFocused()) {
-                const keyboardOffset = baseHeight - height - offsetTop;
-                setVars(baseHeight, keyboardOffset);
-                return;
-            }
-            baseHeight = height;
-            setVars(baseHeight, 0);
-        };
+        // Resize happens when keyboard opens/closes or rotation
+        window.addEventListener('resize', setHeight);
+        window.addEventListener('orientationchange', setHeight);
 
-        update();
-
-        const handleFocusOut = () => {
-            // Give the viewport a moment to settle after the keyboard closes.
-            window.setTimeout(update, 50);
-        };
-
-        window.addEventListener('resize', update);
-        window.addEventListener('orientationchange', update);
-        document.addEventListener('focusin', update);
-        document.addEventListener('focusout', handleFocusOut);
+        // This is the critical one for virtual keyboard
         if (viewport) {
-            viewport.addEventListener('resize', update);
+            viewport.addEventListener('resize', setHeight);
+            viewport.addEventListener('scroll', setHeight); // iOS sometimes needs this
         }
 
         return () => {
-            window.removeEventListener('resize', update);
-            window.removeEventListener('orientationchange', update);
-            document.removeEventListener('focusin', update);
-            document.removeEventListener('focusout', handleFocusOut);
+            window.removeEventListener('resize', setHeight);
+            window.removeEventListener('orientationchange', setHeight);
             if (viewport) {
-                viewport.removeEventListener('resize', update);
+                viewport.removeEventListener('resize', setHeight);
+                viewport.removeEventListener('scroll', setHeight);
             }
         };
     }, [enabled]);
