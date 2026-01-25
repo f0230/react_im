@@ -740,7 +740,8 @@ const Inbox = () => {
                             </div>
 
                             <div
-                                className="border-t border-black/5 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0 bg-white sticky bottom-0 shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
+                                className="border-t border-black/5 p-4 shrink-0 bg-white sticky bottom-0 shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
+                                style={{ paddingBottom: 'var(--bottom-spacing, 1rem)' }}
                             >
                                 <div className="space-y-3">
                                     <div className="flex flex-col gap-3">
