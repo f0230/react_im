@@ -11,7 +11,11 @@ export default function handler(req, res) {
         },
         SUPABASE: {
             URL: (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL) ? '✅' : '❌',
-            SERVICE_KEY: (process.env.SUPABASE_SERVICE_KEY || process.env.SERVICE_ROLE_KEY) ? '✅' : '❌ (Falta para guardar mensajes)',
+            SERVICE_KEY: (
+                process.env.SUPABASE_SERVICE_ROLE_KEY ||
+                process.env.SUPABASE_SERVICE_KEY ||
+                process.env.SERVICE_ROLE_KEY
+            ) ? '✅' : '❌ (Falta para guardar mensajes)',
         },
         N8N: {
             WEBHOOK_URL: process.env.N8N_WEBHOOK_URL ? '✅' : '❌ (No llegará a n8n)',

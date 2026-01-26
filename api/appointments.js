@@ -154,6 +154,10 @@ export default async function handler(req, res) {
 
       const { data, error } = await query;
       if (error) {
+        console.error('Failed to create appointment', {
+          table,
+          error: error.message,
+        });
         return res.status(500).json({ error: 'Failed to create appointment', detail: error.message });
       }
 
@@ -185,6 +189,11 @@ export default async function handler(req, res) {
 
       const { data, error } = await query;
       if (error) {
+        console.error('Failed to update appointment', {
+          table,
+          match,
+          error: error.message,
+        });
         return res.status(500).json({ error: 'Failed to update appointment', detail: error.message });
       }
 
@@ -208,6 +217,11 @@ export default async function handler(req, res) {
 
       const { data, error } = await query;
       if (error) {
+        console.error('Failed to delete appointment', {
+          table,
+          match,
+          error: error.message,
+        });
         return res.status(500).json({ error: 'Failed to delete appointment', detail: error.message });
       }
 
