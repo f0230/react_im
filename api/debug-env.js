@@ -15,6 +15,7 @@ export default function handler(req, res) {
         },
         N8N: {
             WEBHOOK_URL: process.env.N8N_WEBHOOK_URL ? '✅' : '❌ (No llegará a n8n)',
+            WEBHOOK_URL_2: process.env.N8N_WEBHOOK_URL_2 ? '✅' : '❌ (No llegará a n8n)',
         },
         NODE_ENV: process.env.NODE_ENV,
     });

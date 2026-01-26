@@ -12,7 +12,7 @@ function parseJsonBody(req) {
 }
 
 async function forwardToN8n(payload) {
-  const webhookUrl = process.env.N8N_WEBHOOK_URL;
+  const webhookUrl = process.env.N8N_WEBHOOK_URL_2;
   if (!webhookUrl) return;
 
   try {
