@@ -373,8 +373,8 @@
         "fields": {
           "clientLabel": "Cliente",
           "clientPlaceholder": "Selecciona un cliente",
-          "titleLabel": "Nombre del proyecto",
-          "titlePlaceholder": "Ej: Marketing digital para mi empresa",
+          "titleLabel": "Nombre",
+          "titlePlaceholder": "Nombre de tu empresa, projecto o negocio",
           "needTypeLabel": "¿En qué te podemos ayudar?",
           "needTypePlaceholder": "Selecciona una opción",
           "needTypeOptions": {

@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import hubspotLeadHandler from './hubspot-lead.js';
+import projectCreatedHandler from './project-created.js';
+import clientWelcomeEmailHandler from './client-welcome-email.js';
 
 dotenv.config();
 
@@ -13,6 +15,8 @@ app.use(express.json());
 // Luckily, Vercel default handlers (req, res) are compatible with Express middleware signature.
 
 app.post('/api/hubspot-lead', hubspotLeadHandler);
+app.post('/api/project-created', projectCreatedHandler);
+app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

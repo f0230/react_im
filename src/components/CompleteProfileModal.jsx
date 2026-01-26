@@ -28,6 +28,13 @@ const SORTED_COUNTRY_CODES = [...COUNTRY_CODE_OPTIONS]
     .map((option) => option.value)
     .sort((a, b) => b.length - a.length);
 
+const SORTED_COUNTRY_CODE_DIGITS = SORTED_COUNTRY_CODES
+    .map((code) => ({
+        code,
+        digits: code.replace(/\D/g, ''),
+    }))
+    .sort((a, b) => b.digits.length - a.digits.length);
+
 const parsePhoneForForm = (phone, fallbackCountryCode = DEFAULT_COUNTRY_CODE) => {
     if (!phone) {
         return { countryCode: fallbackCountryCode, number: '' };
@@ -35,9 +42,19 @@ const parsePhoneForForm = (phone, fallbackCountryCode = DEFAULT_COUNTRY_CODE) =>
 
     const normalized = String(phone).trim().replace(/[^\d+]/g, '');
     if (!normalized.startsWith('+')) {
+        const digitsOnly = normalized.replace(/\D/g, '');
+        const match = SORTED_COUNTRY_CODE_DIGITS.find((item) =>
+            digitsOnly.startsWith(item.digits)
+        );
+        if (match) {
+            return {
+                countryCode: match.code,
+                number: digitsOnly.slice(match.digits.length).replace(/\D/g, ''),
+            };
+        }
         return {
             countryCode: fallbackCountryCode,
-            number: normalized.replace(/\D/g, ''),
+            number: digitsOnly,
         };
     }
 
@@ -56,8 +73,10 @@ const parsePhoneForForm = (phone, fallbackCountryCode = DEFAULT_COUNTRY_CODE) =>
 };
 
 const formatPhoneForSave = (countryCode, number) => {
-    const digits = String(number || '').replace(/\D/g, '');
-    return `${countryCode}${digits}`;
+    const digits = String(number || '').replace(/\D/g, '').replace(/^0+/, '');
+    if (!digits) return '';
+    const countryDigits = String(countryCode || '').replace(/\D/g, '');
+    return `${countryDigits}${digits}`;
 };
 
 const sendProfileCompleteEmail = async ({ email, full_name, phone }) => {
@@ -70,6 +89,19 @@ const sendProfileCompleteEmail = async ({ email, full_name, phone }) => {
         });
     } catch (err) {
         console.warn('Profile email failed:', err);
+    }
+};
+
+const sendClientWelcomeEmail = async ({ email, full_name }) => {
+    if (!email) return;
+    try {
+        await fetch('/api/client-welcome-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, full_name }),
+        });
+    } catch (err) {
+        console.warn('Client welcome email failed:', err);
     }
 };
 
@@ -127,6 +159,7 @@ const CompleteProfileModal = ({ isOpen, onClose, onComplete }) => {
             if (fetchError) throw fetchError;
 
             let result;
+            let createdNewClient = false;
             if (existingClient) {
                 result = await supabase
                     .from('clients')
@@ -136,6 +169,7 @@ const CompleteProfileModal = ({ isOpen, onClose, onComplete }) => {
                     })
                     .eq('id', existingClient.id);
             } else {
+                createdNewClient = true;
                 result = await supabase
                     .from('clients')
                     .insert({
@@ -161,6 +195,12 @@ const CompleteProfileModal = ({ isOpen, onClose, onComplete }) => {
                 full_name: formData.full_name,
                 phone,
             });
+            if (createdNewClient) {
+                void sendClientWelcomeEmail({
+                    email: user.email,
+                    full_name: formData.full_name,
+                });
+            }
             onClose();
             if (onComplete) {
                 onComplete();

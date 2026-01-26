@@ -81,6 +81,45 @@ const CreateProjectModal = ({
         return clients.find((item) => item.id === formData.client_id) || null;
     }, [clients, formData.client_id, isAdmin]);
 
+    const normalizePhoneForWhatsapp = (value) => {
+        const digits = String(value || '').replace(/\D/g, '');
+        return digits || null;
+    };
+
+    const buildWhatsappMessage = (project) => {
+        const clientSnapshot = isAdmin ? selectedClient : client;
+        const name = clientSnapshot?.full_name || clientSnapshot?.company_name || '';
+        const title =
+            project?.title || project?.name || project?.project_name || formData.title.trim();
+
+        const greetingName = name ? ` ${name}` : '';
+        const titleLine = title ? ` sobre “${title}”` : '';
+
+        return `Hola${greetingName}! Ya creamos tu proyecto${titleLine} en Grupo DTE. Para avanzar, ¿querés coordinar una breve llamada? Decime qué día y horario te sirve y lo agendamos.`;
+    };
+
+    const sendProjectCreatedWhatsapp = async (project) => {
+        const clientSnapshot = isAdmin ? selectedClient : client;
+        const rawPhone =
+            clientSnapshot?.phone || project?.client_phone || project?.phone || null;
+        const to = normalizePhoneForWhatsapp(rawPhone);
+        if (!to) return;
+
+        const text = buildWhatsappMessage(project);
+        if (!text) return;
+
+        try {
+            await fetch('/api/whatsapp-send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, text }),
+                keepalive: true,
+            });
+        } catch (err) {
+            console.warn('WhatsApp project message failed:', err);
+        }
+    };
+
     const buildProjectWebhookPayload = (project) => {
         const clientSnapshot = isAdmin ? selectedClient : client;
         const resolvedTitle =
@@ -243,6 +282,7 @@ const CreateProjectModal = ({
 
                     if (!insertError) {
                         void sendProjectCreatedWebhook(data);
+                        void sendProjectCreatedWhatsapp(data);
                         if (onCreated) {
                             onCreated(data);
                         } else {
