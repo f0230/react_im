@@ -24,6 +24,24 @@ const parseJsonBody = (req) => {
   return null;
 };
 
+const sendViaResendApi = async ({ apiKey, payload }) => {
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { error: data, status: response.status };
+  }
+
+  return { data };
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -98,6 +116,15 @@ export default async function handler(req, res) {
 
     if (notifyTo && notifyTo !== email) {
       payload.bcc = [notifyTo];
+    }
+
+    if (templateId) {
+      const { data, error, status } = await sendViaResendApi({ apiKey, payload });
+      if (error) {
+        console.error('Resend error:', error);
+        return res.status(status || 500).json({ error: 'Failed to send email' });
+      }
+      return res.status(200).json({ ok: true, id: data?.id });
     }
 
     const { data, error } = await resend.emails.send(payload);
