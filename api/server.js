@@ -5,6 +5,7 @@ import hubspotLeadHandler from './hubspot-lead.js';
 import projectCreatedHandler from './project-created.js';
 import clientWelcomeEmailHandler from './client-welcome-email.js';
 import appointmentsAvailabilityHandler from './appointments-availability.js';
+import appointmentsHandler from './appointments.js';
 
 dotenv.config();
 
@@ -20,6 +21,10 @@ app.post('/api/project-created', projectCreatedHandler);
 app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.get('/api/appointments-availability', appointmentsAvailabilityHandler);
 app.post('/api/appointments-availability', appointmentsAvailabilityHandler);
+app.post('/api/appointments', appointmentsHandler);
+app.patch('/api/appointments', appointmentsHandler);
+app.put('/api/appointments', appointmentsHandler);
+app.delete('/api/appointments', appointmentsHandler);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {

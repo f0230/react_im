@@ -17,6 +17,7 @@ const PoliticaPrivacidad = lazy(() => import("@/pages/PoliticaPrivacidad"));
 const Development = lazy(() => import("@/pages/Development"));
 const LandingDTE = lazy(() => import("@/pages/LandingDTE"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
+const Registro = lazy(() => import("@/pages/Registro"));
 const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
 const Clients = lazy(() => import("@/pages/dashboard/crm/Clients"));
 const ClientDetail = lazy(() => import("@/pages/dashboard/crm/ClientDetail"));
@@ -75,6 +76,7 @@ const AppContent = () => {
           <Route path="/desarrollo" element={<Development />} />
           <Route path="/dte" element={<LandingDTE />} />
           <Route path="/admin" element={<AdminLogin />} />
+          <Route path="/registro" element={<Registro />} />
 
           {/* Private Portal Routes */}
             <Route path="/dashboard" element={<PortalLayout />}>

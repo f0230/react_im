@@ -32,6 +32,8 @@ SUPABASE_SERVICE_KEY=...
 
 ## 3) Supabase tables
 Run the SQL in `supabase_schema_whatsapp.sql`.
+Then run `supabase/whatsapp-ai-toggle.sql` to add the `ai_enabled` toggle
+with default `true` (bot ON).
 
 ## 4) Endpoints
 - GET `/api/whatsapp-webhook`
@@ -41,6 +43,16 @@ Run the SQL in `supabase_schema_whatsapp.sql`.
   - Stores them in `whatsapp_messages` and updates `whatsapp_threads` (if Supabase env vars exist).
 - POST `/api/whatsapp-send`
   - Sends outbound messages.
+- POST `/api/whatsapp-ai-toggle`
+  - Toggles AI bot per WhatsApp thread and optionally notifies n8n.
+
+## 5) AI tool description (agent)
+Use this tool ONLY when the user explicitly asks to stop or resume the bot.
+It updates `whatsapp_threads.ai_enabled` and notifies n8n for orchestration.
+
+Name: `whatsapp_ai_toggle`
+Description: "Disable or enable the WhatsApp AI bot for a specific thread ONLY when the user explicitly requests it. Do not change the bot state proactively. Required: wa_id. Optional: action ('disable'|'enable') or ai_enabled (boolean), client_id, thread_id, reason."
+Endpoint: `POST /api/whatsapp-ai-toggle`
 
 ### Example: send a text message
 ```
