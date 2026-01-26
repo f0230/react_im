@@ -81,6 +81,65 @@ const CreateProjectModal = ({
         return clients.find((item) => item.id === formData.client_id) || null;
     }, [clients, formData.client_id, isAdmin]);
 
+    const buildProjectWebhookPayload = (project) => {
+        const clientSnapshot = isAdmin ? selectedClient : client;
+        const resolvedTitle =
+            project?.title || project?.name || project?.project_name || formData.title.trim();
+        const description = formData.description.trim();
+
+        return {
+            event: 'project_created',
+            project: {
+                id: project?.id ?? null,
+                title: resolvedTitle || null,
+                name: project?.name ?? null,
+                project_name: project?.project_name ?? null,
+                need_type: project?.need_type ?? formData.need_type ?? null,
+                objective: project?.objective ?? formData.objective ?? null,
+                description: project?.description ?? (description || null),
+                urgency: project?.urgency ?? formData.urgency ?? null,
+                urgency_date:
+                    project?.urgency_date ??
+                    (formData.urgency === 'specific_date' ? formData.urgency_date || null : null),
+                budget_range: project?.budget_range ?? formData.budget_range ?? null,
+                client_id: project?.client_id ?? clientSnapshot?.id ?? null,
+                user_id: project?.user_id ?? clientSnapshot?.user_id ?? user?.id ?? null,
+                created_at: project?.created_at ?? null,
+            },
+            client: clientSnapshot
+                ? {
+                      id: clientSnapshot.id,
+                      company_name: clientSnapshot.company_name || null,
+                      full_name: clientSnapshot.full_name || null,
+                      email: clientSnapshot.email || null,
+                      phone: clientSnapshot.phone || null,
+                      user_id: clientSnapshot.user_id || null,
+                  }
+                : null,
+            actor: {
+                id: user?.id ?? null,
+                role: role ?? null,
+            },
+            source: 'create_project_modal',
+            timestamp: new Date().toISOString(),
+        };
+    };
+
+    const sendProjectCreatedWebhook = async (project) => {
+        if (!project) return;
+        try {
+            const payload = buildProjectWebhookPayload(project);
+            await fetch('/api/project-created', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                keepalive: true,
+            });
+        } catch (err) {
+            console.warn('Project webhook failed:', err);
+        }
+    };
+
     const payloadVariants = useMemo(() => {
         const description = formData.description.trim();
         const payload = {
@@ -183,6 +242,7 @@ const CreateProjectModal = ({
                         .single();
 
                     if (!insertError) {
+                        void sendProjectCreatedWebhook(data);
                         if (onCreated) {
                             onCreated(data);
                         } else {
