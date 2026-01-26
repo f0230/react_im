@@ -282,7 +282,6 @@ const CreateProjectModal = ({
 
                     if (!insertError) {
                         void sendProjectCreatedWebhook(data);
-                        void sendProjectCreatedWhatsapp(data);
                         if (onCreated) {
                             onCreated(data);
                         } else {
