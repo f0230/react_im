@@ -394,7 +394,7 @@ const Projects = () => {
                                         <div
                                             role="button"
                                             tabIndex={projectId ? 0 : -1}
-                                            onClick={() => projectId && navigate(`/dashboard/projects/${projectId}`)}
+                                            onClick={() => projectId && navigate(`/dashboard/services?projectId=${projectId}`)}
                                             className={`relative shrink-0 ${projectId ? 'cursor-pointer' : ''}`}
                                         >
                                             {projectAvatar ? (
@@ -415,7 +415,7 @@ const Projects = () => {
                                         {/* Title & Team */}
                                         <div className="flex flex-col gap-3 items-center md:items-start md:gap-4">
                                             <h3
-                                                onClick={() => projectId && navigate(`/dashboard/projects/${projectId}`)}
+                                                onClick={() => projectId && navigate(`/dashboard/services?projectId=${projectId}`)}
                                                 className={`text-xl md:text-3xl font-bold text-neutral-800 leading-tight ${projectId ? 'cursor-pointer hover:text-neutral-600 transition-colors' : ''}`}
                                             >
                                                 {title}
@@ -470,7 +470,7 @@ const Projects = () => {
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 if (projectId) {
-                                                    navigate(`/dashboard/projects/${projectId}/${suffix}`);
+                                                    navigate(`/dashboard/${suffix}?projectId=${projectId}`);
                                                 }
                                             }}
                                             className="h-[208px] md:h-auto rounded-[10px] group relative flex flex-col items-center justify-center bg-[#EBEBEB] p-4 md:flex-1 md:min-w-[140px] text-center "

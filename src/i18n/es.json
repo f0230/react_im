@@ -4,6 +4,7 @@
     "development": "Desarrollo",
     "portalClients": "Portal Clientes",
     "accessClients": "Acceso Clientes",
+    "scheduleCall": "Agendar Cita",
     "languageLabel": "Idioma"
   },
   "layout": {
@@ -367,7 +368,11 @@
         "title": "Crear proyecto",
         "firstTitle": "Crea tu ",
         "firstTitlePrefix": "Crea tu ",
-        "firstTitleOptions": ["proyecto", "empresa", "negocio"],
+        "firstTitleOptions": [
+          "proyecto",
+          "empresa",
+          "negocio"
+        ],
         "description": "Queremos entender tu necesidad para ayudarte mejor.",
         "close": "Cerrar",
         "fields": {
@@ -493,6 +498,36 @@
       "error": "Error al guardar los datos. Intenta nuevamente.",
       "saving": "Guardando...",
       "cta": "Comenzar ahora"
+    }
+  },
+  "calendar": {
+    "title": "Agenda tu llamada",
+    "description": "Elige un horario para reunirnos y conversar sobre tu proyecto.",
+    "selectDateTime": "Selecciona día y hora",
+    "book": "Reservar",
+    "noSlots": "No hay horarios disponibles para este día.",
+    "back": "Volver al calendario",
+    "enterDetails": "Confirma tus datos",
+    "confirmBooking": "Confirmar reserva",
+    "successTitle": "¡Reserva confirmada!",
+    "successMessage": "Te hemos enviado los detalles a tu correo.",
+    "goToDashboard": "Ir al Dashboard",
+    "errorFetchingSlots": "Error al cargar horarios disponibles.",
+    "bookingSuccess": "¡Cita agendada con éxito!",
+    "bookingError": "Error al agendar la cita. Inténtalo nuevamente."
+  },
+  "form": {
+    "fullName": "Nombre completo",
+    "email": "Correo electrónico",
+    "phone": "Teléfono / WhatsApp",
+    "notes": "Notas adicionales (opcional)"
+  },
+  "admin": {
+    "appointments": {
+      "title": "Citas Agendadas",
+      "subtitle": "Gestiona y visualiza todas las reservas de clientes.",
+      "noAppointments": "No se encontraron citas",
+      "emptyDescription": "Cuando los clientes agenden una llamada, aparecerán aquí."
     }
   }
 }

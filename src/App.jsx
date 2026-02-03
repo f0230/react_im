@@ -22,7 +22,6 @@ const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
 const Clients = lazy(() => import("@/pages/dashboard/crm/Clients"));
 const ClientDetail = lazy(() => import("@/pages/dashboard/crm/ClientDetail"));
 const Projects = lazy(() => import("@/pages/dashboard/projects/Projects"));
-const ProjectDetailLayout = lazy(() => import("@/pages/dashboard/projects/ProjectDetailLayout"));
 const ProjectServices = lazy(() => import("@/pages/dashboard/projects/ProjectServices"));
 const ProjectReports = lazy(() => import("@/pages/dashboard/projects/ProjectReports"));
 const ProjectInvoices = lazy(() => import("@/pages/dashboard/projects/ProjectInvoices"));
@@ -30,6 +29,8 @@ const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
 const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
 const TeamChat = lazy(() => import("@/pages/dashboard/chat/TeamChat"));
 const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
+const ScheduleCall = lazy(() => import("@/pages/ScheduleCall"));
+const AdminAppointments = lazy(() => import("@/pages/AdminAppointments"));
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
 import PortalLayout from "@/layouts/PortalLayout";
@@ -77,20 +78,25 @@ const AppContent = () => {
           <Route path="/dte" element={<LandingDTE />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/schedule-call/:projectId?" element={<ScheduleCall />} />
 
           {/* Private Portal Routes */}
-            <Route path="/dashboard" element={<PortalLayout />}>
-              <Route index element={<DashboardHome />} />
-              <Route path="clients" element={<Clients />} />
-              <Route path="clients/:clientId" element={<ClientDetail />} />
-              <Route path="projects" element={<Projects />} />
-            <Route path="projects/:projectId" element={<ProjectDetailLayout />} />
-            <Route path="projects/:projectId/services" element={<ProjectServices />} />
-            <Route path="projects/:projectId/reports" element={<ProjectReports />} />
-            <Route path="projects/:projectId/invoices" element={<ProjectInvoices />} />
+          <Route path="/dashboard" element={<PortalLayout />}>
+            <Route index element={<DashboardHome />} />
+            <Route path="clients" element={<Clients />} />
+            <Route path="clients/:clientId" element={<ClientDetail />} />
+            <Route path="services" element={<ProjectServices />} />
+            <Route path="reports" element={<ProjectReports />} />
             <Route path="invoices" element={<Invoices />} />
+            <Route path="projects" element={<Projects />} />
+            {/* Redirect old project detail routes to services */}
+            <Route path="projects/:projectId" element={<Navigate to="services" replace />} />
+            <Route path="projects/:projectId/services" element={<Navigate to="/dashboard/services" replace />} />
+            <Route path="projects/:projectId/reports" element={<Navigate to="/dashboard/reports" replace />} />
+            <Route path="projects/:projectId/invoices" element={<Navigate to="/dashboard/invoices" replace />} />
             <Route path="inbox" element={<Inbox />} />
             <Route path="team-chat" element={<TeamChat />} />
+            <Route path="appointments" element={<AdminAppointments />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Settings />} /> {/* Reusing Settings for Profile for now */}
 

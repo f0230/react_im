@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, Settings, MessageSquare, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PopoverPanel from '../components/ui/PopoverPanel';
 import { POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
@@ -13,6 +13,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Mis Proyectos', path: '/dashboard/projects' },
+            { icon: Calendar, label: 'Agendar Cita', path: '/schedule-call' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
         ],
         worker: [
@@ -27,6 +28,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
             { icon: MessageSquare, label: 'Chat interno', path: '/dashboard/team-chat' },
             { icon: MessageSquare, label: 'WhatsApp', path: '/dashboard/inbox' },
+            { icon: Calendar, label: 'Citas', path: '/dashboard/appointments' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/billing' },
             { icon: Settings, label: 'Configuración', path: '/dashboard/settings' },

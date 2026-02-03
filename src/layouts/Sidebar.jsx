@@ -19,22 +19,24 @@ const Sidebar = () => {
     const menuItems = {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
-            { icon: Briefcase, label: 'Mis Proyectos', path: '/dashboard/projects' },
+            { icon: Briefcase, label: 'Servicios', path: '/dashboard/services' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
+            { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-            { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
+            { icon: Briefcase, label: 'Servicios', path: '/dashboard/services' },
             { icon: MessageSquare, label: 'Chat interno', path: '/dashboard/team-chat' },
             { icon: MessageSquare, label: 'WhatsApp', path: '/dashboard/inbox' },
-            { icon: FileText, label: 'Tareas', path: '/dashboard/tasks' },
+            { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
             { icon: MessageSquare, label: 'Chat interno', path: '/dashboard/team-chat' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: FileText, label: 'Facturación', path: '/dashboard/billing' },
+            { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
+            { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
             { icon: Settings, label: 'Configuración', path: '/dashboard/settings' },
         ]
     };

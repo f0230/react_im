@@ -4,6 +4,7 @@
     "development": "Development",
     "portalClients": "Client Portal",
     "accessClients": "Client Access",
+    "scheduleCall": "Schedule Call",
     "languageLabel": "Language"
   },
   "layout": {
@@ -367,7 +368,11 @@
         "title": "Create project",
         "firstTitle": "Create your project",
         "firstTitlePrefix": "Create your ",
-        "firstTitleOptions": ["project", "company", "business"],
+        "firstTitleOptions": [
+          "project",
+          "company",
+          "business"
+        ],
         "description": "Help us understand what you need so we can guide you better.",
         "close": "Close",
         "fields": {
@@ -493,6 +498,36 @@
       "error": "Error saving data. Please try again.",
       "saving": "Saving...",
       "cta": "Start now"
+    }
+  },
+  "calendar": {
+    "title": "Schedule your call",
+    "description": "Choose a time to meet and discuss your project.",
+    "selectDateTime": "Select date and time",
+    "book": "Book",
+    "noSlots": "No slots available for this day.",
+    "back": "Back to calendar",
+    "enterDetails": "Confirm your details",
+    "confirmBooking": "Confirm booking",
+    "successTitle": "Booking confirmed!",
+    "successMessage": "We have sent the details to your email.",
+    "goToDashboard": "Go to Dashboard",
+    "errorFetchingSlots": "Error loading available slots.",
+    "bookingSuccess": "Appointment scheduled successfully!",
+    "bookingError": "Error scheduling appointment. Please try again."
+  },
+  "form": {
+    "fullName": "Full Name",
+    "email": "Email",
+    "phone": "Phone / WhatsApp",
+    "notes": "Additional notes (optional)"
+  },
+  "admin": {
+    "appointments": {
+      "title": "Scheduled Appointments",
+      "subtitle": "Manage and view all client bookings.",
+      "noAppointments": "No appointments found",
+      "emptyDescription": "When clients schedule a call, they will appear here."
     }
   }
 }

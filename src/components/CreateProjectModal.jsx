@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import Stepper from '@/components/Form/Stepper';
@@ -24,6 +25,7 @@ const CreateProjectModal = ({
     clients = [],
 }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const { user, client } = useAuth();
     const isAdmin = role === 'admin';
     const labelClass = 'text-[22px] text-[#000000] text-center block';
@@ -147,13 +149,13 @@ const CreateProjectModal = ({
             },
             client: clientSnapshot
                 ? {
-                      id: clientSnapshot.id,
-                      company_name: clientSnapshot.company_name || null,
-                      full_name: clientSnapshot.full_name || null,
-                      email: clientSnapshot.email || null,
-                      phone: clientSnapshot.phone || null,
-                      user_id: clientSnapshot.user_id || null,
-                  }
+                    id: clientSnapshot.id,
+                    company_name: clientSnapshot.company_name || null,
+                    full_name: clientSnapshot.full_name || null,
+                    email: clientSnapshot.email || null,
+                    phone: clientSnapshot.phone || null,
+                    user_id: clientSnapshot.user_id || null,
+                }
                 : null,
             actor: {
                 id: user?.id ?? null,
@@ -286,6 +288,8 @@ const CreateProjectModal = ({
                             onCreated(data);
                         } else {
                             onClose();
+                            // Redirect to calendar booking
+                            navigate(`/schedule-call/${data.id}`);
                         }
                         setLoading(false);
                         return;
@@ -401,27 +405,27 @@ const CreateProjectModal = ({
 
                         <div className="max-w-[600px] mx-auto w-full flex flex-col items-center justify-center  p-6 sm:p-12 leading-none">
                             <div className="mb-6 text-center ">
-                            <h2 className="text-[25px] md:text-[35px] lg:text-[45px] font-bold text-[#000000] mt-4 leading-none">
-                                {isFirstProject ? (
-                                    rotatingTitleOptions.length ? (
-                                        <span className="inline-flex flex-wrap items-baseline justify-center gap-2">
-                                            <span>{firstTitlePrefix}</span>
-                                            <RotatingText
-                                                texts={rotatingTitleOptions}
-                                                rotationInterval={2200}
-                                                splitBy="words"
-                                                staggerDuration={0.03}
-                                                transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-                                                mainClassName="inline-flex font-bold"
-                                            />
-                                        </span>
+                                <h2 className="text-[25px] md:text-[35px] lg:text-[45px] font-bold text-[#000000] mt-4 leading-none">
+                                    {isFirstProject ? (
+                                        rotatingTitleOptions.length ? (
+                                            <span className="inline-flex flex-wrap items-baseline justify-center gap-2">
+                                                <span>{firstTitlePrefix}</span>
+                                                <RotatingText
+                                                    texts={rotatingTitleOptions}
+                                                    rotationInterval={2200}
+                                                    splitBy="words"
+                                                    staggerDuration={0.03}
+                                                    transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                                                    mainClassName="inline-flex font-bold"
+                                                />
+                                            </span>
+                                        ) : (
+                                            firstTitleFallback
+                                        )
                                     ) : (
-                                        firstTitleFallback
-                                    )
-                                ) : (
-                                    t('dashboard.projects.create.title')
-                                )}
-                            </h2>
+                                        t('dashboard.projects.create.title')
+                                    )}
+                                </h2>
                                 <p className="text-[#777777] text-[14px] mt-2">
                                     {t('dashboard.projects.create.description')}
                                 </p>
@@ -460,9 +464,8 @@ const CreateProjectModal = ({
                                     const isActive = step <= currentStep;
                                     return (
                                         <div
-                                            className={`h-[36px] w-[36px] rounded-full ${
-                                                isActive ? 'bg-[#0DD122]' : 'bg-[#9E9E9E]'
-                                            }`}
+                                            className={`h-[36px] w-[36px] rounded-full ${isActive ? 'bg-[#0DD122]' : 'bg-[#9E9E9E]'
+                                                }`}
                                         />
                                     );
                                 }}

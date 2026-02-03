@@ -33,6 +33,8 @@ const PortalLayout = () => {
         const checksByRole = {
             client: [
                 (p) => p === '/dashboard',
+                (p) => p.startsWith('/dashboard/services'),
+                (p) => p.startsWith('/dashboard/reports'),
                 (p) => p.startsWith('/dashboard/projects'),
                 (p) => p.startsWith('/dashboard/invoices'),
                 (p) => p.startsWith('/dashboard/settings'),
@@ -40,6 +42,8 @@ const PortalLayout = () => {
             ],
             worker: [
                 (p) => p === '/dashboard',
+                (p) => p.startsWith('/dashboard/services'),
+                (p) => p.startsWith('/dashboard/reports'),
                 (p) => p.startsWith('/dashboard/projects'),
                 (p) => p.startsWith('/dashboard/inbox'),
                 (p) => p.startsWith('/dashboard/team-chat'),

@@ -6,6 +6,9 @@ import projectCreatedHandler from './project-created.js';
 import clientWelcomeEmailHandler from './client-welcome-email.js';
 import appointmentsAvailabilityHandler from './appointments-availability.js';
 import appointmentsHandler from './appointments.js';
+import calAvailabilityHandler from './cal-availability.js';
+import calCreateBookingHandler from './cal-create-booking.js';
+import calBookingsHandler from './cal-bookings.js';
 
 dotenv.config();
 
@@ -25,6 +28,13 @@ app.post('/api/appointments', appointmentsHandler);
 app.patch('/api/appointments', appointmentsHandler);
 app.put('/api/appointments', appointmentsHandler);
 app.delete('/api/appointments', appointmentsHandler);
+
+// Cal.com Routes
+app.get('/api/cal/availability', calAvailabilityHandler);
+app.post('/api/cal/create-booking', calCreateBookingHandler);
+app.get('/api/cal/bookings', calBookingsHandler);
+// app.post('/api/cal/cancel-booking', ...); // To be implemented if needed
+
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
