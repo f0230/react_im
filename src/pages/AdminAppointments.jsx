@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Calendar, User, Link as LinkIcon, AlertCircle, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 
 const AdminAppointments = () => {
@@ -13,23 +14,28 @@ const AdminAppointments = () => {
     useEffect(() => {
         const fetchAppointments = async () => {
             try {
-                const response = await fetch('/api/cal/bookings');
-                if (!response.ok) throw new Error('Failed to fetch bookings');
-                const result = await response.json();
+                const { data, error: dbError } = await supabase
+                    .from('appointments')
+                    .select(`
+                        *,
+                        projects(name),
+                        clients(company_name, full_name, email)
+                    `)
+                    .order('scheduled_at', { ascending: true });
 
-                // Assuming result.data is the array
-                setAppointments(result.data || []);
+                if (dbError) throw dbError;
+                setAppointments(data || []);
             } catch (err) {
                 console.error('Error fetching appointments:', err);
                 setError(err.message);
-                toast.error(t('calendar.errorFetchingSlots') || 'Error fetching appointments');
+                toast.error('Error al cargar las citas');
             } finally {
                 setLoading(false);
             }
         };
 
         fetchAppointments();
-    }, [t]);
+    }, []);
 
     const getStatusColor = (status) => {
         switch (status) {
