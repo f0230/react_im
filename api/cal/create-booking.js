@@ -85,13 +85,38 @@ export default async function handler(req, res) {
 
         const booking = calData.data;
 
+        // Resolve Client ID
+        let resolvedClientId = null;
+
+        // Try by User ID first
+        if (userId) {
+            const { data: clientByUser } = await supabase
+                .from('clients')
+                .select('id')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (clientByUser) resolvedClientId = clientByUser.id;
+        }
+
+        // Fallback by Email
+        if (!resolvedClientId && email) {
+            const { data: clientByEmail } = await supabase
+                .from('clients')
+                .select('id')
+                .eq('email', email)
+                .maybeSingle();
+
+            if (clientByEmail) resolvedClientId = clientByEmail.id;
+        }
+
         // Try Insert
         const { error: dbError } = await supabase
             .from('appointments')
             .insert({
-                cal_booking_id: booking.id.toString(), // Ensure string
+                cal_booking_id: booking.id.toString(),
                 project_id: projectId || null,
-                client_id: null,
+                client_id: resolvedClientId, // Resolved ID
                 user_id: userId || null,
                 event_type_id: String(eventTypeId),
                 scheduled_at: start,
@@ -99,20 +124,17 @@ export default async function handler(req, res) {
                 status: 'scheduled',
                 client_name: name,
                 client_email: email,
-                client_phone: phone, // Now supported
-                notes: notes,        // Now supported
+                client_phone: phone,
+                notes: notes,
                 meeting_link: booking.meetingUrl || booking.location || null,
                 cal_metadata: booking
             });
 
         if (dbError) {
-            // Check for Unique Constraint Violation (Race condition with fast webhook)
             if (dbError.code === '23505') {
                 console.log('Booking already exists (webhook race condition handled).');
-                // We return success because the booking IS in the DB (via webhook)
             } else {
                 console.error('Supabase Insert Error:', dbError);
-                // We still return success as Cal booking was made
             }
         }
 

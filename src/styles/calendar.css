@@ -1,0 +1,82 @@
+/* Custom Overrides for React Big Calendar */
+
+.rbc-calendar {
+    font-family: 'Inter', sans-serif; /* Use app font */
+    color: #1f2937;
+}
+
+.rbc-header {
+    padding: 12px 0;
+    font-weight: 600;
+    color: #4b5563;
+    font-size: 0.875rem;
+    border-bottom: 0px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.rbc-month-view {
+    border: 1px solid #f3f4f6;
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.rbc-day-bg {
+    border-right: 1px solid #f9fafb !important;
+}
+
+.rbc-month-row {
+    border-top: 1px solid #f9fafb !important;
+}
+
+.rbc-off-range-bg {
+    background-color: #f9fafb;
+}
+
+.rbc-today {
+    background-color: #f0fdf4 !important; /* Light green tint for today */
+}
+
+.rbc-event {
+    border-radius: 6px !important;
+    padding: 2px 8px !important;
+    font-size: 0.80rem;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.rbc-toolbar {
+    margin-bottom: 20px;
+}
+
+.rbc-toolbar button {
+    border: 1px solid #e5e7eb;
+    color: #374151;
+    font-weight: 500;
+    border-radius: 8px !important;
+    padding: 6px 12px;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+}
+
+.rbc-toolbar button:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.rbc-toolbar button.rbc-active {
+    background-color: #000000;
+    color: #ffffff;
+    border-color: #000000;
+    box-shadow: none;
+}
+
+.rbc-toolbar button.rbc-active:hover {
+    background-color: #1f2937;
+}
+
+.rbc-toolbar-label {
+    font-weight: 700;
+    font-size: 1.125rem;
+    color: #111827;
+}

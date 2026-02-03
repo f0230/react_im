@@ -24,6 +24,9 @@ const ScheduleCall = () => {
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
     const [submitting, setSubmitting] = useState(false);
 
+    const [projects, setProjects] = useState([]);
+    const [selectedProjectId, setSelectedProjectId] = useState(projectId || '');
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -31,7 +34,7 @@ const ScheduleCall = () => {
         notes: ''
     });
 
-    // Initialize form data from authenticated user/client
+    // Initialize form data from authenticated user/client and fetch projects
     useEffect(() => {
         if (client || user) {
             setFormData(prev => ({
@@ -40,8 +43,32 @@ const ScheduleCall = () => {
                 email: client?.email || user?.email || '',
                 phone: client?.phone || user?.phone || ''
             }));
+
+            // Fetch User Projects
+            const fetchProjects = async () => {
+                if (!user?.id) return;
+
+                try {
+                    const { data, error } = await supabase
+                        .from('projects')
+                        .select('id, name')
+                        .order('created_at', { ascending: false });
+
+                    if (!error && data) {
+                        setProjects(data);
+                        // If only one project, auto-select it if none selected
+                        if (data.length === 1 && !selectedProjectId) {
+                            setSelectedProjectId(data[0].id);
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error fetching projects:', err);
+                }
+            };
+
+            fetchProjects();
         }
-    }, [client, user]);
+    }, [client, user, selectedProjectId]);
 
     // Fetch slots when date changes
     useEffect(() => {
@@ -63,16 +90,15 @@ const ScheduleCall = () => {
                 if (!response.ok) throw new Error('Failed to fetch slots');
 
                 const data = await response.json();
-                // Cal.com v2 response structure returns slots grouped by date: { data: { slots: { "2024-02-03": [{time: "..."}, ...], ... } } }
+                // Cal.com v2 response structure returns slots grouped by date
                 const slotsObj = data.data?.slots || {};
 
-                // Flatten all slots from all dates in the response
-                // and map 'time' to 'start' for compatibility with the rest of the component
+                // Flatten all slots and normalize
                 const allSlots = Object.values(slotsObj)
                     .flat()
                     .map(slot => ({
                         ...slot,
-                        start: slot.time // Normalize 'time' to 'start'
+                        start: slot.time
                     }));
 
                 setSlots(allSlots);
@@ -102,9 +128,9 @@ const ScheduleCall = () => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    start: selectedSlot.start, // Assuming slot object has start property
+                    start: selectedSlot.start,
                     ...formData,
-                    projectId,
+                    projectId: selectedProjectId || projectId,
                     userId: user?.id,
                     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
                 })
@@ -254,6 +280,26 @@ const ScheduleCall = () => {
                                     </div>
                                 </div>
                                 <form onSubmit={handleFormSubmit} className="space-y-4">
+                                    {/* Project Selector */}
+                                    {projects.length > 0 && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Select Project</label>
+                                            <select
+                                                required
+                                                value={selectedProjectId}
+                                                onChange={(e) => setSelectedProjectId(e.target.value)}
+                                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] focus:border-transparent outline-none bg-white"
+                                            >
+                                                <option value="" disabled>Select a project</option>
+                                                {projects.map((proj) => (
+                                                    <option key={proj.id} value={proj.id}>
+                                                        {proj.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.fullName')}</label>
                                         <input
