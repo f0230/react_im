@@ -13,7 +13,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Mis Proyectos', path: '/dashboard/projects' },
-            { icon: Calendar, label: 'Agendar Cita', path: '/schedule-call' },
+            { icon: Calendar, label: 'Mis Citas', path: '/dashboard/my-appointments' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
         ],
         worker: [

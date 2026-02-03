@@ -25,6 +25,7 @@ const Projects = lazy(() => import("@/pages/dashboard/projects/Projects"));
 const ProjectServices = lazy(() => import("@/pages/dashboard/projects/ProjectServices"));
 const ProjectReports = lazy(() => import("@/pages/dashboard/projects/ProjectReports"));
 const ProjectInvoices = lazy(() => import("@/pages/dashboard/projects/ProjectInvoices"));
+const ClientAppointments = lazy(() => import("@/pages/dashboard/projects/ClientAppointments"));
 const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
 const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
 const TeamChat = lazy(() => import("@/pages/dashboard/chat/TeamChat"));
@@ -97,6 +98,7 @@ const AppContent = () => {
             <Route path="inbox" element={<Inbox />} />
             <Route path="team-chat" element={<TeamChat />} />
             <Route path="appointments" element={<AdminAppointments />} />
+            <Route path="my-appointments" element={<ClientAppointments />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Settings />} /> {/* Reusing Settings for Profile for now */}
 
