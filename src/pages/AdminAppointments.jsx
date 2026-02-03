@@ -118,7 +118,7 @@ const AdminAppointments = () => {
                                             <td className="p-5">
                                                 {apt.projects ? (
                                                     <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                                                        {apt.projects.title || apt.projects.name || 'Project'}
+                                                        {apt.projects.name || 'Project'}
                                                     </span>
                                                 ) : (
                                                     <span className="text-sm text-gray-400">-</span>

@@ -40,7 +40,7 @@ export default async function handler(req, res) {
             .from('appointments')
             .select(`
                 *,
-                projects ( title, name ),
+                projects ( name ),
                 clients ( company_name, full_name, email )
             `)
             .order('scheduled_at', { ascending: true });

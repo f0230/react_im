@@ -21,7 +21,7 @@ const ClientAppointments = () => {
             try {
                 const { data, error: dbError } = await supabase
                     .from('appointments')
-                    .select('*, projects(title, name)')
+                    .select('*, projects(name)')
                     .eq('user_id', user.id)
                     .order('scheduled_at', { ascending: true });
 
