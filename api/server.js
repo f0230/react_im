@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import projectCreatedHandler from './project-created.js';
 import clientWelcomeEmailHandler from './client-welcome-email.js';
+import slackNotifyHandler from './slack-notify.js';
 import calAvailabilityHandler from './cal/availability.js';
 import calCreateBookingHandler from './cal/create-booking.js';
 import calBookingsHandler from './cal/bookings.js';
@@ -20,6 +21,7 @@ app.use(express.json());
 app.post('/api/project-created', projectCreatedHandler);
 app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
+app.post('/api/slack-notify', slackNotifyHandler);
 
 // Cal.com Routes
 app.get('/api/cal/availability', calAvailabilityHandler);
