@@ -7,6 +7,7 @@ import { Calendar, Clock, Check, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
+import MultiUseSelect from '@/components/MultiUseSelect';
 
 import "react-datepicker/dist/react-datepicker.css";
 import '@/index.css'; // Ensure tailwind is available
@@ -284,19 +285,17 @@ const ScheduleCall = () => {
                                     {projects.length > 0 && (
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Select Project</label>
-                                            <select
-                                                required
+                                            <MultiUseSelect
+                                                options={projects}
                                                 value={selectedProjectId}
-                                                onChange={(e) => setSelectedProjectId(e.target.value)}
-                                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] focus:border-transparent outline-none bg-white"
-                                            >
-                                                <option value="" disabled>Select a project</option>
-                                                {projects.map((proj) => (
-                                                    <option key={proj.id} value={proj.id}>
-                                                        {proj.name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                onChange={(val) => setSelectedProjectId(val)}
+                                                placeholder="Select a project"
+                                                getOptionValue={(p) => p.id}
+                                                getOptionLabel={(p) => p.name}
+                                                getDisplayLabel={(p) => p.name}
+                                                buttonClassName="px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] bg-white text-gray-900 h-[50px]"
+                                                className="w-full"
+                                            />
                                         </div>
                                     )}
 

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Loader2, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import AdminCalendar from '@/components/AdminCalendar';
+import AppointmentActionModal from '@/components/AppointmentActionModal';
+import AdminCreateAppointmentModal from '@/components/AdminCreateAppointmentModal';
 
 const AdminAppointments = () => {
     const { t } = useTranslation();
@@ -12,30 +14,45 @@ const AdminAppointments = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
+    const [selectedAppointment, setSelectedAppointment] = useState(null);
+    const [modalPosition, setModalPosition] = useState(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const handleAppointmentClick = (apt, e) => {
+        // Capture click coordinates
+        // If it's a synthesis event from Table, use clientX/Y
+        // If it's from BigCalendar, 'e' is the event or synthetic event
+        const x = e?.clientX || e?.nativeEvent?.clientX || window.innerWidth / 2;
+        const y = e?.clientY || e?.nativeEvent?.clientY || window.innerHeight / 2;
+
+        setModalPosition({ x, y });
+        setSelectedAppointment(apt);
+    };
+
+    const fetchAppointments = async () => {
+        setLoading(true);
+        try {
+            const { data, error: dbError } = await supabase
+                .from('appointments')
+                .select(`
+                    *,
+                    projects(name),
+                    clients(company_name, full_name, email)
+                `)
+                .order('scheduled_at', { ascending: true });
+
+            if (dbError) throw dbError;
+            setAppointments(data || []);
+        } catch (err) {
+            console.error('Error fetching appointments:', err);
+            setError(err.message);
+            toast.error('Error al cargar las citas');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const fetchAppointments = async () => {
-            try {
-                const { data, error: dbError } = await supabase
-                    .from('appointments')
-                    .select(`
-                        *,
-                        projects(name),
-                        clients(company_name, full_name, email)
-                    `)
-                    .order('scheduled_at', { ascending: true });
-
-                if (dbError) throw dbError;
-                setAppointments(data || []);
-            } catch (err) {
-                console.error('Error fetching appointments:', err);
-                setError(err.message);
-                toast.error('Error al cargar las citas');
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchAppointments();
     }, []);
 
@@ -60,28 +77,38 @@ const AdminAppointments = () => {
                     </p>
                 </div>
 
-                {/* View Toggler */}
-                <div className="bg-gray-100 p-1 rounded-xl flex items-center w-fit">
+                <div className="flex items-center gap-3">
                     <button
-                        onClick={() => setViewMode('list')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'list'
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="px-4 py-2 bg-black text-white rounded-xl text-sm font-bold shadow-lg shadow-black/20 hover:scale-105 transition-transform flex items-center gap-2"
+                    >
+                        <Plus size={18} />
+                        Nueva Cita
+                    </button>
+
+                    {/* View Toggler */}
+                    <div className="bg-gray-100 p-1 rounded-xl flex items-center w-fit">
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'list'
                                 ? 'bg-white text-black shadow-sm'
                                 : 'text-gray-500 hover:text-black'
-                            }`}
-                    >
-                        <List size={16} />
-                        List
-                    </button>
-                    <button
-                        onClick={() => setViewMode('calendar')}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'calendar'
+                                }`}
+                        >
+                            <List size={16} />
+                            List
+                        </button>
+                        <button
+                            onClick={() => setViewMode('calendar')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'calendar'
                                 ? 'bg-white text-black shadow-sm'
                                 : 'text-gray-500 hover:text-black'
-                            }`}
-                    >
-                        <CalendarIcon size={16} />
-                        Calendar
-                    </button>
+                                }`}
+                        >
+                            <CalendarIcon size={16} />
+                            Calendar
+                        </button>
+                    </div>
                 </div>
             </header>
 
@@ -129,7 +156,11 @@ const AdminAppointments = () => {
                                     </thead>
                                     <tbody>
                                         {appointments.map((apt) => (
-                                            <tr key={apt.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors last:border-0">
+                                            <tr
+                                                key={apt.id}
+                                                onClick={(e) => handleAppointmentClick(apt, e)}
+                                                className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors last:border-0 cursor-pointer"
+                                            >
                                                 <td className="p-5">
                                                     <div className="flex flex-col">
                                                         <span className="font-bold text-gray-900">
@@ -171,6 +202,7 @@ const AdminAppointments = () => {
                                                             href={apt.meeting_link}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
+                                                            onClick={(e) => e.stopPropagation()}
                                                             className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black hover:underline"
                                                         >
                                                             <LinkIcon size={14} />
@@ -188,14 +220,27 @@ const AdminAppointments = () => {
                         <AdminCalendar
                             key="calendar"
                             appointments={appointments}
-                            onSelectAppointment={(apt) => {
-                                // For now, just a toast, or expand a modal later
-                                toast.success(`Selected: ${apt.client_name}`);
-                            }}
+                            onSelectAppointment={(apt, e) => handleAppointmentClick(apt, e)}
                         />
                     )}
                 </AnimatePresence>
             )}
+
+            {/* Action Popup */}
+            <AppointmentActionModal
+                isOpen={!!selectedAppointment}
+                appointment={selectedAppointment}
+                position={modalPosition}
+                onClose={() => setSelectedAppointment(null)}
+                onUpdate={() => fetchAppointments()}
+            />
+
+            {/* Create Modal */}
+            <AdminCreateAppointmentModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onUpdate={() => fetchAppointments()}
+            />
         </div>
     );
 };
