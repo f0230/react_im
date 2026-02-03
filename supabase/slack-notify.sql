@@ -2,12 +2,29 @@
 -- Run in Supabase SQL editor after pg_net is enabled.
 -- Requires: create extension if not exists pg_net;
 --
--- Configure DB settings (SQL):
---   alter database postgres set app.settings.slack_notify_url = 'https://your-host/api/slack-notify';
---   alter database postgres set app.settings.slack_notify_secret = 'your-secret';
--- Then reconnect session or restart to apply settings.
+-- Store settings in DB (no alter database permissions required):
+--   insert into public.app_settings (key, value)
+--   values
+--     ('slack_notify_url', 'https://your-host/api/slack-notify'),
+--     ('slack_notify_secret', 'your-secret')
+--   on conflict (key) do update set value = excluded.value;
 
 create extension if not exists pg_net;
+
+create table if not exists public.app_settings (
+    key text primary key,
+    value text not null,
+    updated_at timestamptz not null default now()
+);
+
+create or replace function public.get_app_setting(p_key text)
+returns text
+language sql
+security definer
+set search_path = public
+as $$
+    select value from public.app_settings where key = p_key;
+$$;
 
 create or replace function public.notify_slack()
 returns trigger
@@ -16,8 +33,8 @@ security definer
 set search_path = public
 as $$
 declare
-    notify_url text := current_setting('app.settings.slack_notify_url', true);
-    notify_secret text := current_setting('app.settings.slack_notify_secret', true);
+    notify_url text := public.get_app_setting('slack_notify_url');
+    notify_secret text := public.get_app_setting('slack_notify_secret');
     headers jsonb := jsonb_build_object('Content-Type', 'application/json');
     payload jsonb;
 begin

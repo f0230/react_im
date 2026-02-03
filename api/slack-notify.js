@@ -105,6 +105,9 @@ function formatSlackMessage({ event, table, record, enrich }) {
 
   if (table === 'whatsapp_messages' && event === 'INSERT') {
     const direction = record?.direction || 'message';
+    if (direction !== 'inbound') {
+      return null;
+    }
     const waId = record?.wa_id || 'contacto';
     const preview = truncate(record?.body || record?.type || record?.message_id || '');
     return `📲 WhatsApp (${direction}) de ${waId}: ${preview || '[sin texto]'}.`;
@@ -146,6 +149,9 @@ export default async function handler(req, res) {
     record: payload.record,
     enrich,
   });
+  if (!text) {
+    return res.status(200).json({ ok: true, skipped: true });
+  }
 
   try {
     const response = await fetch('https://slack.com/api/chat.postMessage', {
