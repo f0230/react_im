@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import hubspotLeadHandler from './hubspot-lead.js';
 import projectCreatedHandler from './project-created.js';
 import clientWelcomeEmailHandler from './client-welcome-email.js';
 import appointmentsAvailabilityHandler from './appointments-availability.js';
@@ -19,7 +18,6 @@ app.use(express.json());
 // Adapter to convert Express req/res to Vercel-like handler signature (if needed)
 // Luckily, Vercel default handlers (req, res) are compatible with Express middleware signature.
 
-app.post('/api/hubspot-lead', hubspotLeadHandler);
 app.post('/api/project-created', projectCreatedHandler);
 app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.get('/api/appointments-availability', appointmentsAvailabilityHandler);
