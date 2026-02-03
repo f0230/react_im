@@ -67,6 +67,8 @@ const ProjectServices = () => {
   const [editedDesc, setEditedDesc] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingDesc, setIsSavingDesc] = useState(false);
+  const [replacingFile, setReplacingFile] = useState(null);
+
 
   // UI Helpers
   const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
@@ -78,6 +80,8 @@ const ProjectServices = () => {
 
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
+  const replaceInputRef = useRef(null);
+
   const isAdmin = profile?.role === 'admin';
   const isWorker = profile?.role === 'worker';
   const canManage = isAdmin || isWorker;
@@ -332,6 +336,66 @@ const ProjectServices = () => {
     }
     setIsUploading(false);
   };
+
+  const handleFileReplace = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedService || !replacingFile) return;
+
+    setIsUploading(true);
+
+    try {
+      // 1. Delete old file from Storage
+      const oldStoragePath = replacingFile.file_url.split('/storage/v1/object/public/service-attachments/')[1];
+      if (oldStoragePath) {
+        const { error: storageError } = await supabase.storage
+          .from('service-attachments')
+          .remove([oldStoragePath]);
+        if (storageError) console.error('Storage delete error (old file):', storageError);
+      }
+
+      // 2. Upload new file
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${selectedService.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('service-attachments')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('service-attachments')
+        .getPublicUrl(filePath);
+
+      // 3. Update DB
+      const { data, error: updateError } = await supabase
+        .from('service_files')
+        .update({
+          file_url: publicUrl,
+          file_name: file.name,
+          file_type: file.type,
+          file_size: file.size,
+          uploaded_by: user.id
+        })
+        .eq('id', replacingFile.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      if (data) {
+        setFiles(prev => prev.map(f => f.id === replacingFile.id ? data : f));
+      }
+    } catch (error) {
+      console.error('File replacement error:', error);
+      alert(`Error al reemplazar archivo: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+      setReplacingFile(null);
+      if (replaceInputRef.current) replaceInputRef.current.value = '';
+    }
+  };
+
 
   const handleAssignResponsible = async (workerId) => {
     if (!selectedService) return;
@@ -610,6 +674,7 @@ const ProjectServices = () => {
                     {canManage && (
                       <>
                         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+                        <input type="file" ref={replaceInputRef} onChange={handleFileReplace} className="hidden" />
                         <button
                           onClick={() => fileInputRef.current.click()}
                           disabled={isUploading}
@@ -619,6 +684,7 @@ const ProjectServices = () => {
                           Subir
                         </button>
                       </>
+
                     )}
                   </div>
                   <div className="flex flex-wrap gap-3">
@@ -631,13 +697,27 @@ const ProjectServices = () => {
                           <p className="text-[10px] text-center mt-2 font-bold text-neutral-400 truncate w-full px-1">{file.file_name}</p>
                         </a>
                         {isEditingService && (
-                          <button
-                            onClick={() => handleDeleteFile(file)}
-                            className="absolute -top-2 -right-2 p-1.5 bg-rose-500 text-white rounded-full shadow-lg hover:bg-rose-600 transition-all active:scale-90 z-10"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          <div className="absolute -top-2 -right-2 flex flex-col gap-1 z-10">
+                            <button
+                              onClick={() => {
+                                setReplacingFile(file);
+                                setTimeout(() => replaceInputRef.current?.click(), 0);
+                              }}
+                              className="p-1.5 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition-all active:scale-90"
+                              title="Reemplazar archivo"
+                            >
+                              <Edit3 size={10} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFile(file)}
+                              className="p-1.5 bg-rose-500 text-white rounded-full shadow-lg hover:bg-rose-600 transition-all active:scale-90"
+                              title="Eliminar archivo"
+                            >
+                              <Trash2 size={10} />
+                            </button>
+                          </div>
                         )}
+
                       </div>
                     ))}
                     {files.length === 0 && (
