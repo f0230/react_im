@@ -32,11 +32,8 @@ export default async function handler(req, res) {
 
     try {
         const params = new URLSearchParams({
-            startTime: start, // Cal.com v2 might use startTime/endTime or start/end, checking docs... 
-            // Docs say "start" and "end" for /v2/slots usually. Let's use start/end based on search result.
-            // Search result said: "include start and end query parameters". 
-            start,
-            end,
+            startTime: start,
+            endTime: end,
             eventTypeId,
             ...(timeZone && { timeZone }),
         });

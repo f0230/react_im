@@ -63,20 +63,13 @@ const ScheduleCall = () => {
                 if (!response.ok) throw new Error('Failed to fetch slots');
 
                 const data = await response.json();
-                // Cal.com v2 response structure might vary, adapting to common structure
-                // Assuming data.slots or data.data.slots or just data array
-                const fetchedSlots = data.slots || (Array.isArray(data) ? data : []);
+                // Cal.com v2 response structure returns slots grouped by date: { data: { slots: { "2024-02-03": [...], ... } } }
+                const slotsObj = data.data?.slots || {};
 
-                // If the API defines slots as object with start/end keys
-                // We'll normalize them to just keys or keep objects
-                // Let's assume the API returns objects: { start: ISOString, end: ISOString }
-                // We want to just check if there are slots
-
-                // For direct v2/slots endpoint:
-                // Response: { data: [ { start: "...", end: "...", ... } ] }
-
-                const slotArray = data.data || fetchedSlots;
-                setSlots(slotArray || []);
+                // For the simplicity of the current UI (which expects a flat array of slots for the selected date)
+                // we'll pick the slots for the date range we requested.
+                const allSlots = Object.values(slotsObj).flat();
+                setSlots(allSlots);
 
             } catch (error) {
                 console.error('Error fetching slots:', error);
