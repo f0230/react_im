@@ -63,12 +63,18 @@ const ScheduleCall = () => {
                 if (!response.ok) throw new Error('Failed to fetch slots');
 
                 const data = await response.json();
-                // Cal.com v2 response structure returns slots grouped by date: { data: { slots: { "2024-02-03": [...], ... } } }
+                // Cal.com v2 response structure returns slots grouped by date: { data: { slots: { "2024-02-03": [{time: "..."}, ...], ... } } }
                 const slotsObj = data.data?.slots || {};
 
-                // For the simplicity of the current UI (which expects a flat array of slots for the selected date)
-                // we'll pick the slots for the date range we requested.
-                const allSlots = Object.values(slotsObj).flat();
+                // Flatten all slots from all dates in the response
+                // and map 'time' to 'start' for compatibility with the rest of the component
+                const allSlots = Object.values(slotsObj)
+                    .flat()
+                    .map(slot => ({
+                        ...slot,
+                        start: slot.time // Normalize 'time' to 'start'
+                    }));
+
                 setSlots(allSlots);
 
             } catch (error) {

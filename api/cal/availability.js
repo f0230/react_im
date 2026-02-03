@@ -38,7 +38,7 @@ export default async function handler(req, res) {
             ...(timeZone && { timeZone }),
         });
 
-        const response = await fetch(`${CAL_API_URL}/slots?${params}`, {
+        const response = await fetch(`${CAL_API_URL}/slots/available?${params}`, {
             headers: {
                 'Authorization': `Bearer ${API_KEY}`,
                 'cal-api-version': '2024-08-13',
