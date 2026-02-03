@@ -14,7 +14,6 @@ export default async function handler(req, res) {
     }
 
     if (!API_KEY) {
-        console.error('Missing Cal.com API Key');
         return res.status(500).json({ error: 'Server configuration error' });
     }
 
@@ -39,8 +38,8 @@ export default async function handler(req, res) {
     try {
         // 1. Create Booking in Cal.com
         const bookingPayload = {
-            eventTypeId: Number(eventTypeId), // Cal.com typically expects number for ID, but v2 might be string? Docs say ID. Let's send as is or number if numeric.
-            start: start, // ISO String
+            eventTypeId: Number(eventTypeId),
+            start: start,
             attendee: {
                 name,
                 email,
@@ -53,9 +52,6 @@ export default async function handler(req, res) {
                 notes
             }
         };
-
-        // Note: 'notes' might need to go into specific field or custom inputs depending on event type config.
-        // For now, putting it in metadata. 
 
         const calResponse = await fetch(`${CAL_API_URL}/bookings`, {
             method: 'POST',
@@ -80,46 +76,44 @@ export default async function handler(req, res) {
         // 2. Save to Supabase
         const supabase = getSupabaseAdmin();
         if (!supabase) {
-            console.error('Missing Supabase Admin Client');
-            // We still return success because booking was made, but log error. 
-            // Ideally we might want to cancel booking if DB save fails, but for now let's just warn.
             return res.status(200).json({
                 ok: true,
                 data: calData.data,
-                warning: 'Booking created but failed to save to local database.'
+                warning: 'Booking created but DB not reachable.'
             });
         }
 
-        // Access the created booking data
         const booking = calData.data;
 
-        // Insert into appointments table
+        // Try Insert
         const { error: dbError } = await supabase
             .from('appointments')
             .insert({
-                cal_booking_id: booking.id, // ID from Cal.com
+                cal_booking_id: booking.id.toString(), // Ensure string
                 project_id: projectId || null,
-                client_id: null, // We might need to look up client_id from user_id if not provided
-                user_id: userId || null, // authenticated user id
+                client_id: null,
+                user_id: userId || null,
                 event_type_id: String(eventTypeId),
                 scheduled_at: start,
-                duration_minutes: booking.duration || 30, // Default or from response
+                duration_minutes: booking.duration || 30,
                 status: 'scheduled',
                 client_name: name,
                 client_email: email,
-                client_phone: phone,
-                notes: notes,
-                meeting_link: booking.meetingUrl || booking.location || null, // Adjust based on actual response structure
-                cal_metadata: booking // Store full response for future ref
+                client_phone: phone, // Now supported
+                notes: notes,        // Now supported
+                meeting_link: booking.meetingUrl || booking.location || null,
+                cal_metadata: booking
             });
 
         if (dbError) {
-            console.error('Supabase Insert Error:', dbError);
-            return res.status(200).json({
-                ok: true,
-                data: booking,
-                warning: 'Booking created but failed to save to local database.'
-            });
+            // Check for Unique Constraint Violation (Race condition with fast webhook)
+            if (dbError.code === '23505') {
+                console.log('Booking already exists (webhook race condition handled).');
+                // We return success because the booking IS in the DB (via webhook)
+            } else {
+                console.error('Supabase Insert Error:', dbError);
+                // We still return success as Cal booking was made
+            }
         }
 
         return res.status(200).json({ ok: true, data: booking });

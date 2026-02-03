@@ -6,32 +6,19 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Verify Admin role (This should ideally be done via middleware or checking the session/token)
-    // For this implementation, we assume the caller provides a valid token that we can verify,
-    // OR we check a secret header, OR we rely on RLS if using Supabase client on frontend directly.
-    // However, since this is a server-side route using Admin client, we MUST verify permissions.
+    // Security Check: Secret Header
+    // Ideally this is replaced by RLS on Frontend, but if API is used, it must be secured.
+    const secret = req.headers['x-admin-secret'];
+    const envSecret = process.env.ADMIN_API_SECRET;
 
-    // In this existing project structure, it seems generic API routes might check API keys or similar.
-    // Let's look at `appointments.js`: it checks `x-api-key`.
+    if (!envSecret || secret !== envSecret) {
+        // Strict block if not configured or mismatch.
+        return res.status(401).json({ error: 'Unauthorized: Missing or invalid credentials' });
+    }
 
-    // If the frontend calls this, it should probably be using Supabase Client directly for RLS?
-    // BUT the requirement was explicit about creating an API route.
-
-    // Let's implement a safe check. We can check providing the user token and validating it.
-    // But getting `getUser` from token on server side without the proper request context/helpers might be tricky if not set up.
-
-    // Alternative: The Admin Dashboard on frontend can just use `supabase.from('appointments').select('*, projects(*)')`.
-    // That is often the "Supabase Way".
-
-    // However, following the prompt explicitly:
     const supabase = getSupabaseAdmin();
 
-    // We'll trust the caller is authorized for now or check for an Admin API Key if one exists in env.
-    // Ideally, we'd validate the JWT from the Authorization header.
-
-    // NOTE: In a real prod scenario, we MUST validate the user is admin here.
     if (!supabase) {
-        console.error('Missing Supabase Admin Client');
         return res.status(500).json({ error: 'Missing server credentials' });
     }
 
@@ -46,12 +33,9 @@ export default async function handler(req, res) {
             .order('scheduled_at', { ascending: true });
 
         if (error) {
-            console.error('Supabase Fetch Error:', error);
             return res.status(500).json({
                 error: 'Failed to fetch bookings',
-                message: error.message,
-                hint: error.hint,
-                details: error.details
+                details: error.message
             });
         }
 
