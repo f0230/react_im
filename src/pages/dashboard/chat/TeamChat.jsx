@@ -570,7 +570,7 @@ const TeamChat = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 h-[calc(var(--app-height,100vh)-45px)] min-h-[calc(var(--app-height,100vh)-45px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
+        <div className="font-product text-neutral-900 h-[calc(var(--app-height,100vh)-45px)] min-h-[calc(var(--app-height,100vh)-45px)] flex overflow-hidden overscroll-none bg-white w-full max-w-[1440px] mx-auto">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-0">
                 <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-200 ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-black/5 space-y-3">

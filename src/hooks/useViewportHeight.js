@@ -8,14 +8,17 @@ const useViewportHeight = (enabled = true) => {
         const setHeight = () => {
             const viewport = window.visualViewport;
             const visualHeight = viewport ? viewport.height : window.innerHeight;
+            const viewportOffsetTop = viewport ? viewport.offsetTop : 0;
             const root = document.documentElement;
 
             // Heuristic for keyboard open
-            maxViewportHeight = Math.max(maxViewportHeight, visualHeight);
+            maxViewportHeight = Math.max(maxViewportHeight, window.innerHeight, visualHeight);
             const isKeyboardOpen = visualHeight < maxViewportHeight * 0.85;
 
-            // Match the visible viewport so fixed/sticky chat input stays attached to keyboard.
-            root.style.setProperty('--app-height', `${visualHeight}px`);
+            // iOS can shift the visual viewport (offsetTop > 0) when keyboard opens.
+            // Include that offset to avoid phantom white space under the chat composer.
+            const appHeight = visualHeight + Math.max(0, viewportOffsetTop);
+            root.style.setProperty('--app-height', `${appHeight}px`);
 
             if (isKeyboardOpen) {
                 root.style.setProperty('--bottom-spacing', '0px');
@@ -27,7 +30,11 @@ const useViewportHeight = (enabled = true) => {
         };
 
         const viewport = window.visualViewport;
+        const root = document.documentElement;
+        const body = document.body;
 
+        root.classList.add('viewport-locked');
+        body.classList.add('viewport-locked');
         setHeight();
 
         window.addEventListener('resize', setHeight);
@@ -45,9 +52,11 @@ const useViewportHeight = (enabled = true) => {
             }
 
             // Clean up CSS variables
-            document.documentElement.style.removeProperty('--app-height');
-            document.documentElement.style.removeProperty('--bottom-spacing');
-            document.documentElement.style.removeProperty('--keyboard-open');
+            root.classList.remove('viewport-locked');
+            body.classList.remove('viewport-locked');
+            root.style.removeProperty('--app-height');
+            root.style.removeProperty('--bottom-spacing');
+            root.style.removeProperty('--keyboard-open');
         };
     }, [enabled]);
 };

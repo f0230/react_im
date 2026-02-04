@@ -13,10 +13,21 @@ html {
   scroll-behavior: smooth;
 }
 
+html.viewport-locked {
+  scroll-behavior: auto;
+}
+
 html,
 body {
   touch-action: pan-x pan-y;
   -ms-touch-action: pan-x pan-y;
+}
+
+html.viewport-locked,
+body.viewport-locked {
+  height: var(--app-height, 100dvh);
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 #root {
@@ -112,4 +123,3 @@ html, body {
   flex: 0 0 auto;
   padding-bottom: env(safe-area-inset-bottom);
 }
-
