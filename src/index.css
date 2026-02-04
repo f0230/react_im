@@ -84,3 +84,32 @@ img {
 
 
 
+
+
+html, body {
+  height: 100%;
+}
+
+#root {
+  height: var(--app-height, 100dvh);
+}
+
+/* tu layout chat */
+.chat-shell {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow: auto;
+  padding-bottom: var(--bottom-spacing, 1rem);
+}
+
+.chat-input {
+  flex: 0 0 auto;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+

@@ -547,7 +547,13 @@ const TeamChat = () => {
 
     useEffect(() => {
         if (!messagesEndRef.current) return;
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        const keyboardOpen = typeof window !== 'undefined'
+            && getComputedStyle(document.documentElement).getPropertyValue('--keyboard-open').trim() === '1';
+        const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches;
+        messagesEndRef.current.scrollIntoView({
+            behavior: keyboardOpen || isMobile ? 'auto' : 'smooth',
+            block: 'end',
+        });
     }, [messages.length, selectedChannelId]);
 
     if (!isAllowed) {
@@ -706,7 +712,10 @@ const TeamChat = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-4 py-4 pb-28 lg:pb-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50">
+                            <div
+                                className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
+                                style={{ paddingBottom: 'calc(72px + var(--bottom-spacing, 1rem))' }}
+                            >
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
                                 )}
@@ -757,7 +766,7 @@ const TeamChat = () => {
                             </div>
 
                             <div
-                                className="fixed inset-x-0 bottom-0 z-30 border-t border-black/5 px-4 pt-3 pb-2 shrink-0 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)] lg:static lg:z-auto lg:p-4"
+                                className="shrink-0 border-t border-black/5 px-4 pt-3 pb-2 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
                                 style={{ paddingBottom: 'var(--bottom-spacing, 1rem)' }}
                             >
                                 <div className="space-y-2">
