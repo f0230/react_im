@@ -61,6 +61,7 @@ const Inbox = () => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [clientIdByWa, setClientIdByWa] = useState({});
     const fileInputRef = React.useRef(null);
+    const inputRef = React.useRef(null);
     const lastReadRef = useRef({});
 
 

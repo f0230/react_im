@@ -101,6 +101,7 @@ const TeamChat = () => {
 
     const messagesEndRef = useRef(null);
     const composerRef = useRef(null);
+    const textareaRef = useRef(null);
 
 
 
@@ -585,6 +586,28 @@ const TeamChat = () => {
         };
     }, [selectedChannelId]);
 
+    // Prevenir scroll automático cuando se enfoca el textarea en móvil
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) return undefined;
+
+        const preventAutoScroll = (event) => {
+            // Guardar la posición de scroll actual
+            const scrollY = window.scrollY;
+            const scrollX = window.scrollX;
+
+            // Restaurar la posición después de que el navegador intente hacer scroll
+            window.requestAnimationFrame(() => {
+                window.scrollTo(scrollX, scrollY);
+            });
+        };
+
+        textarea.addEventListener('focus', preventAutoScroll);
+        return () => {
+            textarea.removeEventListener('focus', preventAutoScroll);
+        };
+    }, [selectedChannelId]);
+
     if (!isAllowed) {
         return (
             <div className="font-product text-neutral-900">
@@ -824,6 +847,7 @@ const TeamChat = () => {
                                             }
                                         </button>
                                         <textarea
+                                            ref={textareaRef}
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
                                             placeholder="Escribe un mensaje para el equipo"
