@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation } from 'react-router-dom';
 import ClientDetail from '@/pages/dashboard/crm/ClientDetail';
+import useViewportHeight from '@/hooks/useViewportHeight';
 
 
 const formatTimestamp = (value) => {
@@ -39,6 +40,8 @@ const getInitial = (name) => {
 };
 
 const Inbox = () => {
+    useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
+
     const { profile, user } = useAuth();
     const location = useLocation();
     const isAllowed = profile?.role === 'admin' || profile?.role === 'worker';

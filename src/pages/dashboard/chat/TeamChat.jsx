@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Hash, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import useViewportHeight from '@/hooks/useViewportHeight';
 
 
 const formatTimestamp = (value) => {
@@ -62,6 +63,8 @@ const renderTextWithLinks = (text) => {
 };
 
 const TeamChat = () => {
+    useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
+
     const { user, profile } = useAuth();
     const isAllowed = profile?.role === 'admin' || profile?.role === 'worker';
     const canCreateChannel = profile?.role === 'admin';
