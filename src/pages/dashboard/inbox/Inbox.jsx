@@ -495,7 +495,10 @@ const Inbox = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 fixed inset-x-0 bottom-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex overflow-hidden bg-white">
+        <div
+            className="font-product text-neutral-900 fixed inset-x-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex overflow-hidden bg-white"
+            style={{ height: 'calc(var(--app-height, 100dvh) - 45px)' }}
+        >
 
             {/* Main Content Grid */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[360px_1fr] min-h-0">
