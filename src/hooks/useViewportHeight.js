@@ -11,14 +11,15 @@ const useViewportHeight = (enabled = true) => {
             const viewportOffsetTop = viewport ? viewport.offsetTop : 0;
             const root = document.documentElement;
 
-            // Heuristic for keyboard open
+            // Detect keyboard by measured inset instead of ratio-based heuristics.
             maxViewportHeight = Math.max(maxViewportHeight, window.innerHeight, visualHeight);
-            const isKeyboardOpen = visualHeight < maxViewportHeight * 0.85;
+            const keyboardInset = Math.max(0, Math.round(maxViewportHeight - (visualHeight + viewportOffsetTop)));
+            const isKeyboardOpen = keyboardInset > 120;
 
-            // iOS can shift the visual viewport (offsetTop > 0) when keyboard opens.
-            // Include that offset to avoid phantom white space under the chat composer.
-            const appHeight = visualHeight + Math.max(0, viewportOffsetTop);
+            // Keep app height synced to the currently visible area.
+            const appHeight = Math.max(0, Math.round(maxViewportHeight - (isKeyboardOpen ? keyboardInset : 0)));
             root.style.setProperty('--app-height', `${appHeight}px`);
+            root.style.setProperty('--keyboard-inset', `${isKeyboardOpen ? keyboardInset : 0}px`);
 
             if (isKeyboardOpen) {
                 root.style.setProperty('--bottom-spacing', '0px');
@@ -30,11 +31,6 @@ const useViewportHeight = (enabled = true) => {
         };
 
         const viewport = window.visualViewport;
-        const root = document.documentElement;
-        const body = document.body;
-
-        root.classList.add('viewport-locked');
-        body.classList.add('viewport-locked');
         setHeight();
 
         window.addEventListener('resize', setHeight);
@@ -52,11 +48,11 @@ const useViewportHeight = (enabled = true) => {
             }
 
             // Clean up CSS variables
-            root.classList.remove('viewport-locked');
-            body.classList.remove('viewport-locked');
+            const root = document.documentElement;
             root.style.removeProperty('--app-height');
             root.style.removeProperty('--bottom-spacing');
             root.style.removeProperty('--keyboard-open');
+            root.style.removeProperty('--keyboard-inset');
         };
     }, [enabled]);
 };

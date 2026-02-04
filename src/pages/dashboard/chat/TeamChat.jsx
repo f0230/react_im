@@ -89,6 +89,7 @@ const TeamChat = () => {
     const [savingMembers, setSavingMembers] = useState(false);
     const [uploadingAudio, setUploadingAudio] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
+    const [composerHeight, setComposerHeight] = useState(72);
 
     const recorderRef = useRef(null);
     const streamRef = useRef(null);
@@ -96,6 +97,7 @@ const TeamChat = () => {
     const lastReadRef = useRef({});
 
     const messagesEndRef = useRef(null);
+    const composerRef = useRef(null);
 
     useViewportHeight(isAllowed);
 
@@ -556,6 +558,50 @@ const TeamChat = () => {
         });
     }, [messages.length, selectedChannelId]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+        if (!isMobile) return undefined;
+
+        const root = document.documentElement;
+        const body = document.body;
+        const prevRootOverflow = root.style.overflow;
+        const prevBodyOverflow = body.style.overflow;
+        const prevRootOverscroll = root.style.overscrollBehavior;
+        const prevBodyOverscroll = body.style.overscrollBehavior;
+
+        root.style.overflow = 'hidden';
+        body.style.overflow = 'hidden';
+        root.style.overscrollBehavior = 'none';
+        body.style.overscrollBehavior = 'none';
+
+        return () => {
+            root.style.overflow = prevRootOverflow;
+            body.style.overflow = prevBodyOverflow;
+            root.style.overscrollBehavior = prevRootOverscroll;
+            body.style.overscrollBehavior = prevBodyOverscroll;
+        };
+    }, []);
+
+    useEffect(() => {
+        const composer = composerRef.current;
+        if (!composer) return undefined;
+
+        const updateComposerHeight = () => {
+            const nextHeight = Math.round(composer.getBoundingClientRect().height);
+            if (nextHeight > 0) setComposerHeight(nextHeight);
+        };
+
+        updateComposerHeight();
+
+        if (typeof ResizeObserver === 'undefined') return undefined;
+        const resizeObserver = new ResizeObserver(updateComposerHeight);
+        resizeObserver.observe(composer);
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, [selectedChannelId]);
+
     if (!isAllowed) {
         return (
             <div className="font-product text-neutral-900">
@@ -570,7 +616,7 @@ const TeamChat = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 h-[calc(var(--app-height,100vh)-45px)] min-h-[calc(var(--app-height,100vh)-45px)] flex overflow-hidden overscroll-none bg-white w-full max-w-[1440px] mx-auto">
+        <div className="font-product text-neutral-900 h-[calc(100dvh-45px)] min-h-[calc(100dvh-45px)] flex overflow-hidden overscroll-none bg-white w-full max-w-[1440px] mx-auto">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-0">
                 <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-200 ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-black/5 space-y-3">
@@ -714,7 +760,7 @@ const TeamChat = () => {
 
                             <div
                                 className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
-                                style={{ paddingBottom: 'calc(72px + var(--bottom-spacing, 1rem))' }}
+                                style={{ paddingBottom: `calc(${composerHeight}px + var(--bottom-spacing, 0px))` }}
                             >
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
@@ -766,6 +812,7 @@ const TeamChat = () => {
                             </div>
 
                             <div
+                                ref={composerRef}
                                 className="shrink-0 border-t border-black/5 px-4 pt-3 pb-2 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
                                 style={{ paddingBottom: 'var(--bottom-spacing, 1rem)' }}
                             >
