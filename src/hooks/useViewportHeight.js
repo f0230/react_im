@@ -3,17 +3,26 @@ import { useEffect } from 'react';
 const useViewportHeight = (enabled = true) => {
     useEffect(() => {
         if (!enabled || typeof window === 'undefined') return undefined;
+        let maxViewportHeight = window.innerHeight;
 
         const setHeight = () => {
             const viewport = window.visualViewport;
-            const height = viewport ? viewport.height : window.innerHeight;
+            const visualHeight = viewport ? viewport.height : window.innerHeight;
+            const fallbackHeight = window.innerHeight;
             const root = document.documentElement;
 
-            // Update CSS variable for components
-            root.style.setProperty('--app-height', `${height}px`);
-
             // Heuristic for keyboard open
-            const isKeyboardOpen = height < window.screen.availHeight * 0.8;
+            const baseline = Math.max(maxViewportHeight, fallbackHeight);
+            const isKeyboardOpen = visualHeight < baseline * 0.8;
+
+            // Keep app height stable while keyboard is open to avoid layout jumping.
+            if (!isKeyboardOpen) {
+                maxViewportHeight = Math.max(maxViewportHeight, visualHeight, fallbackHeight);
+            }
+            const appHeight = isKeyboardOpen ? maxViewportHeight : visualHeight;
+
+            // Update CSS variable for components
+            root.style.setProperty('--app-height', `${appHeight}px`);
 
             if (isKeyboardOpen) {
                 root.style.setProperty('--bottom-spacing', '0.5rem');
@@ -25,10 +34,10 @@ const useViewportHeight = (enabled = true) => {
 
             // Lock body/html to prevent background scrolling
             // We use the pixel height to force it to match the visual viewport
-            document.body.style.height = `${height}px`;
+            document.body.style.height = `${appHeight}px`;
             document.body.style.overflow = 'hidden';
 
-            root.style.height = `${height}px`;
+            root.style.height = `${appHeight}px`;
             root.style.overflow = 'hidden';
         };
 
@@ -41,7 +50,6 @@ const useViewportHeight = (enabled = true) => {
 
         if (viewport) {
             viewport.addEventListener('resize', setHeight);
-            viewport.addEventListener('scroll', setHeight);
         }
 
         return () => {
@@ -49,7 +57,6 @@ const useViewportHeight = (enabled = true) => {
             window.removeEventListener('orientationchange', setHeight);
             if (viewport) {
                 viewport.removeEventListener('resize', setHeight);
-                viewport.removeEventListener('scroll', setHeight);
             }
 
             // Clean up: Reset body/html styles
