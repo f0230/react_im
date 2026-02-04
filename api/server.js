@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import projectCreatedHandler from './project-created.js';
 import clientWelcomeEmailHandler from './client-welcome-email.js';
 import slackNotifyHandler from './slack-notify.js';
-import calHandler from './cal/[action].js';
+import calHandler from './cal/index.js';
 
 dotenv.config();
 

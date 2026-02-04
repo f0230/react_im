@@ -26,6 +26,10 @@
       "destination": "/assets/$1"
     },
     {
+      "source": "/api/cal/:action",
+      "destination": "/api/cal?action=:action"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
