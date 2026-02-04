@@ -4,10 +4,7 @@ import dotenv from 'dotenv';
 import projectCreatedHandler from './project-created.js';
 import clientWelcomeEmailHandler from './client-welcome-email.js';
 import slackNotifyHandler from './slack-notify.js';
-import calAvailabilityHandler from './cal/availability.js';
-import calCreateBookingHandler from './cal/create-booking.js';
-import calBookingsHandler from './cal/bookings.js';
-import calWebhookHandler from './cal/webhook.js';
+import calHandler from './cal/[action].js';
 
 dotenv.config();
 
@@ -24,11 +21,7 @@ app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.post('/api/slack-notify', slackNotifyHandler);
 
 // Cal.com Routes
-app.get('/api/cal/availability', calAvailabilityHandler);
-app.post('/api/cal/create-booking', calCreateBookingHandler);
-app.get('/api/cal/bookings', calBookingsHandler);
-app.post('/api/cal/webhook', calWebhookHandler);
-// app.post('/api/cal/cancel-booking', ...); // To be implemented if needed
+app.all('/api/cal/:action', calHandler);
 
 
 const PORT = process.env.PORT || 3001;
