@@ -706,10 +706,7 @@ const TeamChat = () => {
                                 </div>
                             </div>
 
-                            <div
-                                className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
-                                style={{ paddingBottom: '1rem' }}
-                            >
+                            <div className="flex-1 overflow-y-auto px-4 py-4 pb-28 lg:pb-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50">
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
                                 )}
@@ -760,7 +757,7 @@ const TeamChat = () => {
                             </div>
 
                             <div
-                                className="border-t border-black/5 p-4 shrink-0 bg-white sticky bottom-0 shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
+                                className="fixed inset-x-0 bottom-0 z-30 border-t border-black/5 px-4 pt-3 pb-2 shrink-0 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)] lg:static lg:z-auto lg:p-4"
                                 style={{ paddingBottom: 'var(--bottom-spacing, 1rem)' }}
                             >
                                 <div className="space-y-2">
