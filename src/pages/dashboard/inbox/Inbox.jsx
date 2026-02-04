@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { useLocation } from 'react-router-dom';
 import ClientDetail from '@/pages/dashboard/crm/ClientDetail';
-import useViewportHeight from '@/hooks/useViewportHeight';
+
 
 const formatTimestamp = (value) => {
     if (!value) return '';
@@ -60,7 +60,7 @@ const Inbox = () => {
     const fileInputRef = React.useRef(null);
     const lastReadRef = useRef({});
 
-    useViewportHeight(isAllowed);
+
 
     const preselectWaId = useMemo(() => {
         const params = new URLSearchParams(location.search);
@@ -492,7 +492,7 @@ const Inbox = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 h-[calc(var(--app-height,100vh)-45px)] min-h-[calc(var(--app-height,100vh)-45px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
+        <div className="font-product text-neutral-900 h-[calc(100dvh-45px)] min-h-[calc(100dvh-45px)] flex overflow-hidden bg-white w-full max-w-[1440px] mx-auto">
 
             {/* Main Content Grid */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[360px_1fr] min-h-0">

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Hash, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
-import useViewportHeight from '@/hooks/useViewportHeight';
+
 
 const formatTimestamp = (value) => {
     if (!value) return '';
@@ -99,7 +99,7 @@ const TeamChat = () => {
     const messagesEndRef = useRef(null);
     const composerRef = useRef(null);
 
-    useViewportHeight(isAllowed);
+
 
     const selectedChannel = useMemo(
         () => channels.find((channel) => channel.id === selectedChannelId) || null,
@@ -596,7 +596,7 @@ const TeamChat = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 h-[calc(var(--app-height,100vh)-45px)] min-h-[calc(var(--app-height,100vh)-45px)] flex overflow-hidden overscroll-none bg-white w-full max-w-[1440px] mx-auto">
+        <div className="font-product text-neutral-900 h-[calc(100dvh-45px)] min-h-[calc(100dvh-45px)] flex overflow-hidden overscroll-none bg-white w-full max-w-[1440px] mx-auto">
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-0">
                 <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-200 ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-black/5 space-y-3">
