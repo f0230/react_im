@@ -673,7 +673,7 @@ const Inbox = () => {
 
                             <div
                                 className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50"
-                                style={{ paddingBottom: 'calc(72px + var(--bottom-spacing, 1rem))' }}
+                                style={{ paddingBottom: 'calc(72px + 1rem)' }}
                             >
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
@@ -741,7 +741,7 @@ const Inbox = () => {
 
                             <div
                                 className="shrink-0 border-t border-black/5 px-4 pt-3 pb-2 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
-                                style={{ paddingBottom: 'var(--bottom-spacing, 1rem)' }}
+                                style={{ paddingBottom: '1rem' }}
                             >
                                 <div className="space-y-3">
                                     <div className="flex flex-col gap-3">
