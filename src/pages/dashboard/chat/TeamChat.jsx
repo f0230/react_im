@@ -549,39 +549,19 @@ const TeamChat = () => {
 
     useEffect(() => {
         if (!messagesEndRef.current) return;
-        const keyboardOpen = typeof window !== 'undefined'
-            && getComputedStyle(document.documentElement).getPropertyValue('--keyboard-open').trim() === '1';
-        const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches;
-        messagesEndRef.current.scrollIntoView({
-            behavior: keyboardOpen || isMobile ? 'auto' : 'smooth',
-            block: 'end',
-        });
+
+        // Slight delay to allow viewport resize to stabilize (if any)
+        const timeoutId = setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'end',
+            });
+        }, 100);
+
+        return () => clearTimeout(timeoutId);
     }, [messages.length, selectedChannelId]);
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return undefined;
-        const isMobile = window.matchMedia('(max-width: 1023px)').matches;
-        if (!isMobile) return undefined;
-
-        const root = document.documentElement;
-        const body = document.body;
-        const prevRootOverflow = root.style.overflow;
-        const prevBodyOverflow = body.style.overflow;
-        const prevRootOverscroll = root.style.overscrollBehavior;
-        const prevBodyOverscroll = body.style.overscrollBehavior;
-
-        root.style.overflow = 'hidden';
-        body.style.overflow = 'hidden';
-        root.style.overscrollBehavior = 'none';
-        body.style.overscrollBehavior = 'none';
-
-        return () => {
-            root.style.overflow = prevRootOverflow;
-            body.style.overflow = prevBodyOverflow;
-            root.style.overscrollBehavior = prevRootOverscroll;
-            body.style.overscrollBehavior = prevBodyOverscroll;
-        };
-    }, []);
+    // Cleaned up overflow locking effect as it conflicts with interactive-widget meta tag
 
     useEffect(() => {
         const composer = composerRef.current;

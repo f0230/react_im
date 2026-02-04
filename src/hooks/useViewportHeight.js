@@ -3,56 +3,41 @@ import { useEffect } from 'react';
 const useViewportHeight = (enabled = true) => {
     useEffect(() => {
         if (!enabled || typeof window === 'undefined') return undefined;
-        let maxViewportHeight = window.innerHeight;
 
         const setHeight = () => {
             const viewport = window.visualViewport;
-            const visualHeight = viewport ? viewport.height : window.innerHeight;
-            const viewportOffsetTop = viewport ? viewport.offsetTop : 0;
-            const root = document.documentElement;
+            // Fallback to innerHeight if visualViewport is not supported (older browsers)
+            // But for modern mobile web, visualViewport is the gold standard.
+            const height = viewport ? viewport.height : window.innerHeight;
 
-            // Detect keyboard by measured inset instead of ratio-based heuristics.
-            maxViewportHeight = Math.max(maxViewportHeight, window.innerHeight, visualHeight);
-            const keyboardInset = Math.max(0, Math.round(maxViewportHeight - (visualHeight + viewportOffsetTop)));
-            const isKeyboardOpen = keyboardInset > 120;
+            // Set the CSS variable to the *exact* current visible height
+            document.documentElement.style.setProperty('--app-height', `${height}px`);
 
-            // Keep app height synced to the currently visible area.
-            const appHeight = Math.max(0, Math.round(maxViewportHeight - (isKeyboardOpen ? keyboardInset : 0)));
-            root.style.setProperty('--app-height', `${appHeight}px`);
-            root.style.setProperty('--keyboard-inset', `${isKeyboardOpen ? keyboardInset : 0}px`);
-
-            if (isKeyboardOpen) {
-                root.style.setProperty('--bottom-spacing', '0px');
-                root.style.setProperty('--keyboard-open', '1');
-            } else {
-                root.style.setProperty('--bottom-spacing', 'calc(1rem + env(safe-area-inset-bottom))');
-                root.style.setProperty('--keyboard-open', '0');
-            }
+            // Helpful for specific bottom spacing if needed, but usually redundant if layout is flex-col
+            // keeping it simple.
         };
 
         const viewport = window.visualViewport;
         setHeight();
 
+        // Listeners
+        if (viewport) {
+            viewport.addEventListener('resize', setHeight);
+            viewport.addEventListener('scroll', setHeight); // Sometimes scroll affects viewport in weird ways
+        }
         window.addEventListener('resize', setHeight);
         window.addEventListener('orientationchange', setHeight);
 
-        if (viewport) {
-            viewport.addEventListener('resize', setHeight);
-        }
-
         return () => {
-            window.removeEventListener('resize', setHeight);
-            window.removeEventListener('orientationchange', setHeight);
             if (viewport) {
                 viewport.removeEventListener('resize', setHeight);
+                viewport.removeEventListener('scroll', setHeight);
             }
+            window.removeEventListener('resize', setHeight);
+            window.removeEventListener('orientationchange', setHeight);
 
-            // Clean up CSS variables
-            const root = document.documentElement;
-            root.style.removeProperty('--app-height');
-            root.style.removeProperty('--bottom-spacing');
-            root.style.removeProperty('--keyboard-open');
-            root.style.removeProperty('--keyboard-inset');
+            // Optional: Clean up
+            // document.documentElement.style.removeProperty('--app-height');
         };
     }, [enabled]);
 };
