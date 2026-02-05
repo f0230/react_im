@@ -110,7 +110,7 @@ const Clients = () => {
 
     return (
         <div className="font-product text-neutral-900 space-y-6 pb-6 pt-2">
-          
+
 
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 min-h-0">
                 <motion.div
