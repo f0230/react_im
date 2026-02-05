@@ -9,40 +9,161 @@ const EMPTY_COUNTS = {
     unreadNotifications: 0,
 };
 
+const isMissingRelationError = (error) => {
+    if (!error) return false;
+    if (error.code === '42P01') return true;
+    return /does not exist/i.test(error.message || '');
+};
+
+const getClientName = (record) => (
+    record?.full_name
+    || record?.company_name
+    || record?.email
+    || record?.phone
+    || 'Cliente'
+);
+
+const isAfter = (current, base) => {
+    if (!current) return false;
+    if (!base) return true;
+    return new Date(current) > new Date(base);
+};
+
 export const useUnreadCounts = () => {
-    const { user, profile } = useAuth();
+    const { user, profile, client } = useAuth();
     const [counts, setCounts] = useState(EMPTY_COUNTS);
     const [previews, setPreviews] = useState([]);
     const [clientPreviews, setClientPreviews] = useState([]);
-    const [hasClientMessagingTable, setHasClientMessagingTable] = useState(true);
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [hasClientMessagingTable, setHasClientMessagingTable] = useState(true);
+    const [hasClientReadsTable, setHasClientReadsTable] = useState(true);
     const refreshTimeout = useRef(null);
 
-    const canUse = Boolean(user?.id && profile && (profile.role === 'admin' || profile.role === 'worker'));
+    const role = profile?.role;
+    const isStaff = role === 'admin' || role === 'worker';
+    const isClient = role === 'client';
+    const canUse = Boolean(user?.id && profile);
+
+    const loadClientReadsMap = useCallback(async () => {
+        if (!canUse || !user?.id || !hasClientReadsTable) return new Map();
+
+        let query = supabase
+            .from('client_message_reads')
+            .select('client_id, last_read_at')
+            .eq('user_id', user.id);
+
+        if (isClient) {
+            if (!client?.id) return new Map();
+            query = query.eq('client_id', client.id);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+            if (isMissingRelationError(error)) {
+                setHasClientReadsTable(false);
+            }
+            return new Map();
+        }
+
+        return new Map((data || []).map((row) => [row.client_id, row.last_read_at]));
+    }, [canUse, client?.id, hasClientReadsTable, isClient, user?.id]);
+
+    const getUnreadClientThreads = useCallback(async () => {
+        if (!canUse || !hasClientMessagingTable) return 0;
+
+        const readsMap = await loadClientReadsMap();
+
+        if (isClient) {
+            if (!client?.id) return 0;
+            const lastReadAt = readsMap.get(client.id);
+            let query = supabase
+                .from('client_messages')
+                .select('id', { count: 'exact', head: true })
+                .eq('client_id', client.id)
+                .in('sender_role', ['admin', 'worker']);
+            if (lastReadAt) {
+                query = query.gt('created_at', lastReadAt);
+            }
+            const { count, error } = await query;
+            if (error) {
+                if (isMissingRelationError(error)) {
+                    setHasClientMessagingTable(false);
+                }
+                return 0;
+            }
+            return (count || 0) > 0 ? 1 : 0;
+        }
+
+        if (!isStaff) return 0;
+
+        const { data, error } = await supabase
+            .from('client_messages')
+            .select('client_id, created_at, sender_role')
+            .eq('sender_role', 'client')
+            .order('created_at', { ascending: false })
+            .limit(500);
+
+        if (error || !Array.isArray(data)) {
+            if (isMissingRelationError(error)) {
+                setHasClientMessagingTable(false);
+            }
+            return 0;
+        }
+
+        const latestInboundByClient = new Map();
+        data.forEach((row) => {
+            if (!row?.client_id || latestInboundByClient.has(row.client_id)) return;
+            latestInboundByClient.set(row.client_id, row.created_at);
+        });
+
+        let unreadThreads = 0;
+        latestInboundByClient.forEach((lastInboundAt, clientId) => {
+            const lastReadAt = readsMap.get(clientId);
+            if (isAfter(lastInboundAt, lastReadAt)) unreadThreads += 1;
+        });
+
+        return unreadThreads;
+    }, [canUse, client?.id, hasClientMessagingTable, isClient, isStaff, loadClientReadsMap]);
 
     const refreshCounts = useCallback(async () => {
-        if (!canUse) return;
-        const { data, error } = await supabase.rpc('get_unread_counts_v1');
-        if (!error && Array.isArray(data) && data[0]) {
-            setCounts({
-                unreadTeam: Number(data[0].unread_team || 0),
-                unreadWhatsapp: Number(data[0].unread_whatsapp || 0),
-                unreadClients: Number(data[0].unread_clients || 0),
-                unreadNotifications: Number(data[0].unread_notifications || 0),
-            });
+        if (!canUse || !user?.id) return;
+        const nextCounts = { ...EMPTY_COUNTS };
+
+        if (isStaff) {
+            const { data, error } = await supabase.rpc('get_unread_counts_v1');
+            if (!error && Array.isArray(data) && data[0]) {
+                nextCounts.unreadTeam = Number(data[0].unread_team || 0);
+                nextCounts.unreadWhatsapp = Number(data[0].unread_whatsapp || 0);
+            }
         }
-    }, [canUse]);
+
+        nextCounts.unreadClients = await getUnreadClientThreads();
+
+        const { count: unreadNotifications } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('recipient_id', user.id)
+            .is('read_at', null);
+        nextCounts.unreadNotifications = Number(unreadNotifications || 0);
+
+        setCounts(nextCounts);
+    }, [canUse, getUnreadClientThreads, isStaff, user?.id]);
 
     const refreshPreviews = useCallback(async () => {
-        if (!canUse) return;
+        if (!canUse || !isStaff) {
+            setPreviews([]);
+            return;
+        }
         const { data, error } = await supabase.rpc('get_unread_previews_v1', {
             limit_per_source: 6,
         });
         if (!error && Array.isArray(data)) {
             setPreviews(data);
+        } else {
+            setPreviews([]);
         }
-    }, [canUse]);
+    }, [canUse, isStaff]);
 
     const refreshNotifications = useCallback(async () => {
         if (!canUse || !user?.id) return;
@@ -54,43 +175,106 @@ export const useUnreadCounts = () => {
             .limit(20);
         if (!error && Array.isArray(data)) {
             setNotifications(data);
+        } else {
+            setNotifications([]);
         }
     }, [canUse, user?.id]);
 
     const refreshClientPreviews = useCallback(async () => {
-        if (!canUse || !hasClientMessagingTable) return;
-        const { data, error } = await supabase
+        if (!canUse || !hasClientMessagingTable) {
+            setClientPreviews([]);
+            return;
+        }
+
+        if (isClient && !client?.id) {
+            setClientPreviews([]);
+            return;
+        }
+
+        const readsMap = await loadClientReadsMap();
+        let query = supabase
             .from('client_messages')
             .select('client_id, body, created_at, sender_role, client:clients(full_name, company_name, email, phone)')
             .order('created_at', { ascending: false })
-            .limit(40);
+            .limit(300);
 
+        if (isClient && client?.id) {
+            query = query.eq('client_id', client.id);
+        }
+
+        const { data, error } = await query;
         if (error || !Array.isArray(data)) {
-            if (error?.code === '42P01' || /does not exist/i.test(error?.message || '')) {
+            if (isMissingRelationError(error)) {
                 setHasClientMessagingTable(false);
             }
             setClientPreviews([]);
             return;
         }
 
+        if (isClient) {
+            if (data.length === 0) {
+                setClientPreviews([]);
+                return;
+            }
+            const latest = data[0];
+            const lastReadAt = readsMap.get(latest.client_id);
+            const unreadCount = data.reduce((acc, row) => {
+                const isUnread = row.sender_role !== 'client' && isAfter(row.created_at, lastReadAt);
+                return acc + (isUnread ? 1 : 0);
+            }, 0);
+            if (unreadCount <= 0) {
+                setClientPreviews([]);
+                return;
+            }
+            setClientPreviews([{
+                source: 'clients',
+                title: 'Equipo DTE',
+                preview: latest.body || '',
+                event_at: latest.created_at,
+                unread_count: unreadCount,
+                client_id: latest.client_id,
+                author: latest.sender_role === 'client' ? 'Tú' : 'Equipo DTE',
+            }]);
+            return;
+        }
+
         const latestByClient = new Map();
         data.forEach((row) => {
-            if (!row?.client_id || latestByClient.has(row.client_id)) return;
+            if (!row?.client_id) return;
             const clientRecord = Array.isArray(row?.client) ? row.client[0] : row?.client;
-            const clientName = clientRecord?.full_name || clientRecord?.company_name || clientRecord?.email || clientRecord?.phone || 'Cliente';
-            latestByClient.set(row.client_id, {
-                source: 'clients',
-                title: clientName,
-                preview: row.body || '',
-                event_at: row.created_at,
-                unread_count: 0,
-                client_id: row.client_id,
-                author: row.sender_role === 'client' ? clientName : 'Equipo DTE',
-            });
+            const clientName = getClientName(clientRecord);
+            const lastReadAt = readsMap.get(row.client_id);
+            const isUnread = row.sender_role === 'client' && isAfter(row.created_at, lastReadAt);
+
+            if (!latestByClient.has(row.client_id)) {
+                latestByClient.set(row.client_id, {
+                    source: 'clients',
+                    title: clientName,
+                    preview: row.body || '',
+                    event_at: row.created_at,
+                    unread_count: isUnread ? 1 : 0,
+                    client_id: row.client_id,
+                    author: row.sender_role === 'client' ? clientName : 'Equipo DTE',
+                });
+                return;
+            }
+
+            if (isUnread) {
+                const current = latestByClient.get(row.client_id);
+                latestByClient.set(row.client_id, {
+                    ...current,
+                    unread_count: Number(current.unread_count || 0) + 1,
+                });
+            }
         });
 
-        setClientPreviews(Array.from(latestByClient.values()).slice(0, 6));
-    }, [canUse, hasClientMessagingTable]);
+        setClientPreviews(
+            Array.from(latestByClient.values())
+                .filter((item) => Number(item.unread_count || 0) > 0)
+                .sort((a, b) => new Date(b.event_at) - new Date(a.event_at))
+                .slice(0, 6)
+        );
+    }, [canUse, client?.id, hasClientMessagingTable, isClient, loadClientReadsMap]);
 
     const refreshAll = useCallback(async () => {
         if (!canUse) return;
@@ -126,56 +310,75 @@ export const useUnreadCounts = () => {
             setCounts(EMPTY_COUNTS);
             setPreviews([]);
             setClientPreviews([]);
-            setHasClientMessagingTable(true);
             setNotifications([]);
+            setHasClientMessagingTable(true);
+            setHasClientReadsTable(true);
             setLoading(false);
             return;
         }
 
         refreshAll();
 
-        const teamChannel = supabase
-            .channel('unread-team-messages')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, scheduleRefresh)
-            .subscribe();
+        const channels = [];
 
-        const whatsappChannel = supabase
-            .channel('unread-whatsapp-messages')
-            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages' }, scheduleRefresh)
-            .subscribe();
+        if (isStaff) {
+            channels.push(
+                supabase
+                    .channel('unread-team-messages')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, scheduleRefresh)
+                    .subscribe()
+            );
+            channels.push(
+                supabase
+                    .channel('unread-whatsapp-messages')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages' }, scheduleRefresh)
+                    .subscribe()
+            );
+            channels.push(
+                supabase
+                    .channel('unread-team-reads')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'team_channel_reads' }, scheduleRefresh)
+                    .subscribe()
+            );
+            channels.push(
+                supabase
+                    .channel('unread-whatsapp-reads')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_thread_reads' }, scheduleRefresh)
+                    .subscribe()
+            );
+        }
 
-        const notificationsChannel = supabase
-            .channel('unread-notifications')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, scheduleRefresh)
-            .subscribe();
-        const clientsChannel = hasClientMessagingTable
-            ? supabase
-                .channel('unread-client-messages')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'client_messages' }, scheduleRefresh)
+        channels.push(
+            supabase
+                .channel('unread-notifications')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, scheduleRefresh)
                 .subscribe()
-            : null;
+        );
 
-        const teamReadsChannel = supabase
-            .channel('unread-team-reads')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'team_channel_reads' }, scheduleRefresh)
-            .subscribe();
+        if (hasClientMessagingTable) {
+            channels.push(
+                supabase
+                    .channel('unread-client-messages')
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'client_messages' }, scheduleRefresh)
+                    .subscribe()
+            );
+        }
 
-        const whatsappReadsChannel = supabase
-            .channel('unread-whatsapp-reads')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_thread_reads' }, scheduleRefresh)
-            .subscribe();
+        if (hasClientReadsTable) {
+            channels.push(
+                supabase
+                    .channel('unread-client-reads')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'client_message_reads' }, scheduleRefresh)
+                    .subscribe()
+            );
+        }
 
         if (typeof window !== 'undefined') {
             window.addEventListener('unread:refresh', handleExternalRefresh);
         }
 
         return () => {
-            supabase.removeChannel(teamChannel);
-            supabase.removeChannel(whatsappChannel);
-            supabase.removeChannel(notificationsChannel);
-            if (clientsChannel) supabase.removeChannel(clientsChannel);
-            supabase.removeChannel(teamReadsChannel);
-            supabase.removeChannel(whatsappReadsChannel);
+            channels.forEach((channel) => supabase.removeChannel(channel));
             if (typeof window !== 'undefined') {
                 window.removeEventListener('unread:refresh', handleExternalRefresh);
             }
@@ -184,7 +387,15 @@ export const useUnreadCounts = () => {
                 refreshTimeout.current = null;
             }
         };
-    }, [canUse, handleExternalRefresh, hasClientMessagingTable, refreshAll, scheduleRefresh]);
+    }, [
+        canUse,
+        handleExternalRefresh,
+        hasClientMessagingTable,
+        hasClientReadsTable,
+        isStaff,
+        refreshAll,
+        scheduleRefresh,
+    ]);
 
     const messageUnreadTotal = counts.unreadTeam + counts.unreadWhatsapp + counts.unreadClients;
 

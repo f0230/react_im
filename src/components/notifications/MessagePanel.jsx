@@ -4,8 +4,6 @@ import { Hash, MessageSquare, Phone, Users } from 'lucide-react';
 import PopoverPanel from '../ui/PopoverPanel';
 import { POPOVER_PANEL_CLASS } from '../ui/popoverStyles';
 import { formatTimestamp, getInitial } from '@/utils/messagingFormatters';
-import { useAuth } from '@/context/AuthContext';
-import { getMessagingTabs } from '@/config/messagingTabs';
 
 const EmptyState = () => (
     <div className="px-4 py-6 text-center text-xs text-white/60">
@@ -20,17 +18,12 @@ const sectionConfig = [
 ];
 
 const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [], clientItems = [] }) => {
-    const { profile } = useAuth();
     const sectionItems = {
         teamItems,
         whatsappItems,
         clientItems,
     };
     const hasItems = Object.values(sectionItems).some((items) => items.length > 0);
-    const quickLinks = getMessagingTabs(profile?.role).map((tab) => ({
-        label: tab.label,
-        path: tab.path,
-    }));
 
     return (
         <PopoverPanel
@@ -52,19 +45,6 @@ const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [], cli
                 </Link>
             </div>
 
-            <div className="px-3 pt-2 pb-1 flex flex-wrap gap-1.5 border-b border-white/5">
-                {quickLinks.map((link) => (
-                    <Link
-                        key={link.path}
-                        to={link.path}
-                        onClick={onClose}
-                        className="inline-flex items-center rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.15em] text-white/70 hover:text-white hover:border-white/30 transition"
-                    >
-                        {link.label}
-                    </Link>
-                ))}
-            </div>
-
             {!hasItems && <EmptyState />}
 
             {sectionConfig.map((section) => {
@@ -72,7 +52,6 @@ const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [], cli
                 if (items.length === 0) return null;
                 return (
                     <div key={section.key} className="px-3 py-2 border-t border-white/5 first:border-t-0">
-                        <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 px-2 py-1">{section.label}</div>
                         <div className="space-y-1">
                             {items.map((item) => {
                                 const SectionIcon = section.icon;

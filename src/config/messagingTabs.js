@@ -12,7 +12,7 @@ const MESSAGING_TABS = {
         { key: 'clients', label: 'Clients', path: '/dashboard/client-chat', icon: MessageSquare },
     ],
     client: [
-        { key: 'clients', label: 'Soporte', path: '/dashboard/client-chat', icon: MessageSquare },
+        { key: 'clients', label: 'Mensajes', path: '/dashboard/client-chat', icon: MessageSquare },
     ],
 };
 

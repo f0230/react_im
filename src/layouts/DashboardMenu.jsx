@@ -14,7 +14,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Mis Proyectos', path: '/dashboard/projects' },
             { icon: Calendar, label: 'Mis Citas', path: '/dashboard/my-appointments' },
-            { icon: MessageSquare, label: 'Soporte', path: '/dashboard/messages' },
+            { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
         ],
         worker: [

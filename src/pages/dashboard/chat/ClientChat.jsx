@@ -38,8 +38,10 @@ const ClientChat = () => {
     const [error, setError] = useState('');
     const [sendError, setSendError] = useState('');
     const [migrationPending, setMigrationPending] = useState(false);
+    const [readTrackingPending, setReadTrackingPending] = useState(false);
 
     const messagesEndRef = useRef(null);
+    const lastReadRef = useRef({});
 
     const selectedThread = useMemo(
         () => threads.find((thread) => thread.id === selectedClientId) || null,
@@ -72,7 +74,7 @@ const ClientChat = () => {
             if (!client?.id) {
                 setThreads([]);
                 setSelectedClientId(null);
-                setError('No encontramos tu perfil de cliente. Completa tu perfil para usar soporte.');
+                setError('No encontramos tu perfil de cliente. Completa tu perfil para usar mensajería.');
                 setLoadingThreads(false);
                 return;
             }
@@ -111,6 +113,41 @@ const ClientChat = () => {
         setLoadingThreads(false);
     }, [client, isAllowed, isStaff]);
 
+    const markClientRead = useCallback(
+        async (clientId, timestamp) => {
+            if (!clientId || !user?.id) return;
+            const nextReadAt = timestamp || new Date().toISOString();
+            const previous = lastReadRef.current[clientId];
+            if (previous && new Date(previous) >= new Date(nextReadAt)) return;
+            lastReadRef.current[clientId] = nextReadAt;
+
+            const { error: supaError } = await supabase
+                .from('client_message_reads')
+                .upsert(
+                    {
+                        client_id: clientId,
+                        user_id: user.id,
+                        last_read_at: nextReadAt,
+                        updated_at: new Date().toISOString(),
+                    },
+                    { onConflict: 'client_id,user_id' }
+                );
+
+            if (supaError) {
+                if (isMissingRelationError(supaError)) {
+                    setReadTrackingPending(true);
+                }
+                return;
+            }
+
+            setReadTrackingPending(false);
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('unread:refresh'));
+            }
+        },
+        [user?.id]
+    );
+
     const loadMessages = useCallback(async (clientId, background = false) => {
         if (!clientId || !isAllowed) return;
         if (!background) setLoadingMessages(true);
@@ -134,11 +171,22 @@ const ClientChat = () => {
             setMessages([]);
         } else {
             setMigrationPending(false);
-            setMessages(data || []);
+            const nextMessages = data || [];
+            setMessages(nextMessages);
+
+            // Mark read immediately after fetching to keep unread badges in sync
+            if (nextMessages.length === 0) {
+                markClientRead(clientId, new Date().toISOString());
+            } else {
+                const lastMessage = nextMessages[nextMessages.length - 1];
+                if (lastMessage?.created_at) {
+                    markClientRead(clientId, lastMessage.created_at);
+                }
+            }
         }
 
         if (!background) setLoadingMessages(false);
-    }, [isAllowed]);
+    }, [isAllowed, markClientRead]);
 
     const handleSend = useCallback(async () => {
         if (!selectedClientId || !user?.id || sending) return;
@@ -204,6 +252,7 @@ const ClientChat = () => {
                         if (prev.some((message) => message.id === payload.new.id)) return prev;
                         return [...prev, payload.new];
                     });
+                    markClientRead(selectedClientId, payload.new.created_at);
                 }
             )
             .subscribe();
@@ -211,7 +260,19 @@ const ClientChat = () => {
         return () => {
             supabase.removeChannel(subscription);
         };
-    }, [isAllowed, loadMessages, selectedClientId]);
+    }, [isAllowed, loadMessages, markClientRead, selectedClientId]);
+
+    useEffect(() => {
+        if (!selectedClientId || !user?.id) return;
+        if (messages.length === 0) {
+            markClientRead(selectedClientId, new Date().toISOString());
+            return;
+        }
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage?.created_at) {
+            markClientRead(selectedClientId, lastMessage.created_at);
+        }
+    }, [markClientRead, messages, selectedClientId, user?.id]);
 
     useEffect(() => {
         if (!messagesEndRef.current) return;
@@ -356,6 +417,11 @@ const ClientChat = () => {
                                 {migrationPending && (
                                     <p className="text-xs text-amber-600 mb-2">
                                         Para habilitar este chat, ejecuta `supabase/client-messaging.sql`.
+                                    </p>
+                                )}
+                                {readTrackingPending && !migrationPending && (
+                                    <p className="text-xs text-amber-600 mb-2">
+                                        Ejecuta `supabase/client-messaging.sql` para activar notificaciones no leídas.
                                     </p>
                                 )}
                                 <div className="flex items-center gap-2">

@@ -20,7 +20,7 @@ const Sidebar = () => {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Servicios', path: '/dashboard/services' },
-            { icon: MessageSquare, label: 'Soporte', path: '/dashboard/messages' },
+            { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],
