@@ -8,11 +8,13 @@ import {
     Sparkles,
     Briefcase,
     Calendar,
-    Users,
-    MessagesSquare
+    Users
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import heroBgMobile from '../../assets/PORTADA_1_MOVIL.webp';
+import heroBgDesktop from '../../assets/PORTADA_1.webp';
+import dteLogo from '../../assets/LOGODTE.svg';
 
 const DashboardHome = () => {
     const { profile, user } = useAuth();
@@ -98,9 +100,8 @@ const DashboardHome = () => {
                         ? ` Tienes ${stats.projectCount} proyecto${stats.projectCount !== 1 ? 's' : ''} activo${stats.projectCount !== 1 ? 's' : ''}.`
                         : ''
                 }`,
-                quickAccessTitle: 'Acceso rápido a tu cuenta',
-                quickAccessDescription: 'Gestiona tus proyectos y citas desde aquí.',
                 primaryLink: { label: 'Ver mis proyectos', path: '/dashboard/projects' },
+                secondaryLink: { label: 'Ir a mis citas', path: '/dashboard/my-appointments' },
                 cards: [
                     { label: 'Proyectos', value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
                     { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/my-appointments' },
@@ -115,49 +116,35 @@ const DashboardHome = () => {
                         path: '/dashboard/my-appointments',
                     },
                 ],
-                quickCards: [
-                    {
-                        title: '¿Necesitas un nuevo servicio?',
-                        body: 'Crea un nuevo proyecto para comenzar a trabajar con nosotros.',
-                        action: 'Comenzar un proyecto',
-                        path: '/dashboard/projects',
-                    },
-                    {
-                        title: 'Agenda una llamada',
-                        body: 'Revisa tus citas o programa una nueva reunión.',
-                        action: 'Ir a mis citas',
-                        path: '/dashboard/my-appointments',
-                    },
+            };
+        }
+
+        if (role === 'admin') {
+            return {
+                sectionLabel: 'Panel administrativo',
+                title: `Hola, ${profile?.full_name || profile?.name || 'Admin'}`,
+                description: 'Este es tu resumen operativo de proyectos, clientes y agenda del equipo.',
+                primaryLink: { label: 'Abrir CRM', path: '/dashboard/clients' },
+                secondaryLink: { label: 'Abrir bandeja', path: '/dashboard/inbox' },
+                cards: [
+                    { label: 'Proyectos', value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
+                    { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/appointments' },
+                    { label: 'Próximos 7 días', value: stats.upcomingWeekAppointments, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10', path: '/dashboard/appointments' },
+                    { label: 'Clientes', value: stats.clientCount ?? '-', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/10', path: '/dashboard/clients' },
                 ],
             };
         }
 
         return {
-            sectionLabel: role === 'admin' ? 'Panel administrativo' : 'Panel operativo',
-            title: `Hola, ${profile?.full_name || profile?.name || (role === 'admin' ? 'Admin' : 'Equipo')}`,
-            description: 'Este es tu resumen operativo de proyectos, clientes y agenda del equipo.',
-            quickAccessTitle: role === 'admin' ? 'Gestión del negocio' : 'Gestión del equipo',
-            quickAccessDescription: role === 'admin' ? 'Administra clientes, proyectos y citas.' : 'Coordina proyectos y comunicación interna.',
-            primaryLink: { label: role === 'admin' ? 'Abrir CRM' : 'Ver proyectos', path: role === 'admin' ? '/dashboard/clients' : '/dashboard/projects' },
+            sectionLabel: 'Panel operativo',
+            title: `Hola, ${profile?.full_name || profile?.name || 'Equipo'}`,
+            description: 'Este es tu resumen operativo de proyectos y agenda del equipo.',
+            primaryLink: { label: 'Ver proyectos', path: '/dashboard/projects' },
+            secondaryLink: { label: 'Abrir bandeja', path: '/dashboard/inbox' },
             cards: [
                 { label: 'Proyectos', value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
-                { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/appointments' },
-                { label: 'Próximos 7 días', value: stats.upcomingWeekAppointments, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10', path: '/dashboard/appointments' },
-                { label: 'Clientes', value: stats.clientCount ?? '-', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/10', path: '/dashboard/clients' },
-            ],
-            quickCards: [
-                {
-                    title: role === 'admin' ? 'Control de clientes' : 'Seguimiento de proyectos',
-                    body: role === 'admin' ? 'Consulta y actualiza perfiles de clientes en el CRM.' : 'Revisa el estado de cada proyecto en curso.',
-                    action: role === 'admin' ? 'Abrir CRM' : 'Ver proyectos',
-                    path: role === 'admin' ? '/dashboard/clients' : '/dashboard/projects',
-                },
-                {
-                    title: 'Comunicación',
-                    body: 'Gestiona mensajes del equipo y conversaciones de WhatsApp.',
-                    action: 'Abrir bandeja',
-                    path: '/dashboard/inbox',
-                },
+                { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/projects' },
+                { label: 'Próximos 7 días', value: stats.upcomingWeekAppointments, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10', path: '/dashboard/projects' },
             ],
         };
     }, [profile?.full_name, profile?.name, role, stats]);
@@ -167,40 +154,77 @@ const DashboardHome = () => {
     }
 
     return (
-        <div className="space-y-10 font-product pb-16">
-            <header className="relative py-12 px-10 bg-black rounded-[40px] overflow-hidden shadow-2xl">
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-skyblue/20 rounded-full blur-[100px]" />
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-60 h-60 bg-purple-500/10 rounded-full blur-[80px]" />
+        <div className="space-y-8 font-product pb-16">
+            <header className="relative rounded-[10px] md:rounded-[16px] overflow-hidden shadow-[0_20px_60px_-35px_rgba(0,0,0,0.45)]">
+                <div className="absolute inset-0" aria-hidden="true">
+                    <picture>
+                        <source media="(min-width: 768px)" srcSet={heroBgDesktop} />
+                        <img src={heroBgMobile} alt="" className="h-full w-full object-cover" />
+                    </picture>
+                    <div className="absolute inset-0 bg-white/35" />
+                </div>
 
-                <div className="relative z-10">
+                <div className="relative z-10 px-6 py-10 md:px-10 md:py-14">
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 text-skyblue text-sm font-bold uppercase tracking-[0.3em] mb-4"
+                        className="flex justify-center mb-4"
                     >
-                        <Sparkles size={16} />
+                        <img src={dteLogo} alt="Grupo DTE" className="w-[150px] md:w-[220px]" />
+                    </motion.div>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center justify-center gap-2 text-skyblue text-[11px] md:text-sm font-bold uppercase tracking-[0.24em] mb-2"
+                    >
+                        <Sparkles size={14} />
                         {dashboardContent.sectionLabel}
                     </motion.div>
+
                     <motion.h1
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="text-4xl md:text-6xl font-black text-white tracking-tight"
+                        className="text-4xl md:text-5xl font-black text-black tracking-tight text-center"
                     >
                         {dashboardContent.title}
                     </motion.h1>
+
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="text-neutral-400 mt-6 text-lg max-w-xl leading-relaxed"
+                        className="text-neutral-700 mt-4 text-base md:text-lg max-w-2xl mx-auto text-center leading-relaxed"
                     >
                         {dashboardContent.description}
                     </motion.p>
+
+                    <motion.div
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="mt-6 md:mt-8 flex flex-wrap justify-center gap-3"
+                    >
+                        <Link
+                            to={dashboardContent.primaryLink.path}
+                            className="inline-flex items-center justify-center px-5 py-2.5 bg-skyblue text-white text-sm md:text-base rounded-full font-semibold hover:bg-skyblue/95 transition"
+                        >
+                            {dashboardContent.primaryLink.label}
+                        </Link>
+                        {dashboardContent.secondaryLink && (
+                            <Link
+                                to={dashboardContent.secondaryLink.path}
+                                className="inline-flex items-center justify-center px-5 py-2.5 bg-white text-skyblue text-sm md:text-base rounded-full font-semibold border border-white/80 hover:bg-white/90 transition"
+                            >
+                                {dashboardContent.secondaryLink.label}
+                            </Link>
+                        )}
+                    </motion.div>
                 </div>
             </header>
 
-            <div className={`grid grid-cols-1 ${dashboardContent.cards.length > 3 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-8`}>
+            <div className={`grid grid-cols-1 ${dashboardContent.cards.length > 3 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-6`}>
                 {dashboardContent.cards.map((stat, i) => (
                     <motion.div
                         key={`${stat.label}-${i}`}
@@ -210,13 +234,13 @@ const DashboardHome = () => {
                     >
                         <Link
                             to={stat.path}
-                            className="block group p-8 bg-white rounded-[32px] border border-neutral-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                            className="block group p-8 bg-white/90 backdrop-blur-sm rounded-[32px] border border-white shadow-[0_12px_40px_-30px_rgba(0,0,0,0.45)] hover:shadow-[0_20px_40px_-30px_rgba(0,0,0,0.55)] hover:-translate-y-1 transition-all duration-300"
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <div className={`p-4 rounded-2xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>
                                     <stat.icon size={24} />
                                 </div>
-                                <ArrowRight className="text-neutral-300 group-hover:text-black group-hover:translate-x-1 transition-all" size={20} />
+                                <ArrowRight className="text-neutral-400 group-hover:text-black group-hover:translate-x-1 transition-all" size={20} />
                             </div>
                             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-1">{stat.label}</div>
                             <div className="text-3xl font-black text-neutral-900">{stat.value}</div>
@@ -224,33 +248,6 @@ const DashboardHome = () => {
                     </motion.div>
                 ))}
             </div>
-
-            <section className="bg-white rounded-[40px] p-10 border border-neutral-100 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                    <div>
-                        <h2 className="text-2xl font-bold flex items-center gap-3">
-                            <MessagesSquare size={24} className="text-skyblue" />
-                            {dashboardContent.quickAccessTitle}
-                        </h2>
-                        <p className="text-neutral-500 mt-1">{dashboardContent.quickAccessDescription}</p>
-                    </div>
-                    <Link to={dashboardContent.primaryLink.path} className="px-6 py-3 bg-neutral-50 hover:bg-neutral-100 rounded-full text-sm font-bold transition-all flex items-center gap-2">
-                        {dashboardContent.primaryLink.label} <ArrowRight size={16} />
-                    </Link>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {dashboardContent.quickCards.map((card) => (
-                        <div key={card.title} className="p-6 rounded-[24px] bg-neutral-50/50 border border-neutral-100 hover:bg-white hover:shadow-md transition-all">
-                            <h4 className="font-bold text-neutral-800">{card.title}</h4>
-                            <p className="text-sm text-neutral-500 mt-2">{card.body}</p>
-                            <Link to={card.path} className="inline-flex items-center gap-2 text-skyblue text-sm font-bold mt-4 hover:underline">
-                                {card.action} <ArrowRight size={14} />
-                            </Link>
-                        </div>
-                    ))}
-                </div>
-            </section>
         </div>
     );
 };

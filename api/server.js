@@ -17,7 +17,6 @@ app.use(express.json());
 
 app.post('/api/project-created', projectCreatedHandler);
 app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
-app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.post('/api/slack-notify', slackNotifyHandler);
 
 // Cal.com Routes
