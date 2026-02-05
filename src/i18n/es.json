@@ -527,7 +527,149 @@
       "title": "Citas Agendadas",
       "subtitle": "Gestiona y visualiza todas las reservas de clientes.",
       "noAppointments": "No se encontraron citas",
-      "emptyDescription": "Cuando los clientes agenden una llamada, aparecerán aquí."
+      "emptyDescription": "Cuando los clientes agenden una llamada, aparecerán aquí.",
+      "newAppointment": "Nueva Cita",
+      "viewList": "Lista",
+      "viewCalendar": "Calendario",
+      "table": {
+        "dateTime": "Fecha y Hora",
+        "client": "Cliente",
+        "project": "Proyecto",
+        "status": "Estado",
+        "actions": "Acciones",
+        "join": "Unirme"
+      },
+      "status": {
+        "scheduled": "Agendada",
+        "completed": "Completada",
+        "cancelled": "Cancelada"
+      }
+    },
+    "calendar": {
+      "toolbar": {
+        "manage": "Gestiona tu agenda",
+        "today": "Hoy",
+        "month": "Mes",
+        "week": "Semana",
+        "day": "Día",
+        "prev": "Anterior",
+        "next": "Siguiente"
+      }
+    },
+    "login": {
+      "title": "DTE Portal",
+      "subtitle": "Acceso exclusivo para administradores y workers.",
+      "success": {
+        "title": "¡Revisa tu correo!",
+        "message": "Enviamos un enlace mágico a <span className=\"text-white font-medium\">{{email}}</span>.<br /> Haz clic en él para acceder.",
+        "cta": "Volver a intentar"
+      },
+      "form": {
+        "emailPlaceholder": "nombre@dte.com",
+        "submit": "Ingresar con Magic Link",
+        "sending": "Enviando..."
+      },
+      "errors": {
+        "magicLink": "Error al enviar el magic link",
+        "generic": "Algo salió mal"
+      }
+    },
+    "createAppointment": {
+      "title": "Nueva Cita",
+      "sidebar": {
+        "step1": {
+          "title": "Cliente y Proyecto",
+          "description": "Selecciona para quién es la cita"
+        },
+        "step2": {
+          "title": "Fecha y Hora",
+          "description": "Busca disponibilidad"
+        },
+        "footer": "La cita se sincronizará con Cal.com y se enviará una notificación al cliente."
+      },
+      "form": {
+        "clientLabel": "Cliente",
+        "clientPlaceholder": "Selecciona un cliente",
+        "projectLabel": "Proyecto (Opcional)",
+        "projectPlaceholderActive": "Selecciona un proyecto",
+        "projectPlaceholderEmpty": "Sin proyectos activos",
+        "notesLabel": "Notas internas",
+        "notesPlaceholder": "Detalles sobre la reunión...",
+        "next": "Siguiente",
+        "back": "Atrás",
+        "confirm": "Confirmar Cita",
+        "loading": "Cargando...",
+        "noSlots": "No hay horarios para esta fecha.",
+        "slotsTitle": "Horarios Disponibles",
+        "success": "Cita creada exitosamente",
+        "error": "Error al crear la cita",
+        "errorLoading": "Error al cargar datos"
+      }
+    }
+  },
+  "dashboardHome": {
+    "client": {
+      "welcome": "Bienvenido de nuevo",
+      "title": "Hola, {{name}}",
+      "description": "Aquí tienes un resumen de tus proyectos con Grupo DTE. Tienes {{count}} proyecto activo.",
+      "descriptionPlural": "Aquí tienes un resumen de tus proyectos con Grupo DTE. Tienes {{count}} proyectos activos.",
+      "ctaProjects": "Ver mis proyectos",
+      "ctaAppointments": "Ir a mis citas",
+      "cards": {
+        "projects": "Proyectos",
+        "appointments": "Citas Programadas",
+        "next": "Próxima Cita",
+        "noAppointment": "Sin cita"
+      }
+    },
+    "admin": {
+      "welcome": "Panel administrativo",
+      "title": "Hola, {{name}}",
+      "description": "Este es tu resumen operativo de proyectos, clientes y agenda del equipo.",
+      "ctaCrm": "Abrir CRM",
+      "ctaMessaging": "Abrir mensajería",
+      "cards": {
+        "projects": "Proyectos",
+        "appointments": "Citas Programadas",
+        "upcoming": "Próximos 7 días",
+        "clients": "Clientes"
+      }
+    },
+    "worker": {
+      "welcome": "Panel operativo",
+      "title": "Hola, {{name}}",
+      "description": "Este es tu resumen operativo de proyectos y agenda del equipo.",
+      "ctaProjects": "Ver proyectos",
+      "ctaMessaging": "Abrir mensajería"
+    }
+  },
+  "common": {
+    "error": "Error",
+    "loading": "Cargando...",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "errors": {
+      "methodNotAllowed": "Método no permitido",
+      "invalidJson": "Cuerpo JSON inválido",
+      "missingCredentials": "Faltan credenciales de API",
+      "missingEmail": "Falta el correo electrónico",
+      "missingResendConfig": "Falta la configuración de Resend",
+      "failedToSendEmail": "Error al enviar el correo",
+      "unauthorized": "No autorizado",
+      "missingSlackCredentials": "Faltan credenciales de Slack",
+      "invalidPayload": "Carga útil inválida",
+      "failedToNotifySlack": "Error al notificar a Slack",
+      "invalidSignature": "Firma inválida",
+      "missingWaId": "Falta el wa_id",
+      "invalidAction": "Acción o estado ai_enabled inválido",
+      "serverConfigError": "Error de configuración del servidor",
+      "missingEventTypeId": "Falta el ID del tipo de evento",
+      "missingDateParams": "Faltan los parámetros de fecha de inicio o fin",
+      "failedToFetchAvailability": "Error al obtener disponibilidad de Cal.com"
     }
   }
 }

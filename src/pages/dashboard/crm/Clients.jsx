@@ -109,30 +109,10 @@ const Clients = () => {
     }
 
     return (
-        <div className="font-product text-neutral-900 space-y-6 pb-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <p className="text-xs uppercase tracking-[0.35em] text-neutral-400">CRM</p>
-                    <h1 className="text-2xl font-semibold">Clientes</h1>
-                    <p className="text-sm text-neutral-500">Lista centralizada de clientes y leads.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <div className="rounded-full border border-black/10 px-3 py-2 text-xs text-neutral-500 bg-white">
-                        {loading ? 'Sync...' : `${clients.length} clientes`}
-                    </div>
-                    <button
-                        type="button"
-                        onClick={loadClients}
-                        disabled={loading}
-                        className="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-2 text-xs text-neutral-600 hover:text-neutral-900 hover:border-black/30 transition disabled:opacity-60"
-                    >
-                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-                        Actualizar
-                    </button>
-                </div>
-            </div>
+        <div className="font-product text-neutral-900 space-y-6 pb-6 pt-2">
+          
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 min-h-0">
                 <motion.div
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -180,7 +160,7 @@ const Clients = () => {
                                     to={`/dashboard/clients/${client.id}`}
                                     className="block px-4 py-4 hover:bg-neutral-50 transition text-neutral-900"
                                 >
-                                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="w-10 h-10 rounded-full bg-neutral-100 text-neutral-700 flex items-center justify-center text-sm font-semibold shrink-0">
                                                 {getInitial(client.full_name)}
@@ -255,13 +235,7 @@ const Clients = () => {
                             );
                         })}
                     </div>
-                    <div className="rounded-2xl bg-neutral-50 border border-black/5 p-4 text-xs text-neutral-500">
-                        <p className="text-[10px] uppercase tracking-widest text-neutral-400 mb-2">Sync</p>
-                        <p>
-                            {lastSyncAt ? `Ultima actualizacion: ${formatDate(lastSyncAt)}` : 'Sin sincronizar.'}
-                        </p>
-                        {error && <p className="mt-2 text-red-600">{error}</p>}
-                    </div>
+
                 </motion.div>
             </div>
         </div>

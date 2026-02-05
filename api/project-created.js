@@ -37,12 +37,12 @@ async function forwardToN8n(payload) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'common.errors.methodNotAllowed' });
   }
 
   const body = parseJsonBody(req);
   if (!body) {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+    return res.status(400).json({ error: 'common.errors.invalidJson' });
   }
 
   const payload = {

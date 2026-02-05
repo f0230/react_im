@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, Check, Loader2, User, Briefcase, Search } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from '@/lib/supabaseClient';
@@ -9,6 +10,7 @@ import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
 
 const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
+    const { t } = useTranslation();
     const [step, setStep] = useState(1); // 1: Client/Project, 2: Date/Time
     const [loading, setLoading] = useState(false);
 
@@ -66,7 +68,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
             setProjects(projectsData || []);
         } catch (error) {
             console.error(error);
-            toast.error('Error loading data');
+            toast.error(t("admin.createAppointment.form.errorLoading"));
         } finally {
             setLoading(false);
         }
@@ -108,12 +110,12 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
 
             if (!response.ok) throw new Error('Failed to create booking');
 
-            toast.success('Cita creada exitosamente');
+            toast.success(t("admin.createAppointment.form.success"));
             onUpdate();
             onClose();
         } catch (error) {
             console.error(error);
-            toast.error('Error al crear la cita');
+            toast.error(t("admin.createAppointment.form.error"));
         } finally {
             setLoading(false);
         }
@@ -140,7 +142,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                 >
                     {/* Sidebar / Steps */}
                     <div className="md:w-1/3 bg-gray-50 border-r border-gray-100 p-6 flex flex-col">
-                        <h2 className="text-xl font-bold text-gray-900 mb-6">Nueva Cita</h2>
+                        <h2 className="text-xl font-bold text-gray-900 mb-6">{t("admin.createAppointment.title")}</h2>
 
                         <div className="space-y-6">
                             <div className={`flex items-start gap-3 ${step === 1 ? 'text-black' : 'text-gray-400'}`}>
@@ -148,8 +150,8 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                     1
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold">Cliente y Proyecto</h3>
-                                    <p className="text-xs mt-1">Selecciona para quién es la cita</p>
+                                    <h3 className="font-semibold">{t("admin.createAppointment.sidebar.step1.title")}</h3>
+                                    <p className="text-xs mt-1">{t("admin.createAppointment.sidebar.step1.description")}</p>
                                 </div>
                             </div>
 
@@ -158,15 +160,15 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                     2
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold">Fecha y Hora</h3>
-                                    <p className="text-xs mt-1">Busca disponibilidad</p>
+                                    <h3 className="font-semibold">{t("admin.createAppointment.sidebar.step2.title")}</h3>
+                                    <p className="text-xs mt-1">{t("admin.createAppointment.sidebar.step2.description")}</p>
                                 </div>
                             </div>
                         </div>
 
                         <div className="mt-auto">
                             <p className="text-xs text-gray-400">
-                                La cita se sincronizará con Cal.com y se enviará una notificación al cliente.
+                                {t("admin.createAppointment.sidebar.footer")}
                             </p>
                         </div>
                     </div>
@@ -184,13 +186,13 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                 className="space-y-6"
                             >
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Cliente</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.clientLabel")}</label>
                                     <div className="relative">
                                         <MultiUseSelect
                                             options={clients}
                                             value={selectedClient}
                                             onChange={(val) => setSelectedClient(val)}
-                                            placeholder="Selecciona un cliente"
+                                            placeholder={t("admin.createAppointment.form.clientPlaceholder")}
                                             getOptionValue={(c) => c.id}
                                             getOptionLabel={(c) => `${c.full_name || c.company_name} (${c.email})`}
                                             getDisplayLabel={(c) => `${c.full_name || c.company_name} (${c.email})`}
@@ -202,13 +204,13 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Proyecto (Opcional)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.projectLabel")}</label>
                                     <div className="relative">
                                         <MultiUseSelect
                                             options={filteredProjects}
                                             value={selectedProject}
                                             onChange={(val) => setSelectedProject(val)}
-                                            placeholder={selectedClient && filteredProjects.length === 0 ? "Sin proyectos activos" : "Selecciona un proyecto"}
+                                            placeholder={selectedClient && filteredProjects.length === 0 ? t("admin.createAppointment.form.projectPlaceholderEmpty") : t("admin.createAppointment.form.projectPlaceholderActive")}
                                             disabled={!selectedClient}
                                             getOptionValue={(p) => p.id}
                                             getOptionLabel={(p) => p.name}
@@ -221,13 +223,13 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Notas internas</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.notesLabel")}</label>
                                     <textarea
                                         value={notes}
                                         onChange={(e) => setNotes(e.target.value)}
                                         rows={3}
                                         className="w-full p-4 rounded-xl border border-gray-200 focus:ring-2 focus:ring-black outline-none resize-none"
-                                        placeholder="Detalles sobre la reunión..."
+                                        placeholder={t("admin.createAppointment.form.notesPlaceholder")}
                                     />
                                 </div>
 
@@ -237,7 +239,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                         disabled={!selectedClient}
                                         className="bg-black text-white px-6 py-3 rounded-xl font-bold hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                     >
-                                        Siguiente
+                                        {t("admin.createAppointment.form.next")}
                                         <Check size={18} />
                                     </button>
                                 </div>
@@ -264,7 +266,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                     <div className="flex-1 flex flex-col">
                                         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                             <Clock size={16} />
-                                            Horarios Disponibles
+                                            {t("admin.createAppointment.form.slotsTitle")}
                                         </h3>
 
                                         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2 max-h-[350px]">
@@ -290,7 +292,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                                 ))
                                             ) : (
                                                 <div className="text-center text-gray-400 text-sm py-10">
-                                                    No hay horarios para esta fecha.
+                                                    {t("admin.createAppointment.form.noSlots")}
                                                 </div>
                                             )}
                                         </div>
@@ -302,7 +304,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                         onClick={() => setStep(1)}
                                         className="text-gray-500 hover:text-black font-medium text-sm"
                                     >
-                                        Atrás
+                                        {t("admin.createAppointment.form.back")}
                                     </button>
                                     <button
                                         onClick={handleCreate}
@@ -310,7 +312,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                         className="bg-[#0DD122] text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                     >
                                         {loading && <Loader2 className="animate-spin" size={18} />}
-                                        Confirmar Cita
+                                        {t("admin.createAppointment.form.confirm")}
                                     </button>
                                 </div>
                             </motion.div>

@@ -12,11 +12,13 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { useTranslation } from "react-i18next";
 import heroBgMobile from '../../assets/PORTADA_1_MOVIL.webp';
 import heroBgDesktop from '../../assets/PORTADA_1.webp';
 import dteLogo from '../../assets/LOGODTE.svg';
 
 const DashboardHome = () => {
+    const { t } = useTranslation();
     const { profile, user } = useAuth();
     const role = profile?.role || 'client';
     const [stats, setStats] = useState({
@@ -159,25 +161,24 @@ const DashboardHome = () => {
     }, [user?.id, role]);
 
     const dashboardContent = useMemo(() => {
+        const name = profile?.full_name || profile?.name || (role === 'admin' ? 'Admin' : role === 'worker' ? 'Equipo' : 'Cliente');
+
         if (role === 'client') {
+            const descriptionKey = stats.projectCount === 1 ? 'dashboardHome.client.description' : 'dashboardHome.client.descriptionPlural';
             return {
-                sectionLabel: 'Bienvenido de nuevo',
-                title: `Hola, ${profile?.full_name || profile?.name || 'Cliente'}`,
-                description: `Aquí tienes un resumen de tus proyectos con Grupo DTE.${
-                    stats.projectCount > 0
-                        ? ` Tienes ${stats.projectCount} proyecto${stats.projectCount !== 1 ? 's' : ''} activo${stats.projectCount !== 1 ? 's' : ''}.`
-                        : ''
-                }`,
-                primaryLink: { label: 'Ver mis proyectos', path: '/dashboard/projects' },
-                secondaryLink: { label: 'Ir a mis citas', path: '/dashboard/my-appointments' },
+                sectionLabel: t("dashboardHome.client.welcome"),
+                title: t("dashboardHome.client.title", { name }),
+                description: t(descriptionKey, { count: stats.projectCount }),
+                primaryLink: { label: t("dashboardHome.client.ctaProjects"), path: '/dashboard/projects' },
+                secondaryLink: { label: t("dashboardHome.client.ctaAppointments"), path: '/dashboard/my-appointments' },
                 cards: [
-                    { label: 'Proyectos', value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
-                    { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/my-appointments' },
+                    { label: t("dashboardHome.client.cards.projects"), value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
+                    { label: t("dashboardHome.client.cards.appointments"), value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/my-appointments' },
                     {
-                        label: 'Próxima Cita',
+                        label: t("dashboardHome.client.cards.next"),
                         value: stats.nextAppointmentAt
-                            ? new Date(stats.nextAppointmentAt).toLocaleDateString('es-ES')
-                            : 'Sin cita',
+                            ? new Date(stats.nextAppointmentAt).toLocaleDateString(navigator.language || 'es-ES')
+                            : t("dashboardHome.client.cards.noAppointment"),
                         icon: Zap,
                         color: 'text-amber-500',
                         bg: 'bg-amber-500/10',
@@ -189,33 +190,33 @@ const DashboardHome = () => {
 
         if (role === 'admin') {
             return {
-                sectionLabel: 'Panel administrativo',
-                title: `Hola, ${profile?.full_name || profile?.name || 'Admin'}`,
-                description: 'Este es tu resumen operativo de proyectos, clientes y agenda del equipo.',
-                primaryLink: { label: 'Abrir CRM', path: '/dashboard/clients' },
-                secondaryLink: { label: 'Abrir mensajería', path: '/dashboard/messages' },
+                sectionLabel: t("dashboardHome.admin.welcome"),
+                title: t("dashboardHome.admin.title", { name }),
+                description: t("dashboardHome.admin.description"),
+                primaryLink: { label: t("dashboardHome.admin.ctaCrm"), path: '/dashboard/clients' },
+                secondaryLink: { label: t("dashboardHome.admin.ctaMessaging"), path: '/dashboard/messages' },
                 cards: [
-                    { label: 'Proyectos', value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
-                    { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/appointments' },
-                    { label: 'Próximos 7 días', value: stats.upcomingWeekAppointments, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10', path: '/dashboard/appointments' },
-                    { label: 'Clientes', value: stats.clientCount ?? '-', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/10', path: '/dashboard/clients' },
+                    { label: t("dashboardHome.admin.cards.projects"), value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
+                    { label: t("dashboardHome.admin.cards.appointments"), value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/appointments' },
+                    { label: t("dashboardHome.admin.cards.upcoming"), value: stats.upcomingWeekAppointments, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10', path: '/dashboard/appointments' },
+                    { label: t("dashboardHome.admin.cards.clients"), value: stats.clientCount ?? '-', icon: Users, color: 'text-violet-500', bg: 'bg-violet-500/10', path: '/dashboard/clients' },
                 ],
             };
         }
 
         return {
-            sectionLabel: 'Panel operativo',
-            title: `Hola, ${profile?.full_name || profile?.name || 'Equipo'}`,
-            description: 'Este es tu resumen operativo de proyectos y agenda del equipo.',
-            primaryLink: { label: 'Ver proyectos', path: '/dashboard/projects' },
-            secondaryLink: { label: 'Abrir mensajería', path: '/dashboard/messages' },
+            sectionLabel: t("dashboardHome.worker.welcome"),
+            title: t("dashboardHome.worker.title", { name }),
+            description: t("dashboardHome.worker.description"),
+            primaryLink: { label: t("dashboardHome.worker.ctaProjects"), path: '/dashboard/projects' },
+            secondaryLink: { label: t("dashboardHome.worker.ctaMessaging"), path: '/dashboard/messages' },
             cards: [
-                { label: 'Proyectos', value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
-                { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/projects' },
-                { label: 'Próximos 7 días', value: stats.upcomingWeekAppointments, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10', path: '/dashboard/projects' },
+                { label: t("dashboardHome.admin.cards.projects"), value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
+                { label: t("dashboardHome.admin.cards.appointments"), value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/projects' },
+                { label: t("dashboardHome.admin.cards.upcoming"), value: stats.upcomingWeekAppointments, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10', path: '/dashboard/projects' },
             ],
         };
-    }, [profile?.full_name, profile?.name, role, stats]);
+    }, [profile?.full_name, profile?.name, role, stats, t]);
 
     if (role === 'client') {
         return <div className="font-product pb-16" />;

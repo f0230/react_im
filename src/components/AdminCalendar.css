@@ -1,0 +1,127 @@
+/* Scoped styles for AdminCalendar */
+.rbcx {
+  --rbc-primary: #000000;
+  --rbc-secondary: #6B7280;
+  --rbc-bg: #FFFFFF;
+  --rbc-border: #F3F4F6;
+  --rbc-today-bg: #F9FAFB;
+  --rbc-event-radius: 8px;
+  --rbc-header-height: 48px;
+
+  font-family: inherit;
+  color: #111827;
+}
+
+/* Container and layout */
+.rbcx .rbc-calendar {
+  background: var(--rbc-bg);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+/* Header / Toolbar */
+.rbcx .rbc-toolbar {
+  padding: 1rem 0;
+  margin-bottom: 1rem;
+}
+
+.rbcx .rbc-toolbar button {
+  border: 1px solid var(--rbc-border);
+  color: var(--rbc-secondary);
+  background: white;
+  padding: 0.5rem 1rem;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.rbcx .rbc-toolbar button:hover {
+  background: #F9FAFB;
+  border-color: #E5E7EB;
+  color: var(--rbc-primary);
+}
+
+.rbcx .rbc-toolbar button.rbc-active {
+  background: var(--rbc-primary);
+  color: white;
+  border-color: var(--rbc-primary);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Month view grid */
+.rbcx .rbc-month-view {
+  border: 1px solid var(--rbc-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.rbcx .rbc-month-header {
+  border-bottom: 1px solid var(--rbc-border);
+}
+
+.rbcx .rbc-header {
+  padding: 12px 0;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--rbc-secondary);
+  border-bottom: none !important;
+}
+
+.rbcx .rbc-month-row {
+  border-bottom: 1px solid var(--rbc-border);
+}
+
+.rbcx .rbc-day-bg+.rbc-day-bg {
+  border-left: 1px solid var(--rbc-border);
+}
+
+.rbcx .rbc-today {
+  background-color: var(--rbc-today-bg);
+}
+
+/* Events */
+.rbcx .rbc-event {
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--rbc-event-radius) !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  margin: 1px 2px;
+}
+
+.rbcx .rbc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.rbcx .rbc-event-label {
+  display: none;
+}
+
+/* Time views (Week/Day) */
+.rbcx .rbc-time-view {
+  border: 1px solid var(--rbc-border);
+  border-radius: 12px;
+}
+
+.rbcx .rbc-time-header {
+  border-bottom: 1px solid var(--rbc-border);
+}
+
+.rbcx .rbc-time-content {
+  border-top: none;
+}
+
+.rbcx .rbc-timeslot-group {
+  border-bottom: 1px solid var(--rbc-border);
+  min-height: 60px;
+}
+
+.rbcx .rbc-time-slot {
+  border-top: none;
+}
+
+.rbcx .rbc-current-time-indicator {
+  background-color: var(--rbc-primary);
+}

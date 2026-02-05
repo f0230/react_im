@@ -83,7 +83,7 @@ const AdminAppointments = () => {
                         className="px-4 py-2 bg-black text-white rounded-xl text-sm font-bold shadow-lg shadow-black/20 hover:scale-105 transition-transform flex items-center gap-2"
                     >
                         <Plus size={18} />
-                        Nueva Cita
+                        {t("admin.appointments.newAppointment")}
                     </button>
 
                     {/* View Toggler */}
@@ -96,7 +96,7 @@ const AdminAppointments = () => {
                                 }`}
                         >
                             <List size={16} />
-                            List
+                            {t("admin.appointments.viewList")}
                         </button>
                         <button
                             onClick={() => setViewMode('calendar')}
@@ -106,7 +106,7 @@ const AdminAppointments = () => {
                                 }`}
                         >
                             <CalendarIcon size={16} />
-                            Calendar
+                            {t("admin.appointments.viewCalendar")}
                         </button>
                     </div>
                 </div>
@@ -147,11 +147,11 @@ const AdminAppointments = () => {
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="border-b border-gray-100 bg-gray-50/50">
-                                            <th className="p-5 font-semibold text-gray-600 text-sm">Date & Time</th>
-                                            <th className="p-5 font-semibold text-gray-600 text-sm">Client</th>
-                                            <th className="p-5 font-semibold text-gray-600 text-sm">Project</th>
-                                            <th className="p-5 font-semibold text-gray-600 text-sm">Status</th>
-                                            <th className="p-5 font-semibold text-gray-600 text-sm">Actions</th>
+                                            <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.dateTime")}</th>
+                                            <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.client")}</th>
+                                            <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.project")}</th>
+                                            <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.status")}</th>
+                                            <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.actions")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -193,7 +193,7 @@ const AdminAppointments = () => {
                                                 </td>
                                                 <td className="p-5">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(apt.status)} capitalize`}>
-                                                        {apt.status}
+                                                        {t(`admin.appointments.status.${apt.status}`)}
                                                     </span>
                                                 </td>
                                                 <td className="p-5">
@@ -206,7 +206,7 @@ const AdminAppointments = () => {
                                                             className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black hover:underline"
                                                         >
                                                             <LinkIcon size={14} />
-                                                            Join
+                                                            {t("admin.appointments.table.join")}
                                                         </a>
                                                     )}
                                                 </td>

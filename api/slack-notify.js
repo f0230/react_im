@@ -39,10 +39,10 @@ async function enrichWithSupabase({ table, record }) {
           .maybeSingle(),
         record.added_by
           ? supabase
-              .from('profiles')
-              .select('full_name, email')
-              .eq('id', record.added_by)
-              .maybeSingle()
+            .from('profiles')
+            .select('full_name, email')
+            .eq('id', record.added_by)
+            .maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
 
@@ -119,14 +119,14 @@ function formatSlackMessage({ event, table, record, enrich }) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'common.errors.methodNotAllowed' });
   }
 
   const secret = process.env.SLACK_NOTIFY_SECRET;
   if (secret) {
     const incoming = req.headers['x-slack-notify-secret'];
     if (!incoming || incoming !== secret) {
-      return res.status(401).json({ error: 'Unauthorized' });
+      return res.status(401).json({ error: 'common.errors.unauthorized' });
     }
   }
 
@@ -134,12 +134,12 @@ export default async function handler(req, res) {
   const channel = process.env.SLACK_CHANNEL_ID;
 
   if (!token || !channel) {
-    return res.status(500).json({ error: 'Slack credentials missing' });
+    return res.status(500).json({ error: 'common.errors.missingSlackCredentials' });
   }
 
   const payload = typeof req.body === 'object' ? req.body : null;
   if (!payload || !payload.table || !payload.event) {
-    return res.status(400).json({ error: 'Invalid payload' });
+    return res.status(400).json({ error: 'common.errors.invalidPayload' });
   }
 
   const enrich = await enrichWithSupabase({ table: payload.table, record: payload.record });
@@ -175,6 +175,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, ts: data.ts });
   } catch (error) {
     console.error('Slack notify error:', error);
-    return res.status(500).json({ error: 'Failed to notify Slack' });
+    return res.status(500).json({ error: 'common.errors.failedToNotifySlack' });
   }
 }

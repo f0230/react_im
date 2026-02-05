@@ -102,12 +102,12 @@ function parseJsonBody(req) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'common.errors.methodNotAllowed' });
   }
 
   const body = parseJsonBody(req);
   if (!body) {
-    return res.status(400).json({ error: 'Invalid JSON body' });
+    return res.status(400).json({ error: 'common.errors.invalidJson' });
   }
 
   // Added type, url, caption, data to destructuring
@@ -118,7 +118,7 @@ export default async function handler(req, res) {
 
   if (!phoneNumberId || !accessToken) {
     return res.status(500).json({
-      error: 'Missing WhatsApp API credentials',
+      error: 'common.errors.missingCredentials',
     });
   }
 

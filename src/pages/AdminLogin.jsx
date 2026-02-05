@@ -3,8 +3,10 @@ import { supabase } from '@/lib/supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Mail, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
 import Aurora from '@/components/ui/Aurora';
+import { useTranslation, Trans } from 'react-i18next';
 
 const AdminLogin = () => {
+    const { t } = useTranslation();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
@@ -27,9 +29,9 @@ const AdminLogin = () => {
 
             if (error) throw error;
 
-            setMessage('Enviamos un magic link a tu correo.');
+            setMessage(true);
         } catch (error) {
-            setError(error.message || 'Error al enviar el magic link');
+            setError(error.message || t("admin.login.errors.magicLink"));
         } finally {
             setLoading(false);
         }
@@ -52,10 +54,10 @@ const AdminLogin = () => {
                 <div className="mb-10 text-center">
 
                     <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 mb-2 tracking-tight">
-                        DTE Portal
+                        {t("admin.login.title")}
                     </h1>
                     <p className="text-zinc-500 text-sm">
-                        Acceso exclusivo para administradores y workers.
+                        {t("admin.login.subtitle")}
                     </p>
                 </div>
 
@@ -71,16 +73,19 @@ const AdminLogin = () => {
                             <div className="mx-auto w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 text-emerald-400 border border-emerald-500/20">
                                 <CheckCircle size={32} />
                             </div>
-                            <h3 className="text-xl font-medium text-white mb-2">¡Revisa tu correo!</h3>
+                            <h3 className="text-xl font-medium text-white mb-2">{t("admin.login.success.title")}</h3>
                             <p className="text-zinc-400 text-sm leading-relaxed mb-6">
-                                Hemos enviado un enlace mágico a <span className="text-white font-medium">{email}</span>.
-                                <br /> Haz clic en él para acceder.
+                                <Trans
+                                    i18nKey="admin.login.success.message"
+                                    values={{ email }}
+                                    components={{ span: <span className="text-white font-medium" />, br: <br /> }}
+                                />
                             </p>
                             <button
                                 onClick={() => setMessage(null)}
                                 className="text-sm text-zinc-500 hover:text-white transition-colors"
                             >
-                                Volver a intentar
+                                {t("admin.login.success.cta")}
                             </button>
                         </motion.div>
                     ) : (
@@ -101,7 +106,7 @@ const AdminLogin = () => {
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        placeholder="nombre@dte.com"
+                                        placeholder={t("admin.login.form.emailPlaceholder")}
                                         required
                                         className="w-full pl-11 pr-4 py-3.5 bg-black/50  text-white "
                                     />
@@ -128,11 +133,11 @@ const AdminLogin = () => {
                                     {loading ? (
                                         <>
                                             <Loader2 className="w-5 h-5 animate-spin" />
-                                            <span>Enviando...</span>
+                                            <span>{t("admin.login.form.sending")}</span>
                                         </>
                                     ) : (
                                         <>
-                                            <span>Ingresar con Magic Link</span>
+                                            <span>{t("admin.login.form.submit")}</span>
                                             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                                         </>
                                     )}

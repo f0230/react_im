@@ -527,7 +527,149 @@
       "title": "Scheduled Appointments",
       "subtitle": "Manage and view all client bookings.",
       "noAppointments": "No appointments found",
-      "emptyDescription": "When clients schedule a call, they will appear here."
+      "emptyDescription": "When clients schedule a call, they will appear here.",
+      "newAppointment": "New Appointment",
+      "viewList": "List",
+      "viewCalendar": "Calendar",
+      "table": {
+        "dateTime": "Date & Time",
+        "client": "Client",
+        "project": "Project",
+        "status": "Status",
+        "actions": "Actions",
+        "join": "Join"
+      },
+      "status": {
+        "scheduled": "Scheduled",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+      }
+    },
+    "calendar": {
+      "toolbar": {
+        "manage": "Manage your schedule",
+        "today": "Today",
+        "month": "Month",
+        "week": "Week",
+        "day": "Day",
+        "prev": "Previous",
+        "next": "Next"
+      }
+    },
+    "login": {
+      "title": "DTE Portal",
+      "subtitle": "Exclusive access for admins and workers.",
+      "success": {
+        "title": "Check your email!",
+        "message": "We sent a magic link to <span className=\"text-white font-medium\">{{email}}</span>.<br /> Click on it to access.",
+        "cta": "Try again"
+      },
+      "form": {
+        "emailPlaceholder": "name@dte.com",
+        "submit": "Log in with Magic Link",
+        "sending": "Sending..."
+      },
+      "errors": {
+        "magicLink": "Error sending magic link",
+        "generic": "Something went wrong"
+      }
+    },
+    "createAppointment": {
+      "title": "New Appointment",
+      "sidebar": {
+        "step1": {
+          "title": "Client and Project",
+          "description": "Select who the appointment is for"
+        },
+        "step2": {
+          "title": "Date and Time",
+          "description": "Check availability"
+        },
+        "footer": "The appointment will be synced with Cal.com and a notification will be sent to the client."
+      },
+      "form": {
+        "clientLabel": "Client",
+        "clientPlaceholder": "Select a client",
+        "projectLabel": "Project (Optional)",
+        "projectPlaceholderActive": "Select a project",
+        "projectPlaceholderEmpty": "No active projects",
+        "notesLabel": "Internal notes",
+        "notesPlaceholder": "Details about the meeting...",
+        "next": "Next",
+        "back": "Back",
+        "confirm": "Confirm Appointment",
+        "loading": "Loading...",
+        "noSlots": "No slots for this date.",
+        "slotsTitle": "Available Slots",
+        "success": "Appointment created successfully",
+        "error": "Error creating appointment",
+        "errorLoading": "Error loading data"
+      }
+    }
+  },
+  "dashboardHome": {
+    "client": {
+      "welcome": "Welcome back",
+      "title": "Hi, {{name}}",
+      "description": "Here's a summary of your projects with Grupo DTE. You have {{count}} active project.",
+      "descriptionPlural": "Here's a summary of your projects with Grupo DTE. You have {{count}} active projects.",
+      "ctaProjects": "See my projects",
+      "ctaAppointments": "Go to my appointments",
+      "cards": {
+        "projects": "Projects",
+        "appointments": "Scheduled Appointments",
+        "next": "Next Appointment",
+        "noAppointment": "No appointment"
+      }
+    },
+    "admin": {
+      "welcome": "Admin panel",
+      "title": "Hi, {{name}}",
+      "description": "This is your operational summary of projects, clients, and team schedule.",
+      "ctaCrm": "Open CRM",
+      "ctaMessaging": "Open messaging",
+      "cards": {
+        "projects": "Projects",
+        "appointments": "Scheduled Appointments",
+        "upcoming": "Next 7 days",
+        "clients": "Clients"
+      }
+    },
+    "worker": {
+      "welcome": "Operational panel",
+      "title": "Hi, {{name}}",
+      "description": "This is your operational summary of projects and team schedule.",
+      "ctaProjects": "See projects",
+      "ctaMessaging": "Open messaging"
+    }
+  },
+  "common": {
+    "error": "Error",
+    "loading": "Loading...",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "errors": {
+      "methodNotAllowed": "Method not allowed",
+      "invalidJson": "Invalid JSON body",
+      "missingCredentials": "Missing API credentials",
+      "missingEmail": "Missing email",
+      "missingResendConfig": "Missing Resend configuration",
+      "failedToSendEmail": "Failed to send email",
+      "unauthorized": "Unauthorized",
+      "missingSlackCredentials": "Slack credentials missing",
+      "invalidPayload": "Invalid payload",
+      "failedToNotifySlack": "Failed to notify Slack",
+      "invalidSignature": "Invalid signature",
+      "missingWaId": "Missing wa_id",
+      "invalidAction": "Invalid ai_enabled action or status",
+      "serverConfigError": "Server configuration error",
+      "missingEventTypeId": "Missing Event Type ID",
+      "missingDateParams": "Missing start or end date parameters",
+      "failedToFetchAvailability": "Failed to fetch availability from Cal.com"
     }
   }
 }
