@@ -1,20 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MessageSquare, Phone } from 'lucide-react';
+import { Hash, MessageSquare, Phone, Users } from 'lucide-react';
 import PopoverPanel from '../ui/PopoverPanel';
 import { POPOVER_PANEL_CLASS } from '../ui/popoverStyles';
-
-const formatTimestamp = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
-};
+import { formatTimestamp, getInitial } from '@/utils/messagingFormatters';
+import { useAuth } from '@/context/AuthContext';
+import { getMessagingTabs } from '@/config/messagingTabs';
 
 const EmptyState = () => (
     <div className="px-4 py-6 text-center text-xs text-white/60">
@@ -22,8 +13,24 @@ const EmptyState = () => (
     </div>
 );
 
-const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [] }) => {
-    const hasItems = teamItems.length > 0 || whatsappItems.length > 0;
+const sectionConfig = [
+    { key: 'team', label: 'Team', itemsProp: 'teamItems', icon: Hash, getTo: () => '/dashboard/team-chat' },
+    { key: 'whatsapp', label: 'WhatsApp', itemsProp: 'whatsappItems', icon: Phone, getTo: (item) => `/dashboard/inbox?wa=${encodeURIComponent(item.wa_id || '')}` },
+    { key: 'clients', label: 'Clients', itemsProp: 'clientItems', icon: Users, getTo: (item) => `/dashboard/client-chat?client=${encodeURIComponent(item.client_id || '')}` },
+];
+
+const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [], clientItems = [] }) => {
+    const { profile } = useAuth();
+    const sectionItems = {
+        teamItems,
+        whatsappItems,
+        clientItems,
+    };
+    const hasItems = Object.values(sectionItems).some((items) => items.length > 0);
+    const quickLinks = getMessagingTabs(profile?.role).map((tab) => ({
+        label: tab.label,
+        path: tab.path,
+    }));
 
     return (
         <PopoverPanel
@@ -37,77 +44,69 @@ const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [] }) =
                     <span className="text-sm font-semibold">Mensajes</span>
                 </div>
                 <Link
-                    to="/dashboard/team-chat"
+                    to="/dashboard/messages"
                     onClick={onClose}
                     className="text-[11px] text-white/60 hover:text-white"
                 >
-                    Ver chat
+                    Abrir panel
                 </Link>
+            </div>
+
+            <div className="px-3 pt-2 pb-1 flex flex-wrap gap-1.5 border-b border-white/5">
+                {quickLinks.map((link) => (
+                    <Link
+                        key={link.path}
+                        to={link.path}
+                        onClick={onClose}
+                        className="inline-flex items-center rounded-full border border-white/15 px-2.5 py-1 text-[10px] uppercase tracking-[0.15em] text-white/70 hover:text-white hover:border-white/30 transition"
+                    >
+                        {link.label}
+                    </Link>
+                ))}
             </div>
 
             {!hasItems && <EmptyState />}
 
-            {teamItems.length > 0 && (
-                <div className="px-3 py-2">
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 px-2 py-1">Team</div>
-                    <div className="space-y-1">
-                        {teamItems.map((item) => (
-                            <Link
-                                key={item.channel_id || item.title}
-                                to="/dashboard/team-chat"
-                                onClick={onClose}
-                                className="flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-white/5 transition"
-                            >
-                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white">
-                                    {item.title?.slice(0, 2)?.toUpperCase() || 'TC'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-xs font-semibold text-white truncate">{item.title}</p>
-                                        <span className="text-[10px] text-white/40 shrink-0">
-                                            {formatTimestamp(item.event_at)}
-                                        </span>
-                                    </div>
-                                    <p className="text-[11px] text-white/60 truncate">
-                                        {item.author ? `${item.author}: ` : ''}{item.preview}
-                                    </p>
-                                </div>
-                                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                            </Link>
-                        ))}
+            {sectionConfig.map((section) => {
+                const items = sectionItems[section.itemsProp] || [];
+                if (items.length === 0) return null;
+                return (
+                    <div key={section.key} className="px-3 py-2 border-t border-white/5 first:border-t-0">
+                        <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 px-2 py-1">{section.label}</div>
+                        <div className="space-y-1">
+                            {items.map((item) => {
+                                const SectionIcon = section.icon;
+                                return (
+                                    <Link
+                                        key={item.channel_id || item.wa_id || item.client_id || item.title}
+                                        to={section.getTo(item)}
+                                        onClick={onClose}
+                                        className="flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-white/5 transition"
+                                    >
+                                        <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white">
+                                            {section.key === 'whatsapp'
+                                                ? <SectionIcon size={14} />
+                                                : getInitial(item.title, section.key === 'team' ? 'TC' : 'CL')}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <p className="text-xs font-semibold text-white truncate">{item.title}</p>
+                                                <span className="text-[10px] text-white/40 shrink-0">
+                                                    {formatTimestamp(item.event_at)}
+                                                </span>
+                                            </div>
+                                            <p className="text-[11px] text-white/60 truncate">
+                                                {item.author ? `${item.author}: ` : ''}{item.preview}
+                                            </p>
+                                        </div>
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                                    </Link>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
-            )}
-
-            {whatsappItems.length > 0 && (
-                <div className="px-3 py-2 border-t border-white/5">
-                    <div className="text-[10px] uppercase tracking-[0.25em] text-white/40 px-2 py-1">WhatsApp</div>
-                    <div className="space-y-1">
-                        {whatsappItems.map((item) => (
-                            <Link
-                                key={item.wa_id || item.title}
-                                to={`/dashboard/inbox?wa=${encodeURIComponent(item.wa_id || '')}`}
-                                onClick={onClose}
-                                className="flex items-center gap-3 rounded-[14px] px-2 py-2 hover:bg-white/5 transition"
-                            >
-                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-[11px] font-semibold text-white">
-                                    <Phone size={14} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className="text-xs font-semibold text-white truncate">{item.title}</p>
-                                        <span className="text-[10px] text-white/40 shrink-0">
-                                            {formatTimestamp(item.event_at)}
-                                        </span>
-                                    </div>
-                                    <p className="text-[11px] text-white/60 truncate">{item.preview}</p>
-                                </div>
-                                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                            </Link>
-                        ))}
-                    </div>
-                </div>
-            )}
+                );
+            })}
         </PopoverPanel>
     );
 };

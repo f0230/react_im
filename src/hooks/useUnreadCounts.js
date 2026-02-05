@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 const EMPTY_COUNTS = {
     unreadTeam: 0,
     unreadWhatsapp: 0,
+    unreadClients: 0,
     unreadNotifications: 0,
 };
 
@@ -12,6 +13,8 @@ export const useUnreadCounts = () => {
     const { user, profile } = useAuth();
     const [counts, setCounts] = useState(EMPTY_COUNTS);
     const [previews, setPreviews] = useState([]);
+    const [clientPreviews, setClientPreviews] = useState([]);
+    const [hasClientMessagingTable, setHasClientMessagingTable] = useState(true);
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const refreshTimeout = useRef(null);
@@ -25,6 +28,7 @@ export const useUnreadCounts = () => {
             setCounts({
                 unreadTeam: Number(data[0].unread_team || 0),
                 unreadWhatsapp: Number(data[0].unread_whatsapp || 0),
+                unreadClients: Number(data[0].unread_clients || 0),
                 unreadNotifications: Number(data[0].unread_notifications || 0),
             });
         }
@@ -53,12 +57,47 @@ export const useUnreadCounts = () => {
         }
     }, [canUse, user?.id]);
 
+    const refreshClientPreviews = useCallback(async () => {
+        if (!canUse || !hasClientMessagingTable) return;
+        const { data, error } = await supabase
+            .from('client_messages')
+            .select('client_id, body, created_at, sender_role, client:clients(full_name, company_name, email, phone)')
+            .order('created_at', { ascending: false })
+            .limit(40);
+
+        if (error || !Array.isArray(data)) {
+            if (error?.code === '42P01' || /does not exist/i.test(error?.message || '')) {
+                setHasClientMessagingTable(false);
+            }
+            setClientPreviews([]);
+            return;
+        }
+
+        const latestByClient = new Map();
+        data.forEach((row) => {
+            if (!row?.client_id || latestByClient.has(row.client_id)) return;
+            const clientRecord = Array.isArray(row?.client) ? row.client[0] : row?.client;
+            const clientName = clientRecord?.full_name || clientRecord?.company_name || clientRecord?.email || clientRecord?.phone || 'Cliente';
+            latestByClient.set(row.client_id, {
+                source: 'clients',
+                title: clientName,
+                preview: row.body || '',
+                event_at: row.created_at,
+                unread_count: 0,
+                client_id: row.client_id,
+                author: row.sender_role === 'client' ? clientName : 'Equipo DTE',
+            });
+        });
+
+        setClientPreviews(Array.from(latestByClient.values()).slice(0, 6));
+    }, [canUse, hasClientMessagingTable]);
+
     const refreshAll = useCallback(async () => {
         if (!canUse) return;
         setLoading(true);
-        await Promise.all([refreshCounts(), refreshPreviews(), refreshNotifications()]);
+        await Promise.all([refreshCounts(), refreshPreviews(), refreshNotifications(), refreshClientPreviews()]);
         setLoading(false);
-    }, [canUse, refreshCounts, refreshNotifications, refreshPreviews]);
+    }, [canUse, refreshClientPreviews, refreshCounts, refreshNotifications, refreshPreviews]);
 
     const scheduleRefresh = useCallback(() => {
         if (refreshTimeout.current) return;
@@ -86,6 +125,8 @@ export const useUnreadCounts = () => {
         if (!canUse) {
             setCounts(EMPTY_COUNTS);
             setPreviews([]);
+            setClientPreviews([]);
+            setHasClientMessagingTable(true);
             setNotifications([]);
             setLoading(false);
             return;
@@ -107,6 +148,12 @@ export const useUnreadCounts = () => {
             .channel('unread-notifications')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, scheduleRefresh)
             .subscribe();
+        const clientsChannel = hasClientMessagingTable
+            ? supabase
+                .channel('unread-client-messages')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'client_messages' }, scheduleRefresh)
+                .subscribe()
+            : null;
 
         const teamReadsChannel = supabase
             .channel('unread-team-reads')
@@ -126,6 +173,7 @@ export const useUnreadCounts = () => {
             supabase.removeChannel(teamChannel);
             supabase.removeChannel(whatsappChannel);
             supabase.removeChannel(notificationsChannel);
+            if (clientsChannel) supabase.removeChannel(clientsChannel);
             supabase.removeChannel(teamReadsChannel);
             supabase.removeChannel(whatsappReadsChannel);
             if (typeof window !== 'undefined') {
@@ -136,9 +184,9 @@ export const useUnreadCounts = () => {
                 refreshTimeout.current = null;
             }
         };
-    }, [canUse, handleExternalRefresh, refreshAll, scheduleRefresh]);
+    }, [canUse, handleExternalRefresh, hasClientMessagingTable, refreshAll, scheduleRefresh]);
 
-    const messageUnreadTotal = counts.unreadTeam + counts.unreadWhatsapp;
+    const messageUnreadTotal = counts.unreadTeam + counts.unreadWhatsapp + counts.unreadClients;
 
     const teamPreviews = useMemo(
         () => previews.filter((item) => item.source === 'team'),
@@ -157,6 +205,7 @@ export const useUnreadCounts = () => {
         notifications,
         teamPreviews,
         whatsappPreviews,
+        clientPreviews,
         messageUnreadTotal,
         refreshAll,
         markAllNotificationsRead,

@@ -20,20 +20,20 @@ const Sidebar = () => {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Servicios', path: '/dashboard/services' },
+            { icon: MessageSquare, label: 'Soporte', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Servicios', path: '/dashboard/services' },
-            { icon: MessageSquare, label: 'Chat interno', path: '/dashboard/team-chat' },
-            { icon: MessageSquare, label: 'WhatsApp', path: '/dashboard/inbox' },
+            { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
-            { icon: MessageSquare, label: 'Chat interno', path: '/dashboard/team-chat' },
+            { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },

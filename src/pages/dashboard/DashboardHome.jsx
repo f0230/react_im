@@ -31,22 +31,37 @@ const DashboardHome = () => {
         const run = async () => {
             if (!user?.id) return;
 
-            const getCount = async (queryBuilder) => {
-                const { count, error } = await queryBuilder.select('*', { count: 'exact', head: true });
+            const getCount = async (countQuery) => {
+                const { count, error } = await countQuery;
                 if (error) return null;
                 return count ?? 0;
             };
+            const nowIso = new Date().toISOString();
+            const weekEnd = new Date();
+            weekEnd.setDate(weekEnd.getDate() + 7);
+            const weekEndIso = weekEnd.toISOString();
 
             if (role === 'client') {
                 const [projectCount, appointmentCount, nextAppointment] = await Promise.all([
-                    getCount(supabase.from('projects').eq('user_id', user.id)),
-                    getCount(supabase.from('appointments').eq('user_id', user.id).eq('status', 'scheduled')),
+                    getCount(
+                        supabase
+                            .from('projects')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('user_id', user.id)
+                    ),
+                    getCount(
+                        supabase
+                            .from('appointments')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('user_id', user.id)
+                            .eq('status', 'scheduled')
+                    ),
                     supabase
                         .from('appointments')
                         .select('scheduled_at')
                         .eq('user_id', user.id)
                         .eq('status', 'scheduled')
-                        .gte('scheduled_at', new Date().toISOString())
+                        .gte('scheduled_at', nowIso)
                         .order('scheduled_at', { ascending: true })
                         .limit(1)
                         .maybeSingle(),
@@ -62,20 +77,73 @@ const DashboardHome = () => {
                 return;
             }
 
-            const weekEnd = new Date();
-            weekEnd.setDate(weekEnd.getDate() + 7);
+            if (role === 'worker') {
+                const { data: assignmentRows } = await supabase
+                    .from('project_assignments')
+                    .select('project_id')
+                    .eq('worker_id', user.id);
+
+                const assignedProjectIds = Array.from(
+                    new Set((assignmentRows || []).map((row) => row.project_id).filter(Boolean))
+                );
+
+                if (!assignedProjectIds.length) {
+                    setStats({
+                        projectCount: 0,
+                        appointmentCount: 0,
+                        upcomingWeekAppointments: 0,
+                        clientCount: null,
+                        nextAppointmentAt: null,
+                    });
+                    return;
+                }
+
+                const [appointmentCount, upcomingWeekAppointments] = await Promise.all([
+                    getCount(
+                        supabase
+                            .from('appointments')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('status', 'scheduled')
+                            .in('project_id', assignedProjectIds)
+                    ),
+                    getCount(
+                        supabase
+                            .from('appointments')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('status', 'scheduled')
+                            .in('project_id', assignedProjectIds)
+                            .gte('scheduled_at', nowIso)
+                            .lte('scheduled_at', weekEndIso)
+                    ),
+                ]);
+
+                setStats({
+                    projectCount: assignedProjectIds.length,
+                    appointmentCount: appointmentCount ?? 0,
+                    upcomingWeekAppointments: upcomingWeekAppointments ?? 0,
+                    clientCount: null,
+                    nextAppointmentAt: null,
+                });
+                return;
+            }
 
             const [projectCount, appointmentCount, upcomingWeekAppointments, clientCount] = await Promise.all([
-                getCount(supabase.from('projects')),
-                getCount(supabase.from('appointments').eq('status', 'scheduled')),
+                getCount(supabase.from('projects').select('id', { count: 'exact', head: true })),
                 getCount(
                     supabase
                         .from('appointments')
+                        .select('id', { count: 'exact', head: true })
                         .eq('status', 'scheduled')
-                        .gte('scheduled_at', new Date().toISOString())
-                        .lte('scheduled_at', weekEnd.toISOString())
                 ),
-                getCount(supabase.from('clients')),
+                getCount(
+                    supabase
+                        .from('appointments')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('status', 'scheduled')
+                        .gte('scheduled_at', nowIso)
+                        .lte('scheduled_at', weekEndIso)
+                ),
+                getCount(supabase.from('clients').select('id', { count: 'exact', head: true })),
             ]);
 
             setStats({
@@ -125,7 +193,7 @@ const DashboardHome = () => {
                 title: `Hola, ${profile?.full_name || profile?.name || 'Admin'}`,
                 description: 'Este es tu resumen operativo de proyectos, clientes y agenda del equipo.',
                 primaryLink: { label: 'Abrir CRM', path: '/dashboard/clients' },
-                secondaryLink: { label: 'Abrir bandeja', path: '/dashboard/inbox' },
+                secondaryLink: { label: 'Abrir mensajería', path: '/dashboard/messages' },
                 cards: [
                     { label: 'Proyectos', value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
                     { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/appointments' },
@@ -140,7 +208,7 @@ const DashboardHome = () => {
             title: `Hola, ${profile?.full_name || profile?.name || 'Equipo'}`,
             description: 'Este es tu resumen operativo de proyectos y agenda del equipo.',
             primaryLink: { label: 'Ver proyectos', path: '/dashboard/projects' },
-            secondaryLink: { label: 'Abrir bandeja', path: '/dashboard/inbox' },
+            secondaryLink: { label: 'Abrir mensajería', path: '/dashboard/messages' },
             cards: [
                 { label: 'Proyectos', value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
                 { label: 'Citas Programadas', value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/projects' },
@@ -153,9 +221,11 @@ const DashboardHome = () => {
         return <div className="font-product pb-16" />;
     }
 
+    const mobileRowsClass = dashboardContent.cards.length > 3 ? 'grid-rows-4' : 'grid-rows-3';
+
     return (
-        <div className="space-y-8 font-product pb-16">
-            <header className="relative rounded-[10px] md:rounded-[16px] overflow-hidden shadow-[0_20px_60px_-35px_rgba(0,0,0,0.45)]">
+        <div className="space-y-1 font-product pb-16 pt-1">
+            <header className="relative rounded-[10px] md:rounded-[10px] overflow-hidden shadow-[0_20px_60px_-35px_rgba(0,0,0,0.45)]">
                 <div className="absolute inset-0" aria-hidden="true">
                     <picture>
                         <source media="(min-width: 768px)" srcSet={heroBgDesktop} />
@@ -224,7 +294,7 @@ const DashboardHome = () => {
                 </div>
             </header>
 
-            <div className={`grid grid-cols-1 ${dashboardContent.cards.length > 3 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-6`}>
+            <div className={`grid grid-cols-1 ${mobileRowsClass} md:grid-rows-none ${dashboardContent.cards.length > 3 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-1`}>
                 {dashboardContent.cards.map((stat, i) => (
                     <motion.div
                         key={`${stat.label}-${i}`}
@@ -234,7 +304,7 @@ const DashboardHome = () => {
                     >
                         <Link
                             to={stat.path}
-                            className="block group p-8 bg-white/90 backdrop-blur-sm rounded-[32px] border border-white shadow-[0_12px_40px_-30px_rgba(0,0,0,0.45)] hover:shadow-[0_20px_40px_-30px_rgba(0,0,0,0.55)] hover:-translate-y-1 transition-all duration-300"
+                            className="block group p-8 bg-white/90 backdrop-blur-sm rounded-[10px] hover:shadow-[0_20px_40px_-30px_rgba(0,0,0,0.55)] hover:-translate-y-1 transition-all duration-300"
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <div className={`p-4 rounded-2xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>

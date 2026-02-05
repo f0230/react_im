@@ -3,29 +3,9 @@ import { ArrowLeft, Hash, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Squ
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
+import MessagingTabs from '@/components/messaging/MessagingTabs';
+import { formatTime, formatTimestamp } from '@/utils/messagingFormatters';
 
-
-const formatTimestamp = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
-};
-
-const formatTime = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
-};
 
 const buildSlug = (value) => {
     if (!value) return '';
@@ -623,9 +603,10 @@ const TeamChat = () => {
 
     return (
         <div
-            className="font-product text-neutral-900 fixed inset-x-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex overflow-hidden overscroll-none bg-white"
+            className="font-product text-neutral-900 fixed inset-x-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
             style={{ height: 'calc(var(--app-height, 100dvh) - 45px)' }}
         >
+            <MessagingTabs />
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-0">
                 <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-200 ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-black/5 space-y-3">

@@ -29,6 +29,8 @@ const ClientAppointments = lazy(() => import("@/pages/dashboard/projects/ClientA
 const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
 const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
 const TeamChat = lazy(() => import("@/pages/dashboard/chat/TeamChat"));
+const ClientChat = lazy(() => import("@/pages/dashboard/chat/ClientChat"));
+const MessagingHubRedirect = lazy(() => import("@/pages/dashboard/messages/MessagingHubRedirect"));
 const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
 const ScheduleCall = lazy(() => import("@/pages/ScheduleCall"));
 const AdminAppointments = lazy(() => import("@/pages/AdminAppointments"));
@@ -97,6 +99,8 @@ const AppContent = () => {
             <Route path="projects/:projectId/invoices" element={<Navigate to="/dashboard/invoices" replace />} />
             <Route path="inbox" element={<Inbox />} />
             <Route path="team-chat" element={<TeamChat />} />
+            <Route path="client-chat" element={<ClientChat />} />
+            <Route path="messages" element={<MessagingHubRedirect />} />
             <Route path="appointments" element={<AdminAppointments />} />
             <Route path="my-appointments" element={<ClientAppointments />} />
             <Route path="settings" element={<Settings />} />

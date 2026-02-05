@@ -5,39 +5,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useLocation } from 'react-router-dom';
 import ClientDetail from '@/pages/dashboard/crm/ClientDetail';
 import useViewportHeight from '@/hooks/useViewportHeight';
+import MessagingTabs from '@/components/messaging/MessagingTabs';
+import { formatTime, formatTimestamp, getInitial, normalizePhone } from '@/utils/messagingFormatters';
 
-
-const formatTimestamp = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('es-ES', {
-        day: '2-digit',
-        month: 'short',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
-};
-
-const formatTime = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return new Intl.DateTimeFormat('es-ES', {
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(date);
-};
-
-const normalizePhone = (value) => {
-    if (!value) return '';
-    return String(value).replace(/\D/g, '');
-};
-
-const getInitial = (name) => {
-    if (!name) return 'C';
-    return name.trim().charAt(0).toUpperCase();
-};
 
 const Inbox = () => {
     useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
@@ -497,9 +467,10 @@ const Inbox = () => {
 
     return (
         <div
-            className="font-product text-neutral-900 fixed inset-x-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex overflow-hidden bg-white"
+            className="font-product text-neutral-900 fixed inset-x-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden bg-white"
             style={{ height: 'calc(var(--app-height, 100dvh) - 45px)' }}
         >
+            <MessagingTabs />
 
             {/* Main Content Grid */}
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[360px_1fr] min-h-0">

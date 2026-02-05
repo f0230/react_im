@@ -24,6 +24,7 @@ const DashboardNavbar = () => {
         counts,
         teamPreviews,
         whatsappPreviews,
+        clientPreviews,
         notifications,
         messageUnreadTotal,
         markAllNotificationsRead,
@@ -77,6 +78,7 @@ const DashboardNavbar = () => {
                             onClose={() => setIsMessagesOpen(false)}
                             teamItems={teamPreviews}
                             whatsappItems={whatsappPreviews}
+                            clientItems={clientPreviews}
                         />
                     </div>
 
