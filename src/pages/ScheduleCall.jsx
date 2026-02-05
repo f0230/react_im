@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import DatePicker from 'react-datepicker';
@@ -8,6 +8,7 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
+import useCalAvailability from '@/hooks/useCalAvailability';
 
 import "react-datepicker/dist/react-datepicker.css";
 import '@/index.css'; // Ensure tailwind is available
@@ -19,9 +20,6 @@ const ScheduleCall = () => {
     const { user, client } = useAuth();
 
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [slots, setSlots] = useState([]);
-    const [loadingSlots, setLoadingSlots] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState(null);
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
     const [submitting, setSubmitting] = useState(false);
 
@@ -33,6 +31,21 @@ const ScheduleCall = () => {
         email: '',
         phone: '',
         notes: ''
+    });
+
+    const handleAvailabilityError = useCallback(() => {
+        toast.error(t('calendar.errorFetchingSlots'));
+    }, [t]);
+
+    const {
+        slots,
+        loadingSlots,
+        selectedSlot,
+        setSelectedSlot
+    } = useCalAvailability({
+        selectedDate,
+        enabled: Boolean(selectedDate),
+        onError: handleAvailabilityError
     });
 
     // Initialize form data from authenticated user/client and fetch projects
@@ -70,50 +83,6 @@ const ScheduleCall = () => {
             fetchProjects();
         }
     }, [client, user, selectedProjectId]);
-
-    // Fetch slots when date changes
-    useEffect(() => {
-        const fetchAvailability = async () => {
-            if (!selectedDate) return;
-            setLoadingSlots(true);
-            setSlots([]);
-            setSelectedSlot(null);
-
-            try {
-                // Determine start and end of the selected day
-                const startOfDay = new Date(selectedDate);
-                startOfDay.setHours(0, 0, 0, 0);
-                const endOfDay = new Date(selectedDate);
-                endOfDay.setHours(23, 59, 59, 999);
-
-                const response = await fetch(`/api/cal/availability?start=${startOfDay.toISOString()}&end=${endOfDay.toISOString()}&timeZone=${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
-
-                if (!response.ok) throw new Error('Failed to fetch slots');
-
-                const data = await response.json();
-                // Cal.com v2 response structure returns slots grouped by date
-                const slotsObj = data.data?.slots || {};
-
-                // Flatten all slots and normalize
-                const allSlots = Object.values(slotsObj)
-                    .flat()
-                    .map(slot => ({
-                        ...slot,
-                        start: slot.time
-                    }));
-
-                setSlots(allSlots);
-
-            } catch (error) {
-                console.error('Error fetching slots:', error);
-                toast.error(t('calendar.errorFetchingSlots'));
-            } finally {
-                setLoadingSlots(false);
-            }
-        };
-
-        fetchAvailability();
-    }, [selectedDate, t]);
 
     const handleSlotSelect = (slot) => {
         setSelectedSlot(slot);

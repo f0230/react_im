@@ -3,6 +3,7 @@ import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { X, Mail, Trash2, AlertCircle, Loader2, Link as LinkIcon, CalendarClock, ArrowLeft, Check, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import DatePicker from 'react-datepicker';
+import useCalAvailability from '@/hooks/useCalAvailability';
 import "react-datepicker/dist/react-datepicker.css";
 
 const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, position }) => {
@@ -15,9 +16,16 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
 
     // Reschedule State
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [slots, setSlots] = useState([]);
-    const [loadingSlots, setLoadingSlots] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState(null);
+    const {
+        slots,
+        loadingSlots,
+        selectedSlot,
+        setSelectedSlot,
+        resetAvailability
+    } = useCalAvailability({
+        selectedDate,
+        enabled: action === 'reschedule' && Boolean(selectedDate)
+    });
 
     // Reset state on open
     useEffect(() => {
@@ -25,41 +33,9 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
             setAction(null);
             setCancelReason('');
             setSelectedDate(new Date());
-            setSelectedSlot(null);
-            setSlots([]);
+            resetAvailability();
         }
-    }, [isOpen]);
-
-    // Fetch slots when date changes (only if in reschedule mode)
-    useEffect(() => {
-        if (action === 'reschedule' && selectedDate) {
-            const fetchAvailability = async () => {
-                setLoadingSlots(true);
-                setSlots([]);
-                setSelectedSlot(null);
-                try {
-                    const startOfDay = new Date(selectedDate);
-                    startOfDay.setHours(0, 0, 0, 0);
-                    const endOfDay = new Date(selectedDate);
-                    endOfDay.setHours(23, 59, 59, 999);
-
-                    const response = await fetch(`/api/cal/availability?start=${startOfDay.toISOString()}&end=${endOfDay.toISOString()}&timeZone=${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
-                    if (!response.ok) throw new Error('Failed to fetch slots');
-
-                    const data = await response.json();
-                    const slotsObj = data.data?.slots || {};
-                    const allSlots = Object.values(slotsObj).flat().map(slot => ({ ...slot, start: slot.time }));
-                    setSlots(allSlots);
-                } catch (error) {
-                    console.error(error);
-                    // toast.error('Error cargando horarios');
-                } finally {
-                    setLoadingSlots(false);
-                }
-            };
-            fetchAvailability();
-        }
-    }, [selectedDate, action]);
+    }, [isOpen, resetAvailability]);
 
     if (!isOpen || !appointment) return null;
 

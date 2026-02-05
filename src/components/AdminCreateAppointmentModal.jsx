@@ -6,6 +6,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
+import useCalAvailability from '@/hooks/useCalAvailability';
 
 const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
     const [step, setStep] = useState(1); // 1: Client/Project, 2: Date/Time
@@ -23,9 +24,16 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
 
     // Time
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [slots, setSlots] = useState([]);
-    const [loadingSlots, setLoadingSlots] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState(null);
+    const {
+        slots,
+        loadingSlots,
+        selectedSlot,
+        setSelectedSlot,
+        resetAvailability
+    } = useCalAvailability({
+        selectedDate,
+        enabled: step === 2 && Boolean(selectedDate)
+    });
 
     // Load initial data
     useEffect(() => {
@@ -37,10 +45,9 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
             setSelectedProject('');
             setNotes('');
             setSelectedDate(new Date());
-            setSlots([]);
-            setSelectedSlot(null);
+            resetAvailability();
         }
-    }, [isOpen]);
+    }, [isOpen, resetAvailability]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -75,36 +82,6 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
         }
         setSelectedProject('');
     }, [selectedClient, projects]);
-
-    // Fetch slots
-    useEffect(() => {
-        if (step === 2 && selectedDate) {
-            const fetchAvailability = async () => {
-                setLoadingSlots(true);
-                setSlots([]);
-                setSelectedSlot(null);
-                try {
-                    const startOfDay = new Date(selectedDate);
-                    startOfDay.setHours(0, 0, 0, 0);
-                    const endOfDay = new Date(selectedDate);
-                    endOfDay.setHours(23, 59, 59, 999);
-
-                    const response = await fetch(`/api/cal/availability?start=${startOfDay.toISOString()}&end=${endOfDay.toISOString()}&timeZone=${Intl.DateTimeFormat().resolvedOptions().timeZone}`);
-                    if (!response.ok) throw new Error('Failed to fetch slots');
-
-                    const data = await response.json();
-                    const slotsObj = data.data?.slots || {};
-                    const allSlots = Object.values(slotsObj).flat().map(slot => ({ ...slot, start: slot.time }));
-                    setSlots(allSlots);
-                } catch (error) {
-                    console.error(error);
-                } finally {
-                    setLoadingSlots(false);
-                }
-            };
-            fetchAvailability();
-        }
-    }, [selectedDate, step]);
 
     const handleCreate = async () => {
         if (!selectedSlot || !selectedClient) return;

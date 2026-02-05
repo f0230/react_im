@@ -1,12 +1,10 @@
-import dotenv from 'dotenv';
-import crypto from 'crypto';
 import { getSupabaseAdmin } from '../../server/utils/supabaseServer.js';
+import { verifyAdmin } from '../../server/utils/auth.js';
 
-dotenv.config();
 
 const CAL_API_URL = process.env.CAL_COM_API_URL || 'https://api.cal.com/v2';
-const API_KEY = process.env.VITE_CAL_COM_API_KEY;
-const EVENT_TYPE_ID = process.env.VITE_CAL_COM_EVENT_TYPE_ID;
+const API_KEY = process.env.CAL_COM_API_KEY || process.env.VITE_CAL_COM_API_KEY;
+const EVENT_TYPE_ID = process.env.CAL_COM_EVENT_TYPE_ID || process.env.VITE_CAL_COM_EVENT_TYPE_ID;
 
 const CAL_API_VERSION = '2024-08-13';
 const ALLOWED_ACTIONS = new Set([
@@ -231,10 +229,9 @@ const handleBookings = async (req, res) => {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const secret = req.headers['x-admin-secret'];
-    const envSecret = process.env.ADMIN_API_SECRET;
-    if (!envSecret || secret !== envSecret) {
-        return res.status(401).json({ error: 'Unauthorized: Missing or invalid credentials' });
+    const { error: authError } = await verifyAdmin(req);
+    if (authError) {
+        return res.status(authError.includes('Forbidden') ? 403 : 401).json({ error: authError });
     }
 
     const supabase = getSupabaseAdmin();
@@ -335,9 +332,9 @@ const handleCancel = async (req, res) => {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const adminSecret = req.headers['x-admin-secret'];
-    if (adminSecret !== process.env.ADMIN_API_SECRET) {
-        return res.status(401).json({ error: 'Unauthorized' });
+    const { error: authError } = await verifyAdmin(req);
+    if (authError) {
+        return res.status(authError.includes('Forbidden') ? 403 : 401).json({ error: authError });
     }
 
     const { bookingUid, reason } = req.body || {};
@@ -391,9 +388,9 @@ const handleReschedule = async (req, res) => {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const adminSecret = req.headers['x-admin-secret'];
-    if (adminSecret !== process.env.ADMIN_API_SECRET) {
-        return res.status(401).json({ error: 'Unauthorized' });
+    const { error: authError } = await verifyAdmin(req);
+    if (authError) {
+        return res.status(authError.includes('Forbidden') ? 403 : 401).json({ error: authError });
     }
 
     const { bookingUid, start, reason } = req.body || {};
