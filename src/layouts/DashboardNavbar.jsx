@@ -12,6 +12,7 @@ import NotificationPanel from '@/components/notifications/NotificationPanel';
 
 import ProfileMenu from './ProfileMenu';
 import DashboardMenu from './DashboardMenu';
+import ToolsPopover from '@/components/ToolsPopover';
 
 const DashboardNavbar = () => {
     const [scrolled, setScrolled] = useState(false);
@@ -62,6 +63,13 @@ const DashboardNavbar = () => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
+                    {/* Tools Popover (Admin/Worker only) - Check temporarily removed for testing */}
+                    {/* {(profile?.role === 'admin' || profile?.role === 'worker') && ( */}
+                    <div className="relative flex items-center">
+                        <ToolsPopover />
+                    </div>
+                    {/* )} */}
+
                     <div className="relative">
                         <MessageIcon
                             unreadCount={messageUnreadTotal}

@@ -8,6 +8,7 @@ import { User, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 
 import { menuItems } from "@/config/nav";
 import LoginModal from "./LoginModal";
+import ToolsPopover from "./ToolsPopover";
 import { useUI } from "@/context/UIContext";
 import { useAuth } from "@/context/AuthContext";
 
@@ -22,7 +23,7 @@ const Navbar = () => {
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const navigate = useNavigate();
     const { setIsNavbarOpen, isLoginModalOpen, setIsLoginModalOpen } = useUI();
-    const { user, signOut } = useAuth();
+    const { user, profile, signOut } = useAuth();
     const userMenuRef = useRef(null);
     const gsapRef = useRef(null);
 
@@ -315,6 +316,14 @@ const Navbar = () => {
                                 </button>
                             </div>
                         </li>
+                        {/* Tools Popover (Admin/Worker only) */}
+                        {/* Tools Popover (Admin/Worker only) - Check temporarily removed for testing */}
+                        {/* {(profile?.role === 'admin' || profile?.role === 'worker') && ( */}
+                        <li className="relative flex items-center">
+                            <ToolsPopover />
+                        </li>
+                        {/* )} */}
+
                         {/* Login Button / User Menu Desktop */}
                         <li className="relative" ref={userMenuRef}>
                             {user ? (
@@ -449,9 +458,19 @@ const Navbar = () => {
                                     </button>
                                 )}
                             </li>
+                            {/* Tools Popover Mobile (Admin/Worker only) */}
+                            {/* Tools Popover Mobile (Admin/Worker only) - Check temporarily removed for testing */}
+                            {/* {(profile?.role === 'admin' || profile?.role === 'worker') && ( */}
+                            <li className="menu-item opacity-0 transform w-full flex justify-end">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-white text-[13px] font-product">Tools</span>
+                                    <ToolsPopover />
+                                </div>
+                            </li>
+                            {/* )} */}
                         </ul>
                     </nav>
-                </div>
+                </div >
             )}
 
             <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
