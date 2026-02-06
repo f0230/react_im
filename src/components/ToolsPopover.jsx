@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LayoutGrid, Plus, Sparkles, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
 import PopoverPanel from './ui/PopoverPanel';
 import { cn } from '../lib/utils';
+import { supabase } from '../lib/supabaseClient';
 
 const DEFAULT_TOOLS = [
     {
@@ -24,35 +25,54 @@ const ToolsPopover = () => {
     const [tools, setTools] = useState([]);
     const [isAdding, setIsAdding] = useState(false);
     const [newTool, setNewTool] = useState({ name: '', url: '' });
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Load tools from localStorage on mount
+    // Load tools from Supabase
     useEffect(() => {
-        const stored = localStorage.getItem('dte_user_tools');
-        if (stored) {
-            setTools(JSON.parse(stored));
+        if (isOpen) {
+            fetchTools();
+        }
+    }, [isOpen]);
+
+    const fetchTools = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase
+            .from('tools')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+        if (!error && data) {
+            setTools([...DEFAULT_TOOLS, ...data]);
         } else {
+            // Fallback or just show default
             setTools(DEFAULT_TOOLS);
         }
-    }, []);
+        setIsLoading(false);
+    };
 
-    const handleAddTool = (e) => {
+    const handleAddTool = async (e) => {
         e.preventDefault();
         if (!newTool.name || !newTool.url) return;
 
-        const toolToAdd = {
-            id: Date.now().toString(),
-            name: newTool.name,
-            url: newTool.url.startsWith('http') ? newTool.url : `https://${newTool.url}`,
-            icon: 'Globe',
-            color: 'bg-gradient-to-br from-neutral-700 to-neutral-600'
-        };
+        const { data, error } = await supabase
+            .from('tools')
+            .insert([{
+                name: newTool.name,
+                url: newTool.url.startsWith('http') ? newTool.url : `https://${newTool.url}`,
+                icon: 'Globe',
+                color: 'bg-gradient-to-br from-neutral-700 to-neutral-600'
+            }])
+            .select()
+            .single();
 
-        const updatedTools = [...tools, toolToAdd];
-        setTools(updatedTools);
-        localStorage.setItem('dte_user_tools', JSON.stringify(updatedTools));
-
-        setNewTool({ name: '', url: '' });
-        setIsAdding(false);
+        if (data && !error) {
+            setTools(prev => [...prev, data]);
+            setNewTool({ name: '', url: '' });
+            setIsAdding(false);
+        } else {
+            console.error('Error adding tool:', error);
+            // Optionally show toast error here
+        }
     };
 
     const getIcon = (iconName) => {
