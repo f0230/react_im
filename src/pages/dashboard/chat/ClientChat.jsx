@@ -4,7 +4,11 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
+import useThrottledCallback from '@/hooks/useThrottledCallback';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
+import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
+import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
+import { fetchReactionsForMessages, toggleReaction } from '@/services/chatReactions';
 import { formatTime, formatTimestamp, getInitial } from '@/utils/messagingFormatters';
 
 const isMissingRelationError = (error) => {
@@ -39,14 +43,37 @@ const ClientChat = () => {
     const [sendError, setSendError] = useState('');
     const [migrationPending, setMigrationPending] = useState(false);
     const [readTrackingPending, setReadTrackingPending] = useState(false);
+    const [reactionsByMessage, setReactionsByMessage] = useState({});
+    const [readReceipts, setReadReceipts] = useState([]);
 
     const messagesEndRef = useRef(null);
     const lastReadRef = useRef({});
+
+    const reactionTable = 'client_message_reactions';
 
     const selectedThread = useMemo(
         () => threads.find((thread) => thread.id === selectedClientId) || null,
         [threads, selectedClientId]
     );
+
+    const messageIdKey = useMemo(
+        () => messages.map((message) => message.id).join(','),
+        [messages]
+    );
+
+    const otherReadAt = useMemo(() => {
+        if (!user?.id || readReceipts.length === 0) return null;
+        if (isStaff && selectedThread?.user_id) {
+            const clientRead = readReceipts.find((read) => read.user_id === selectedThread.user_id);
+            return clientRead?.last_read_at || null;
+        }
+        const others = readReceipts.filter((read) => read.user_id !== user.id && read.last_read_at);
+        if (others.length === 0) return null;
+        return others.reduce((latest, read) => {
+            if (!latest) return read.last_read_at;
+            return new Date(read.last_read_at) > new Date(latest) ? read.last_read_at : latest;
+        }, null);
+    }, [isStaff, readReceipts, selectedThread?.user_id, user?.id]);
 
     const filteredThreads = useMemo(() => {
         if (!isStaff) return threads;
@@ -80,6 +107,7 @@ const ClientChat = () => {
             }
             const ownThread = {
                 id: client.id,
+                user_id: client.user_id,
                 full_name: client.full_name,
                 company_name: client.company_name,
                 email: client.email,
@@ -94,7 +122,7 @@ const ClientChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('clients')
-            .select('id, full_name, company_name, email, phone, created_at')
+            .select('id, user_id, full_name, company_name, email, phone, created_at')
             .order('created_at', { ascending: false });
 
         if (supaError) {
@@ -113,6 +141,33 @@ const ClientChat = () => {
         setLoadingThreads(false);
     }, [client, isAllowed, isStaff]);
 
+    const throttledMarkRead = useThrottledCallback(async (clientId, timestamp) => {
+        if (!clientId || !user?.id) return;
+        const { error: supaError } = await supabase
+            .from('client_message_reads')
+            .upsert(
+                {
+                    client_id: clientId,
+                    user_id: user.id,
+                    last_read_at: timestamp,
+                    updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'client_id,user_id' }
+            );
+
+        if (supaError) {
+            if (isMissingRelationError(supaError)) {
+                setReadTrackingPending(true);
+            }
+            return;
+        }
+
+        setReadTrackingPending(false);
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('unread:refresh'));
+        }
+    }, 2500);
+
     const markClientRead = useCallback(
         async (clientId, timestamp) => {
             if (!clientId || !user?.id) return;
@@ -120,33 +175,53 @@ const ClientChat = () => {
             const previous = lastReadRef.current[clientId];
             if (previous && new Date(previous) >= new Date(nextReadAt)) return;
             lastReadRef.current[clientId] = nextReadAt;
-
-            const { error: supaError } = await supabase
-                .from('client_message_reads')
-                .upsert(
-                    {
-                        client_id: clientId,
-                        user_id: user.id,
-                        last_read_at: nextReadAt,
-                        updated_at: new Date().toISOString(),
-                    },
-                    { onConflict: 'client_id,user_id' }
-                );
-
-            if (supaError) {
-                if (isMissingRelationError(supaError)) {
-                    setReadTrackingPending(true);
-                }
-                return;
-            }
-
-            setReadTrackingPending(false);
-            if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('unread:refresh'));
-            }
+            throttledMarkRead(clientId, nextReadAt);
         },
-        [user?.id]
+        [throttledMarkRead, user?.id]
     );
+
+    const loadReadReceipts = useCallback(async (clientId) => {
+        if (!clientId) return;
+        const { data, error } = await supabase
+            .from('client_message_reads')
+            .select('user_id, last_read_at')
+            .eq('client_id', clientId);
+        if (!error) setReadReceipts(data || []);
+    }, []);
+
+    const handleToggleReaction = useCallback(async (messageId, emoji) => {
+        if (!messageId || !emoji || !user?.id) return;
+        setReactionsByMessage((prev) => {
+            const list = prev[messageId] || [];
+            const existing = list.find((reaction) => reaction.user_id === user.id && reaction.emoji === emoji);
+            if (existing) {
+                return { ...prev, [messageId]: list.filter((reaction) => reaction.id !== existing.id) };
+            }
+            return {
+                ...prev,
+                [messageId]: [
+                    ...list,
+                    {
+                        id: `optimistic-${messageId}-${emoji}`,
+                        message_id: messageId,
+                        user_id: user.id,
+                        emoji,
+                        created_at: new Date().toISOString(),
+                    },
+                ],
+            };
+        });
+
+        try {
+            await toggleReaction({ table: reactionTable, messageId, userId: user.id, emoji });
+        } catch (error) {
+            fetchReactionsForMessages({ table: reactionTable, messageIds: [messageId] })
+                .then((grouped) => {
+                    setReactionsByMessage((prev) => ({ ...prev, ...grouped }));
+                })
+                .catch(() => {});
+        }
+    }, [reactionTable, user?.id]);
 
     const loadMessages = useCallback(async (clientId, background = false) => {
         if (!clientId || !isAllowed) return;
@@ -261,6 +336,72 @@ const ClientChat = () => {
             supabase.removeChannel(subscription);
         };
     }, [isAllowed, loadMessages, markClientRead, selectedClientId]);
+
+    useEffect(() => {
+        if (!selectedClientId || !messageIdKey) {
+            setReactionsByMessage({});
+            return;
+        }
+        const messageIds = messageIdKey.split(',').filter(Boolean);
+        fetchReactionsForMessages({ table: reactionTable, messageIds })
+            .then((grouped) => setReactionsByMessage(grouped))
+            .catch(() => {});
+    }, [messageIdKey, reactionTable, selectedClientId]);
+
+    useEffect(() => {
+        if (!selectedClientId || !messageIdKey) return;
+        const filter = `message_id=in.(${messageIdKey})`;
+        const reactionsChannel = supabase
+            .channel(`client-reactions-${selectedClientId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: reactionTable, filter }, (payload) => {
+                const row = payload.new || payload.old;
+                if (!row) return;
+                setReactionsByMessage((prev) => {
+                    const list = prev[row.message_id] || [];
+                    if (payload.eventType === 'DELETE') {
+                        return { ...prev, [row.message_id]: list.filter((item) => item.id !== row.id) };
+                    }
+                    const exists = list.some((item) => item.id === row.id);
+                    return {
+                        ...prev,
+                        [row.message_id]: exists ? list.map((item) => (item.id === row.id ? row : item)) : [...list, row],
+                    };
+                });
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(reactionsChannel);
+        };
+    }, [messageIdKey, reactionTable, selectedClientId]);
+
+    useEffect(() => {
+        if (!selectedClientId) {
+            setReadReceipts([]);
+            return;
+        }
+        loadReadReceipts(selectedClientId);
+        const readsChannel = supabase
+            .channel(`client-reads-${selectedClientId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'client_message_reads', filter: `client_id=eq.${selectedClientId}` }, (payload) => {
+                const row = payload.new || payload.old;
+                if (!row) return;
+                setReadReceipts((prev) => {
+                    if (payload.eventType === 'DELETE') {
+                        return prev.filter((item) => item.user_id !== row.user_id);
+                    }
+                    const exists = prev.some((item) => item.user_id === row.user_id);
+                    return exists
+                        ? prev.map((item) => (item.user_id === row.user_id ? row : item))
+                        : [...prev, row];
+                });
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(readsChannel);
+        };
+    }, [loadReadReceipts, selectedClientId]);
 
     useEffect(() => {
         if (!selectedClientId || !user?.id) return;
@@ -398,15 +539,28 @@ const ClientChat = () => {
                                         : message.sender_role === 'client'
                                             ? getThreadDisplayName(selectedThread)
                                             : 'Equipo DTE';
+                                    const isSeen = isOutbound && otherReadAt
+                                        ? new Date(otherReadAt) >= new Date(message.created_at)
+                                        : false;
                                     return (
                                         <div key={message.id} className={`flex flex-col max-w-[85%] ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
                                             <span className="text-[10px] text-neutral-500 mb-1">{senderName}</span>
-                                            <div className={`relative px-3 py-2 text-sm rounded-lg shadow-sm ${isOutbound ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none' : 'bg-white text-neutral-900 rounded-tl-none'}`}>
-                                                <p className="whitespace-pre-wrap">{message.body}</p>
-                                                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                                                    <span>{formatTime(message.created_at)}</span>
+                                            <ReactionPickerPopover onSelect={(emoji) => handleToggleReaction(message.id, emoji)}>
+                                                <div className={`relative px-3 py-2 text-sm rounded-lg shadow-sm ${isOutbound ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none' : 'bg-white text-neutral-900 rounded-tl-none'}`}>
+                                                    <p className="whitespace-pre-wrap">{message.body}</p>
+                                                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
+                                                        <span>{formatTime(message.created_at)}</span>
+                                                        {isOutbound && (
+                                                            <span>{isSeen ? '✓✓' : '✓'}</span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            </ReactionPickerPopover>
+                                            <MessageReactionsBar
+                                                reactions={reactionsByMessage[message.id] || []}
+                                                currentUserId={user?.id}
+                                                onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
+                                            />
                                         </div>
                                     );
                                 })}

@@ -1,11 +1,22 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { getMessagingTabs } from '@/config/messagingTabs';
 
 const MessagingTabs = () => {
     const { profile } = useAuth();
+    const { counts } = useUnreadCounts();
     const tabs = getMessagingTabs(profile?.role);
+    const unreadMap = {
+        team: counts.unreadTeam,
+        whatsapp: counts.unreadWhatsapp,
+        clients: counts.unreadClients,
+    };
+    const formatUnread = (value) => {
+        if (!value) return 0;
+        return value > 99 ? '99+' : value;
+    };
 
     return (
         <div className="shrink-0 border-b border-neutral-200 bg-white px-4 py-2">
@@ -21,6 +32,14 @@ const MessagingTabs = () => {
                     >
                         <tab.icon size={14} />
                         {tab.label}
+                        {unreadMap[tab.key] > 0 && (
+                            <span
+                                className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] px-1"
+                                aria-label={`${formatUnread(unreadMap[tab.key])} mensajes sin leer`}
+                            >
+                                {formatUnread(unreadMap[tab.key])}
+                            </span>
+                        )}
                     </NavLink>
                 ))}
             </div>

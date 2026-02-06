@@ -3,7 +3,11 @@ import { ArrowLeft, Hash, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Squ
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
+import useThrottledCallback from '@/hooks/useThrottledCallback';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
+import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
+import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
+import { fetchReactionsForMessages, toggleReaction } from '@/services/chatReactions';
 import { formatTime, formatTimestamp } from '@/utils/messagingFormatters';
 
 
@@ -73,6 +77,8 @@ const TeamChat = () => {
     const [uploadingAudio, setUploadingAudio] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [composerHeight, setComposerHeight] = useState(72);
+    const [reactionsByMessage, setReactionsByMessage] = useState({});
+    const [channelReads, setChannelReads] = useState([]);
 
     const recorderRef = useRef(null);
     const streamRef = useRef(null);
@@ -83,11 +89,18 @@ const TeamChat = () => {
     const composerRef = useRef(null);
     const textareaRef = useRef(null);
 
+    const reactionTable = 'team_message_reactions';
+
 
 
     const selectedChannel = useMemo(
         () => channels.find((channel) => channel.id === selectedChannelId) || null,
         [channels, selectedChannelId]
+    );
+
+    const messageIdKey = useMemo(
+        () => messages.map((message) => message.id).join(','),
+        [messages]
     );
 
     const filteredChannels = useMemo(() => {
@@ -99,6 +112,16 @@ const TeamChat = () => {
                 .some((value) => value.toLowerCase().includes(term))
         );
     }, [channels, searchTerm]);
+
+    const otherReadAt = useMemo(() => {
+        if (!channelReads.length || !user?.id) return null;
+        const others = channelReads.filter((read) => read.user_id !== user.id && read.last_read_at);
+        if (others.length === 0) return null;
+        return others.reduce((latest, read) => {
+            if (!latest) return read.last_read_at;
+            return new Date(read.last_read_at) > new Date(latest) ? read.last_read_at : latest;
+        }, null);
+    }, [channelReads, user?.id]);
 
     const loadChannels = useCallback(async (background = false) => {
         if (!isAllowed) return;
@@ -200,6 +223,17 @@ const TeamChat = () => {
         setMembersLoading(false);
     }, [canCreateChannel]);
 
+    const loadChannelReads = useCallback(async (channelId) => {
+        if (!channelId || !user?.id) return;
+        const { data, error } = await supabase
+            .from('team_channel_reads')
+            .select('user_id, last_read_at')
+            .eq('channel_id', channelId);
+        if (!error) {
+            setChannelReads(data || []);
+        }
+    }, [user?.id]);
+
     const fetchMessageById = useCallback(async (messageId) => {
         const { data } = await supabase
             .from('team_messages')
@@ -210,6 +244,28 @@ const TeamChat = () => {
         return resolveAudioMessage(data);
     }, [resolveAudioMessage]);
 
+    const throttledMarkRead = useThrottledCallback(async (channelId, timestamp) => {
+        if (!channelId || !user?.id) return;
+        const { error } = await supabase
+            .from('team_channel_reads')
+            .upsert(
+                {
+                    channel_id: channelId,
+                    user_id: user.id,
+                    last_read_at: timestamp,
+                    updated_at: new Date().toISOString(),
+                },
+                { onConflict: 'channel_id,user_id' }
+            );
+        if (error) {
+            console.error('Failed to update team_channel_reads', error);
+            return;
+        }
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('unread:refresh'));
+        }
+    }, 2500);
+
     const markChannelRead = useCallback(
         async (channelId, timestamp) => {
             if (!channelId || !user?.id) return;
@@ -218,27 +274,44 @@ const TeamChat = () => {
             if (previous && new Date(previous) >= new Date(nextReadAt)) return;
             lastReadRef.current[channelId] = nextReadAt;
 
-            const { error } = await supabase
-                .from('team_channel_reads')
-                .upsert(
-                    {
-                        channel_id: channelId,
-                        user_id: user.id,
-                        last_read_at: nextReadAt,
-                        updated_at: new Date().toISOString(),
-                    },
-                    { onConflict: 'channel_id,user_id' }
-                );
-            if (error) {
-                console.error('Failed to update team_channel_reads', error);
-                return;
-            }
-            if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('unread:refresh'));
-            }
+            throttledMarkRead(channelId, nextReadAt);
         },
-        [user?.id]
+        [throttledMarkRead, user?.id]
     );
+
+    const handleToggleReaction = useCallback(async (messageId, emoji) => {
+        if (!messageId || !emoji || !user?.id) return;
+        setReactionsByMessage((prev) => {
+            const list = prev[messageId] || [];
+            const existing = list.find((reaction) => reaction.user_id === user.id && reaction.emoji === emoji);
+            if (existing) {
+                return { ...prev, [messageId]: list.filter((reaction) => reaction.id !== existing.id) };
+            }
+            return {
+                ...prev,
+                [messageId]: [
+                    ...list,
+                    {
+                        id: `optimistic-${messageId}-${emoji}`,
+                        message_id: messageId,
+                        user_id: user.id,
+                        emoji,
+                        created_at: new Date().toISOString(),
+                    },
+                ],
+            };
+        });
+
+        try {
+            await toggleReaction({ table: reactionTable, messageId, userId: user.id, emoji });
+        } catch (error) {
+            fetchReactionsForMessages({ table: reactionTable, messageIds: [messageId] })
+                .then((grouped) => {
+                    setReactionsByMessage((prev) => ({ ...prev, ...grouped }));
+                })
+                .catch(() => {});
+        }
+    }, [reactionTable, user?.id]);
 
     const handleSend = useCallback(async () => {
         if (!selectedChannelId || sending || !user?.id) return;
@@ -515,6 +588,73 @@ const TeamChat = () => {
     }, [fetchMessageById, isAllowed, loadMessages, markChannelRead, selectedChannelId]);
 
     useEffect(() => {
+        if (!selectedChannelId || !messageIdKey) {
+            setReactionsByMessage({});
+            return;
+        }
+
+        const messageIds = messageIdKey.split(',').filter(Boolean);
+        fetchReactionsForMessages({ table: reactionTable, messageIds })
+            .then((grouped) => setReactionsByMessage(grouped))
+            .catch(() => {});
+    }, [messageIdKey, reactionTable, selectedChannelId]);
+
+    useEffect(() => {
+        if (!selectedChannelId || !messageIdKey) return;
+        const filter = `message_id=in.(${messageIdKey})`;
+        const reactionsChannel = supabase
+            .channel(`team-reactions-${selectedChannelId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: reactionTable, filter }, (payload) => {
+                const row = payload.new || payload.old;
+                if (!row) return;
+                setReactionsByMessage((prev) => {
+                    const list = prev[row.message_id] || [];
+                    if (payload.eventType === 'DELETE') {
+                        return { ...prev, [row.message_id]: list.filter((item) => item.id !== row.id) };
+                    }
+                    const exists = list.some((item) => item.id === row.id);
+                    return {
+                        ...prev,
+                        [row.message_id]: exists ? list.map((item) => (item.id === row.id ? row : item)) : [...list, row],
+                    };
+                });
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(reactionsChannel);
+        };
+    }, [messageIdKey, reactionTable, selectedChannelId]);
+
+    useEffect(() => {
+        if (!selectedChannelId) {
+            setChannelReads([]);
+            return;
+        }
+        loadChannelReads(selectedChannelId);
+        const readsChannel = supabase
+            .channel(`team-reads-${selectedChannelId}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'team_channel_reads', filter: `channel_id=eq.${selectedChannelId}` }, (payload) => {
+                const row = payload.new || payload.old;
+                if (!row) return;
+                setChannelReads((prev) => {
+                    if (payload.eventType === 'DELETE') {
+                        return prev.filter((item) => item.user_id !== row.user_id);
+                    }
+                    const exists = prev.some((item) => item.user_id === row.user_id);
+                    return exists
+                        ? prev.map((item) => (item.user_id === row.user_id ? row : item))
+                        : [...prev, row];
+                });
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(readsChannel);
+        };
+    }, [loadChannelReads, selectedChannelId]);
+
+    useEffect(() => {
         if (!canCreateChannel || !selectedChannelId) return;
         loadMembers(selectedChannelId);
     }, [canCreateChannel, loadMembers, selectedChannelId]);
@@ -768,33 +908,48 @@ const TeamChat = () => {
                                         || 'Equipo';
                                     const audioUrl = message?.resolved_media_url || message?.media_url;
                                     const isAudio = message?.message_type === 'audio' && audioUrl;
+                                    const isSeen = isOutbound && otherReadAt
+                                        ? new Date(otherReadAt) >= new Date(message.created_at)
+                                        : false;
                                     return (
                                         <div key={message.id} className={`flex flex-col max-w-[85%] ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
                                             <span className="text-[10px] text-neutral-500 mb-1">
                                                 {authorName}
                                             </span>
-                                            <div
-                                                className={`relative px-3 py-2 text-sm rounded-lg shadow-sm ${isOutbound
-                                                    ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none'
-                                                    : 'bg-white text-neutral-900 rounded-tl-none'
-                                                    }`}
-                                            >
-                                                {isAudio ? (
-                                                    <div className="space-y-2 min-w-[220px]">
-                                                        <audio controls src={audioUrl} className="w-full" />
-                                                        {message.file_name && (
-                                                            <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
+                                            <ReactionPickerPopover onSelect={(emoji) => handleToggleReaction(message.id, emoji)}>
+                                                <div
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    className={`relative px-3 py-2 text-sm rounded-lg shadow-sm ${isOutbound
+                                                        ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none'
+                                                        : 'bg-white text-neutral-900 rounded-tl-none'
+                                                        }`}
+                                                >
+                                                    {isAudio ? (
+                                                        <div className="space-y-2 min-w-[220px]">
+                                                            <audio controls src={audioUrl} className="w-full" />
+                                                            {message.file_name && (
+                                                                <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
+                                                            )}
+                                                        </div>
+                                                    ) : message?.message_type === 'audio' ? (
+                                                        <p className="text-xs text-neutral-500">Audio no disponible.</p>
+                                                    ) : (
+                                                        <p className="whitespace-pre-wrap">{renderTextWithLinks(message.body)}</p>
+                                                    )}
+                                                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
+                                                        <span>{formatTime(message.created_at)}</span>
+                                                        {isOutbound && (
+                                                            <span>{isSeen ? '✓✓' : '✓'}</span>
                                                         )}
                                                     </div>
-                                                ) : message?.message_type === 'audio' ? (
-                                                    <p className="text-xs text-neutral-500">Audio no disponible.</p>
-                                                ) : (
-                                                    <p className="whitespace-pre-wrap">{renderTextWithLinks(message.body)}</p>
-                                                )}
-                                                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                                                    <span>{formatTime(message.created_at)}</span>
                                                 </div>
-                                            </div>
+                                            </ReactionPickerPopover>
+                                            <MessageReactionsBar
+                                                reactions={reactionsByMessage[message.id] || []}
+                                                currentUserId={user?.id}
+                                                onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
+                                            />
                                         </div>
                                     );
                                 })}
