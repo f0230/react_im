@@ -16,6 +16,89 @@ const ALLOWED_ACTIONS = new Set([
     'reschedule',
 ]);
 
+const normalizeBookingStatus = (status) => {
+    if (!status) return 'scheduled';
+    const value = String(status).toLowerCase();
+    if (value === 'cancelled') return 'cancelled';
+    if (value === 'completed' || value === 'past') return 'completed';
+    if (value === 'accepted' || value === 'confirmed' || value === 'upcoming' || value === 'recurring' || value === 'unconfirmed') {
+        return 'scheduled';
+    }
+    return 'scheduled';
+};
+
+const mapCalBookingToAppointment = (booking) => {
+    const attendee = booking?.attendees?.[0] || {};
+    const mapped = {
+        cal_booking_id: booking?.id != null ? String(booking.id) : String(booking?.uid || ''),
+        scheduled_at: booking?.start || null,
+        duration_minutes: booking?.duration || 30,
+        status: normalizeBookingStatus(booking?.status),
+        client_name: attendee?.name || 'Unknown',
+        client_email: attendee?.email || 'Unknown',
+        client_phone: attendee?.phoneNumber || null,
+        meeting_link: booking?.meetingUrl || booking?.location || null,
+        event_type_id: booking?.eventTypeId != null ? String(booking.eventTypeId) : null,
+        cal_metadata: booking,
+    };
+
+    if (booking?.metadata?.projectId) {
+        mapped.project_id = booking.metadata.projectId;
+    }
+    if (booking?.metadata?.userId) {
+        mapped.user_id = booking.metadata.userId;
+    }
+
+    return mapped;
+};
+
+const fetchAllCalBookings = async ({ status, eventTypeId, afterStart, beforeEnd }) => {
+    const all = [];
+    let skip = 0;
+    const take = 100;
+    let hasNextPage = true;
+    let pages = 0;
+    const maxPages = 50;
+
+    while (hasNextPage && pages < maxPages) {
+        const params = new URLSearchParams({
+            take: String(take),
+            skip: String(skip),
+            sortStart: 'asc',
+        });
+
+        if (status) params.set('status', status);
+        if (eventTypeId) params.set('eventTypeId', String(eventTypeId));
+        if (afterStart) params.set('afterStart', afterStart);
+        if (beforeEnd) params.set('beforeEnd', beforeEnd);
+
+        const response = await fetch(`${CAL_API_URL}/bookings?${params.toString()}`, {
+            headers: {
+                Authorization: `Bearer ${API_KEY}`,
+                'cal-api-version': CAL_API_VERSION,
+            },
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data?.error || `Cal.com error: ${response.status}`);
+        }
+
+        const bookings = Array.isArray(data?.data) ? data.data : [];
+        all.push(...bookings);
+
+        const pagination = data?.pagination;
+        hasNextPage = Boolean(pagination?.hasNextPage);
+        const returned = pagination?.returnedItems || bookings.length;
+        skip += returned;
+        pages += 1;
+
+        if (!hasNextPage || returned === 0) break;
+    }
+
+    return all;
+};
+
 const getAction = (req) => {
     if (Array.isArray(req.query?.action)) return req.query.action[0];
     return req.query?.action || req.params?.action || null;
@@ -234,12 +317,43 @@ const handleBookings = async (req, res) => {
         return res.status(authError.includes('Forbidden') ? 403 : 401).json({ error: authError });
     }
 
-    const supabase = getSupabaseAdmin();
-    if (!supabase) {
-        return res.status(500).json({ error: 'Missing server credentials' });
-    }
-
     try {
+        if (!API_KEY) {
+            return res.status(500).json({ error: 'Server configuration error' });
+        }
+
+        const { status, eventTypeId, afterStart, beforeEnd } = req.query || {};
+        const bookings = await fetchAllCalBookings({
+            status,
+            eventTypeId,
+            afterStart,
+            beforeEnd,
+        });
+
+        const upsertData = bookings
+            .map(mapCalBookingToAppointment)
+            .filter((row) => row.cal_booking_id);
+
+        const supabase = getSupabaseAdmin();
+        if (supabase && upsertData.length > 0) {
+            const { error: upsertError } = await supabase
+                .from('appointments')
+                .upsert(upsertData, { onConflict: 'cal_booking_id' });
+
+            if (upsertError) {
+                console.error('Supabase Upsert Error:', upsertError);
+            }
+        }
+
+        if (!supabase) {
+            return res.status(200).json({ ok: true, data: upsertData, source: 'cal' });
+        }
+
+        const calIds = upsertData.map((row) => row.cal_booking_id);
+        if (calIds.length === 0) {
+            return res.status(200).json({ ok: true, data: [], source: 'cal' });
+        }
+
         const { data, error } = await supabase
             .from('appointments')
             .select(`
@@ -247,6 +361,7 @@ const handleBookings = async (req, res) => {
                 projects ( name ),
                 clients ( company_name, full_name, email )
             `)
+            .in('cal_booking_id', calIds)
             .order('scheduled_at', { ascending: true });
 
         if (error) {
@@ -256,7 +371,7 @@ const handleBookings = async (req, res) => {
             });
         }
 
-        return res.status(200).json({ ok: true, data });
+        return res.status(200).json({ ok: true, data, source: 'cal' });
     } catch (error) {
         console.error('Internal Error:', error);
         return res.status(500).json({ error: 'Internal server error' });

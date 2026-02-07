@@ -32,17 +32,24 @@ const AdminAppointments = () => {
     const fetchAppointments = async () => {
         setLoading(true);
         try {
-            const { data, error: dbError } = await supabase
-                .from('appointments')
-                .select(`
-                    *,
-                    projects(name),
-                    clients(company_name, full_name, email)
-                `)
-                .order('scheduled_at', { ascending: true });
+            const { data: { session } } = await supabase.auth.getSession();
+            const accessToken = session?.access_token;
+            if (!accessToken) {
+                throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
+            }
 
-            if (dbError) throw dbError;
-            setAppointments(data || []);
+            const response = await fetch('/api/cal/bookings', {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                throw new Error(payload?.error || 'Error al cargar las citas');
+            }
+
+            setAppointments(payload?.data || []);
         } catch (err) {
             console.error('Error fetching appointments:', err);
             setError(err.message);

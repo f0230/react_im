@@ -317,12 +317,11 @@ const Navbar = () => {
                             </div>
                         </li>
                         {/* Tools Popover (Admin/Worker only) */}
-                        {/* Tools Popover (Admin/Worker only) - Check temporarily removed for testing */}
-                        {/* {(profile?.role === 'admin' || profile?.role === 'worker') && ( */}
-                        <li className="relative flex items-center">
-                            <ToolsPopover />
-                        </li>
-                        {/* )} */}
+                        {(profile?.role === 'admin' || profile?.role === 'worker') && (
+                            <li className="relative flex items-center">
+                                <ToolsPopover />
+                            </li>
+                        )}
 
                         {/* Login Button / User Menu Desktop */}
                         <li className="relative" ref={userMenuRef}>
@@ -459,15 +458,14 @@ const Navbar = () => {
                                 )}
                             </li>
                             {/* Tools Popover Mobile (Admin/Worker only) */}
-                            {/* Tools Popover Mobile (Admin/Worker only) - Check temporarily removed for testing */}
-                            {/* {(profile?.role === 'admin' || profile?.role === 'worker') && ( */}
-                            <li className="menu-item opacity-0 transform w-full flex justify-end">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-white text-[13px] font-product">Tools</span>
-                                    <ToolsPopover />
-                                </div>
-                            </li>
-                            {/* )} */}
+                            {(profile?.role === 'admin' || profile?.role === 'worker') && (
+                                <li className="menu-item opacity-0 transform w-full flex justify-end">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-white text-[13px] font-product">Tools</span>
+                                        <ToolsPopover />
+                                    </div>
+                                </li>
+                            )}
                         </ul>
                     </nav>
                 </div >

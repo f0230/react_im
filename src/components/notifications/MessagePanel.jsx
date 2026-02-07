@@ -29,7 +29,7 @@ const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [], cli
         <PopoverPanel
             isOpen={isOpen}
             onClose={onClose}
-            className={POPOVER_PANEL_CLASS}
+            className={`${POPOVER_PANEL_CLASS} fixed top-14 left-4 right-4 sm:left-auto sm:right-0 sm:top-full sm:absolute mt-2 w-auto sm:w-[360px] z-50`}
         >
             <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-white">

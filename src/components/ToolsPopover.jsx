@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabaseClient';
 const DEFAULT_TOOLS = [
     {
         id: 'ai-studio',
-        name: 'AI Studio',
+        name: 'DMS',
         url: 'https://aistudio.google.com/apps/drive/17FfeYIGkOd36xqDwEw5DIKxmWE3ikzUV?showPreview=true&showAssistant=true&fullscreenApplet=true',
         icon: 'Sparkles', // Storing icon name for persistence
         color: 'bg-gradient-to-br from-blue-500 to-purple-600'
@@ -98,7 +98,7 @@ const ToolsPopover = () => {
                     setIsOpen(false);
                     setIsAdding(false);
                 }}
-                className="absolute top-full right-0 mt-2 w-[320px] sm:w-[360px] bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 z-50 origin-top-right overflow-hidden"
+                className="fixed top-14 left-4 right-4 sm:left-auto sm:right-0 sm:top-full sm:absolute mt-2 w-auto sm:w-[360px] bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 z-50 origin-top overflow-hidden"
                 initial={{ opacity: 0, scale: 0.9, y: -10, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, scale: 0.9, y: -10, filter: 'blur(10px)' }}
@@ -146,7 +146,7 @@ const ToolsPopover = () => {
                     </form>
                 ) : (
                     /* Grid */
-                    <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto p-2 custom-scrollbar">
                         {tools.map((tool) => {
                             const IconComp = getIcon(tool.icon);
                             return (

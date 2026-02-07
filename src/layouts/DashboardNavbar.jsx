@@ -63,12 +63,12 @@ const DashboardNavbar = () => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">
-                    {/* Tools Popover (Admin/Worker only) - Check temporarily removed for testing */}
-                    {/* {(profile?.role === 'admin' || profile?.role === 'worker') && ( */}
-                    <div className="relative flex items-center">
-                        <ToolsPopover />
-                    </div>
-                    {/* )} */}
+                    {/* Tools Popover (Admin/Worker only) */}
+                    {(profile?.role === 'admin' || profile?.role === 'worker') && (
+                        <div className="relative flex items-center">
+                            <ToolsPopover />
+                        </div>
+                    )}
 
                     <div className="relative">
                         <MessageIcon
