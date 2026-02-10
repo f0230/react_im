@@ -89,6 +89,27 @@ alter table public.team_messages
 
 create index if not exists team_messages_channel_idx on public.team_messages (channel_id, created_at);
 
+-- Storage configuration for chat media (audio/images)
+-- Note: This requires access to the storage schema.
+insert into storage.buckets (id, name, public)
+values ('chat-media', 'chat-media', true)
+on conflict (id) do nothing;
+
+drop policy if exists "chat_media_public_read" on storage.objects;
+create policy "chat_media_public_read"
+on storage.objects for select
+using (bucket_id = 'chat-media');
+
+drop policy if exists "chat_media_upload" on storage.objects;
+create policy "chat_media_upload"
+on storage.objects for insert
+with check (bucket_id = 'chat-media' and auth.role() = 'authenticated');
+
+drop policy if exists "chat_media_delete" on storage.objects;
+create policy "chat_media_delete"
+on storage.objects for delete
+using (bucket_id = 'chat-media' and auth.role() = 'authenticated');
+
 -- Ensure author_name is captured on insert (works even if profiles RLS is strict)
 create or replace function public.set_team_message_author_name()
 returns trigger

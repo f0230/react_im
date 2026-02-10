@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Hash, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
+import { ArrowLeft, Hash, Image, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
 import useThrottledCallback from '@/hooks/useThrottledCallback';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
 import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
 import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
@@ -50,6 +51,7 @@ const TeamChat = () => {
     useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
 
     const { user, profile } = useAuth();
+    const { teamPreviews } = useUnreadCounts();
     const isAllowed = profile?.role === 'admin' || profile?.role === 'worker';
     const canCreateChannel = profile?.role === 'admin';
 
@@ -75,6 +77,7 @@ const TeamChat = () => {
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
     const [savingMembers, setSavingMembers] = useState(false);
     const [uploadingAudio, setUploadingAudio] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [composerHeight, setComposerHeight] = useState(72);
     const [reactionsByMessage, setReactionsByMessage] = useState({});
@@ -88,6 +91,7 @@ const TeamChat = () => {
     const messagesEndRef = useRef(null);
     const composerRef = useRef(null);
     const textareaRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const reactionTable = 'team_message_reactions';
 
@@ -102,6 +106,20 @@ const TeamChat = () => {
         () => messages.map((message) => message.id).join(','),
         [messages]
     );
+
+    const unreadByChannel = useMemo(() => {
+        const map = new Map();
+        teamPreviews.forEach((preview) => {
+            if (!preview?.channel_id) return;
+            map.set(preview.channel_id, Number(preview.unread_count || 0));
+        });
+        return map;
+    }, [teamPreviews]);
+
+    const formatUnread = (value) => {
+        if (!value) return 0;
+        return value > 99 ? '99+' : value;
+    };
 
     const filteredChannels = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
@@ -146,8 +164,8 @@ const TeamChat = () => {
         if (!background) setLoadingChannels(false);
     }, [isAllowed, selectedChannelId]);
 
-    const resolveAudioMessage = useCallback(async (message) => {
-        if (!message || message.message_type !== 'audio' || !message.media_url) return message;
+    const resolveMediaMessage = useCallback(async (message) => {
+        if (!message || message.message_type === 'text' || !message.media_url) return message;
         if (isHttpUrl(message.media_url)) {
             return { ...message, resolved_media_url: message.media_url };
         }
@@ -160,11 +178,11 @@ const TeamChat = () => {
         return { ...message, resolved_media_url: data?.signedUrl || null };
     }, []);
 
-    const hydrateAudioMessages = useCallback(async (items) => {
+    const hydrateMediaMessages = useCallback(async (items) => {
         if (!Array.isArray(items) || items.length === 0) return items;
-        const resolved = await Promise.all(items.map(resolveAudioMessage));
+        const resolved = await Promise.all(items.map(resolveMediaMessage));
         return resolved;
-    }, [resolveAudioMessage]);
+    }, [resolveMediaMessage]);
 
     const loadMessages = useCallback(async (channelId, background = false) => {
         if (!channelId || !isAllowed) return;
@@ -180,12 +198,12 @@ const TeamChat = () => {
         if (supaError) {
             if (!background) setError(supaError.message || 'No se pudieron cargar los mensajes.');
         } else {
-            const hydrated = await hydrateAudioMessages(data || []);
+            const hydrated = await hydrateMediaMessages(data || []);
             setMessages(hydrated);
         }
 
         if (!background) setLoadingMessages(false);
-    }, [hydrateAudioMessages, isAllowed]);
+    }, [hydrateMediaMessages, isAllowed]);
 
     const loadPeople = useCallback(async () => {
         if (!canCreateChannel) return;
@@ -241,8 +259,8 @@ const TeamChat = () => {
             .eq('id', messageId)
             .single();
         if (!data) return null;
-        return resolveAudioMessage(data);
-    }, [resolveAudioMessage]);
+        return resolveMediaMessage(data);
+    }, [resolveMediaMessage]);
 
     const throttledMarkRead = useThrottledCallback(async (channelId, timestamp) => {
         if (!channelId || !user?.id) return;
@@ -378,6 +396,60 @@ const TeamChat = () => {
             setUploadingAudio(false);
         }
     }, [selectedChannelId, user?.id]);
+
+    const uploadImageFile = useCallback(async (file) => {
+        if (!file || !selectedChannelId || !user?.id) return;
+
+        if (!file.type.startsWith('image/')) {
+            setSendError('Solo se permiten imágenes.');
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            setSendError('La imagen es demasiado grande (max 10MB).');
+            return;
+        }
+
+        setUploadingImage(true);
+        setSendError('');
+
+        try {
+            const ext = file.name.split('.').pop() || 'jpg';
+            const safeBase = file.name.replace(/\.[^/.]+$/, '').replace(/[^\w.-]+/g, '-').slice(0, 60) || 'imagen';
+            const safeName = `${safeBase}.${ext}`;
+            const storagePath = `team-chat/${selectedChannelId}/${Date.now()}-${safeName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('chat-media')
+                .upload(storagePath, file, { contentType: file.type || 'image/jpeg' });
+
+            if (uploadError) throw uploadError;
+
+            const { error: insertError } = await supabase
+                .from('team_messages')
+                .insert({
+                    channel_id: selectedChannelId,
+                    author_id: user.id,
+                    body: safeName,
+                    message_type: 'image',
+                    media_url: storagePath,
+                    file_name: safeName,
+                });
+
+            if (insertError) throw insertError;
+        } catch (err) {
+            setSendError(err.message || 'No se pudo subir la imagen.');
+        } finally {
+            setUploadingImage(false);
+        }
+    }, [selectedChannelId, user?.id]);
+
+    const handleImageUpload = useCallback((event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        event.target.value = '';
+        uploadImageFile(file);
+    }, [uploadImageFile]);
 
     const stopRecording = useCallback(() => {
         if (recorderRef.current && recorderRef.current.state !== 'inactive') {
@@ -825,6 +897,7 @@ const TeamChat = () => {
                         )}
                         {filteredChannels.map((channel) => {
                             const isActive = channel.id === selectedChannelId;
+                            const unreadCount = unreadByChannel.get(channel.id) || 0;
                             return (
                                 <button
                                     key={channel.id}
@@ -841,9 +914,22 @@ const TeamChat = () => {
                                                 {channel.name}
                                             </p>
                                         </div>
-                                        <span className={`text-[10px] shrink-0 ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
-                                            {formatTimestamp(channel.created_at)}
-                                        </span>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            {unreadCount > 0 && (
+                                                <span
+                                                    className={`inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full px-1 text-[10px] ${isActive
+                                                        ? 'bg-white/20 text-white'
+                                                        : 'bg-red-500 text-white'
+                                                        }`}
+                                                    aria-label={`${formatUnread(unreadCount)} mensajes sin leer`}
+                                                >
+                                                    {formatUnread(unreadCount)}
+                                                </span>
+                                            )}
+                                            <span className={`text-[10px] ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
+                                                {formatTimestamp(channel.created_at)}
+                                            </span>
+                                        </div>
                                     </div>
                                     {channel.description && (
                                         <p className={`text-xs mt-1 truncate ${isActive ? 'text-white/70' : 'text-neutral-500'}`}>
@@ -906,8 +992,9 @@ const TeamChat = () => {
                                         || message?.author_name
                                         || message?.author?.email
                                         || 'Equipo';
-                                    const audioUrl = message?.resolved_media_url || message?.media_url;
-                                    const isAudio = message?.message_type === 'audio' && audioUrl;
+                                    const mediaUrl = message?.resolved_media_url || message?.media_url;
+                                    const isAudio = message?.message_type === 'audio' && mediaUrl;
+                                    const isImage = message?.message_type === 'image' && mediaUrl;
                                     const isSeen = isOutbound && otherReadAt
                                         ? new Date(otherReadAt) >= new Date(message.created_at)
                                         : false;
@@ -927,13 +1014,27 @@ const TeamChat = () => {
                                                 >
                                                     {isAudio ? (
                                                         <div className="space-y-2 min-w-[220px]">
-                                                            <audio controls src={audioUrl} className="w-full" />
+                                                            <audio controls src={mediaUrl} className="w-full" />
+                                                            {message.file_name && (
+                                                                <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
+                                                            )}
+                                                        </div>
+                                                    ) : isImage ? (
+                                                        <div className="space-y-2">
+                                                            <img
+                                                                src={mediaUrl}
+                                                                alt={message.file_name || 'Imagen compartida'}
+                                                                className="max-h-64 rounded-lg object-cover"
+                                                                loading="lazy"
+                                                            />
                                                             {message.file_name && (
                                                                 <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
                                                             )}
                                                         </div>
                                                     ) : message?.message_type === 'audio' ? (
                                                         <p className="text-xs text-neutral-500">Audio no disponible.</p>
+                                                    ) : message?.message_type === 'image' ? (
+                                                        <p className="text-xs text-neutral-500">Imagen no disponible.</p>
                                                     ) : (
                                                         <p className="whitespace-pre-wrap">{renderTextWithLinks(message.body)}</p>
                                                     )}
@@ -964,6 +1065,22 @@ const TeamChat = () => {
                                 <div className="space-y-2">
                                     <div className="flex items-center gap-2">
                                         <button
+                                            type="button"
+                                            className={`p-2 transition disabled:opacity-50 ${uploadingImage ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700'}`}
+                                            title="Adjuntar imagen"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadingImage || !selectedChannelId}
+                                        >
+                                            {uploadingImage ? <RefreshCw size={20} className="animate-spin" /> : <Image size={20} />}
+                                        </button>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageUpload}
+                                            className="hidden"
+                                        />
+                                        <button
                                             className={`p-2 transition disabled:opacity-50 ${uploadingAudio ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700'}`}
                                             title={isRecording ? 'Detener grabación' : 'Grabar nota de voz'}
                                             onClick={() => {
@@ -988,6 +1105,16 @@ const TeamChat = () => {
                                             onChange={(event) => setMessageText(event.target.value)}
                                             placeholder="Escribe un mensaje para el equipo"
                                             className="flex-1 min-h-[44px] max-h-32 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none resize-none"
+                                            onPaste={(event) => {
+                                                const items = event.clipboardData?.items;
+                                                if (!items || items.length === 0) return;
+                                                const imageItem = Array.from(items).find((item) => item.type?.startsWith('image/'));
+                                                if (!imageItem) return;
+                                                const file = imageItem.getAsFile();
+                                                if (!file) return;
+                                                event.preventDefault();
+                                                uploadImageFile(file);
+                                            }}
                                             onKeyDown={(event) => {
                                                 if (event.key === 'Enter' && !event.shiftKey) {
                                                     event.preventDefault();
