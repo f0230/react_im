@@ -12,7 +12,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
     const menuItems = {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
-            { icon: Briefcase, label: 'Mis Proyectos', path: '/dashboard/projects' },
+            { icon: Briefcase, label: 'Tareas', path: '/dashboard/tasks' },
             { icon: Calendar, label: 'Mis Citas', path: '/dashboard/my-appointments' },
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },

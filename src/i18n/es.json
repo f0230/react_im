@@ -450,18 +450,71 @@
         "saving": "Creando...",
         "errorMissingRequired": "Completa los campos obligatorios.",
         "errorMissingDate": "Selecciona una fecha específica.",
-        "error": "No pudimos crear el proyecto. Intenta nuevamente."
+        "error": "No pudimos crear el proyecto. Intenta nuevamente.",
+        "helpfulHint": {
+          "title": "¿No estás seguro?",
+          "description": "Si todavía no tienes claro qué necesitas, puedes cerrar esta ventana con la cruz de arriba y consultarnos después."
+        }
       },
       "detail": {
         "label": "Proyecto",
         "title": "Detalle del proyecto",
         "back": "Volver al proyecto",
         "tabs": {
-          "services": "Servicios",
+          "services": "Tareas",
           "reports": "Informes",
           "invoices": "Facturas"
-        },
-        "empty": "Sección en construcción."
+        }
+      }
+    },
+    "invoices": {
+      "title": "Facturas & Pagos",
+      "subtitle": "Historial de transacciones, estados de pago y descarga de comprobantes.",
+      "newButton": "Generar Factura",
+      "summary": {
+        "paid": "Total Pagado",
+        "pending": "Pendiente de Cobro",
+        "total": "Monto Total",
+        "history": "Facturación Histórica",
+        "confirmed": "Ingresos confirmados",
+        "active": "Facturas activas"
+      },
+      "filters": {
+        "all": "Todos los proyectos",
+        "search": "Buscar factura..."
+      },
+      "table": {
+        "title": "Relación de Facturas",
+        "found": "facturas encontradas",
+        "headerConcept": "ID / Concepto",
+        "headerProject": "Proyecto",
+        "headerAmount": "Importe",
+        "headerStatus": "Estado",
+        "headerDueDate": "Vencimiento",
+        "empty": "No hay facturas encontradas",
+        "emptySub": "Crea una nueva factura para comenzar.",
+        "status": {
+          "paid": "Pagada",
+          "pending": "Pendiente",
+          "overdue": "Vencida",
+          "cancelled": "Cancelada"
+        }
+      },
+      "create": {
+        "title": "Nueva Factura",
+        "description": "Registra un nuevo cobro para el cliente.",
+        "invoiceNumber": "Número de Factura",
+        "amount": "Importe",
+        "project": "Proyecto",
+        "projectSelect": "Selecciona un proyecto",
+        "client": "Cliente",
+        "clientSelect": "Selecciona un cliente",
+        "concept": "Concepto / Descripción",
+        "dueDate": "Vencimiento",
+        "status": "Estado Inicial",
+        "submit": "Crear Factura",
+        "processing": "Procesando...",
+        "error": "Error al crear la factura"
       }
     }
   },

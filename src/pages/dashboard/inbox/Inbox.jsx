@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MessageSquare, Search, RefreshCw, Send, Phone, Paperclip, ArrowLeft, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import ClientDetail from '@/pages/dashboard/crm/ClientDetail';
 import useViewportHeight from '@/hooks/useViewportHeight';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
@@ -14,11 +14,26 @@ const Inbox = () => {
 
     const { profile, user } = useAuth();
     const location = useLocation();
+    const [searchParams, setSearchParams] = useSearchParams();
     const isAllowed = profile?.role === 'admin' || profile?.role === 'worker';
     const [threads, setThreads] = useState([]);
     const [messages, setMessages] = useState([]);
     const [assignees, setAssignees] = useState([]);
-    const [selectedThreadId, setSelectedThreadId] = useState(null);
+
+    // Use URL search param as source of truth
+    const selectedThreadId = useMemo(() => {
+        const raw = searchParams.get('wa');
+        if (!raw) return null;
+        return raw.replace(/\D/g, '') || raw;
+    }, [searchParams]);
+
+    const setSelectedThreadId = useCallback((id) => {
+        if (id) {
+            setSearchParams({ wa: id });
+        } else {
+            setSearchParams({});
+        }
+    }, [setSearchParams]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loadingThreads, setLoadingThreads] = useState(false);
     const [loadingMessages, setLoadingMessages] = useState(false);
@@ -36,13 +51,6 @@ const Inbox = () => {
 
 
 
-    const preselectWaId = useMemo(() => {
-        const params = new URLSearchParams(location.search);
-        const raw = params.get('wa');
-        if (!raw) return null;
-        const normalized = raw.replace(/\D/g, '');
-        return normalized || raw;
-    }, [location.search]);
 
     const selectedThread = useMemo(
         () => threads.find((thread) => thread.wa_id === selectedThreadId) || null,
@@ -357,20 +365,6 @@ const Inbox = () => {
         };
     }, [isAllowed, loadAssignees, loadThreads]);
 
-    useEffect(() => {
-        if (!preselectWaId || selectedThreadId || threads.length === 0) return;
-        const match = threads.find((thread) => {
-            if (!thread) return false;
-            const candidates = [thread.wa_id, thread.client_phone].filter(Boolean).map(String);
-            return candidates.some((value) => {
-                if (value === preselectWaId) return true;
-                return value.replace(/\D/g, '') === preselectWaId;
-            });
-        });
-        if (match) {
-            setSelectedThreadId(match.wa_id);
-        }
-    }, [preselectWaId, selectedThreadId, threads]);
 
     // Better message filtering for current thread in Realtime
     useEffect(() => {

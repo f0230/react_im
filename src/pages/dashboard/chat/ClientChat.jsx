@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, MessageSquare, RefreshCw, Search, Send } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
@@ -27,12 +27,23 @@ const ClientChat = () => {
 
     const { user, profile, client } = useAuth();
     const location = useLocation();
+    const [searchParams, setSearchParams] = useSearchParams();
     const role = profile?.role;
     const isAllowed = role === 'admin' || role === 'worker' || role === 'client';
     const isStaff = role === 'admin' || role === 'worker';
 
     const [threads, setThreads] = useState([]);
-    const [selectedClientId, setSelectedClientId] = useState(null);
+
+    // Use URL search param as source of truth
+    const selectedClientId = useMemo(() => searchParams.get('client'), [searchParams]);
+    const setSelectedClientId = useCallback((id) => {
+        if (id) {
+            setSearchParams({ client: id });
+        } else {
+            setSearchParams({});
+        }
+    }, [setSearchParams]);
+
     const [messages, setMessages] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [messageText, setMessageText] = useState('');
@@ -85,12 +96,6 @@ const ClientChat = () => {
                 .some((value) => value.toLowerCase().includes(term))
         );
     }, [isStaff, searchTerm, threads]);
-
-    const preselectedClientId = useMemo(() => {
-        const params = new URLSearchParams(location.search);
-        const value = params.get('client');
-        return value || null;
-    }, [location.search]);
 
     const loadThreads = useCallback(async () => {
         if (!isAllowed) return;
@@ -219,7 +224,7 @@ const ClientChat = () => {
                 .then((grouped) => {
                     setReactionsByMessage((prev) => ({ ...prev, ...grouped }));
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     }, [reactionTable, user?.id]);
 
@@ -300,11 +305,6 @@ const ClientChat = () => {
         loadThreads();
     }, [isAllowed, loadThreads]);
 
-    useEffect(() => {
-        if (!preselectedClientId || !isStaff || threads.length === 0) return;
-        const match = threads.find((thread) => thread.id === preselectedClientId);
-        if (match) setSelectedClientId(match.id);
-    }, [isStaff, preselectedClientId, threads]);
 
     useEffect(() => {
         if (!selectedClientId || !isAllowed) return;
@@ -345,7 +345,7 @@ const ClientChat = () => {
         const messageIds = messageIdKey.split(',').filter(Boolean);
         fetchReactionsForMessages({ table: reactionTable, messageIds })
             .then((grouped) => setReactionsByMessage(grouped))
-            .catch(() => {});
+            .catch(() => { });
     }, [messageIdKey, reactionTable, selectedClientId]);
 
     useEffect(() => {

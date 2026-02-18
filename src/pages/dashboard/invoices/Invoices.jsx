@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     FileText,
     CreditCard,
@@ -14,74 +14,155 @@ import {
     ArrowRight,
     TrendingUp,
     DollarSign,
-    Briefcase
+    Briefcase,
+    Filter,
+    Search,
+    X
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import CreateInvoiceModal from '@/components/CreateInvoiceModal';
 
 const Invoices = () => {
     const { t } = useTranslation();
-    const { user } = useAuth();
-    const [loading, setLoading] = useState(true);
-    const [projects, setProjects] = useState([]);
-    const [selectedProject, setSelectedProject] = useState('all');
+    const { user, profile } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const projectIdParam = searchParams.get('projectId');
 
-    const fetchProjects = useCallback(async () => {
+    const [loading, setLoading] = useState(true);
+    const [invoices, setInvoices] = useState([]);
+    const [projects, setProjects] = useState([]);
+    const [clients, setClients] = useState([]);
+    const [selectedProject, setSelectedProject] = useState(projectIdParam || 'all');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const isAdmin = profile?.role === 'admin';
+
+    const fetchInvoices = useCallback(async () => {
         setLoading(true);
-        const { data, error } = await supabase
+        try {
+            let query = supabase
+                .from('invoices')
+                .select(`
+                    *,
+                    projects (*),
+                    clients (*)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (selectedProject !== 'all') {
+                query = query.eq('project_id', selectedProject);
+            }
+
+            // If not admin, only see own invoices (RLS handles this but we filter for clarity)
+            if (!isAdmin) {
+                // RLS will take care of this, but we could add .eq('client_id', ...) if we had refined client context
+            }
+
+            const { data, error } = await query;
+            if (error) {
+                // If table doesn't exist, we might get an error. We'll handle it by showing empty.
+                console.error('Error fetching invoices:', error);
+                setInvoices([]);
+            } else {
+                setInvoices(data || []);
+            }
+        } catch (err) {
+            console.error('Fetch error:', err);
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedProject, isAdmin]);
+
+    const fetchData = useCallback(async () => {
+        // Fetch projects for filters and modal
+        const { data: projectsData } = await supabase
             .from('projects')
             .select('*')
-            .eq('user_id', user?.id)
             .order('created_at', { ascending: false });
 
-        if (!error && data) {
-            setProjects(data);
+        setProjects(projectsData || []);
+
+        if (isAdmin) {
+            const { data: clientsData } = await supabase
+                .from('clients')
+                .select('*')
+                .order('created_at', { ascending: false });
+            setClients(clientsData || []);
         }
-        setLoading(false);
-    }, [user?.id]);
+
+        fetchInvoices();
+    }, [fetchInvoices, isAdmin]);
 
     useEffect(() => {
         if (user?.id) {
-            fetchProjects();
+            fetchData();
         }
-    }, [fetchProjects, user?.id]);
+    }, [fetchData, user?.id]);
 
-    if (loading) return <LoadingFallback type="spinner" />;
-
-    // Mock invoices
-    const invoices = [
-        {
-            id: 'INV-2024-001',
-            project: projects[0]?.title || 'Proyecto Web',
-            amount: '1,200.00',
-            currency: 'USD',
-            date: '2024-03-01',
-            dueDate: '2024-03-15',
-            status: 'paid',
-            description: 'Hito 1: Diseño y Prototipado'
-        },
-        {
-            id: 'INV-2024-002',
-            project: projects[0]?.title || 'Proyecto Web',
-            amount: '2,500.00',
-            currency: 'USD',
-            date: '2024-03-20',
-            dueDate: '2024-04-05',
-            status: 'pending',
-            description: 'Hito 2: Desarrollo Frontend'
-        },
-        {
-            id: 'INV-2024-003',
-            project: projects[1]?.title || 'Campaña Ads',
-            amount: '850.00',
-            currency: 'USD',
-            date: '2024-03-25',
-            dueDate: '2024-04-10',
-            status: 'overdue',
-            description: 'Gestión mensual de pautas'
+    useEffect(() => {
+        if (projectIdParam) {
+            setSelectedProject(projectIdParam);
         }
-    ];
+    }, [projectIdParam]);
+
+    const stats = useMemo(() => {
+        const total = invoices.reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
+        const paid = invoices
+            .filter(inv => inv.status === 'paid')
+            .reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
+        const pending = invoices
+            .filter(inv => inv.status === 'pending' || inv.status === 'overdue')
+            .reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
+
+        return { total, paid, pending };
+    }, [invoices]);
+
+    const filteredInvoices = useMemo(() => {
+        return invoices.filter(inv => {
+            const search = searchTerm.toLowerCase();
+            return (
+                inv.invoice_number?.toLowerCase().includes(search) ||
+                inv.description?.toLowerCase().includes(search) ||
+                inv.projects?.title?.toLowerCase().includes(search) ||
+                inv.projects?.project_name?.toLowerCase().includes(search) ||
+                inv.clients?.company_name?.toLowerCase().includes(search) ||
+                inv.clients?.full_name?.toLowerCase().includes(search)
+            );
+        });
+    }, [invoices, searchTerm]);
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'paid': return 'bg-green/5 text-green border-green/10';
+            case 'pending': return 'bg-amber-500/5 text-amber-500 border-amber-500/10';
+            case 'overdue': return 'bg-red-500/5 text-red-500 border-red-500/10';
+            case 'cancelled': return 'bg-neutral-100 text-neutral-400 border-neutral-200';
+            default: return 'bg-neutral-50 text-neutral-400';
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'paid': return <CheckCircle2 size={12} />;
+            case 'pending': return <Clock size={12} />;
+            case 'overdue': return <AlertCircle size={12} />;
+            case 'cancelled': return <X size={12} />;
+            default: return <Clock size={12} />;
+        }
+    };
+
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'paid': return t('dashboard.invoices.table.status.paid');
+            case 'pending': return t('dashboard.invoices.table.status.pending');
+            case 'overdue': return t('dashboard.invoices.table.status.overdue');
+            case 'cancelled': return t('dashboard.invoices.table.status.cancelled');
+            default: return status;
+        }
+    };
 
     return (
         <div className="font-product text-neutral-900 pb-16">
@@ -89,170 +170,233 @@ const Invoices = () => {
                 <div>
                     <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-skyblue font-bold mb-2">
                         <DollarSign size={14} />
-                        Gestión de Facturación
+                        {t('dashboard.invoices.summary.title') || 'Gestión de Facturación'}
                     </div>
                     <h1 className="text-4xl md:text-5xl font-black text-neutral-900 tracking-tight">
-                        Facturas & Pagos
+                        {t('dashboard.invoices.title')}
                     </h1>
-                    <p className="text-neutral-500 mt-3 max-w-2xl text-lg">
-                        Historial de transacciones, estados de pago y descarga de comprobantes.
+                    <p className="text-neutral-500 mt-3 max-w-2xl text-lg font-medium">
+                        {t('dashboard.invoices.subtitle')}
                     </p>
                 </div>
 
-                <button className="flex items-center gap-3 px-6 py-4 bg-black text-white rounded-full font-bold shadow-xl hover:bg-neutral-800 transition-all group">
-                    <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-                    Nueva Solicitud
-                </button>
+                {isAdmin && (
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-3 px-6 py-4 bg-black text-white rounded-[20px] font-bold shadow-xl hover:bg-neutral-800 transition-all group shrink-0"
+                    >
+                        <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                        {t('dashboard.invoices.newButton')}
+                    </button>
+                )}
             </div>
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
                 <div className="bg-white p-8 rounded-[32px] border border-neutral-100 shadow-sm relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-green/5 rounded-bl-[100px] transition-all group-hover:w-28 group-hover:h-28" />
-                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black mb-1">Total Pagado</p>
-                    <div className="text-3xl font-black text-neutral-900 leading-none">$12,450.00</div>
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black mb-1">
+                        {t('dashboard.invoices.summary.paid')}
+                    </p>
+                    <div className="text-3xl font-black text-neutral-900 leading-none">${stats.paid.toLocaleString()}</div>
                     <div className="flex items-center gap-2 mt-4 text-[10px] font-bold text-green">
                         <TrendingUp size={14} />
-                        +12% vs mes anterior
+                        {t('dashboard.invoices.summary.confirmed')}
                     </div>
                 </div>
 
                 <div className="bg-white p-8 rounded-[32px] border border-neutral-100 shadow-sm relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 rounded-bl-[100px] transition-all group-hover:w-28 group-hover:h-28" />
-                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black mb-1">Pendiente</p>
-                    <div className="text-3xl font-black text-neutral-900 leading-none">$2,500.00</div>
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black mb-1">
+                        {t('dashboard.invoices.summary.pending')}
+                    </p>
+                    <div className="text-3xl font-black text-neutral-900 leading-none">${stats.pending.toLocaleString()}</div>
                     <div className="flex items-center gap-2 mt-4 text-[10px] font-bold text-amber-500">
                         <Clock size={14} />
-                        Vence en 5 días
+                        {t('dashboard.invoices.summary.active')}
                     </div>
                 </div>
 
                 <div className="bg-black text-white p-8 rounded-[32px] shadow-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-[150px]" />
-                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black mb-1">Método de Pago</p>
-                    <div className="flex items-center gap-3 mt-1">
-                        <div className="w-10 h-7 bg-white/10 rounded-md flex items-center justify-center border border-white/20">
-                            <CreditCard size={18} className="text-skyblue" />
-                        </div>
-                        <span className="text-lg font-bold">**** 4512</span>
-                    </div>
-                    <button className="flex items-center gap-2 mt-6 text-[10px] font-black uppercase tracking-widest text-skyblue hover:text-white transition-colors">
-                        Gestionar Métodos <ArrowRight size={14} />
-                    </button>
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black mb-1">
+                        {t('dashboard.invoices.summary.total')}
+                    </p>
+                    <div className="text-3xl font-black leading-none mt-1">${stats.total.toLocaleString()}</div>
+                    <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-skyblue">
+                        {t('dashboard.invoices.summary.history')}
+                    </p>
                 </div>
             </div>
 
-            {/* Selector and Filter */}
-            <div className="mb-8 flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                <button
-                    onClick={() => setSelectedProject('all')}
-                    className={`shrink-0 px-6 py-2.5 rounded-full text-xs font-bold transition-all border ${selectedProject === 'all'
+            {/* Filters & Search */}
+            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide flex-1">
+                    <button
+                        onClick={() => {
+                            setSelectedProject('all');
+                            setSearchParams({});
+                        }}
+                        className={`shrink-0 px-6 py-2.5 rounded-full text-xs font-bold transition-all border ${selectedProject === 'all'
                             ? 'bg-black text-white border-black shadow-lg'
                             : 'bg-white text-neutral-500 border-neutral-100 hover:border-neutral-200'
-                        }`}
-                >
-                    Todos los proyectos
-                </button>
-                {projects.map(p => (
-                    <button
-                        key={p.id}
-                        onClick={() => setSelectedProject(p.id)}
-                        className={`shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold transition-all border ${selectedProject === p.id
-                                ? 'bg-black text-white border-black shadow-lg'
-                                : 'bg-white text-neutral-500 border-neutral-100 hover:border-neutral-200'
                             }`}
                     >
-                        <Briefcase size={14} />
-                        {p.title || p.name}
+                        {t('dashboard.invoices.filters.all')}
                     </button>
-                ))}
+                    {projects.map(p => (
+                        <button
+                            key={p.id}
+                            onClick={() => {
+                                setSelectedProject(p.id);
+                                setSearchParams({ projectId: p.id });
+                            }}
+                            className={`shrink-0 flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold transition-all border ${selectedProject === p.id
+                                ? 'bg-black text-white border-black shadow-lg'
+                                : 'bg-white text-neutral-500 border-neutral-100 hover:border-neutral-200'
+                                }`}
+                        >
+                            <Briefcase size={14} />
+                            {p.title || p.name || p.project_name}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="relative w-full md:w-64">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={16} />
+                    <input
+                        type="text"
+                        placeholder={t('dashboard.invoices.filters.search')}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-white border border-neutral-100 rounded-full pl-11 pr-4 py-2.5 text-xs font-bold focus:ring-2 focus:ring-black outline-none transition-all shadow-sm"
+                    />
+                </div>
             </div>
 
-            {/* Invoices List */}
-            <div className="bg-white rounded-[40px] border border-neutral-100 shadow-sm overflow-hidden">
-                <div className="p-10 border-b border-neutral-100 flex items-center justify-between">
-                    <h3 className="text-xl font-bold flex items-center gap-3">
-                        <Receipt size={24} className="text-skyblue" />
-                        Movimientos Recientes
-                    </h3>
-                    <div className="text-xs font-medium text-neutral-400">
-                        Mostrando {invoices.length} resultados
+            {loading ? (
+                <div className="h-64 flex items-center justify-center bg-white rounded-[40px] border border-neutral-100">
+                    <LoadingFallback type="spinner" />
+                </div>
+            ) : (
+                <div className="bg-white rounded-[40px] border border-neutral-100 shadow-sm overflow-hidden min-h-[400px]">
+                    <div className="p-8 md:p-10 border-b border-neutral-100 flex items-center justify-between">
+                        <h3 className="text-xl font-bold flex items-center gap-3">
+                            <Receipt size={24} className="text-skyblue" />
+                            {t('dashboard.invoices.table.title')}
+                        </h3>
+                        <div className="text-xs font-black uppercase tracking-widest text-neutral-400">
+                            {filteredInvoices.length} {t('dashboard.invoices.table.found')}
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-neutral-50/50">
+                                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                        {t('dashboard.invoices.table.headerConcept')}
+                                    </th>
+                                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                        {t('dashboard.invoices.table.headerProject')}
+                                    </th>
+                                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                        {t('dashboard.invoices.table.headerAmount')}
+                                    </th>
+                                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                        {t('dashboard.invoices.table.headerStatus')}
+                                    </th>
+                                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                                        {t('dashboard.invoices.table.headerDueDate')}
+                                    </th>
+                                    <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-neutral-50">
+                                <AnimatePresence mode="popLayout">
+                                    {filteredInvoices.length > 0 ? (
+                                        filteredInvoices.map((inv, idx) => (
+                                            <motion.tr
+                                                key={inv.id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                exit={{ opacity: 0, scale: 0.95 }}
+                                                transition={{ delay: idx * 0.05 }}
+                                                className="group hover:bg-neutral-50/40 transition-all cursor-default"
+                                            >
+                                                <td className="px-10 py-8">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${getStatusColor(inv.status)}`}>
+                                                            <FileText size={22} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-neutral-900 line-clamp-1">{inv.description}</p>
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mt-1">{inv.invoice_number}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-10 py-8">
+                                                    <span className="text-xs font-bold text-neutral-500">
+                                                        {inv.projects?.title || inv.projects?.project_name || 'Sin asignar'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-10 py-8">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-lg font-black text-neutral-900">${parseFloat(inv.amount).toLocaleString()}</span>
+                                                        <span className="text-[10px] text-neutral-400 font-bold">{inv.currency}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-10 py-8">
+                                                    <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(inv.status)}`}>
+                                                        {getStatusIcon(inv.status)}
+                                                        {getStatusLabel(inv.status)}
+                                                    </div>
+                                                </td>
+                                                <td className="px-10 py-8">
+                                                    <span className="text-xs font-bold text-neutral-800">
+                                                        {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-10 py-8 text-right">
+                                                    <button className="p-3 rounded-2xl bg-neutral-50 text-neutral-400 hover:bg-black hover:text-white transition-all border border-neutral-100 hover:border-black shadow-sm group-hover:scale-110 active:scale-95">
+                                                        <Download size={18} />
+                                                    </button>
+                                                </td>
+                                            </motion.tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="6" className="px-10 py-24 text-center">
+                                                <div className="flex flex-col items-center justify-center text-neutral-400">
+                                                    <FileText size={48} className="mb-4 opacity-10" />
+                                                    <p className="text-sm font-bold uppercase tracking-widest">
+                                                        {t('dashboard.invoices.table.empty')}
+                                                    </p>
+                                                    <p className="text-xs mt-1">
+                                                        {t('dashboard.invoices.table.emptySub')}
+                                                    </p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </AnimatePresence>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+            )}
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="bg-neutral-50/50">
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">Concepto / ID</th>
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">Proyecto</th>
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">Importe</th>
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">Estado</th>
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400">Vencimiento</th>
-                                <th className="px-10 py-6 text-[10px] font-black uppercase tracking-widest text-neutral-400"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-neutral-50">
-                            {invoices.map((inv, idx) => (
-                                <motion.tr
-                                    initial={{ opacity: 0, x: -10 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: 0.05 * idx }}
-                                    key={inv.id}
-                                    className="group hover:bg-neutral-50/40 transition-all"
-                                >
-                                    <td className="px-10 py-8">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${inv.status === 'paid' ? 'bg-green/5 text-green' : inv.status === 'pending' ? 'bg-amber-500/5 text-amber-500' : 'bg-red-500/5 text-red-500'
-                                                }`}>
-                                                <FileText size={22} />
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-bold text-neutral-900">{inv.description}</p>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mt-1">{inv.id}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-10 py-8">
-                                        <span className="text-xs font-bold text-neutral-500">{inv.project}</span>
-                                    </td>
-                                    <td className="px-10 py-8">
-                                        <div className="flex flex-col">
-                                            <span className="text-lg font-black text-neutral-900">${inv.amount}</span>
-                                            <span className="text-[10px] text-neutral-400 font-bold">{inv.currency}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-10 py-8">
-                                        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${inv.status === 'paid'
-                                                ? 'bg-green/5 text-green border-green/10'
-                                                : inv.status === 'pending'
-                                                    ? 'bg-amber-500/5 text-amber-500 border-amber-500/10'
-                                                    : 'bg-red-500/5 text-red-500 border-red-500/10'
-                                            }`}>
-                                            {inv.status === 'paid' ? <CheckCircle2 size={12} /> : inv.status === 'pending' ? <Clock size={12} /> : <AlertCircle size={12} />}
-                                            {inv.status === 'paid' ? 'Pagada' : inv.status === 'pending' ? 'Pendiente' : 'Vencida'}
-                                        </div>
-                                    </td>
-                                    <td className="px-10 py-8">
-                                        <span className="text-xs font-bold text-neutral-800">{inv.dueDate}</span>
-                                    </td>
-                                    <td className="px-10 py-8 text-right">
-                                        <button className="p-3 rounded-2xl bg-neutral-50 text-neutral-400 hover:bg-black hover:text-white transition-all border border-neutral-100 hover:border-black shadow-sm group-hover:scale-110 active:scale-95">
-                                            <Download size={18} />
-                                        </button>
-                                    </td>
-                                </motion.tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="p-10 bg-neutral-50/30 text-center">
-                    <button className="text-xs font-black uppercase tracking-[0.2em] text-neutral-400 hover:text-black transition-colors">
-                        Cargar más transacciones
-                    </button>
-                </div>
-            </div>
+            <CreateInvoiceModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onCreated={() => {
+                    fetchInvoices();
+                    setIsModalOpen(false);
+                }}
+                projects={projects}
+                clients={clients}
+                initialProjectId={selectedProject !== 'all' ? selectedProject : ''}
+            />
         </div>
     );
 };

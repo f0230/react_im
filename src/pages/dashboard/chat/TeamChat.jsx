@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Hash, Image, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
@@ -51,12 +52,24 @@ const TeamChat = () => {
     useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
 
     const { user, profile } = useAuth();
+    const location = useLocation();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { teamPreviews } = useUnreadCounts();
     const isAllowed = profile?.role === 'admin' || profile?.role === 'worker';
     const canCreateChannel = profile?.role === 'admin';
 
     const [channels, setChannels] = useState([]);
-    const [selectedChannelId, setSelectedChannelId] = useState(null);
+
+    // Use URL search param as source of truth
+    const selectedChannelId = useMemo(() => searchParams.get('channel'), [searchParams]);
+    const setSelectedChannelId = useCallback((id) => {
+        if (id) {
+            setSearchParams({ channel: id });
+        } else {
+            setSearchParams({});
+        }
+    }, [setSearchParams]);
+
     const [messages, setMessages] = useState([]);
     const [loadingChannels, setLoadingChannels] = useState(false);
     const [loadingMessages, setLoadingMessages] = useState(false);
@@ -82,6 +95,7 @@ const TeamChat = () => {
     const [composerHeight, setComposerHeight] = useState(72);
     const [reactionsByMessage, setReactionsByMessage] = useState({});
     const [channelReads, setChannelReads] = useState([]);
+    const [lightboxImage, setLightboxImage] = useState(null);
 
     const recorderRef = useRef(null);
     const streamRef = useRef(null);
@@ -120,6 +134,15 @@ const TeamChat = () => {
         if (!value) return 0;
         return value > 99 ? '99+' : value;
     };
+
+    const openLightbox = useCallback((url, name) => {
+        if (!url) return;
+        setLightboxImage({ url, name });
+    }, []);
+
+    const closeLightbox = useCallback(() => {
+        setLightboxImage(null);
+    }, []);
 
     const filteredChannels = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
@@ -327,7 +350,7 @@ const TeamChat = () => {
                 .then((grouped) => {
                     setReactionsByMessage((prev) => ({ ...prev, ...grouped }));
                 })
-                .catch(() => {});
+                .catch(() => { });
         }
     }, [reactionTable, user?.id]);
 
@@ -668,7 +691,7 @@ const TeamChat = () => {
         const messageIds = messageIdKey.split(',').filter(Boolean);
         fetchReactionsForMessages({ table: reactionTable, messageIds })
             .then((grouped) => setReactionsByMessage(grouped))
-            .catch(() => {});
+            .catch(() => { });
     }, [messageIdKey, reactionTable, selectedChannelId]);
 
     useEffect(() => {
@@ -756,6 +779,17 @@ const TeamChat = () => {
 
         return () => clearTimeout(timeoutId);
     }, [messages.length, selectedChannelId]);
+
+    useEffect(() => {
+        if (!lightboxImage) return undefined;
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') closeLightbox();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [closeLightbox, lightboxImage]);
 
     // Cleaned up overflow locking effect as it conflicts with interactive-widget meta tag
 
@@ -1003,7 +1037,10 @@ const TeamChat = () => {
                                             <span className="text-[10px] text-neutral-500 mb-1">
                                                 {authorName}
                                             </span>
-                                            <ReactionPickerPopover onSelect={(emoji) => handleToggleReaction(message.id, emoji)}>
+                                            <ReactionPickerPopover
+                                                onSelect={(emoji) => handleToggleReaction(message.id, emoji)}
+                                                openOnClick={false}
+                                            >
                                                 <div
                                                     role="button"
                                                     tabIndex={0}
@@ -1021,12 +1058,18 @@ const TeamChat = () => {
                                                         </div>
                                                     ) : isImage ? (
                                                         <div className="space-y-2">
-                                                            <img
-                                                                src={mediaUrl}
-                                                                alt={message.file_name || 'Imagen compartida'}
-                                                                className="max-h-64 rounded-lg object-cover"
-                                                                loading="lazy"
-                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openLightbox(mediaUrl, message.file_name)}
+                                                                className="block focus:outline-none"
+                                                            >
+                                                                <img
+                                                                    src={mediaUrl}
+                                                                    alt={message.file_name || 'Imagen compartida'}
+                                                                    className="max-h-64 rounded-lg object-cover cursor-zoom-in"
+                                                                    loading="lazy"
+                                                                />
+                                                            </button>
                                                             {message.file_name && (
                                                                 <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
                                                             )}
@@ -1225,6 +1268,37 @@ const TeamChat = () => {
                                 {savingMembers ? 'Guardando...' : 'Guardar'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4 py-6"
+                    role="dialog"
+                    aria-modal="true"
+                    onClick={closeLightbox}
+                >
+                    <div
+                        className="relative w-full max-w-5xl max-h-[90svh]"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={closeLightbox}
+                            className="absolute -top-10 right-0 text-xs font-semibold uppercase tracking-wide text-white/80 hover:text-white"
+                        >
+                            Cerrar
+                        </button>
+                        <img
+                            src={lightboxImage.url}
+                            alt={lightboxImage.name || 'Imagen ampliada'}
+                            className="w-full max-h-[90svh] object-contain rounded-xl shadow-2xl"
+                        />
+                        {lightboxImage.name && (
+                            <p className="mt-2 text-center text-xs text-white/80 break-all">
+                                {lightboxImage.name}
+                            </p>
+                        )}
                     </div>
                 </div>
             )}

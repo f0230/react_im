@@ -287,11 +287,11 @@ const Projects = () => {
     const actionCards = useMemo(
         () => [
             {
-                key: 'services',
+                key: 'tasks',
                 label: t('dashboard.projects.detail.tabs.services'),
                 description: t('dashboard.projects.cards.services'),
                 image: servicesImage,
-                suffix: 'services',
+                suffix: 'tasks',
             },
             {
                 key: 'reports',
@@ -394,7 +394,7 @@ const Projects = () => {
                                         <div
                                             role="button"
                                             tabIndex={projectId ? 0 : -1}
-                                            onClick={() => projectId && navigate(`/dashboard/services?projectId=${projectId}`)}
+                                            onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
                                             className={`relative shrink-0 ${projectId ? 'cursor-pointer' : ''}`}
                                         >
                                             {projectAvatar ? (
@@ -415,7 +415,7 @@ const Projects = () => {
                                         {/* Title & Team */}
                                         <div className="flex flex-col gap-3 items-center md:items-start md:gap-4">
                                             <h3
-                                                onClick={() => projectId && navigate(`/dashboard/services?projectId=${projectId}`)}
+                                                onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
                                                 className={`text-xl md:text-3xl font-bold text-neutral-800 leading-tight ${projectId ? 'cursor-pointer hover:text-neutral-600 transition-colors' : ''}`}
                                             >
                                                 {title}

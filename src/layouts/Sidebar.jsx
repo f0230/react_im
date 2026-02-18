@@ -19,14 +19,14 @@ const Sidebar = () => {
     const menuItems = {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
-            { icon: Briefcase, label: 'Servicios', path: '/dashboard/services' },
+            { icon: Briefcase, label: 'Tareas', path: '/dashboard/tasks' },
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-            { icon: Briefcase, label: 'Servicios', path: '/dashboard/services' },
+            { icon: Briefcase, label: 'Tareas', path: '/dashboard/tasks' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],

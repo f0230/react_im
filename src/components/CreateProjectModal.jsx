@@ -54,6 +54,7 @@ const CreateProjectModal = ({
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [showHint, setShowHint] = useState(false);
     const rotatingTitleOptions = useMemo(() => {
         const rawOptions = t('dashboard.projects.create.firstTitleOptions', { returnObjects: true });
         const options = Array.isArray(rawOptions) ? rawOptions : [rawOptions];
@@ -75,8 +76,19 @@ const CreateProjectModal = ({
                 budget_range: '',
             });
             setError(null);
+            setShowHint(false);
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        let timer;
+        if (isOpen && isFirstProject) {
+            timer = setTimeout(() => {
+                setShowHint(true);
+            }, 6000); // 6 seconds delay
+        }
+        return () => clearTimeout(timer);
+    }, [isOpen, isFirstProject]);
 
     const selectedClient = useMemo(() => {
         if (!isAdmin) return null;
@@ -397,11 +409,41 @@ const CreateProjectModal = ({
                     >
                         <button
                             onClick={onClose}
-                            className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                            className="absolute top-4 right-4 p-2 text-neutral-400 hover:text-neutral-600 transition-colors z-[120]"
                             aria-label={t('dashboard.projects.create.close')}
                         >
                             <X size={18} />
                         </button>
+
+                        <AnimatePresence>
+                            {showHint && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                                    className="absolute top-16 right-4 sm:right-10 z-[130] max-w-[280px]"
+                                >
+                                    <div className="relative bg-white p-4 rounded-2xl shadow-2xl border border-neutral-100">
+                                        {/* Arrow pointing to X */}
+                                        <div className="absolute -top-2 right-2 w-4 h-4 bg-white rotate-45 border-l border-t border-neutral-100" />
+
+                                        <button
+                                            onClick={() => setShowHint(false)}
+                                            className="absolute top-2 right-2 text-neutral-300 hover:text-neutral-500"
+                                        >
+                                            <X size={14} />
+                                        </button>
+
+                                        <h4 className="text-[#0DD122] font-bold text-sm mb-1 pr-4">
+                                            {t('dashboard.projects.create.helpfulHint.title')}
+                                        </h4>
+                                        <p className="text-neutral-600 text-xs leading-relaxed">
+                                            {t('dashboard.projects.create.helpfulHint.description')}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         <div className="max-w-[600px] mx-auto w-full flex flex-col items-center justify-center  p-6 sm:p-12 leading-none">
                             <div className="mb-6 text-center ">

@@ -22,7 +22,7 @@ const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
 const Clients = lazy(() => import("@/pages/dashboard/crm/Clients"));
 const ClientDetail = lazy(() => import("@/pages/dashboard/crm/ClientDetail"));
 const Projects = lazy(() => import("@/pages/dashboard/projects/Projects"));
-const ProjectServices = lazy(() => import("@/pages/dashboard/projects/ProjectServices"));
+const ProjectTasks = lazy(() => import("@/pages/dashboard/projects/ProjectTasks"));
 const ProjectReports = lazy(() => import("@/pages/dashboard/projects/ProjectReports"));
 const ProjectInvoices = lazy(() => import("@/pages/dashboard/projects/ProjectInvoices"));
 const ClientAppointments = lazy(() => import("@/pages/dashboard/projects/ClientAppointments"));
@@ -88,13 +88,14 @@ const AppContent = () => {
             <Route index element={<DashboardHome />} />
             <Route path="clients" element={<Clients />} />
             <Route path="clients/:clientId" element={<ClientDetail />} />
-            <Route path="services" element={<ProjectServices />} />
+            <Route path="tasks" element={<ProjectTasks />} />
             <Route path="reports" element={<ProjectReports />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="projects" element={<Projects />} />
-            {/* Redirect old project detail routes to services */}
-            <Route path="projects/:projectId" element={<Navigate to="services" replace />} />
-            <Route path="projects/:projectId/services" element={<Navigate to="/dashboard/services" replace />} />
+            {/* Redirect old project detail routes to tasks */}
+            <Route path="projects/:projectId" element={<Navigate to="tasks" replace />} />
+            <Route path="projects/:projectId/services" element={<Navigate to="/dashboard/tasks" replace />} />
+            <Route path="services" element={<Navigate to="/dashboard/tasks" replace />} />
             <Route path="projects/:projectId/reports" element={<Navigate to="/dashboard/reports" replace />} />
             <Route path="projects/:projectId/invoices" element={<Navigate to="/dashboard/invoices" replace />} />
             <Route path="inbox" element={<Inbox />} />

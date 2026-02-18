@@ -36,7 +36,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 
-const ProjectServices = () => {
+const ProjectTasks = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -232,6 +232,23 @@ const ProjectServices = () => {
     setIsSending(false);
   };
 
+  const handleToggleStatus = async (serviceId, currentStatus) => {
+    const newStatus = currentStatus === 'completed' ? 'active' : 'completed';
+    const { error } = await supabase
+      .from('services')
+      .update({ status: newStatus })
+      .eq('id', serviceId);
+
+    if (!error) {
+      if (selectedService?.id === serviceId) {
+        setSelectedService(prev => ({ ...prev, status: newStatus }));
+      }
+      setServices(prev => prev.map(s => s.id === serviceId ? { ...s, status: newStatus } : s));
+    } else {
+      console.error('Error updating status:', error.message);
+    }
+  };
+
   const handleUpdateDescription = async () => {
     if (!selectedService || isSavingDesc) return;
     setIsSavingDesc(true);
@@ -421,7 +438,7 @@ const ProjectServices = () => {
       .insert({
         project_id: selectedProject.id,
         title: newServiceTitle.trim(),
-        description: 'Nueva descripción de servicio',
+        description: 'Nueva descripción de tarea',
       })
       .select()
       .single();
@@ -478,7 +495,7 @@ const ProjectServices = () => {
           <div className="flex-1 flex flex-col min-h-0 bg-[#EBEBEB]">
             <div className="p-5 md:p-6 pb-2 flex items-center justify-between">
               <div>
-                <h3 className="text-lg md:text-xl font-bold text-neutral-800">Servicios</h3>
+                <h3 className="text-lg md:text-xl font-bold text-neutral-800">Tareas</h3>
                 <p className="text-[9px] md:text-[10px] text-neutral-500 uppercase tracking-wide">Seguimiento en curso</p>
               </div>
               {isAdmin && (
@@ -510,15 +527,26 @@ const ProjectServices = () => {
                   }}
                   className={`group p-4 rounded-xl cursor-pointer transition-all border flex items-center justify-between ${selectedService?.id === s.id ? 'bg-black/5 border-black/10' : 'bg-white/50 border-white/40 hover:bg-white hover:shadow-sm'}`}
                 >
-                  <div className="flex flex-col gap-1">
-                    <span className={`self-start px-2 py-0.5 rounded text-[9px] font-bold uppercase ${selectedService?.id === s.id ? 'bg-black text-white' : 'bg-rose-100 text-rose-500'}`}>{selectedProject?.title || 'DTE'}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-neutral-800 text-sm">{s.title}</span>
-                      {s.responsible_id && teamMembersMap[s.responsible_id] && (
-                        <div className="w-5 h-5 rounded-full overflow-hidden border border-white shadow-sm shrink-0" title={`Responsable: ${teamMembersMap[s.responsible_id].full_name}`}>
-                          <img src={teamMembersMap[s.responsible_id].avatar_url || `https://ui-avatars.com/api/?name=${teamMembersMap[s.responsible_id].full_name}`} className="w-full h-full object-cover" />
-                        </div>
-                      )}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleStatus(s.id, s.status);
+                      }}
+                      className={`p-1 rounded-md transition-all ${s.status === 'completed' ? 'text-emerald-500' : 'text-neutral-300 hover:text-neutral-400'}`}
+                    >
+                      {s.status === 'completed' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                    </button>
+                    <div className="flex flex-col gap-1">
+                      <span className={`self-start px-2 py-0.5 rounded text-[9px] font-bold uppercase ${selectedService?.id === s.id ? 'bg-black text-white' : 'bg-rose-100 text-rose-500'}`}>{selectedProject?.title || 'DTE'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold text-sm ${s.status === 'completed' ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>{s.title}</span>
+                        {s.responsible_id && teamMembersMap[s.responsible_id] && (
+                          <div className="w-5 h-5 rounded-full overflow-hidden border border-white shadow-sm shrink-0" title={`Responsable: ${teamMembersMap[s.responsible_id].full_name}`}>
+                            <img src={teamMembersMap[s.responsible_id].avatar_url || `https://ui-avatars.com/api/?name=${teamMembersMap[s.responsible_id].full_name}`} className="w-full h-full object-cover" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <ArrowRight size={16} className={selectedService?.id === s.id ? 'text-black' : 'text-neutral-300 group-hover:text-black'} />
@@ -575,9 +603,17 @@ const ProjectServices = () => {
                         autoFocus
                       />
                     ) : (
-                      <h2 className="text-2xl font-black text-neutral-800 tracking-tight leading-tight">
-                        {selectedService.title}
-                      </h2>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleToggleStatus(selectedService.id, selectedService.status)}
+                          className={`p-1 rounded-md transition-all ${selectedService.status === 'completed' ? 'text-emerald-500' : 'text-neutral-300 hover:text-neutral-400'}`}
+                        >
+                          {selectedService.status === 'completed' ? <CheckCircle2 size={24} /> : <Circle size={24} />}
+                        </button>
+                        <h2 className={`text-2xl font-black tracking-tight leading-tight ${selectedService.status === 'completed' ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>
+                          {selectedService.title}
+                        </h2>
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
@@ -651,7 +687,7 @@ const ProjectServices = () => {
                       value={editedDesc}
                       onChange={(e) => setEditedDesc(e.target.value)}
                       className="w-full bg-white/50 border border-neutral-200 rounded-xl p-4 text-sm text-neutral-600 outline-none focus:border-black transition-colors min-h-[100px]"
-                      placeholder="Describe el servicio..."
+                      placeholder="Describe la tarea..."
                     />
                   ) : (
                     <div className="relative group">
@@ -795,7 +831,7 @@ const ProjectServices = () => {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-neutral-400 p-8 text-center bg-white/40">
               <Layers size={64} className="mb-6 opacity-10" />
-              <p className="font-bold text-lg">Selecciona un servicio</p>
+              <p className="font-bold text-lg">Selecciona una tarea</p>
               <p className="text-xs mt-3 max-w-xs leading-relaxed opacity-60 font-medium">Visualiza detalles, archivos y mantén una conversación fluida con el equipo.</p>
             </div>
           )}
@@ -805,4 +841,4 @@ const ProjectServices = () => {
   );
 };
 
-export default ProjectServices;
+export default ProjectTasks;

@@ -18,13 +18,14 @@ const composeHandlers = (theirHandler, ourHandler) => (event) => {
     if (!event.defaultPrevented && ourHandler) ourHandler(event);
 };
 
-const ReactionPickerPopover = ({ onSelect, children, triggerRef, enableLongPress = true }) => {
+const ReactionPickerPopover = ({ onSelect, children, triggerRef, enableLongPress = true, openOnClick = true }) => {
     const [open, setOpen] = useState(false);
     const [showPicker, setShowPicker] = useState(false);
     const quick = useMemo(() => QUICK_REACTIONS, []);
     const child = React.Children.only(children);
     const timerRef = useRef(null);
     const openedByLongPressRef = useRef(false);
+    const allowOpenRef = useRef(false);
 
     const clearTimer = () => {
         if (timerRef.current) {
@@ -33,10 +34,18 @@ const ReactionPickerPopover = ({ onSelect, children, triggerRef, enableLongPress
         }
     };
 
+    const openPopover = () => {
+        allowOpenRef.current = true;
+        setOpen(true);
+        window.setTimeout(() => {
+            allowOpenRef.current = false;
+        }, 0);
+    };
+
     const startLongPress = () => {
         clearTimer();
         timerRef.current = window.setTimeout(() => {
-            setOpen(true);
+            openPopover();
             openedByLongPressRef.current = true;
             clearTimer();
         }, 450);
@@ -46,8 +55,15 @@ const ReactionPickerPopover = ({ onSelect, children, triggerRef, enableLongPress
         <Popover.Root
             open={open}
             onOpenChange={(nextOpen) => {
-                setOpen(nextOpen);
-                if (!nextOpen) setShowPicker(false);
+                if (!nextOpen) {
+                    setOpen(false);
+                    setShowPicker(false);
+                    return;
+                }
+                if (!openOnClick && !allowOpenRef.current) {
+                    return;
+                }
+                setOpen(true);
             }}
         >
             <Popover.Trigger asChild>
@@ -69,7 +85,7 @@ const ReactionPickerPopover = ({ onSelect, children, triggerRef, enableLongPress
                     onContextMenu: composeHandlers(child.props?.onContextMenu, (event) => {
                         if (!enableLongPress) return;
                         event.preventDefault();
-                        setOpen(true);
+                        openPopover();
                         openedByLongPressRef.current = true;
                         clearTimer();
                     }),

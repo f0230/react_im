@@ -450,18 +450,71 @@
         "saving": "Creating...",
         "errorMissingRequired": "Please complete the required fields.",
         "errorMissingDate": "Please select a specific date.",
-        "error": "We couldn't create the project. Please try again."
+        "error": "We couldn't create the project. Please try again.",
+        "helpfulHint": {
+          "title": "Not sure?",
+          "description": "If you're not sure what you need yet, you can close this window using the cross at the top and consult us later."
+        }
       },
       "detail": {
         "label": "Project",
         "title": "Project details",
         "back": "Back to project",
         "tabs": {
-          "services": "Services",
+          "services": "Tasks",
           "reports": "Reports",
           "invoices": "Invoices"
-        },
-        "empty": "Section coming soon."
+        }
+      }
+    },
+    "invoices": {
+      "title": "Invoices & Payments",
+      "subtitle": "Transaction history, payment statuses, and document downloads.",
+      "newButton": "Generate Invoice",
+      "summary": {
+        "paid": "Total Paid",
+        "pending": "Pending Payment",
+        "total": "Total Amount",
+        "history": "Historical Billing",
+        "confirmed": "Confirmed income",
+        "active": "Active invoices"
+      },
+      "filters": {
+        "all": "All projects",
+        "search": "Search invoice..."
+      },
+      "table": {
+        "title": "Invoice Overview",
+        "found": "invoices found",
+        "headerConcept": "ID / Concept",
+        "headerProject": "Project",
+        "headerAmount": "Amount",
+        "headerStatus": "Status",
+        "headerDueDate": "Due Date",
+        "empty": "No invoices found",
+        "emptySub": "Create a new invoice to get started.",
+        "status": {
+          "paid": "Paid",
+          "pending": "Pending",
+          "overdue": "Overdue",
+          "cancelled": "Cancelled"
+        }
+      },
+      "create": {
+        "title": "New Invoice",
+        "description": "Register a new charge for the client.",
+        "invoiceNumber": "Invoice Number",
+        "amount": "Amount",
+        "project": "Project",
+        "projectSelect": "Select a project",
+        "client": "Client",
+        "clientSelect": "Select a client",
+        "concept": "Concept / Description",
+        "dueDate": "Due Date",
+        "status": "Initial Status",
+        "submit": "Create Invoice",
+        "processing": "Processing...",
+        "error": "Error creating invoice"
       }
     }
   },

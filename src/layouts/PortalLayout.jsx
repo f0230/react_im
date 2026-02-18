@@ -33,7 +33,7 @@ const PortalLayout = () => {
         const checksByRole = {
             client: [
                 (p) => p === '/dashboard',
-                (p) => p.startsWith('/dashboard/services'),
+                (p) => p.startsWith('/dashboard/tasks'),
                 (p) => p.startsWith('/dashboard/reports'),
                 (p) => p.startsWith('/dashboard/projects'),
                 (p) => p.startsWith('/dashboard/invoices'),
@@ -45,7 +45,7 @@ const PortalLayout = () => {
             ],
             worker: [
                 (p) => p === '/dashboard',
-                (p) => p.startsWith('/dashboard/services'),
+                (p) => p.startsWith('/dashboard/tasks'),
                 (p) => p.startsWith('/dashboard/reports'),
                 (p) => p.startsWith('/dashboard/projects'),
                 (p) => p.startsWith('/dashboard/inbox'),
@@ -187,6 +187,7 @@ const PortalLayout = () => {
                 isOpen={showCreateProjectModal}
                 onClose={() => setShowCreateProjectModal(false)}
                 onCreated={() => setShowCreateProjectModal(false)}
+                isFirstProject={true}
                 role={role}
             />
         </div>

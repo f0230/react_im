@@ -12,7 +12,7 @@ const EmptyState = () => (
 );
 
 const sectionConfig = [
-    { key: 'team', label: 'Team', itemsProp: 'teamItems', icon: Hash, getTo: () => '/dashboard/team-chat' },
+    { key: 'team', label: 'Team', itemsProp: 'teamItems', icon: Hash, getTo: (item) => `/dashboard/team-chat?channel=${encodeURIComponent(item.channel_id || '')}` },
     { key: 'whatsapp', label: 'WhatsApp', itemsProp: 'whatsappItems', icon: Phone, getTo: (item) => `/dashboard/inbox?wa=${encodeURIComponent(item.wa_id || '')}` },
     { key: 'clients', label: 'Clients', itemsProp: 'clientItems', icon: Users, getTo: (item) => `/dashboard/client-chat?client=${encodeURIComponent(item.client_id || '')}` },
 ];
