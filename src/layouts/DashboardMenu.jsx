@@ -12,16 +12,16 @@ const DashboardMenu = ({ isOpen, onClose }) => {
     const menuItems = {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
-            { icon: Briefcase, label: 'Tareas', path: '/dashboard/tasks' },
+            { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: Calendar, label: 'Mis Citas', path: '/dashboard/my-appointments' },
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-            { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
+            { icon: Briefcase, label: 'Tareas', path: '/dashboard/tasks' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
-            { icon: FileText, label: 'Tareas', path: '/dashboard/tasks' },
+            { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },

@@ -664,6 +664,7 @@
     "client": {
       "welcome": "Bienvenido de nuevo",
       "title": "Hola, {{name}}",
+      "preparing": "Preparando tu experiencia...",
       "description": "Aquí tienes un resumen de tus proyectos con Grupo DTE. Tienes {{count}} proyecto activo.",
       "descriptionPlural": "Aquí tienes un resumen de tus proyectos con Grupo DTE. Tienes {{count}} proyectos activos.",
       "ctaProjects": "Ver mis proyectos",

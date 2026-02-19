@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import LoadingFallback from '@/components/ui/LoadingFallback';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2,
@@ -115,7 +116,7 @@ const ProjectTasks = () => {
       if (active) setSelectedProject(active);
     }
     setLoading(false);
-  }, [user?.id, profile?.role, client?.id, queryProjectId, isAdmin, isWorker]);
+  }, [user?.id, profile?.role, client?.id, queryProjectId, isAdmin, isWorker, navigate]);
 
   // 2. Fetch Services
   const fetchServices = useCallback(async (projectId) => {
@@ -263,7 +264,7 @@ const ProjectTasks = () => {
       setIsEditingDesc(false);
     } else {
       console.error('Error updating description:', error.message, error.details, error.hint);
-      alert(`Error al actualizar descripción: ${error.message}`);
+      alert(`Error al actualizar descripción: ${error.message} `);
     }
     setIsSavingDesc(false);
   };
@@ -285,7 +286,7 @@ const ProjectTasks = () => {
       setIsEditingService(false);
     } else {
       console.error('Error saving service:', error.message);
-      alert(`Error al guardar: ${error.message}`);
+      alert(`Error al guardar: ${error.message} `);
     }
     setIsSavingDesc(false);
   };
@@ -312,7 +313,7 @@ const ProjectTasks = () => {
       setFiles(prev => prev.filter(f => f.id !== file.id));
     } else {
       console.error('DB delete error:', error);
-      alert(`Error al eliminar registro: ${error.message}`);
+      alert(`Error al eliminar registro: ${error.message} `);
     }
   };
 
@@ -322,7 +323,7 @@ const ProjectTasks = () => {
 
     setIsUploading(true);
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
+    const fileName = `${Math.random()}.${fileExt} `;
     const filePath = `${selectedService.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -457,7 +458,9 @@ const ProjectTasks = () => {
     return ids.map(id => teamMembersMap[id]).filter(Boolean);
   }, [selectedProject, teamMembersMap]);
 
-  if (loading) return <LoadingFallback type="spinner" />;
+  if (loading) {
+    return <LoadingFallback type="spinner" />;
+  }
 
   return (
     <div className="font-product min-h-screen md:min-h-[calc(100vh-140px)] max-w-[1500px] mx-auto w-full px-2 md:px-8 flex flex-col justify-center py-2 md:py-8 overflow-hidden">

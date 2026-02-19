@@ -9,6 +9,9 @@ import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
+import CompleteProfileModal from '@/components/CompleteProfileModal';
+import CreateProjectModal from '@/components/CreateProjectModal';
+import dteLogo from '@/assets/LOGODTE.svg';
 
 import "react-datepicker/dist/react-datepicker.css";
 import '@/index.css'; // Ensure tailwind is available
@@ -17,7 +20,12 @@ const ScheduleCall = () => {
     const { t } = useTranslation();
     const { projectId } = useParams();
     const navigate = useNavigate();
-    const { user, client } = useAuth();
+    const { user, client, profile } = useAuth();
+    const role = profile?.role;
+
+    const [showCompleteProfile, setShowCompleteProfile] = useState(false);
+    const [showCreateProject, setShowCreateProject] = useState(false);
+    const [hasCheckedProfile, setHasCheckedProfile] = useState(false);
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
@@ -32,6 +40,84 @@ const ScheduleCall = () => {
         phone: '',
         notes: ''
     });
+
+    // 1. Initial Profile & Project Check Flow
+    useEffect(() => {
+        if (!user || role !== 'client' || hasCheckedProfile) return;
+
+        const checkFlow = async () => {
+            // Check if profile is complete
+            const isProfileIncomplete = !client || !client.full_name || !client.phone;
+
+            if (isProfileIncomplete) {
+                setShowCompleteProfile(true);
+            } else {
+                // Profile is complete, check if projects exist
+                const { count } = await supabase
+                    .from('projects')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', user.id);
+
+                if ((count ?? 0) === 0) {
+                    setShowCreateProject(true);
+                }
+            }
+            setHasCheckedProfile(true);
+        };
+
+        checkFlow();
+    }, [user, role, client, hasCheckedProfile]);
+
+    const handleProfileComplete = () => {
+        setShowCompleteProfile(false);
+        // After profile, we check projects (sequentially)
+        const checkProjects = async () => {
+            const { count } = await supabase
+                .from('projects')
+                .select('id', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
+            if ((count ?? 0) === 0) {
+                // Give a tiny delay for fluidity
+                setTimeout(() => setShowCreateProject(true), 400);
+            }
+        };
+        checkProjects();
+    };
+
+    const handleProjectCreated = (newProject) => {
+        setShowCreateProject(false);
+        if (newProject?.id) {
+            setSelectedProjectId(newProject.id);
+            // Refresh projects list
+            fetchProjectsInternal();
+        }
+    };
+
+    const fetchProjectsInternal = useCallback(async () => {
+        if (!user?.id) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('projects')
+                .select('id, name, title, project_name')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (!error && data) {
+                const formattedProjects = data.map(p => ({
+                    id: p.id,
+                    name: p.title || p.name || p.project_name || 'Project'
+                }));
+                setProjects(formattedProjects);
+                if (formattedProjects.length === 1 && !selectedProjectId) {
+                    setSelectedProjectId(formattedProjects[0].id);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching projects:', err);
+        }
+    }, [user?.id, selectedProjectId]);
 
     const handleAvailabilityError = useCallback(() => {
         toast.error(t('calendar.errorFetchingSlots'));
@@ -58,31 +144,9 @@ const ScheduleCall = () => {
                 phone: client?.phone || user?.phone || ''
             }));
 
-            // Fetch User Projects
-            const fetchProjects = async () => {
-                if (!user?.id) return;
-
-                try {
-                    const { data, error } = await supabase
-                        .from('projects')
-                        .select('id, name')
-                        .order('created_at', { ascending: false });
-
-                    if (!error && data) {
-                        setProjects(data);
-                        // If only one project, auto-select it if none selected
-                        if (data.length === 1 && !selectedProjectId) {
-                            setSelectedProjectId(data[0].id);
-                        }
-                    }
-                } catch (err) {
-                    console.error('Error fetching projects:', err);
-                }
-            };
-
-            fetchProjects();
+            fetchProjectsInternal();
         }
-    }, [client, user, selectedProjectId]);
+    }, [client, user, fetchProjectsInternal]);
 
     const handleSlotSelect = (slot) => {
         setSelectedSlot(slot);
@@ -120,9 +184,45 @@ const ScheduleCall = () => {
     };
 
     const containerVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+        hidden: { opacity: 0, y: 10 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                duration: 1.2,
+                ease: [0.22, 1, 0.36, 1]
+            }
+        }
     };
+
+    if (!hasCheckedProfile && role === 'client') {
+        return (
+            <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white font-product">
+                <motion.img
+                    src={dteLogo}
+                    alt="DTE"
+                    className="w-[180px] mb-8"
+                    animate={{
+                        opacity: [0.5, 1, 0.5],
+                        scale: [0.98, 1, 0.98]
+                    }}
+                    transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                    }}
+                />
+                <div className="mt-8 w-48 h-[2px] bg-neutral-100 rounded-full overflow-hidden">
+                    <motion.div
+                        className="h-full bg-skyblue"
+                        initial={{ width: "0%" }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 2.5, ease: "easeInOut" }}
+                    />
+                </div>
+            </div>
+        );
+    }
 
     if (bookingPhase === 'success') {
         return (
@@ -320,6 +420,22 @@ const ScheduleCall = () => {
                     </AnimatePresence>
                 </div>
             </motion.div>
+
+            {/* Modals Flow for Clients */}
+            <CompleteProfileModal
+                isOpen={showCompleteProfile}
+                onClose={() => setShowCompleteProfile(false)}
+                onComplete={handleProfileComplete}
+            />
+
+            <CreateProjectModal
+                isOpen={showCreateProject}
+                onClose={() => setShowCreateProject(false)}
+                onCreated={handleProjectCreated}
+                isFirstProject={projects.length === 0}
+                role={role}
+                clients={[]}
+            />
         </div>
     );
 };

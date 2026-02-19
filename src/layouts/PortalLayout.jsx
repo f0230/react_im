@@ -6,6 +6,10 @@ import LoadingFallback from '../components/ui/LoadingFallback';
 import CompleteProfileModal from '../components/CompleteProfileModal';
 import CreateProjectModal from '../components/CreateProjectModal';
 import { AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
+import dteLogo from '../assets/LOGODTE.svg';
 
 const PortalLayout = () => {
     const {
@@ -23,7 +27,12 @@ const PortalLayout = () => {
     const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const role = profile?.role;
+
+    const [isCheckingProjects, setIsCheckingProjects] = useState(false);
+    const [redirectTarget, setRedirectTarget] = useState(null);
+    const [hasChecked, setHasChecked] = useState(false);
 
     const isAuthReady = typeof authReady === 'boolean' ? authReady : !loading;
 
@@ -73,8 +82,44 @@ const PortalLayout = () => {
             } else {
                 setShowProfileModal(false);
             }
+
+            // Centralized Project Check for Clients
+            const checkProjects = async () => {
+                if (hasChecked || isCheckingProjects || redirectTarget) return;
+
+                setIsCheckingProjects(true);
+                const { count, error } = await supabase
+                    .from('projects')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('user_id', user.id);
+
+                if (!error) {
+                    if ((count ?? 0) === 0) {
+                        // Check appointments to decide redirect target
+                        const { count: aptCount } = await supabase
+                            .from('appointments')
+                            .select('id', { count: 'exact', head: true })
+                            .eq('user_id', user.id);
+
+                        const target = (aptCount ?? 0) === 0 ? '/schedule-call' : '/dashboard/my-appointments';
+                        setRedirectTarget(target);
+                        setTimeout(() => {
+                            navigate(target);
+                        }, 2000);
+                    } else {
+                        setHasChecked(true);
+                        setIsCheckingProjects(false);
+                    }
+                } else {
+                    setIsCheckingProjects(false);
+                }
+            };
+
+            checkProjects();
+        } else if (role && role !== 'client') {
+            setHasChecked(true);
         }
-    }, [loading, user, role, client]);
+    }, [loading, user, role, client, hasChecked, isCheckingProjects, redirectTarget, navigate]);
 
     if (!isAuthReady) {
         return (
@@ -162,6 +207,50 @@ const PortalLayout = () => {
                     >
                         Cerrar sesión
                     </button>
+                </div>
+            </div>
+        );
+    }
+
+    // High Premium Preloader for Redirecting or Checking Clients
+    if (role === 'client' && (!hasChecked || isCheckingProjects || redirectTarget)) {
+        return (
+            <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white font-product">
+                <motion.img
+                    src={dteLogo}
+                    alt="DTE"
+                    className="w-[180px] mb-8"
+                    animate={{
+                        opacity: [0.5, 1, 0.5],
+                        scale: [0.98, 1, 0.98]
+                    }}
+                    transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                    }}
+                />
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 1 }}
+                    className="text-center px-6"
+                >
+                    <h2 className="text-xl font-bold text-neutral-800 mb-2">
+                        {redirectTarget ? t('dashboardHome.client.preparing') || 'Preparando tu experiencia...' : 'Cargando...'}
+                    </h2>
+                    <p className="text-sm text-neutral-500 max-w-xs mx-auto">
+                        Estamos personalizando el portal para que hablemos de tu primer proyecto.
+                    </p>
+                </motion.div>
+
+                <div className="mt-8 w-48 h-[2px] bg-neutral-100 rounded-full overflow-hidden">
+                    <motion.div
+                        className="h-full bg-skyblue"
+                        initial={{ width: "0%" }}
+                        animate={{ width: "100%" }}
+                        transition={{ duration: 2.5, ease: "easeInOut" }}
+                    />
                 </div>
             </div>
         );

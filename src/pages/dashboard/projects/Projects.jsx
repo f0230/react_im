@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Briefcase, Plus, Users } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Briefcase, Plus, Users, ArrowRight } from 'lucide-react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
@@ -13,10 +13,6 @@ import servicesImage from '@/assets/Dahsboardx/ser.webp';
 
 const getProjectTitle = (project, fallback) => {
     return project?.title || project?.name || project?.project_name || fallback;
-};
-
-const getProjectDescription = (project) => {
-    return project?.description || project?.summary || project?.details || '';
 };
 
 const getInitials = (value) => {
@@ -116,17 +112,15 @@ const Projects = () => {
             setError(response.error.message || 'Error loading projects');
             setProjects([]);
         } else {
+            let fetchedProjects = [];
             if (role === 'worker') {
                 const rows = response.data || [];
-                const workerProjects = rows
-                    .map((row) => row.project)
-                    .filter(Boolean);
-                setProjects(workerProjects);
+                fetchedProjects = rows.map((row) => row.project).filter(Boolean);
             } else {
-                setProjects(response.data || []);
+                fetchedProjects = response.data || [];
             }
+            setProjects(fetchedProjects);
         }
-
         setLoading(false);
     }, [clientId, userId, role]);
 
@@ -183,25 +177,11 @@ const Projects = () => {
         }
     }, [assignments, fetchTeamMembers, isAdmin]);
 
-    useEffect(() => {
-        if (location.state?.showCreateProject) {
-            setShouldPromptCreate(true);
-        }
-    }, [location.state]);
-
-    useEffect(() => {
-        if (!loading && projects.length === 0 && shouldPromptCreate) {
-            setIsCreateModalOpen(true);
-            setShouldPromptCreate(false);
-        }
-    }, [loading, projects.length, shouldPromptCreate]);
-
     const handleProjectCreated = useCallback(
         (project) => {
             setIsCreateModalOpen(false);
             if (project) {
                 setProjects((prev) => {
-                    if (!project?.id) return [project, ...prev];
                     const exists = prev.some((item) => item?.id === project.id);
                     if (exists) return prev;
                     return [project, ...prev];
@@ -226,7 +206,6 @@ const Projects = () => {
 
     const handleAssignmentsChange = async (projectId, nextIds) => {
         if (!projectId) return;
-        setAssignmentError(null);
         setAssignmentSaving((prev) => ({ ...prev, [projectId]: true }));
         const currentIds = assignments[projectId] || [];
         const toAdd = nextIds.filter((id) => !currentIds.includes(id));
@@ -234,15 +213,14 @@ const Projects = () => {
 
         try {
             if (toRemove.length) {
-                const { error: deleteError } = await supabase
+                await supabase
                     .from('project_assignments')
                     .delete()
                     .eq('project_id', projectId)
                     .in('worker_id', toRemove);
-                if (deleteError) throw deleteError;
             }
             if (toAdd.length) {
-                const { error: insertError } = await supabase
+                await supabase
                     .from('project_assignments')
                     .insert(
                         toAdd.map((workerId) => ({
@@ -250,7 +228,6 @@ const Projects = () => {
                             worker_id: workerId,
                         }))
                     );
-                if (insertError) throw insertError;
             }
             setAssignments((prev) => ({ ...prev, [projectId]: nextIds }));
         } catch (err) {
@@ -263,7 +240,6 @@ const Projects = () => {
 
     const openTeamModal = (project) => {
         if (!project?.id) return;
-        setAssignmentError(null);
         setTeamSelection(assignments[project.id] || []);
         setTeamModalProject(project);
     };
@@ -311,6 +287,8 @@ const Projects = () => {
         [t]
     );
 
+    if (loading) return <LoadingFallback type="spinner" />;
+
     return (
         <div className="font-product text-neutral-900 pb-16">
             <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -334,9 +312,7 @@ const Projects = () => {
                 )}
             </div>
 
-            {loading ? (
-                <LoadingFallback type="spinner" />
-            ) : error ? (
+            {error ? (
                 <div className="bg-white border border-red-100 rounded-3xl p-6 text-sm text-red-500">
                     {t('dashboard.projects.error')}
                 </div>
@@ -363,21 +339,15 @@ const Projects = () => {
                     )}
                 </div>
             ) : (
-                <>
+                <div className="space-y-6">
                     {projects.map((project, index) => {
-                        const projectId = project?.id ?? project?.uuid ?? project?.project_id;
+                        const projectId = project?.id;
                         const projectKey = projectId ?? index;
-                        const createdAt = formatDate(project?.created_at);
-                        const status = project?.status || project?.stage || project?.state;
                         const title = getProjectTitle(project, t('dashboard.projects.untitled'));
-                        const clientLabel = project?.clients
-                            ? project.clients.company_name || project.clients.full_name || project.clients.email
-                            : null;
                         const assignedIds = assignments[project?.id] || [];
                         const assignedCount = assignedIds.length;
                         const colorClass = gradientClasses[index % gradientClasses.length];
-                        const projectAvatar =
-                            project?.profile_image_url || project?.avatar_url || project?.logo_url;
+                        const projectAvatar = project?.profile_image_url || project?.avatar_url;
                         const projectTeam = assignedIds
                             .map((id) => teamMembers.find((member) => member.id === id))
                             .filter(Boolean);
@@ -385,15 +355,12 @@ const Projects = () => {
                         return (
                             <div
                                 key={projectKey}
-                                className="mb-6 w-full rounded-[10px] bg-[#D9D9D9] overflow-hidden grid grid-cols-2 gap-[5px] p-2 md:flex md:flex-row min-h-[220px] md:gap-0 transition-shadow hover:shadow-lg"
+                                className="w-full rounded-[10px] bg-[#D9D9D9] overflow-hidden grid grid-cols-2 gap-[5px] p-2 md:flex md:flex-row min-h-[220px] md:gap-0 transition-shadow hover:shadow-lg"
                             >
-                                {/* LEFT SECTION: Project Info */}
                                 <div className="col-span-1 h-[208px] md:h-auto p-6 flex flex-col items-center justify-center text-center md:flex-1 md:items-stretch md:justify-center md:text-left md:p-8 relative md:border-r border-white/20">
                                     <div className="flex flex-col items-center gap-4 md:flex-row md:gap-6">
-                                        {/* Avatar */}
                                         <div
                                             role="button"
-                                            tabIndex={projectId ? 0 : -1}
                                             onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
                                             className={`relative shrink-0 ${projectId ? 'cursor-pointer' : ''}`}
                                         >
@@ -404,15 +371,12 @@ const Projects = () => {
                                                     className="h-24 w-24 md:h-28 md:w-28 rounded-full object-cover shadow-sm bg-white"
                                                 />
                                             ) : (
-                                                <div
-                                                    className={`flex h-24 w-24 md:h-28 md:w-28 items-center justify-center rounded-full bg-gradient-to-br ${colorClass} text-2xl font-bold text-black shadow-sm`}
-                                                >
+                                                <div className={`flex h-24 w-24 md:h-28 md:w-28 items-center justify-center rounded-full bg-gradient-to-br ${colorClass} text-2xl font-bold text-black shadow-sm`}>
                                                     {getInitials(title)}
                                                 </div>
                                             )}
                                         </div>
 
-                                        {/* Title & Team */}
                                         <div className="flex flex-col gap-3 items-center md:items-start md:gap-4">
                                             <h3
                                                 onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
@@ -426,18 +390,15 @@ const Projects = () => {
                                                     {t('dashboard.projects.teamLabel') || 'Equipo'}
                                                 </span>
                                                 <div className="flex items-center -space-x-2">
-                                                    {projectTeam.slice(0, 4).map((member) => {
-                                                        const label = member.full_name || member.email || member.id;
-                                                        return (
-                                                            <div
-                                                                key={member.id}
-                                                                className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-white text-[10px] font-bold text-neutral-700 shadow-sm"
-                                                                title={label}
-                                                            >
-                                                                {getInitials(label)}
-                                                            </div>
-                                                        );
-                                                    })}
+                                                    {projectTeam.slice(0, 4).map((member) => (
+                                                        <div
+                                                            key={member.id}
+                                                            className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-white text-[10px] font-bold text-neutral-700 shadow-sm"
+                                                            title={member.full_name || member.email}
+                                                        >
+                                                            {getInitials(member.full_name || member.email)}
+                                                        </div>
+                                                    ))}
                                                     {assignedCount > 4 && (
                                                         <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-neutral-100 text-[10px] font-bold text-neutral-500 shadow-sm">
                                                             +{assignedCount - 4}
@@ -446,12 +407,11 @@ const Projects = () => {
                                                     {isAdmin && (
                                                         <button
                                                             type="button"
-                                                            onClick={(event) => {
-                                                                event.stopPropagation();
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
                                                                 openTeamModal(project);
                                                             }}
                                                             className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 hover:bg-[#e4e4e4] hover:text-black transition shadow-sm"
-                                                            aria-label={t('dashboard.projects.assignButton')}
                                                         >
                                                             <Plus size={14} />
                                                         </button>
@@ -462,7 +422,6 @@ const Projects = () => {
                                     </div>
                                 </div>
 
-                                {/* RIGHT SECTION: Action Cards */}
                                 <div className="contents md:flex md:w-auto md:min-w-[450px] gap-2 ">
                                     {actionCards.map(({ key, label, description, image, suffix }) => (
                                         <div
@@ -473,7 +432,7 @@ const Projects = () => {
                                                     navigate(`/dashboard/${suffix}?projectId=${projectId}`);
                                                 }
                                             }}
-                                            className="h-[208px] md:h-auto rounded-[10px] group relative flex flex-col items-center justify-center bg-[#EBEBEB] p-4 md:flex-1 md:min-w-[140px] text-center "
+                                            className="h-[208px] md:h-auto rounded-[10px] group relative flex flex-col items-center justify-center bg-[#EBEBEB] p-4 md:flex-1 md:min-w-[140px] text-center cursor-pointer"
                                         >
                                             <div className="mb-3 transition-transform duration-300 group-hover:scale-105">
                                                 <img
@@ -482,25 +441,17 @@ const Projects = () => {
                                                     className="h-16 w-auto md:h-20 object-contain opacity-80 group-hover:opacity-100 transition-opacity"
                                                 />
                                             </div>
-                                            <div className="flex flex-col items-center">
-                                                <h4 className="text-sm md:text-base font-medium text-neutral-800">
-                                                    {label}
-                                                </h4>
-                                                <p className="mt-1 hidden md:block text-[10px] text-neutral-500 leading-tight max-w-[120px]">
-                                                    {description}
-                                                </p>
-                                                {/* Mobile Description Check */}
-                                                <p className="mt-1 md:hidden text-[10px] text-neutral-500 leading-tight max-w-[100px]">
-                                                    {description}
-                                                </p>
-                                            </div>
+                                            <h4 className="text-sm md:text-base font-medium text-neutral-800">{label}</h4>
+                                            <p className="mt-1 hidden md:block text-[10px] text-neutral-500 leading-tight max-w-[120px]">
+                                                {description}
+                                            </p>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         );
                     })}
-                </>
+                </div>
             )}
 
             <CreateProjectModal
@@ -514,7 +465,7 @@ const Projects = () => {
 
             <AnimatePresence>
                 {isAdmin && teamModalProject && (
-                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 font-product">
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -526,78 +477,38 @@ const Projects = () => {
                             initial={{ scale: 0.96, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.96, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-[460px] bg-white rounded-3xl shadow-2xl overflow-hidden"
+                            className="relative w-full max-w-[460px] bg-white rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-7"
                         >
-                            <div className="p-6 sm:p-7 max-h-[80vh] overflow-y-auto">
-                                <div className="text-center">
-                                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100 text-neutral-600">
-                                        <Users size={20} />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-neutral-900 mt-4">
-                                        {t('dashboard.projects.teamModal.title')}
-                                    </h3>
-                                    <p className="text-sm text-neutral-500 mt-2">
-                                        {t('dashboard.projects.teamModal.description')}
-                                    </p>
-                                </div>
-
-                                <div className="mt-5 space-y-2">
-                                    {teamMembers.map((member) => {
-                                        const label = member.full_name || member.email || member.id;
-                                        const isSelected = teamSelection.includes(member.id);
-                                        const roleLabel =
-                                            member.role === 'admin'
-                                                ? t('dashboard.projects.teamModal.roleAdmin')
-                                                : t('dashboard.projects.teamModal.roleWorker');
-                                        return (
-                                            <button
-                                                key={member.id}
-                                                type="button"
-                                                onClick={() => {
-                                                    setTeamSelection((prev) =>
-                                                        prev.includes(member.id)
-                                                            ? prev.filter((id) => id !== member.id)
-                                                            : [...prev, member.id]
-                                                    );
-                                                }}
-                                                className={`w-full flex items-center justify-between rounded-2xl border px-4 py-3 text-sm transition ${isSelected
-                                                    ? 'border-black bg-black text-white'
-                                                    : 'border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100'
-                                                    }`}
-                                            >
-                                                <span className="font-medium">
-                                                    {label}
-                                                    <span className="ml-2 text-[10px] uppercase tracking-[0.2em] text-current/70">
-                                                        {roleLabel}
-                                                    </span>
-                                                </span>
-                                                <span className="text-xs uppercase tracking-[0.2em]">
-                                                    {isSelected
-                                                        ? t('dashboard.projects.teamModal.selected')
-                                                        : t('dashboard.projects.teamModal.select')}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                {assignmentError && (
-                                    <p className="mt-4 text-xs text-red-500 text-center">
-                                        {assignmentError}
-                                    </p>
-                                )}
-
-                                <button
-                                    type="button"
-                                    onClick={closeTeamModal}
-                                    disabled={assignmentSaving[teamModalProject.id]}
-                                    className="mt-6 w-full rounded-2xl bg-black py-3 text-sm font-semibold text-white shadow-lg shadow-black/10 hover:bg-neutral-800 transition disabled:opacity-70 disabled:cursor-not-allowed"
-                                >
-                                    {assignmentSaving[teamModalProject.id]
-                                        ? t('dashboard.projects.assignSaving')
-                                        : t('dashboard.projects.teamModal.close')}
-                                </button>
+                            <div className="text-center">
+                                <Users size={40} className="mx-auto text-neutral-600 mb-4" />
+                                <h3 className="text-xl font-bold text-neutral-900">
+                                    {t('dashboard.projects.teamModal.title')}
+                                </h3>
                             </div>
+                            <div className="mt-5 space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                                {teamMembers.map((member) => {
+                                    const isSelected = teamSelection.includes(member.id);
+                                    return (
+                                        <button
+                                            key={member.id}
+                                            onClick={() => setTeamSelection(prev =>
+                                                isSelected ? prev.filter(id => id !== member.id) : [...prev, member.id]
+                                            )}
+                                            className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${isSelected ? 'border-black bg-black text-white' : 'border-neutral-200 bg-neutral-50'
+                                                }`}
+                                        >
+                                            <span>{member.full_name || member.email}</span>
+                                            <span className="text-[10px] uppercase">{isSelected ? 'Seleccionado' : 'Seleccionar'}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <button
+                                onClick={closeTeamModal}
+                                className="mt-6 w-full rounded-xl bg-black py-3 text-sm font-semibold text-white hover:bg-neutral-800 transition"
+                            >
+                                Guardar cambios
+                            </button>
                         </motion.div>
                     </div>
                 )}

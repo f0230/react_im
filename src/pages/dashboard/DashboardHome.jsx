@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
     Zap,
     BarChart3,
@@ -20,12 +21,9 @@ import dteLogo from '../../assets/LOGODTE.svg';
 const DashboardHome = () => {
     const { t } = useTranslation();
     const { profile, user } = useAuth();
+    const navigate = useNavigate();
     const role = profile?.role || 'client';
     const [stats, setStats] = useState({
-        projectCount: 0,
-        appointmentCount: 0,
-        upcomingWeekAppointments: 0,
-        clientCount: null,
         nextAppointmentAt: null,
     });
 
@@ -218,9 +216,6 @@ const DashboardHome = () => {
         };
     }, [profile?.full_name, profile?.name, role, stats, t]);
 
-    if (role === 'client') {
-        return <div className="font-product pb-16" />;
-    }
 
     const mobileRowsClass = dashboardContent.cards.length > 3 ? 'grid-rows-4' : 'grid-rows-3';
 

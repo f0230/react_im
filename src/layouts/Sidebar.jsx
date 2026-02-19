@@ -19,7 +19,7 @@ const Sidebar = () => {
     const menuItems = {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
-            { icon: Briefcase, label: 'Tareas', path: '/dashboard/tasks' },
+            { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
