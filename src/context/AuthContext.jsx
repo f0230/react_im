@@ -16,6 +16,8 @@ export const AuthProvider = ({ children }) => {
     const [profileStatus, setProfileStatus] = useState('idle'); // idle | loading | ready | missing | error
     const [profileError, setProfileError] = useState(null);
 
+    const [onboardingStatus, setOnboardingStatus] = useState('loading'); // loading | new | completed
+
     // Fetch profile and client data
     const fetchProfileData = useCallback(async (currentUser) => {
         if (!currentUser) {
@@ -23,6 +25,7 @@ export const AuthProvider = ({ children }) => {
             setClient(null);
             setProfileStatus('idle');
             setProfileError(null);
+            setOnboardingStatus('completed');
             return;
         }
 
@@ -30,9 +33,9 @@ export const AuthProvider = ({ children }) => {
             setProfileLoading(true);
             setProfileStatus('loading');
             setProfileError(null);
+            setOnboardingStatus('loading');
 
             // 1. Fetch Profile
-            // Retry logic for profile creation latency
             let profileData = null;
             let attempts = 0;
             const maxAttempts = 3;
@@ -49,15 +52,12 @@ export const AuthProvider = ({ children }) => {
                     profileData = data;
                 } else {
                     lastError = error;
-                    // If error is not "row not found", checking if we should retry or fail immediately?
-                    // PGRST116 is row not found.
                     if (error.code === 'PGRST116') {
-                        // It might be created async, so we retry.
+                        // User might be being created
                     }
-
                     attempts++;
                     if (attempts < maxAttempts) {
-                        await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
+                        await new Promise(r => setTimeout(r, 1000));
                     }
                 }
             }
@@ -77,13 +77,32 @@ export const AuthProvider = ({ children }) => {
                         .maybeSingle();
 
                     setClient(clientData);
+
+                    // 3. Check Onboarding Status (Projects/Appointments)
+                    const { count: projectCount } = await supabase
+                        .from('projects')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('user_id', currentUser.id);
+
+                    const { count: appointmentCount } = await supabase
+                        .from('appointments')
+                        .select('id', { count: 'exact', head: true })
+                        .eq('user_id', currentUser.id);
+
+                    if ((projectCount || 0) === 0 && (appointmentCount || 0) === 0) {
+                        setOnboardingStatus('new');
+                    } else {
+                        setOnboardingStatus('completed');
+                    }
                 } else {
                     setClient(null);
+                    setOnboardingStatus('completed'); // Admins/Workers don't do onboarding
                 }
 
             } else {
                 setProfile(null);
                 setClient(null);
+                setOnboardingStatus('completed');
 
                 if (lastError && lastError.code === 'PGRST116') {
                     setProfileStatus('missing');
@@ -97,6 +116,7 @@ export const AuthProvider = ({ children }) => {
             console.error('Error fetching user data:', error);
             setProfileStatus('error');
             setProfileError(error);
+            setOnboardingStatus('completed');
         } finally {
             setProfileLoading(false);
         }
@@ -108,7 +128,6 @@ export const AuthProvider = ({ children }) => {
 
         const initAuth = async () => {
             try {
-                // Get initial session
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (mounted) {
@@ -119,10 +138,12 @@ export const AuthProvider = ({ children }) => {
                         setUser(null);
                         setProfile(null);
                         setClient(null);
+                        setOnboardingStatus('completed');
                     }
                 }
             } catch (error) {
                 console.error('Auth initialization error:', error);
+                setOnboardingStatus('completed');
             } finally {
                 if (mounted) {
                     setLoading(false);
@@ -134,12 +155,9 @@ export const AuthProvider = ({ children }) => {
 
         // Listen for changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log('Auth state change:', event, session?.user?.email);
-
             if (!mounted) return;
 
             if (session?.user) {
-                // Only update if user changed to avoid loops, or if it's a sign-in event
                 setUser((prev) => {
                     if (prev?.id !== session.user.id) {
                         fetchProfileData(session.user);
@@ -148,15 +166,13 @@ export const AuthProvider = ({ children }) => {
                     return prev;
                 });
 
-                // If we have a user but no profile yet (e.g. slight race on initial load), fetch it
                 if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                    // Force refresh profile on explicit sign in to ensure latest data
                     fetchProfileData(session.user);
                 }
 
                 if (event === 'SIGNED_IN') {
-                    // Signal app-wide redirect to dashboard after login
-                    sessionStorage.setItem('postLoginRedirect', '1');
+                    // Logic for App.jsx to handle initial landing from login
+                    sessionStorage.setItem('justLoggedIn', '1');
                 }
 
             } else {
@@ -165,6 +181,7 @@ export const AuthProvider = ({ children }) => {
                 setClient(null);
                 setProfileStatus('idle');
                 setProfileError(null);
+                setOnboardingStatus('completed');
             }
 
             setLoading(false);
@@ -185,6 +202,7 @@ export const AuthProvider = ({ children }) => {
             setClient(null);
             setProfileStatus('idle');
             setProfileError(null);
+            setOnboardingStatus('completed');
         } catch (error) {
             console.error('Sign out error:', error);
         } finally {
@@ -198,18 +216,23 @@ export const AuthProvider = ({ children }) => {
         }
     }, [user, fetchProfileData]);
 
+    const isProfileIncomplete = profile?.role === 'client' && (!client || !client.full_name || !client.phone);
+
     const value = {
         user,
         profile,
         client,
-        loading: loading || profileLoading, // Combined loading state for smoother UX on initial load
-        authReady: !loading, // Backward compatibility
+        loading: loading || profileLoading,
+        authReady: !loading,
         profileStatus,
         profileError,
+        onboardingStatus,
+        isProfileIncomplete, // New flag
         signOut,
         refreshProfile,
-        refreshClient: refreshProfile // Map to same refresh for simplicity
+        refreshClient: refreshProfile
     };
+
 
     return (
         <AuthContext.Provider value={value}>

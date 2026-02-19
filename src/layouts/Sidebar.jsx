@@ -26,6 +26,7 @@ const Sidebar = () => {
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+            { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: Briefcase, label: 'Tareas', path: '/dashboard/tasks' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },

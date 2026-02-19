@@ -155,13 +155,13 @@ const ProjectTasks = () => {
 
   // 4. Fetch Workers for assignment
   const fetchAllWorkers = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!canManage) return;
     const { data } = await supabase
       .from('profiles')
       .select('id, full_name, avatar_url, role')
       .in('role', ['admin', 'worker']);
     if (data) setAllWorkers(data);
-  }, [isAdmin]);
+  }, [canManage]);
 
   // 5. Fetch Profiles for UI
   const fetchTeamMemberProfiles = useCallback(async (ids) => {
@@ -501,7 +501,7 @@ const ProjectTasks = () => {
                 <h3 className="text-lg md:text-xl font-bold text-neutral-800">Tareas</h3>
                 <p className="text-[9px] md:text-[10px] text-neutral-500 uppercase tracking-wide">Seguimiento en curso</p>
               </div>
-              {isAdmin && (
+              {canManage && (
                 <button onClick={() => setIsCreateServiceOpen(!isCreateServiceOpen)} className="p-2 rounded-full bg-black text-white hover:bg-neutral-800 transition-all shadow-md">
                   {isCreateServiceOpen ? <X size={14} /> : <Plus size={14} />}
                 </button>
@@ -654,7 +654,7 @@ const ProjectTasks = () => {
                         ) : <User className="w-full h-full p-1.5 text-neutral-400" />}
                       </div>
                       <span className="text-xs font-bold text-neutral-700">{teamMembersMap[selectedService.responsible_id]?.full_name || 'Sin asignar'}</span>
-                      {isAdmin && (
+                      {canManage && (
                         <button onClick={() => setIsAssigning(!isAssigning)} className="ml-1 p-1 rounded-full text-neutral-300 hover:text-black hover:bg-neutral-100 transition-all">
                           <UserPlus size={12} />
                         </button>

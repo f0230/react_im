@@ -18,6 +18,7 @@ const Development = lazy(() => import("@/pages/Development"));
 const LandingDTE = lazy(() => import("@/pages/LandingDTE"));
 const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
 const Registro = lazy(() => import("@/pages/Registro"));
+const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
 const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
 const Clients = lazy(() => import("@/pages/dashboard/crm/Clients"));
 const ClientDetail = lazy(() => import("@/pages/dashboard/crm/ClientDetail"));
@@ -38,22 +39,67 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
 import PortalLayout from "@/layouts/PortalLayout";
 import { Navigate } from "react-router-dom";
+import { motion } from "framer-motion";
+
+import dteLogo from "@/assets/LOGODTE.svg";
 
 const AppContent = () => {
   const { isNavbarOpen } = useUI();
-  const { user } = useAuth();
+  const { user, onboardingStatus, loading, isProfileIncomplete } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const shouldRedirect = sessionStorage.getItem('postLoginRedirect') === '1';
-    if (shouldRedirect && user) {
-      sessionStorage.removeItem('postLoginRedirect');
-      if (!location.pathname.startsWith('/dashboard')) {
+    // Handle the initial landing after OAuth login
+    const justLoggedIn = sessionStorage.getItem('justLoggedIn') === '1';
+
+    if (user && justLoggedIn && onboardingStatus !== 'loading') {
+      sessionStorage.removeItem('justLoggedIn');
+
+      // 1. If profile is incomplete, that's priority #1
+      if (isProfileIncomplete) {
+        navigate('/complete-profile', { replace: true });
+        return;
+      }
+
+      // 2. If profile is OK, check onboarding status for new users
+      if (onboardingStatus === 'new') {
+        navigate('/schedule-call', { replace: true });
+      } else {
         navigate('/dashboard', { replace: true });
       }
     }
-  }, [user, location.pathname, navigate]);
+  }, [user, onboardingStatus, isProfileIncomplete, navigate]);
+
+  // Premium Loader for initial auth/onboarding detection
+  if (loading || (user && onboardingStatus === 'loading' && sessionStorage.getItem('justLoggedIn') === '1')) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-white font-product">
+        <motion.img
+          src={dteLogo}
+          alt="DTE"
+          className="w-[180px] mb-8"
+          animate={{
+            opacity: [0.5, 1, 0.5],
+            scale: [0.98, 1, 0.98]
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <div className="w-48 h-[2px] bg-neutral-100 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-[#00D1FF]"
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 1.5, ease: "easeInOut" }}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen">
@@ -81,6 +127,7 @@ const AppContent = () => {
           <Route path="/dte" element={<LandingDTE />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/schedule-call/:projectId?" element={<ScheduleCall />} />
 
           {/* Private Portal Routes */}
@@ -92,7 +139,6 @@ const AppContent = () => {
             <Route path="reports" element={<ProjectReports />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="projects" element={<Projects />} />
-            {/* Redirect old project detail routes to tasks */}
             <Route path="projects/:projectId" element={<Navigate to="tasks" replace />} />
             <Route path="projects/:projectId/services" element={<Navigate to="/dashboard/tasks" replace />} />
             <Route path="services" element={<Navigate to="/dashboard/tasks" replace />} />
@@ -105,7 +151,7 @@ const AppContent = () => {
             <Route path="appointments" element={<AdminAppointments />} />
             <Route path="my-appointments" element={<ClientAppointments />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="profile" element={<Settings />} /> {/* Reusing Settings for Profile for now */}
+            <Route path="profile" element={<Settings />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

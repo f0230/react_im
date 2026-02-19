@@ -9,23 +9,17 @@ import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
-import CompleteProfileModal from '@/components/CompleteProfileModal';
-import CreateProjectModal from '@/components/CreateProjectModal';
 import dteLogo from '@/assets/LOGODTE.svg';
 
 import "react-datepicker/dist/react-datepicker.css";
-import '@/index.css'; // Ensure tailwind is available
+import '@/index.css';
 
 const ScheduleCall = () => {
     const { t } = useTranslation();
     const { projectId } = useParams();
     const navigate = useNavigate();
-    const { user, client, profile } = useAuth();
+    const { user, client, profile, loading } = useAuth();
     const role = profile?.role;
-
-    const [showCompleteProfile, setShowCompleteProfile] = useState(false);
-    const [showCreateProject, setShowCreateProject] = useState(false);
-    const [hasCheckedProfile, setHasCheckedProfile] = useState(false);
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
@@ -41,62 +35,8 @@ const ScheduleCall = () => {
         notes: ''
     });
 
-    // 1. Initial Profile & Project Check Flow
-    useEffect(() => {
-        if (!user || role !== 'client' || hasCheckedProfile) return;
-
-        const checkFlow = async () => {
-            // Check if profile is complete
-            const isProfileIncomplete = !client || !client.full_name || !client.phone;
-
-            if (isProfileIncomplete) {
-                setShowCompleteProfile(true);
-            } else {
-                // Profile is complete, check if projects exist
-                const { count } = await supabase
-                    .from('projects')
-                    .select('id', { count: 'exact', head: true })
-                    .eq('user_id', user.id);
-
-                if ((count ?? 0) === 0) {
-                    setShowCreateProject(true);
-                }
-            }
-            setHasCheckedProfile(true);
-        };
-
-        checkFlow();
-    }, [user, role, client, hasCheckedProfile]);
-
-    const handleProfileComplete = () => {
-        setShowCompleteProfile(false);
-        // After profile, we check projects (sequentially)
-        const checkProjects = async () => {
-            const { count } = await supabase
-                .from('projects')
-                .select('id', { count: 'exact', head: true })
-                .eq('user_id', user.id);
-
-            if ((count ?? 0) === 0) {
-                // Give a tiny delay for fluidity
-                setTimeout(() => setShowCreateProject(true), 400);
-            }
-        };
-        checkProjects();
-    };
-
-    const handleProjectCreated = (newProject) => {
-        setShowCreateProject(false);
-        if (newProject?.id) {
-            setSelectedProjectId(newProject.id);
-            // Refresh projects list
-            fetchProjectsInternal();
-        }
-    };
-
     const fetchProjectsInternal = useCallback(async () => {
         if (!user?.id) return;
-
         try {
             const { data, error } = await supabase
                 .from('projects')
@@ -119,10 +59,6 @@ const ScheduleCall = () => {
         }
     }, [user?.id, selectedProjectId]);
 
-    const handleAvailabilityError = useCallback(() => {
-        toast.error(t('calendar.errorFetchingSlots'));
-    }, [t]);
-
     const {
         slots,
         loadingSlots,
@@ -131,10 +67,9 @@ const ScheduleCall = () => {
     } = useCalAvailability({
         selectedDate,
         enabled: Boolean(selectedDate),
-        onError: handleAvailabilityError
+        onError: () => toast.error(t('calendar.errorFetchingSlots'))
     });
 
-    // Initialize form data from authenticated user/client and fetch projects
     useEffect(() => {
         if (client || user) {
             setFormData(prev => ({
@@ -143,7 +78,6 @@ const ScheduleCall = () => {
                 email: client?.email || user?.email || '',
                 phone: client?.phone || user?.phone || ''
             }));
-
             fetchProjectsInternal();
         }
     }, [client, user, fetchProjectsInternal]);
@@ -156,7 +90,6 @@ const ScheduleCall = () => {
     const handleFormSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
-
         try {
             const response = await fetch('/api/cal/create-booking', {
                 method: 'POST',
@@ -169,10 +102,7 @@ const ScheduleCall = () => {
                     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
                 })
             });
-
             if (!response.ok) throw new Error('Booking failed');
-
-            const data = await response.json();
             setBookingPhase('success');
             toast.success(t('calendar.bookingSuccess'));
         } catch (error) {
@@ -188,58 +118,20 @@ const ScheduleCall = () => {
         visible: {
             opacity: 1,
             y: 0,
-            transition: {
-                duration: 1.2,
-                ease: [0.22, 1, 0.36, 1]
-            }
+            transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1] }
         }
     };
-
-    if (!hasCheckedProfile && role === 'client') {
-        return (
-            <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-white font-product">
-                <motion.img
-                    src={dteLogo}
-                    alt="DTE"
-                    className="w-[180px] mb-8"
-                    animate={{
-                        opacity: [0.5, 1, 0.5],
-                        scale: [0.98, 1, 0.98]
-                    }}
-                    transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                />
-                <div className="mt-8 w-48 h-[2px] bg-neutral-100 rounded-full overflow-hidden">
-                    <motion.div
-                        className="h-full bg-skyblue"
-                        initial={{ width: "0%" }}
-                        animate={{ width: "100%" }}
-                        transition={{ duration: 2.5, ease: "easeInOut" }}
-                    />
-                </div>
-            </div>
-        );
-    }
 
     if (bookingPhase === 'success') {
         return (
             <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4">
-                <motion.div
-                    initial="hidden" animate="visible" variants={containerVariants}
-                    className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-6"
-                >
+                <motion.div initial="hidden" animate="visible" variants={containerVariants} className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-6">
                     <div className="w-20 h-20 bg-[#0DD122]/10 rounded-full flex items-center justify-center mx-auto">
                         <Check className="w-10 h-10 text-[#0DD122]" />
                     </div>
                     <h2 className="text-2xl font-bold">{t('calendar.successTitle')}</h2>
                     <p className="text-gray-600">{t('calendar.successMessage')}</p>
-                    <button
-                        onClick={() => navigate('/dashboard')}
-                        className="w-full bg-black text-white py-3 rounded-xl font-bold hover:opacity-90 transition-opacity"
-                    >
+                    <button onClick={() => navigate('/dashboard')} className="w-full bg-black text-white py-3 rounded-xl font-bold hover:opacity-90 transition-opacity">
                         {t('calendar.goToDashboard')}
                     </button>
                 </motion.div>
@@ -249,11 +141,7 @@ const ScheduleCall = () => {
 
     return (
         <div className="min-h-screen bg-[#F5F5F5] py-12 px-4 sm:px-6 lg:px-8">
-            <motion.div
-                initial="hidden" animate="visible" variants={containerVariants}
-                className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden min-h-[600px] flex flex-col md:flex-row"
-            >
-                {/* Left Panel: Context & Instructions */}
+            <motion.div initial="hidden" animate="visible" variants={containerVariants} className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden min-h-[600px] flex flex-col md:flex-row">
                 <div className="bg-black text-white p-8 md:w-1/3 flex flex-col justify-between">
                     <div>
                         <button onClick={() => navigate(-1)} className="mb-8 p-2 hover:bg-white/10 rounded-full transition-colors w-fit">
@@ -261,7 +149,6 @@ const ScheduleCall = () => {
                         </button>
                         <h1 className="text-3xl font-bold mb-4">{t('calendar.title')}</h1>
                         <p className="text-gray-400 mb-6">{t('calendar.description')}</p>
-
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
                                 <Clock className="text-[#0DD122]" />
@@ -275,27 +162,14 @@ const ScheduleCall = () => {
                     </div>
                 </div>
 
-                {/* Right Panel: Interactive Area */}
                 <div className="p-8 md:w-2/3">
                     <AnimatePresence mode="wait">
                         {bookingPhase === 'slots' ? (
-                            <motion.div
-                                key="slots"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                                className="h-full flex flex-col"
-                            >
+                            <motion.div key="slots" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full flex flex-col">
                                 <h2 className="text-xl font-bold mb-6">{t('calendar.selectDateTime')}</h2>
                                 <div className="flex flex-col lg:flex-row gap-8 flex-1">
                                     <div className="flex-shrink-0">
-                                        <DatePicker
-                                            selected={selectedDate}
-                                            onChange={(date) => setSelectedDate(date)}
-                                            inline
-                                            minDate={new Date()}
-                                            calendarClassName="!border-0 !font-sans"
-                                        />
+                                        <DatePicker selected={selectedDate} onChange={(date) => setSelectedDate(date)} inline minDate={new Date()} calendarClassName="!border-0 !font-sans" />
                                     </div>
                                     <div className="flex-1 min-w-[200px] h-96 overflow-y-auto pr-2 custom-scrollbar">
                                         {loadingSlots ? (
@@ -304,113 +178,53 @@ const ScheduleCall = () => {
                                             </div>
                                         ) : slots.length > 0 ? (
                                             <div className="grid grid-cols-1 gap-2">
-                                                {slots.map((slot, idx) => {
-                                                    const date = new Date(slot.start);
-                                                    return (
-                                                        <button
-                                                            key={idx}
-                                                            onClick={() => handleSlotSelect(slot)}
-                                                            className="w-full py-3 px-4 rounded-xl border border-gray-200 hover:border-[#0DD122] hover:bg-[#0DD122]/5 transition-all text-left font-medium flex justify-between group"
-                                                        >
-                                                            <span>{date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[#0DD122]">
-                                                                {t('calendar.book')}
-                                                            </span>
-                                                        </button>
-                                                    );
-                                                })}
+                                                {slots.map((slot, idx) => (
+                                                    <button key={idx} onClick={() => handleSlotSelect(slot)} className="w-full py-3 px-4 rounded-xl border border-gray-200 hover:border-[#0DD122] hover:bg-[#0DD122]/5 transition-all text-left font-medium flex justify-between group">
+                                                        <span>{new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[#0DD122]">{t('calendar.book')}</span>
+                                                    </button>
+                                                ))}
                                             </div>
                                         ) : (
-                                            <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-                                                {t('calendar.noSlots')}
-                                            </div>
+                                            <div className="h-full flex items-center justify-center text-gray-400 text-sm">{t('calendar.noSlots')}</div>
                                         )}
                                     </div>
                                 </div>
                             </motion.div>
                         ) : (
-                            <motion.div
-                                key="form"
-                                initial={{ opacity: 0, x: 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: -20 }}
-                            >
+                            <motion.div key="form" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                 <div className="flex items-center gap-4 mb-6">
-                                    <button onClick={() => setBookingPhase('slots')} className="text-sm text-gray-500 hover:text-black hover:underline">
-                                        {t('calendar.back')}
-                                    </button>
+                                    <button onClick={() => setBookingPhase('slots')} className="text-sm text-gray-500 hover:text-black hover:underline">{t('calendar.back')}</button>
                                     <h2 className="text-xl font-bold">{t('calendar.enterDetails')}</h2>
                                 </div>
-                                <div className="bg-gray-50 p-4 rounded-xl mb-6 flex justify-between items-center">
-                                    <div>
-                                        <p className="text-sm text-gray-500">Selected Time</p>
-                                        <p className="font-bold">
-                                            {selectedDate?.toLocaleDateString()} at {new Date(selectedSlot?.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </p>
-                                    </div>
+                                <div className="bg-gray-50 p-4 rounded-xl mb-6">
+                                    <p className="text-sm text-gray-500">Selected Time</p>
+                                    <p className="font-bold">{selectedDate?.toLocaleDateString()} at {new Date(selectedSlot?.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                                 <form onSubmit={handleFormSubmit} className="space-y-4">
-                                    {/* Project Selector */}
                                     {projects.length > 0 && (
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Select Project</label>
-                                            <MultiUseSelect
-                                                options={projects}
-                                                value={selectedProjectId}
-                                                onChange={(val) => setSelectedProjectId(val)}
-                                                placeholder="Select a project"
-                                                getOptionValue={(p) => p.id}
-                                                getOptionLabel={(p) => p.name}
-                                                getDisplayLabel={(p) => p.name}
-                                                buttonClassName="px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] bg-white text-gray-900 h-[50px]"
-                                                className="w-full"
-                                            />
+                                            <MultiUseSelect options={projects} value={selectedProjectId} onChange={setSelectedProjectId} placeholder="Select a project" getOptionValue={(p) => p.id} getOptionLabel={(p) => p.name} getDisplayLabel={(p) => p.name} buttonClassName="px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] bg-white text-gray-900 h-[50px]" className="w-full" />
                                         </div>
                                     )}
-
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.fullName')}</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.name}
-                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] focus:border-transparent outline-none bg-white"
-                                        />
+                                        <input type="text" required value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] outline-none bg-white" />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.email')}</label>
-                                        <input
-                                            type="email"
-                                            required
-                                            value={formData.email}
-                                            onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] focus:border-transparent outline-none bg-white"
-                                        />
+                                        <input type="email" required value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] outline-none bg-white" />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.phone')}</label>
-                                        <input
-                                            type="tel"
-                                            value={formData.phone}
-                                            onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] focus:border-transparent outline-none bg-white"
-                                        />
+                                        <input type="tel" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] outline-none bg-white" />
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">{t('form.notes')}</label>
-                                        <textarea
-                                            rows="3"
-                                            value={formData.notes}
-                                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] focus:border-transparent outline-none bg-white resize-none"
-                                        />
+                                        <textarea rows="3" value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-[#0DD122] outline-none bg-white resize-none" />
                                     </div>
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className="w-full bg-[#0DD122] text-white font-bold py-4 rounded-xl mt-6 hover:bg-[#0bc01f] transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                    >
+                                    <button type="submit" disabled={submitting} className="w-full bg-[#0DD122] text-white font-bold py-4 rounded-xl mt-6 hover:bg-[#0bc01f] transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
                                         {submitting && <Loader2 className="animate-spin w-5 h-5" />}
                                         {t('calendar.confirmBooking')}
                                     </button>
@@ -420,22 +234,6 @@ const ScheduleCall = () => {
                     </AnimatePresence>
                 </div>
             </motion.div>
-
-            {/* Modals Flow for Clients */}
-            <CompleteProfileModal
-                isOpen={showCompleteProfile}
-                onClose={() => setShowCompleteProfile(false)}
-                onComplete={handleProfileComplete}
-            />
-
-            <CreateProjectModal
-                isOpen={showCreateProject}
-                onClose={() => setShowCreateProject(false)}
-                onCreated={handleProjectCreated}
-                isFirstProject={projects.length === 0}
-                role={role}
-                clients={[]}
-            />
         </div>
     );
 };
