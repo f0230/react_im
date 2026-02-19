@@ -35,7 +35,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
-import LoadingFallback from '@/components/ui/LoadingFallback';
 
 const ProjectTasks = () => {
   const { t } = useTranslation();
