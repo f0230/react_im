@@ -45,7 +45,9 @@ const Inbox = () => {
     const [aiToggleLoading, setAiToggleLoading] = useState(false);
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [clientIdByWa, setClientIdByWa] = useState({});
+    const [composerHeight, setComposerHeight] = useState(88);
     const fileInputRef = React.useRef(null);
+    const composerRef = useRef(null);
     const inputRef = React.useRef(null);
     const lastReadRef = useRef({});
 
@@ -445,6 +447,26 @@ const Inbox = () => {
         };
     }, [isClientModalOpen]);
 
+    useEffect(() => {
+        if (!selectedThreadId) return undefined;
+        const composer = composerRef.current;
+        if (!composer) return undefined;
+
+        const updateComposerHeight = () => {
+            const nextHeight = Math.ceil(composer.getBoundingClientRect().height);
+            if (Number.isFinite(nextHeight) && nextHeight > 0) {
+                setComposerHeight(nextHeight);
+            }
+        };
+
+        updateComposerHeight();
+        if (typeof ResizeObserver === 'undefined') return undefined;
+
+        const resizeObserver = new ResizeObserver(updateComposerHeight);
+        resizeObserver.observe(composer);
+        return () => resizeObserver.disconnect();
+    }, [selectedThreadId]);
+
 
     if (!isAllowed) {
         return (
@@ -461,8 +483,11 @@ const Inbox = () => {
 
     return (
         <div
-            className="font-product text-neutral-900 fixed inset-x-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden bg-white"
-            style={{ height: 'calc(var(--app-height, 100dvh) - 45px)' }}
+            className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
+            style={{
+                top: 'calc(45px + var(--app-viewport-offset-top, 0px))',
+                height: 'calc(var(--app-height, 100dvh) - 45px)',
+            }}
         >
             <MessagingTabs />
 
@@ -547,7 +572,7 @@ const Inbox = () => {
 
                 {/* Chat Side */}
                 <div
-                    className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}
+                    className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedThreadId ? 'hidden lg:flex' : 'flex'}`}
                 >
                     {selectedThread ? (
                         <>
@@ -644,7 +669,7 @@ const Inbox = () => {
 
                             <div
                                 className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50"
-                                style={{ paddingBottom: 'calc(72px + 1rem)' }}
+                                style={{ paddingBottom: `${composerHeight}px` }}
                             >
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
@@ -711,8 +736,9 @@ const Inbox = () => {
                             </div>
 
                             <div
+                                ref={composerRef}
                                 className="shrink-0 border-t border-black/5 px-4 pt-3 pb-2 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
-                                style={{ paddingBottom: '1rem' }}
+                                style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
                             >
                                 <div className="space-y-3">
                                     <div className="flex flex-col gap-3">

@@ -6,15 +6,11 @@ const useViewportHeight = (enabled = true) => {
 
         const setHeight = () => {
             const viewport = window.visualViewport;
-            // Fallback to innerHeight if visualViewport is not supported (older browsers)
-            // But for modern mobile web, visualViewport is the gold standard.
             const height = viewport ? viewport.height : window.innerHeight;
+            const offsetTop = viewport ? Math.max(0, viewport.offsetTop || 0) : 0;
 
-            // Set the CSS variable to the *exact* current visible height
             document.documentElement.style.setProperty('--app-height', `${height}px`);
-
-            // Helpful for specific bottom spacing if needed, but usually redundant if layout is flex-col
-            // keeping it simple.
+            document.documentElement.style.setProperty('--app-viewport-offset-top', `${offsetTop}px`);
         };
 
         const viewport = window.visualViewport;
@@ -38,6 +34,7 @@ const useViewportHeight = (enabled = true) => {
 
             // Optional: Clean up
             // document.documentElement.style.removeProperty('--app-height');
+            // document.documentElement.style.removeProperty('--app-viewport-offset-top');
         };
     }, [enabled]);
 };
