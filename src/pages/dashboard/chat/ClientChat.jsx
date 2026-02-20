@@ -9,7 +9,7 @@ import MessagingTabs from '@/components/messaging/MessagingTabs';
 import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
 import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
 import { fetchReactionsForMessages, toggleReaction } from '@/services/chatReactions';
-import { formatTime, formatTimestamp, getInitial } from '@/utils/messagingFormatters';
+import { formatShortDateTime, formatTime, formatTimestamp, getInitial, getUserColor } from '@/utils/messagingFormatters';
 
 const isMissingRelationError = (error) => {
     if (!error) return false;
@@ -58,6 +58,7 @@ const ClientChat = () => {
     const [readReceipts, setReadReceipts] = useState([]);
 
     const messagesEndRef = useRef(null);
+    const inputRef = useRef(null);
     const lastReadRef = useRef({});
 
     const reactionTable = 'client_message_reactions';
@@ -235,7 +236,7 @@ const ClientChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('client_messages')
-            .select('id, client_id, body, sender_id, sender_role, created_at')
+            .select('id, client_id, body, sender_id, sender_role, created_at, reply_to_id')
             .eq('client_id', clientId)
             .order('created_at', { ascending: true });
 
@@ -284,6 +285,7 @@ const ClientChat = () => {
                 sender_id: user.id,
                 sender_role: senderRole,
                 body,
+                reply_to_id: replyingTo?.id || null,
             });
 
         if (supaError) {
@@ -295,6 +297,7 @@ const ClientChat = () => {
             }
         } else {
             setMessageText('');
+            setReplyingTo(null);
         }
 
         setSending(false);
@@ -420,6 +423,25 @@ const ClientChat = () => {
         messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, [messages.length, selectedClientId]);
 
+    // Prevenir scroll automático cuando se enfoca el input en móvil
+    useEffect(() => {
+        const input = inputRef.current;
+        if (!input) return undefined;
+
+        const preventAutoScroll = (event) => {
+            const scrollY = window.scrollY;
+            const scrollX = window.scrollX;
+            window.requestAnimationFrame(() => {
+                window.scrollTo(scrollX, scrollY);
+            });
+        };
+
+        input.addEventListener('focus', preventAutoScroll);
+        return () => {
+            input.removeEventListener('focus', preventAutoScroll);
+        };
+    }, [selectedClientId]);
+
     if (!isAllowed) {
         return (
             <div className="font-product text-neutral-900">
@@ -435,8 +457,12 @@ const ClientChat = () => {
 
     return (
         <div
-            className="font-product text-neutral-900 fixed inset-x-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden bg-white"
-            style={{ height: 'calc(var(--app-height, 100dvh) - 45px)' }}
+            className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
+            style={{
+                top: 'calc(45px / 0.8)',
+                height: 'calc((var(--app-height, 100dvh) - 45px) / 0.8)',
+                zoom: 0.8
+            }}
         >
             <MessagingTabs />
             <div className={`flex-1 grid min-h-0 ${isStaff ? 'grid-cols-1 lg:grid-cols-[320px_1fr]' : 'grid-cols-1'}`}>
@@ -543,17 +569,44 @@ const ClientChat = () => {
                                         ? new Date(otherReadAt) >= new Date(message.created_at)
                                         : false;
                                     return (
-                                        <div key={message.id} className={`flex flex-col max-w-[85%] ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                            <span className="text-[10px] text-neutral-500 mb-1">{senderName}</span>
+                                        <div key={message.id} id={`msg-${message.id}`} className={`flex flex-col max-w-[85%] group ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                            <div className="flex items-center gap-2 mb-0.5 px-1">
+                                                <span className={`text-[10px] font-bold ${getUserColor(senderName)}`}>
+                                                    {senderName}
+                                                </span>
+                                                <span className="text-[9px] text-neutral-400">
+                                                    {formatShortDateTime(message.created_at)}
+                                                </span>
+                                                <button
+                                                    onClick={() => setReplyingTo(message)}
+                                                    className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600"
+                                                >
+                                                    • Responder
+                                                </button>
+                                            </div>
                                             <ReactionPickerPopover onSelect={(emoji) => handleToggleReaction(message.id, emoji)}>
                                                 <div className={`relative px-3 py-2 text-sm rounded-lg shadow-sm ${isOutbound ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none' : 'bg-white text-neutral-900 rounded-tl-none'}`}>
+                                                    {message.reply_to_id && (
+                                                        <div
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const el = document.getElementById(`msg-${message.reply_to_id}`);
+                                                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            }}
+                                                            className="mb-2 p-2 bg-black/5 border-l-4 border-black/20 rounded text-[11px] cursor-pointer hover:bg-black/10 transition-colors"
+                                                        >
+                                                            <p className="font-bold opacity-70 italic">Repuesta a mensaje</p>
+                                                            <p className="truncate opacity-60">
+                                                                {messages.find(m => m.id === message.reply_to_id)?.body || '...'}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                     <p className="whitespace-pre-wrap">{message.body}</p>
-                                                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                                                        <span>{formatTime(message.created_at)}</span>
-                                                        {isOutbound && (
+                                                    {isOutbound && (
+                                                        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
                                                             <span>{isSeen ? '✓✓' : '✓'}</span>
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </ReactionPickerPopover>
                                             <MessageReactionsBar
@@ -567,7 +620,7 @@ const ClientChat = () => {
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            <div className="shrink-0 border-t border-black/5 px-4 pt-3 pb-2 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]" style={{ paddingBottom: '1rem' }}>
+                            <div className="shrink-0 border-t border-black/5 px-4 py-3 bg-white" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
                                 {migrationPending && (
                                     <p className="text-xs text-amber-600 mb-2">
                                         Para habilitar este chat, ejecuta `supabase/client-messaging.sql`.
@@ -578,26 +631,45 @@ const ClientChat = () => {
                                         Ejecuta `supabase/client-messaging.sql` para activar notificaciones no leídas.
                                     </p>
                                 )}
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        value={messageText}
-                                        onChange={(event) => setMessageText(event.target.value)}
-                                        placeholder="Escribe un mensaje"
-                                        className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none"
-                                        onKeyDown={(event) => {
-                                            if (event.key === 'Enter' && !event.shiftKey) {
-                                                event.preventDefault();
-                                                handleSend();
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        onClick={handleSend}
-                                        disabled={sending || !messageText.trim() || migrationPending}
-                                        className="p-2 text-neutral-500 hover:text-neutral-700 transition disabled:opacity-50"
-                                    >
-                                        {sending ? <RefreshCw size={20} className="animate-spin" /> : <Send size={20} />}
-                                    </button>
+                                <div className="space-y-2">
+                                    {replyingTo && (
+                                        <div className="flex items-center justify-between p-2 mb-2 bg-neutral-50 border-l-4 border-black/40 rounded-lg animate-in slide-in-from-bottom-2">
+                                            <div className="min-w-0">
+                                                <p className={`text-[11px] font-bold ${getUserColor(replyingTo.sender_role === 'client' ? getThreadDisplayName(selectedThread) : 'Equipo DTE')}`}>
+                                                    Reponiendo a {replyingTo.sender_role === 'client' ? getThreadDisplayName(selectedThread) : 'Equipo DTE'}
+                                                </p>
+                                                <p className="text-xs text-neutral-500 truncate">{replyingTo.body}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setReplyingTo(null)}
+                                                className="p-1 text-neutral-400 hover:text-neutral-600"
+                                            >
+                                                X
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            ref={inputRef}
+                                            value={messageText}
+                                            onChange={(event) => setMessageText(event.target.value)}
+                                            placeholder="Mensaje..."
+                                            className="flex-1 rounded-full bg-neutral-100 px-4 py-2 text-sm focus:bg-neutral-200 focus:outline-none transition-colors"
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter' && !event.shiftKey) {
+                                                    event.preventDefault();
+                                                    handleSend();
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={sending || !messageText.trim() || migrationPending}
+                                            className="p-2 text-neutral-500 hover:text-neutral-700 transition disabled:opacity-50"
+                                        >
+                                            {sending ? <RefreshCw size={20} className="animate-spin" /> : <Send size={20} />}
+                                        </button>
+                                    </div>
                                 </div>
                                 {sendError && <p className="text-xs text-red-600 mt-2">{sendError}</p>}
                             </div>

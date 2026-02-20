@@ -87,40 +87,10 @@ const DashboardHome = () => {
                     new Set((assignmentRows || []).map((row) => row.project_id).filter(Boolean))
                 );
 
-                if (!assignedProjectIds.length) {
-                    setStats({
-                        projectCount: 0,
-                        appointmentCount: 0,
-                        upcomingWeekAppointments: 0,
-                        clientCount: null,
-                        nextAppointmentAt: null,
-                    });
-                    return;
-                }
-
-                const [appointmentCount, upcomingWeekAppointments] = await Promise.all([
-                    getCount(
-                        supabase
-                            .from('appointments')
-                            .select('id', { count: 'exact', head: true })
-                            .eq('status', 'scheduled')
-                            .in('project_id', assignedProjectIds)
-                    ),
-                    getCount(
-                        supabase
-                            .from('appointments')
-                            .select('id', { count: 'exact', head: true })
-                            .eq('status', 'scheduled')
-                            .in('project_id', assignedProjectIds)
-                            .gte('scheduled_at', nowIso)
-                            .lte('scheduled_at', weekEndIso)
-                    ),
-                ]);
-
                 setStats({
                     projectCount: assignedProjectIds.length,
-                    appointmentCount: appointmentCount ?? 0,
-                    upcomingWeekAppointments: upcomingWeekAppointments ?? 0,
+                    appointmentCount: 0,
+                    upcomingWeekAppointments: 0,
                     clientCount: null,
                     nextAppointmentAt: null,
                 });
@@ -210,8 +180,6 @@ const DashboardHome = () => {
             secondaryLink: { label: t("dashboardHome.worker.ctaMessaging"), path: '/dashboard/messages' },
             cards: [
                 { label: t("dashboardHome.admin.cards.projects"), value: stats.projectCount, icon: Briefcase, color: 'text-skyblue', bg: 'bg-skyblue/10', path: '/dashboard/projects' },
-                { label: t("dashboardHome.admin.cards.appointments"), value: stats.appointmentCount, icon: Calendar, color: 'text-green', bg: 'bg-green/10', path: '/dashboard/projects' },
-                { label: t("dashboardHome.admin.cards.upcoming"), value: stats.upcomingWeekAppointments, icon: BarChart3, color: 'text-amber-500', bg: 'bg-amber-500/10', path: '/dashboard/projects' },
             ],
         };
     }, [profile?.full_name, profile?.name, role, stats, t]);

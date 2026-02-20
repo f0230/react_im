@@ -67,7 +67,7 @@ const CompleteProfile = () => {
     useEffect(() => {
         if (!isProfileIncomplete && user && !loading) {
             if (onboardingStatus === 'new') {
-                navigate('/schedule-call');
+                navigate('/dashboard/projects', { state: { showCreateProject: true, isOnboarding: true } });
             } else {
                 navigate('/dashboard');
             }

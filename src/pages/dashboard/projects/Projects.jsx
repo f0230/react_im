@@ -53,6 +53,18 @@ const Projects = () => {
     const [shouldPromptCreate, setShouldPromptCreate] = useState(
         Boolean(location.state?.showCreateProject)
     );
+    const [isOnboarding, setIsOnboarding] = useState(
+        Boolean(location.state?.isOnboarding)
+    );
+
+    useEffect(() => {
+        if (shouldPromptCreate) {
+            setIsCreateModalOpen(true);
+            setShouldPromptCreate(false);
+            // We keep isOnboarding in state so it persists after clearing the location state
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [shouldPromptCreate, navigate, location.pathname]);
     const [teamMembers, setTeamMembers] = useState([]);
     const [clients, setClients] = useState([]);
     const [assignments, setAssignments] = useState({});
@@ -93,11 +105,22 @@ const Projects = () => {
                 .select('*, clients (id, full_name, company_name, email), project_assignments (worker_id)')
                 .order('created_at', { ascending: false });
         } else if (role === 'worker') {
-            response = await supabase
+            const { data: assignmentsData } = await supabase
                 .from('project_assignments')
-                .select('project:projects(*, project_assignments (worker_id))')
-                .eq('worker_id', userId)
-                .order('created_at', { ascending: false });
+                .select('project_id')
+                .eq('worker_id', userId);
+
+            const projectIds = assignmentsData?.map((a) => a.project_id) || [];
+
+            if (projectIds.length === 0) {
+                response = { data: [] };
+            } else {
+                response = await supabase
+                    .from('projects')
+                    .select('*, clients (id, full_name, company_name, email), project_assignments (worker_id)')
+                    .in('id', projectIds)
+                    .order('created_at', { ascending: false });
+            }
         } else if (clientId) {
             response = await fetchByColumn('client_id', clientId);
             if (response.error) {
@@ -113,12 +136,7 @@ const Projects = () => {
             setProjects([]);
         } else {
             let fetchedProjects = [];
-            if (role === 'worker') {
-                const rows = response.data || [];
-                fetchedProjects = rows.map((row) => row.project).filter(Boolean);
-            } else {
-                fetchedProjects = response.data || [];
-            }
+            fetchedProjects = response.data || [];
             setProjects(fetchedProjects);
         }
         setLoading(false);
@@ -186,11 +204,17 @@ const Projects = () => {
                     if (exists) return prev;
                     return [project, ...prev];
                 });
+                if (isOnboarding) {
+                    navigate(`/schedule-call/${project.id}`);
+                }
                 return;
             }
             fetchProjects();
+            if (isOnboarding) {
+                navigate('/schedule-call');
+            }
         },
-        [fetchProjects]
+        [fetchProjects, isOnboarding, navigate]
     );
 
     useEffect(() => {
@@ -456,7 +480,12 @@ const Projects = () => {
 
             <CreateProjectModal
                 isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
+                onClose={() => {
+                    setIsCreateModalOpen(false);
+                    if (isOnboarding) {
+                        navigate('/schedule-call');
+                    }
+                }}
                 onCreated={handleProjectCreated}
                 isFirstProject={projects.length === 0}
                 role={role}

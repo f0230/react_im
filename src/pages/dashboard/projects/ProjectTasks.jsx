@@ -500,7 +500,7 @@ const ProjectTasks = () => {
                 <h3 className="text-lg md:text-xl font-bold text-neutral-800">Tareas</h3>
                 <p className="text-[9px] md:text-[10px] text-neutral-500 uppercase tracking-wide">Seguimiento en curso</p>
               </div>
-              {canManage && (
+              {isAdmin && (
                 <button onClick={() => setIsCreateServiceOpen(!isCreateServiceOpen)} className="p-2 rounded-full bg-black text-white hover:bg-neutral-800 transition-all shadow-md">
                   {isCreateServiceOpen ? <X size={14} /> : <Plus size={14} />}
                 </button>

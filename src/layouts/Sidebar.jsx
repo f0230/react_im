@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, Menu, X, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, Menu, X, MessageSquare, CheckSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
@@ -27,9 +27,7 @@ const Sidebar = () => {
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: Briefcase, label: 'Tareas', path: '/dashboard/tasks' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
-            { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },

@@ -10,7 +10,7 @@ import MessagingTabs from '@/components/messaging/MessagingTabs';
 import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
 import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
 import { fetchReactionsForMessages, toggleReaction } from '@/services/chatReactions';
-import { formatTime, formatTimestamp } from '@/utils/messagingFormatters';
+import { formatShortDateTime, formatTime, formatTimestamp, getUserColor } from '@/utils/messagingFormatters';
 
 
 const buildSlug = (value) => {
@@ -76,6 +76,7 @@ const TeamChat = () => {
     const [error, setError] = useState('');
     const [sendError, setSendError] = useState('');
     const [messageText, setMessageText] = useState('');
+    const [replyingTo, setReplyingTo] = useState(null);
     const [sending, setSending] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -214,7 +215,7 @@ const TeamChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('team_messages')
-            .select('id, body, created_at, author_id, author_name, message_type, media_url, file_name, author:profiles(id, full_name, email, avatar_url)')
+            .select('id, body, created_at, author_id, author_name, message_type, media_url, file_name, reply_to_id, author:profiles(id, full_name, email, avatar_url)')
             .eq('channel_id', channelId)
             .order('created_at', { ascending: true });
 
@@ -369,12 +370,14 @@ const TeamChat = () => {
                 author_id: user.id,
                 body,
                 message_type: 'text',
+                reply_to_id: replyingTo?.id || null,
             });
 
         if (supaError) {
             setSendError('No se pudo enviar el mensaje.');
         } else {
             setMessageText('');
+            setReplyingTo(null);
         }
 
         setSending(false);
@@ -849,8 +852,12 @@ const TeamChat = () => {
 
     return (
         <div
-            className="font-product text-neutral-900 fixed inset-x-0 top-[45px] z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
-            style={{ height: 'calc(var(--app-height, 100dvh) - 45px)' }}
+            className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
+            style={{
+                top: 'calc(45px / 0.8)',
+                height: 'calc((var(--app-height, 100dvh) - 45px) / 0.8)',
+                zoom: 0.8
+            }}
         >
             <MessagingTabs />
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-0">
@@ -1033,22 +1040,51 @@ const TeamChat = () => {
                                         ? new Date(otherReadAt) >= new Date(message.created_at)
                                         : false;
                                     return (
-                                        <div key={message.id} className={`flex flex-col max-w-[85%] ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                            <span className="text-[10px] text-neutral-500 mb-1">
-                                                {authorName}
-                                            </span>
+                                        <div key={message.id} className={`flex flex-col max-w-[85%] group ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                            <div className="flex items-center gap-2 mb-0.5 px-1">
+                                                <span className={`text-[10px] font-bold ${getUserColor(authorName)}`}>
+                                                    {authorName}
+                                                </span>
+                                                <span className="text-[9px] text-neutral-400">
+                                                    {formatShortDateTime(message.created_at)}
+                                                </span>
+                                                <button
+                                                    onClick={() => setReplyingTo(message)}
+                                                    className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600"
+                                                >
+                                                    • Responder
+                                                </button>
+                                            </div>
                                             <ReactionPickerPopover
                                                 onSelect={(emoji) => handleToggleReaction(message.id, emoji)}
                                                 openOnClick={false}
                                             >
                                                 <div
+                                                    id={`msg-${message.id}`}
                                                     role="button"
                                                     tabIndex={0}
-                                                    className={`relative px-3 py-2 text-sm rounded-lg shadow-sm ${isOutbound
+                                                    className={`relative px-3 py-2 text-sm rounded-lg shadow-sm group ${isOutbound
                                                         ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none'
                                                         : 'bg-white text-neutral-900 rounded-tl-none'
                                                         }`}
                                                 >
+                                                    {message.reply_to_id && (
+                                                        <div
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const el = document.getElementById(`msg-${message.reply_to_id}`);
+                                                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            }}
+                                                            className="mb-2 p-2 bg-black/5 border-l-4 border-black/20 rounded text-[11px] cursor-pointer hover:bg-black/10 transition-colors"
+                                                        >
+                                                            <p className="font-bold opacity-70">
+                                                                {messages.find(m => m.id === message.reply_to_id)?.author_name || 'Mensaje original'}
+                                                            </p>
+                                                            <p className="truncate opacity-60">
+                                                                {messages.find(m => m.id === message.reply_to_id)?.body || '...'}
+                                                            </p>
+                                                        </div>
+                                                    )}
                                                     {isAudio ? (
                                                         <div className="space-y-2 min-w-[220px]">
                                                             <audio controls src={mediaUrl} className="w-full" />
@@ -1081,12 +1117,11 @@ const TeamChat = () => {
                                                     ) : (
                                                         <p className="whitespace-pre-wrap">{renderTextWithLinks(message.body)}</p>
                                                     )}
-                                                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                                                        <span>{formatTime(message.created_at)}</span>
-                                                        {isOutbound && (
+                                                    {isOutbound && (
+                                                        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
                                                             <span>{isSeen ? '✓✓' : '✓'}</span>
-                                                        )}
-                                                    </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </ReactionPickerPopover>
                                             <MessageReactionsBar
@@ -1102,10 +1137,26 @@ const TeamChat = () => {
 
                             <div
                                 ref={composerRef}
-                                className="shrink-0 border-t border-black/5 px-4 pt-3 pb-2 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
-                                style={{ paddingBottom: '1rem' }}
+                                className="shrink-0 border-t border-black/5 px-4 py-3 bg-white"
+                                style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
                             >
                                 <div className="space-y-2">
+                                    {replyingTo && (
+                                        <div className="flex items-center justify-between p-2 mb-2 bg-neutral-50 border-l-4 border-black/40 rounded-lg animate-in slide-in-from-bottom-2">
+                                            <div className="min-w-0">
+                                                <p className={`text-[11px] font-bold ${getUserColor(replyingTo.author_name || replyingTo.author?.full_name)}`}>
+                                                    Reponiendo a {replyingTo.author_name || replyingTo.author?.full_name || 'Equipo'}
+                                                </p>
+                                                <p className="text-xs text-neutral-500 truncate">{replyingTo.body}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => setReplyingTo(null)}
+                                                className="p-1 text-neutral-400 hover:text-neutral-600"
+                                            >
+                                                X
+                                            </button>
+                                        </div>
+                                    )}
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button"
@@ -1146,8 +1197,8 @@ const TeamChat = () => {
                                             ref={textareaRef}
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
-                                            placeholder="Escribe un mensaje para el equipo"
-                                            className="flex-1 min-h-[44px] max-h-32 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none resize-none"
+                                            placeholder="Mensaje..."
+                                            className="flex-1 min-h-[40px] max-h-32 rounded-2xl bg-neutral-100 px-4 py-2.5 text-sm focus:bg-neutral-200 focus:outline-none resize-none transition-colors custom-scrollbar"
                                             onPaste={(event) => {
                                                 const items = event.clipboardData?.items;
                                                 if (!items || items.length === 0) return;
@@ -1190,118 +1241,121 @@ const TeamChat = () => {
                     )}
                 </div>
             </div>
-            {isMembersOpen && canCreateChannel && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
-                    <div className="relative w-full max-w-3xl h-[80svh] rounded-3xl bg-white shadow-2xl border border-neutral-200 overflow-hidden flex flex-col">
-                        <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-200 bg-white">
-                            <div>
-                                <p className="text-sm font-semibold text-neutral-900">Miembros del canal</p>
-                                <p className="text-xs text-neutral-500">Selecciona quienes pueden ver este canal.</p>
+            {
+                isMembersOpen && canCreateChannel && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+                        <div className="relative w-full max-w-3xl h-[80svh] rounded-3xl bg-white shadow-2xl border border-neutral-200 overflow-hidden flex flex-col">
+                            <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-200 bg-white">
+                                <div>
+                                    <p className="text-sm font-semibold text-neutral-900">Miembros del canal</p>
+                                    <p className="text-xs text-neutral-500">Selecciona quienes pueden ver este canal.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMembersOpen(false)}
+                                    className="p-2 rounded-full hover:bg-neutral-100 text-neutral-500"
+                                    aria-label="Cerrar"
+                                >
+                                    X
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setIsMembersOpen(false)}
-                                className="p-2 rounded-full hover:bg-neutral-100 text-neutral-500"
-                                aria-label="Cerrar"
-                            >
-                                X
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto bg-neutral-50 p-4 space-y-3">
-                            {membersLoading && (
-                                <div className="text-xs text-neutral-400">Cargando miembros...</div>
-                            )}
-                            {!membersLoading && people.length === 0 && (
-                                <div className="text-sm text-neutral-400">No hay usuarios disponibles.</div>
-                            )}
-                            {people.map((person) => {
-                                const isChecked = selectedMemberIds.includes(person.id);
-                                const label = person.full_name || person.email;
-                                return (
-                                    <label
-                                        key={person.id}
-                                        className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm"
-                                    >
-                                        <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-9 h-9 rounded-full bg-neutral-100 text-neutral-700 flex items-center justify-center text-xs font-semibold">
-                                                {(label || 'U').charAt(0).toUpperCase()}
+                            <div className="flex-1 overflow-y-auto bg-neutral-50 p-4 space-y-3">
+                                {membersLoading && (
+                                    <div className="text-xs text-neutral-400">Cargando miembros...</div>
+                                )}
+                                {!membersLoading && people.length === 0 && (
+                                    <div className="text-sm text-neutral-400">No hay usuarios disponibles.</div>
+                                )}
+                                {people.map((person) => {
+                                    const isChecked = selectedMemberIds.includes(person.id);
+                                    const label = person.full_name || person.email;
+                                    return (
+                                        <label
+                                            key={person.id}
+                                            className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-9 h-9 rounded-full bg-neutral-100 text-neutral-700 flex items-center justify-center text-xs font-semibold">
+                                                    {(label || 'U').charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-neutral-900 truncate">{label}</p>
+                                                    <p className="text-xs text-neutral-500 truncate">{person.role}</p>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-semibold text-neutral-900 truncate">{label}</p>
-                                                <p className="text-xs text-neutral-500 truncate">{person.role}</p>
-                                            </div>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={isChecked}
-                                            onChange={() => {
-                                                setSelectedMemberIds((prev) => {
-                                                    if (prev.includes(person.id)) {
-                                                        return prev.filter((id) => id !== person.id);
-                                                    }
-                                                    return [...prev, person.id];
-                                                });
-                                            }}
-                                            className="h-4 w-4"
-                                        />
-                                    </label>
-                                );
-                            })}
-                            {membersError && (
-                                <p className="text-xs text-amber-600">{membersError}</p>
-                            )}
-                        </div>
-                        <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-neutral-200 bg-white">
-                            <button
-                                type="button"
-                                onClick={() => setIsMembersOpen(false)}
-                                className="text-xs text-neutral-500 hover:text-neutral-700"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSaveMembers}
-                                disabled={savingMembers}
-                                className="px-4 py-2 rounded-full bg-black text-white text-xs font-semibold disabled:opacity-60"
-                            >
-                                {savingMembers ? 'Guardando...' : 'Guardar'}
-                            </button>
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={() => {
+                                                    setSelectedMemberIds((prev) => {
+                                                        if (prev.includes(person.id)) {
+                                                            return prev.filter((id) => id !== person.id);
+                                                        }
+                                                        return [...prev, person.id];
+                                                    });
+                                                }}
+                                                className="h-4 w-4"
+                                            />
+                                        </label>
+                                    );
+                                })}
+                                {membersError && (
+                                    <p className="text-xs text-amber-600">{membersError}</p>
+                                )}
+                            </div>
+                            <div className="flex items-center justify-end gap-3 px-5 py-3 border-t border-neutral-200 bg-white">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsMembersOpen(false)}
+                                    className="text-xs text-neutral-500 hover:text-neutral-700"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveMembers}
+                                    disabled={savingMembers}
+                                    className="px-4 py-2 rounded-full bg-black text-white text-xs font-semibold disabled:opacity-60"
+                                >
+                                    {savingMembers ? 'Guardando...' : 'Guardar'}
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-            {lightboxImage && (
-                <div
-                    className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4 py-6"
-                    role="dialog"
-                    aria-modal="true"
-                    onClick={closeLightbox}
-                >
+                )
+            }
+            {
+                lightboxImage && (
                     <div
-                        className="relative w-full max-w-5xl max-h-[90svh]"
-                        onClick={(event) => event.stopPropagation()}
+                        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4 py-6"
+                        role="dialog"
+                        aria-modal="true"
+                        onClick={closeLightbox}
                     >
-                        <button
-                            type="button"
-                            onClick={closeLightbox}
-                            className="absolute -top-10 right-0 text-xs font-semibold uppercase tracking-wide text-white/80 hover:text-white"
+                        <div
+                            className="relative w-full max-w-5xl max-h-[90svh]"
+                            onClick={(event) => event.stopPropagation()}
                         >
-                            Cerrar
-                        </button>
-                        <img
-                            src={lightboxImage.url}
-                            alt={lightboxImage.name || 'Imagen ampliada'}
-                            className="w-full max-h-[90svh] object-contain rounded-xl shadow-2xl"
-                        />
-                        {lightboxImage.name && (
-                            <p className="mt-2 text-center text-xs text-white/80 break-all">
-                                {lightboxImage.name}
-                            </p>
-                        )}
+                            <button
+                                type="button"
+                                onClick={closeLightbox}
+                                className="absolute -top-10 right-0 text-xs font-semibold uppercase tracking-wide text-white/80 hover:text-white"
+                            >
+                                Cerrar
+                            </button>
+                            <img
+                                src={lightboxImage.url}
+                                alt={lightboxImage.name || 'Imagen ampliada'}
+                                className="w-full max-h-[90svh] object-contain rounded-xl shadow-2xl"
+                            />
+                            {lightboxImage.name && (
+                                <p className="mt-2 text-center text-xs text-white/80 break-all">
+                                    {lightboxImage.name}
+                                </p>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
         </div>
     );
 };
