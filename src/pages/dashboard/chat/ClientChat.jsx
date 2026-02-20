@@ -422,17 +422,6 @@ const ClientChat = () => {
         if (!messagesEndRef.current) return;
         messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, [messages.length, selectedClientId]);
-
-    // Removido preventAutoScroll problemático. 
-    // Ahora dependemos de text-[20px] para prevenir el zoom de iOS y de fixed bottom.
-    useEffect(() => {
-        const scrollToTop = () => {
-            window.scrollTo(0, 0);
-        };
-        window.addEventListener('scroll', scrollToTop);
-        return () => window.removeEventListener('scroll', scrollToTop);
-    }, []);
-
     if (!isAllowed) {
         return (
             <div className="font-product text-neutral-900">
@@ -450,9 +439,8 @@ const ClientChat = () => {
         <div
             className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
             style={{
-                top: 'calc(45px / 0.8)',
-                height: 'calc((var(--app-height, 100dvh) - 45px) / 0.8)',
-                zoom: 0.8
+                top: '45px',
+                height: 'calc(var(--app-height, 100dvh) - 45px)',
             }}
         >
             <MessagingTabs />
@@ -651,10 +639,7 @@ const ClientChat = () => {
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
                                             placeholder="Mensaje..."
-                                            className="flex-1 rounded-full bg-neutral-100 px-4 py-2 text-[20px] lg:text-[14px] focus:bg-neutral-200 focus:outline-none transition-colors"
-                                            onFocus={() => {
-                                                setTimeout(() => window.scrollTo(0, 0), 100);
-                                            }}
+                                            className="flex-1 rounded-full bg-neutral-100 px-4 py-2 text-base lg:text-[14px] focus:bg-neutral-200 focus:outline-none transition-colors"
                                             onKeyDown={(event) => {
                                                 if (event.key === 'Enter' && !event.shiftKey) {
                                                     event.preventDefault();

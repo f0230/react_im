@@ -814,17 +814,6 @@ const TeamChat = () => {
             resizeObserver.disconnect();
         };
     }, [selectedChannelId]);
-
-    // Removido preventAutoScroll problemático. 
-    // Mantenemos la vista congelada en el tope para evitar desplazamientos de teclado en iOS
-    useEffect(() => {
-        const scrollToTop = () => {
-            window.scrollTo(0, 0);
-        };
-        window.addEventListener('scroll', scrollToTop);
-        return () => window.removeEventListener('scroll', scrollToTop);
-    }, []);
-
     if (!isAllowed) {
         return (
             <div className="font-product text-neutral-900">
@@ -842,9 +831,8 @@ const TeamChat = () => {
         <div
             className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
             style={{
-                top: 'calc(45px / 0.8)',
-                height: 'calc((var(--app-height, 100dvh) - 45px) / 0.8)',
-                zoom: 0.8
+                top: '45px',
+                height: 'calc(var(--app-height, 100dvh) - 45px)',
             }}
         >
             <MessagingTabs />
@@ -1200,10 +1188,7 @@ const TeamChat = () => {
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
                                             placeholder="Mensaje..."
-                                            className="flex-1 min-h-[40px] max-h-32 rounded-2xl bg-neutral-100 px-4 py-2.5 text-[20px] lg:text-[14px] focus:bg-neutral-200 focus:outline-none resize-none transition-colors custom-scrollbar"
-                                            onFocus={() => {
-                                                setTimeout(() => window.scrollTo(0, 0), 100);
-                                            }}
+                                            className="flex-1 min-h-[40px] max-h-32 rounded-2xl bg-neutral-100 px-4 py-2.5 text-base lg:text-[14px] focus:bg-neutral-200 focus:outline-none resize-none transition-colors custom-scrollbar"
                                             onPaste={(event) => {
                                                 const items = event.clipboardData?.items;
                                                 if (!items || items.length === 0) return;
