@@ -547,8 +547,7 @@ const Inbox = () => {
 
                 {/* Chat Side */}
                 <div
-                <div className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
-                        }`}
+                    className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}
                 >
                     {selectedThread ? (
                         <>
