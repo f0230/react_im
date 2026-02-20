@@ -5,6 +5,18 @@ const useViewportHeight = (enabled = true) => {
         if (!enabled || typeof window === 'undefined') return undefined;
 
         const root = document.documentElement;
+        const body = document.body;
+        const previousRootOverflow = root.style.overflow;
+        const previousBodyOverflow = body.style.overflow;
+        const previousRootOverscroll = root.style.overscrollBehavior;
+        const previousBodyOverscroll = body.style.overscrollBehavior;
+
+        // Keep scroll interactions inside the chat panels only.
+        root.style.overflow = 'hidden';
+        body.style.overflow = 'hidden';
+        root.style.overscrollBehavior = 'none';
+        body.style.overscrollBehavior = 'none';
+
         const setHeight = () => {
             const height = window.visualViewport?.height || window.innerHeight;
             root.style.setProperty('--app-height', `${Math.round(height)}px`);
@@ -25,6 +37,10 @@ const useViewportHeight = (enabled = true) => {
             }
             window.removeEventListener('resize', setHeight);
             window.removeEventListener('orientationchange', setHeight);
+            root.style.overflow = previousRootOverflow;
+            body.style.overflow = previousBodyOverflow;
+            root.style.overscrollBehavior = previousRootOverscroll;
+            body.style.overscrollBehavior = previousBodyOverscroll;
             root.style.removeProperty('--app-height');
             root.style.removeProperty('--app-viewport-offset-top');
         };
