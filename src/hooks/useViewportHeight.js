@@ -7,7 +7,11 @@ const useViewportHeight = (enabled = true) => {
         const setHeight = () => {
             const viewport = window.visualViewport;
             const height = viewport ? viewport.height : window.innerHeight;
-            const offsetTop = viewport ? Math.max(0, viewport.offsetTop || 0) : 0;
+            const heightDelta = Math.max(0, window.innerHeight - height);
+            const keyboardIsLikelyOpen = heightDelta > 120;
+            const offsetTop = viewport && keyboardIsLikelyOpen
+                ? Math.max(0, viewport.offsetTop || 0)
+                : 0;
 
             document.documentElement.style.setProperty('--app-height', `${height}px`);
             document.documentElement.style.setProperty('--app-viewport-offset-top', `${offsetTop}px`);
