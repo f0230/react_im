@@ -815,27 +815,15 @@ const TeamChat = () => {
         };
     }, [selectedChannelId]);
 
-    // Prevenir scroll automático cuando se enfoca el textarea en móvil
+    // Removido preventAutoScroll problemático. 
+    // Mantenemos la vista congelada en el tope para evitar desplazamientos de teclado en iOS
     useEffect(() => {
-        const textarea = textareaRef.current;
-        if (!textarea) return undefined;
-
-        const preventAutoScroll = (event) => {
-            // Guardar la posición de scroll actual
-            const scrollY = window.scrollY;
-            const scrollX = window.scrollX;
-
-            // Restaurar la posición después de que el navegador intente hacer scroll
-            window.requestAnimationFrame(() => {
-                window.scrollTo(scrollX, scrollY);
-            });
+        const scrollToTop = () => {
+            window.scrollTo(0, 0);
         };
-
-        textarea.addEventListener('focus', preventAutoScroll);
-        return () => {
-            textarea.removeEventListener('focus', preventAutoScroll);
-        };
-    }, [selectedChannelId]);
+        window.addEventListener('scroll', scrollToTop);
+        return () => window.removeEventListener('scroll', scrollToTop);
+    }, []);
 
     if (!isAllowed) {
         return (
@@ -1073,12 +1061,18 @@ const TeamChat = () => {
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 const el = document.getElementById(`msg-${message.reply_to_id}`);
-                                                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                if (el) {
+                                                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                    el.classList.add('bg-black/10', 'transition-colors', 'duration-500');
+                                                                    setTimeout(() => {
+                                                                        el.classList.remove('bg-black/10');
+                                                                    }, 1500);
+                                                                }
                                                             }}
                                                             className="mb-2 p-2 bg-black/5 border-l-4 border-black/20 rounded text-[11px] cursor-pointer hover:bg-black/10 transition-colors"
                                                         >
-                                                            <p className="font-bold opacity-70">
-                                                                {messages.find(m => m.id === message.reply_to_id)?.author_name || 'Mensaje original'}
+                                                            <p className="font-bold opacity-70 italic">
+                                                                Respondiento a {messages.find(m => m.id === message.reply_to_id)?.author_name || 'Mensaje original'}
                                                             </p>
                                                             <p className="truncate opacity-60">
                                                                 {messages.find(m => m.id === message.reply_to_id)?.body || '...'}
@@ -1198,7 +1192,10 @@ const TeamChat = () => {
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
                                             placeholder="Mensaje..."
-                                            className="flex-1 min-h-[40px] max-h-32 rounded-2xl bg-neutral-100 px-4 py-2.5 text-sm focus:bg-neutral-200 focus:outline-none resize-none transition-colors custom-scrollbar"
+                                            className="flex-1 min-h-[40px] max-h-32 rounded-2xl bg-neutral-100 px-4 py-2.5 text-[20px] lg:text-[14px] focus:bg-neutral-200 focus:outline-none resize-none transition-colors custom-scrollbar"
+                                            onFocus={() => {
+                                                setTimeout(() => window.scrollTo(0, 0), 100);
+                                            }}
                                             onPaste={(event) => {
                                                 const items = event.clipboardData?.items;
                                                 if (!items || items.length === 0) return;

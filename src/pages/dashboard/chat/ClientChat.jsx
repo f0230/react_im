@@ -423,24 +423,15 @@ const ClientChat = () => {
         messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, [messages.length, selectedClientId]);
 
-    // Prevenir scroll automático cuando se enfoca el input en móvil
+    // Removido preventAutoScroll problemático. 
+    // Ahora dependemos de text-[20px] para prevenir el zoom de iOS y de fixed bottom.
     useEffect(() => {
-        const input = inputRef.current;
-        if (!input) return undefined;
-
-        const preventAutoScroll = (event) => {
-            const scrollY = window.scrollY;
-            const scrollX = window.scrollX;
-            window.requestAnimationFrame(() => {
-                window.scrollTo(scrollX, scrollY);
-            });
+        const scrollToTop = () => {
+            window.scrollTo(0, 0);
         };
-
-        input.addEventListener('focus', preventAutoScroll);
-        return () => {
-            input.removeEventListener('focus', preventAutoScroll);
-        };
-    }, [selectedClientId]);
+        window.addEventListener('scroll', scrollToTop);
+        return () => window.removeEventListener('scroll', scrollToTop);
+    }, []);
 
     if (!isAllowed) {
         return (
@@ -591,13 +582,19 @@ const ClientChat = () => {
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 const el = document.getElementById(`msg-${message.reply_to_id}`);
-                                                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                if (el) {
+                                                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                    el.classList.add('bg-black/10', 'transition-colors', 'duration-500');
+                                                                    setTimeout(() => {
+                                                                        el.classList.remove('bg-black/10');
+                                                                    }, 1500);
+                                                                }
                                                             }}
                                                             className="mb-2 p-2 bg-black/5 border-l-4 border-black/20 rounded text-[11px] cursor-pointer hover:bg-black/10 transition-colors"
                                                         >
-                                                            <p className="font-bold opacity-70 italic">Repuesta a mensaje</p>
+                                                            <p className="font-bold opacity-70 italic">Respondiento a:</p>
                                                             <p className="truncate opacity-60">
-                                                                {messages.find(m => m.id === message.reply_to_id)?.body || '...'}
+                                                                {messages.find(m => m.id === message.reply_to_id)?.body || 'Mensaje original'}
                                                             </p>
                                                         </div>
                                                     )}
@@ -654,7 +651,10 @@ const ClientChat = () => {
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
                                             placeholder="Mensaje..."
-                                            className="flex-1 rounded-full bg-neutral-100 px-4 py-2 text-sm focus:bg-neutral-200 focus:outline-none transition-colors"
+                                            className="flex-1 rounded-full bg-neutral-100 px-4 py-2 text-[20px] lg:text-[14px] focus:bg-neutral-200 focus:outline-none transition-colors"
+                                            onFocus={() => {
+                                                setTimeout(() => window.scrollTo(0, 0), 100);
+                                            }}
                                             onKeyDown={(event) => {
                                                 if (event.key === 'Enter' && !event.shiftKey) {
                                                     event.preventDefault();
