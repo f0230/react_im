@@ -971,7 +971,7 @@ const TeamChat = () => {
                     </div>
                 </div>
 
-                <div className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
+                <div className={`flex flex-col min-h-0 h-[60%] lg:h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     {selectedChannel ? (
                         <>
                             <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white/90 backdrop-blur">
@@ -1027,8 +1027,16 @@ const TeamChat = () => {
                                     const isSeen = isOutbound && otherReadAt
                                         ? new Date(otherReadAt) >= new Date(message.created_at)
                                         : false;
+                                    const repliedMessage = message.reply_to_id
+                                        ? messages.find((item) => item.id === message.reply_to_id)
+                                        : null;
+                                    const repliedAuthor = repliedMessage?.author?.full_name
+                                        || repliedMessage?.author_name
+                                        || repliedMessage?.author?.email
+                                        || 'Mensaje original';
+                                    const repliedBody = repliedMessage?.body || '...';
                                     return (
-                                        <div key={message.id} className={`flex flex-col max-w-[85%] group ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                        <div key={message.id} className={`flex flex-col min-w-0 max-w-[85%] group ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
                                             <div className="flex items-center gap-2 mb-0.5 px-1">
                                                 <span className={`text-[10px] font-bold ${getUserColor(authorName)}`}>
                                                     {authorName}
@@ -1051,7 +1059,7 @@ const TeamChat = () => {
                                                     id={`msg-${message.id}`}
                                                     role="button"
                                                     tabIndex={0}
-                                                    className={`relative px-3 py-2 text-sm rounded-lg shadow-sm group ${isOutbound
+                                                    className={`relative max-w-full px-3 py-2 text-sm rounded-lg shadow-sm group ${isOutbound
                                                         ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none'
                                                         : 'bg-white text-neutral-900 rounded-tl-none'
                                                         }`}
@@ -1069,13 +1077,13 @@ const TeamChat = () => {
                                                                     }, 1500);
                                                                 }
                                                             }}
-                                                            className="mb-2 p-2 bg-black/5 border-l-4 border-black/20 rounded text-[11px] cursor-pointer hover:bg-black/10 transition-colors"
+                                                            className="mb-2 w-full min-w-0 max-w-full overflow-hidden p-2 bg-black/5 border-l-4 border-black/20 rounded text-[11px] cursor-pointer hover:bg-black/10 transition-colors"
                                                         >
-                                                            <p className="font-bold opacity-70 italic">
-                                                                Respondiento a {messages.find(m => m.id === message.reply_to_id)?.author_name || 'Mensaje original'}
+                                                            <p className="font-bold opacity-70 italic truncate">
+                                                                Respondiento a {repliedAuthor}
                                                             </p>
-                                                            <p className="truncate opacity-60">
-                                                                {messages.find(m => m.id === message.reply_to_id)?.body || '...'}
+                                                            <p className="truncate max-w-full opacity-60">
+                                                                {repliedBody}
                                                             </p>
                                                         </div>
                                                     )}
@@ -1109,7 +1117,7 @@ const TeamChat = () => {
                                                     ) : message?.message_type === 'image' ? (
                                                         <p className="text-xs text-neutral-500">Imagen no disponible.</p>
                                                     ) : (
-                                                        <p className="whitespace-pre-wrap">{renderTextWithLinks(message.body)}</p>
+                                                        <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderTextWithLinks(message.body)}</p>
                                                     )}
                                                     {isOutbound && (
                                                         <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
@@ -1136,16 +1144,16 @@ const TeamChat = () => {
                             >
                                 <div className="space-y-2">
                                     {replyingTo && (
-                                        <div className="flex items-center justify-between p-2 mb-2 bg-neutral-50 border-l-4 border-black/40 rounded-lg animate-in slide-in-from-bottom-2">
-                                            <div className="min-w-0">
-                                                <p className={`text-[11px] font-bold ${getUserColor(replyingTo.author_name || replyingTo.author?.full_name)}`}>
+                                        <div className="flex items-center justify-between gap-2 p-2 mb-2 bg-neutral-50 border-l-4 border-black/40 rounded-lg animate-in slide-in-from-bottom-2">
+                                            <div className="min-w-0 flex-1">
+                                                <p className={`text-[11px] font-bold truncate ${getUserColor(replyingTo.author_name || replyingTo.author?.full_name)}`}>
                                                     Reponiendo a {replyingTo.author_name || replyingTo.author?.full_name || 'Equipo'}
                                                 </p>
-                                                <p className="text-xs text-neutral-500 truncate">{replyingTo.body}</p>
+                                                <p className="text-xs text-neutral-500 truncate max-w-full">{replyingTo.body}</p>
                                             </div>
                                             <button
                                                 onClick={() => setReplyingTo(null)}
-                                                className="p-1 text-neutral-400 hover:text-neutral-600"
+                                                className="shrink-0 p-1 text-neutral-400 hover:text-neutral-600"
                                             >
                                                 X
                                             </button>

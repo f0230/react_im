@@ -56,14 +56,7 @@ const ClientAppointments = () => {
     return (
         <div className="w-full pb-20 font-product">
             <header className="mb-10">
-                <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-2 text-skyblue text-sm font-bold uppercase tracking-[0.3em] mb-4"
-                >
-                    <Calendar size={16} />
-                    Mis Agendamientos
-                </motion.div>
+          
                 <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}

@@ -511,7 +511,7 @@ const ClientChat = () => {
                     </div>
                 )}
 
-                <div className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${isStaff && !selectedClientId ? 'hidden lg:flex' : 'flex'}`}>
+                <div className={`flex flex-col min-h-0 h-[60%] lg:h-full overflow-hidden bg-white ${isStaff && !selectedClientId ? 'hidden lg:flex' : 'flex'}`}>
                     {selectedThread ? (
                         <>
                             <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white/90 backdrop-blur">
