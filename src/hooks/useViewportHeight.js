@@ -18,8 +18,12 @@ const useViewportHeight = (enabled = true) => {
         body.style.overscrollBehavior = 'none';
 
         const setHeight = () => {
-            const height = window.visualViewport?.height || window.innerHeight;
-            root.style.setProperty('--app-height', `${Math.round(height)}px`);
+            const viewport = window.visualViewport;
+            const offsetTop = Math.max(0, viewport?.offsetTop || 0);
+            const visibleBottom = viewport
+                ? viewport.height + offsetTop
+                : window.innerHeight;
+            root.style.setProperty('--app-height', `${Math.round(visibleBottom)}px`);
         };
 
         const viewport = window.visualViewport;
@@ -27,6 +31,7 @@ const useViewportHeight = (enabled = true) => {
 
         if (viewport) {
             viewport.addEventListener('resize', setHeight);
+            viewport.addEventListener('scroll', setHeight);
         }
         window.addEventListener('resize', setHeight);
         window.addEventListener('orientationchange', setHeight);
@@ -34,6 +39,7 @@ const useViewportHeight = (enabled = true) => {
         return () => {
             if (viewport) {
                 viewport.removeEventListener('resize', setHeight);
+                viewport.removeEventListener('scroll', setHeight);
             }
             window.removeEventListener('resize', setHeight);
             window.removeEventListener('orientationchange', setHeight);
