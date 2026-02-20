@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Hash, Image, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -104,6 +104,7 @@ const TeamChat = () => {
     const lastReadRef = useRef({});
 
     const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
     const composerRef = useRef(null);
     const textareaRef = useRef(null);
     const fileInputRef = useRef(null);
@@ -769,18 +770,9 @@ const TeamChat = () => {
         }
     }, [markChannelRead, messages, selectedChannelId, user?.id]);
 
-    useEffect(() => {
-        if (!messagesEndRef.current) return;
-
-        // Slight delay to allow viewport resize to stabilize (if any)
-        const timeoutId = setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'end',
-            });
-        }, 100);
-
-        return () => clearTimeout(timeoutId);
+    useLayoutEffect(() => {
+        if (!selectedChannelId || !messagesContainerRef.current) return;
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }, [messages.length, selectedChannelId]);
 
     useEffect(() => {
@@ -992,6 +984,7 @@ const TeamChat = () => {
                             </div>
 
                             <div
+                                ref={messagesContainerRef}
                                 className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
                                 style={{ paddingBottom: `calc(${composerHeight}px)` }}
                             >

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, MessageSquare, RefreshCw, Search, Send } from 'lucide-react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -58,7 +58,7 @@ const ClientChat = () => {
     const [reactionsByMessage, setReactionsByMessage] = useState({});
     const [readReceipts, setReadReceipts] = useState([]);
 
-    const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
     const inputRef = useRef(null);
     const lastReadRef = useRef({});
 
@@ -420,9 +420,9 @@ const ClientChat = () => {
         }
     }, [markClientRead, messages, selectedClientId, user?.id]);
 
-    useEffect(() => {
-        if (!messagesEndRef.current) return;
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    useLayoutEffect(() => {
+        if (!selectedClientId || !messagesContainerRef.current) return;
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
     }, [messages.length, selectedClientId]);
     if (!isAllowed) {
         return (
@@ -532,7 +532,10 @@ const ClientChat = () => {
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50">
+                            <div
+                                ref={messagesContainerRef}
+                                className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
+                            >
                                 {loadingMessages && (
                                     <div className="text-xs text-neutral-400">Cargando mensajes...</div>
                                 )}
@@ -604,7 +607,6 @@ const ClientChat = () => {
                                         </div>
                                     );
                                 })}
-                                <div ref={messagesEndRef} />
                             </div>
 
                             <div className="shrink-0 border-t border-black/5 px-4 py-3 bg-white" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>

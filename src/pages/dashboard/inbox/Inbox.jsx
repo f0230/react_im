@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { MessageSquare, Search, RefreshCw, Send, Phone, Paperclip, ArrowLeft, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
@@ -50,6 +50,7 @@ const Inbox = () => {
     const composerRef = useRef(null);
     const inputRef = React.useRef(null);
     const lastReadRef = useRef({});
+    const messagesContainerRef = useRef(null);
 
 
 
@@ -467,6 +468,11 @@ const Inbox = () => {
         return () => resizeObserver.disconnect();
     }, [selectedThreadId]);
 
+    useLayoutEffect(() => {
+        if (!selectedThreadId || !messagesContainerRef.current) return;
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }, [messages.length, selectedThreadId]);
+
 
     if (!isAllowed) {
         return (
@@ -668,6 +674,7 @@ const Inbox = () => {
                             </div>
 
                             <div
+                                ref={messagesContainerRef}
                                 className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50"
                                 style={{ paddingBottom: `${composerHeight}px` }}
                             >
