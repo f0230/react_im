@@ -1,6 +1,6 @@
 // App.jsx
 import React, { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
 
@@ -46,7 +46,6 @@ import dteLogo from "@/assets/LOGODTE.svg";
 const AppContent = () => {
   const { isNavbarOpen } = useUI();
   const { user, onboardingStatus, loading, isProfileIncomplete } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -62,12 +61,8 @@ const AppContent = () => {
         return;
       }
 
-      // 2. If profile is OK, check onboarding status for new users
-      if (onboardingStatus === 'new') {
-        navigate('/schedule-call', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      // 2. If profile is complete, continue to dashboard
+      navigate('/dashboard', { replace: true });
     }
   }, [user, onboardingStatus, isProfileIncomplete, navigate]);
 

@@ -10,13 +10,6 @@ import Stepper from '@/components/Form/Stepper';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import RotatingText from '@/components/ui/RotatingText';
 
-const TITLE_FIELDS = ['title', 'name', 'project_name'];
-
-const isColumnError = (error) => {
-    const message = error?.message || '';
-    return error?.code === '42703' || /column/i.test(message) || /does not exist/i.test(message);
-};
-
 const CreateProjectModal = ({
     isOpen,
     onClose,
@@ -194,55 +187,78 @@ const CreateProjectModal = ({
         }
     };
 
-    const payloadVariants = useMemo(() => {
-        const description = formData.description.trim();
-        const payload = {
-            need_type: formData.need_type,
-            objective: formData.objective,
-            description,
-            urgency: formData.urgency || null,
-            urgency_date: formData.urgency === 'specific_date' ? formData.urgency_date || null : null,
-            budget_range: formData.budget_range || null,
-        };
-        const base = {};
-        const resolvedUserId = isAdmin ? selectedClient?.user_id : user?.id;
-        const resolvedClientId = isAdmin ? selectedClient?.id : client?.id;
-        if (resolvedUserId) base.user_id = resolvedUserId;
-        if (resolvedClientId) base.client_id = resolvedClientId;
-        if (payload.need_type) base.need_type = payload.need_type;
-        if (payload.objective) base.objective = payload.objective;
-        if (payload.description) base.description = payload.description;
-        if (payload.urgency) base.urgency = payload.urgency;
-        if (payload.urgency_date) base.urgency_date = payload.urgency_date;
-        if (payload.budget_range) base.budget_range = payload.budget_range;
-
-        const variants = [];
-        const pushVariant = (variant) => {
-            if (!variant || Object.keys(variant).length === 0) return;
-            const key = JSON.stringify(variant);
-            if (!variants.some((item) => JSON.stringify(item) === key)) {
-                variants.push(variant);
+    const resolveClientForSubmit = async () => {
+        if (isAdmin) {
+            if (selectedClient?.id) {
+                return {
+                    resolvedClientId: selectedClient.id,
+                    resolvedUserId: selectedClient.user_id ?? null,
+                };
             }
-        };
 
-        pushVariant(base);
+            if (!formData.client_id) {
+                return {
+                    resolvedClientId: null,
+                    resolvedUserId: null,
+                };
+            }
 
-        if (base.client_id) {
-            const { client_id, ...rest } = base;
-            pushVariant(rest);
+            const { data: clientById, error: clientByIdError } = await supabase
+                .from('clients')
+                .select('id, user_id')
+                .eq('id', formData.client_id)
+                .maybeSingle();
+
+            if (clientByIdError) {
+                console.error('Error resolving selected client:', clientByIdError);
+                return {
+                    resolvedClientId: null,
+                    resolvedUserId: null,
+                };
+            }
+
+            return {
+                resolvedClientId: clientById?.id ?? null,
+                resolvedUserId: clientById?.user_id ?? null,
+            };
         }
 
-        return variants.length ? variants : [{}];
-    }, [
-        formData.description,
-        formData.need_type,
-        formData.objective,
-        formData.urgency,
-        formData.urgency_date,
-        formData.budget_range,
-        user?.id,
-        client?.id,
-    ]);
+        if (client?.id) {
+            return {
+                resolvedClientId: client.id,
+                resolvedUserId: user?.id ?? null,
+            };
+        }
+
+        if (!user?.id) {
+            return {
+                resolvedClientId: null,
+                resolvedUserId: null,
+            };
+        }
+
+        const { data: clientByUser, error: clientByUserError } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        if (clientByUserError) {
+            console.error('Error resolving client by user:', clientByUserError);
+            return {
+                resolvedClientId: null,
+                resolvedUserId: user.id,
+            };
+        }
+
+        return {
+            resolvedClientId: clientByUser?.id ?? null,
+            resolvedUserId: user.id,
+        };
+    };
+
 
     const handleStepChange = async (nextStep) => {
         if (loading) return false;
@@ -280,52 +296,64 @@ const CreateProjectModal = ({
         setError(null);
 
         try {
-            let lastError = null;
+            const description = formData.description.trim();
+            const { resolvedClientId, resolvedUserId } = await resolveClientForSubmit();
 
-            for (const basePayload of payloadVariants) {
-                for (const field of TITLE_FIELDS) {
-                    const payload = {
-                        ...basePayload,
-                        [field]: formData.title.trim(),
-                    };
-
-                    const { data, error: insertError } = await supabase
-                        .from('projects')
-                        .insert(payload)
-                        .select('*')
-                        .single();
-
-                    if (!insertError) {
-                        void sendProjectCreatedWebhook(data);
-                        if (onCreated) {
-                            onCreated(data);
-                        } else {
-                            onClose();
-                            // Redirect to calendar booking
-                            navigate(`/schedule-call/${data.id}`);
-                        }
-                        setLoading(false);
-                        return;
-                    }
-
-                    lastError = insertError;
-                    const message = insertError?.message || '';
-                    const isTitleColumn = message.includes(`"${field}"`) || message.includes(field);
-
-                    if (isColumnError(insertError)) {
-                        if (isTitleColumn) {
-                            continue;
-                        }
-                        break;
-                    }
-
-                    throw insertError;
-                }
+            if (!resolvedClientId) {
+                console.warn('Create project blocked due to missing client_id', {
+                    role,
+                    selectedClientId: formData.client_id || null,
+                    contextClientId: client?.id || null,
+                    userId: user?.id || null,
+                });
+                setError(t('dashboard.projects.create.errorMissingClient'));
+                return;
             }
 
-            throw lastError;
+            const payload = {
+                name: formData.title.trim(),
+                client_id: resolvedClientId,
+            };
+            if (resolvedUserId) payload.user_id = resolvedUserId;
+            if (formData.need_type) payload.need_type = formData.need_type;
+            if (formData.objective) payload.objective = formData.objective;
+            if (description) payload.description = description;
+            if (formData.urgency) payload.urgency = formData.urgency;
+            if (formData.budget_range) payload.budget_range = formData.budget_range;
+
+            if (formData.urgency === 'specific_date' && formData.urgency_date) {
+                payload.urgency_date = formData.urgency_date;
+            }
+
+            const { data, error: insertError } = await supabase
+                .from('projects')
+                .insert(payload)
+                .select('*')
+                .single();
+
+            if (insertError) {
+                console.error('Insert attempt failed for payload:', payload, 'with error:', insertError);
+                throw insertError;
+            }
+
+            void sendProjectCreatedWebhook(data);
+            if (onCreated) {
+                onCreated(data);
+            } else {
+                onClose();
+                // Redirect to calendar booking
+                navigate(`/schedule-call/${data.id}`);
+            }
+            setLoading(false);
+
         } catch (err) {
-            console.error('Error creating project:', err);
+            console.error('Error creating project payload details:', JSON.stringify(err, null, 2));
+            const isOutdatedProjectTrigger =
+                err?.code === '42703' && /record\s+"new"\s+has\s+no\s+field\s+"title"/i.test(err?.message || '');
+            if (isOutdatedProjectTrigger) {
+                setError(t('dashboard.projects.create.errorOutdatedTrigger'));
+                return;
+            }
             setError(t('dashboard.projects.create.error'));
         } finally {
             setLoading(false);
@@ -404,7 +432,7 @@ const CreateProjectModal = ({
                             />
                         </Dialog.Overlay>
 
-                        <Dialog.Content asChild>
+                        <Dialog.Content aria-describedby={undefined} asChild>
                             <motion.div
                                 className="fixed inset-0 z-[120] flex items-center justify-center font-product pointer-events-none"
                                 variants={containerVariants}
@@ -412,6 +440,8 @@ const CreateProjectModal = ({
                                 animate="visible"
                                 exit="exit"
                             >
+                                <Dialog.Title className="sr-only">Crear Proyecto</Dialog.Title>
+                                <Dialog.Description className="sr-only">Formulario para crear proyecto</Dialog.Description>
                                 <motion.div
                                     variants={panelVariants}
                                     className="relative w-full h-full bg-[#E8E8E8] overflow-y-auto overflow-x-hidden pointer-events-auto"

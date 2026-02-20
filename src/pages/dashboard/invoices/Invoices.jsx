@@ -168,10 +168,7 @@ const Invoices = () => {
         <div className="font-product text-neutral-900 pb-16">
             <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-skyblue font-bold mb-2">
-                        <DollarSign size={14} />
-                        {t('dashboard.invoices.summary.title') || 'Gestión de Facturación'}
-                    </div>
+                  
                     <h1 className="text-4xl md:text-5xl font-black text-neutral-900 tracking-tight">
                         {t('dashboard.invoices.title')}
                     </h1>

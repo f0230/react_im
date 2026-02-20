@@ -449,7 +449,9 @@
         "next": "Continue",
         "saving": "Creating...",
         "errorMissingRequired": "Please complete the required fields.",
+        "errorMissingClient": "We couldn't identify the client for this project. Please verify your data and try again.",
         "errorMissingDate": "Please select a specific date.",
+        "errorOutdatedTrigger": "We couldn't create the project because the database trigger is outdated. Apply the notifications migration and try again.",
         "error": "We couldn't create the project. Please try again.",
         "helpfulHint": {
           "title": "Not sure?",

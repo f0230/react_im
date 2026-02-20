@@ -40,7 +40,7 @@ const ScheduleCall = () => {
         try {
             const { data, error } = await supabase
                 .from('projects')
-                .select('id, name, title, project_name')
+                .select('id, name')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 

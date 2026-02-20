@@ -449,7 +449,9 @@
         "next": "Continuar",
         "saving": "Creando...",
         "errorMissingRequired": "Completa los campos obligatorios.",
+        "errorMissingClient": "No pudimos identificar el cliente para este proyecto. Verifica tus datos e intenta nuevamente.",
         "errorMissingDate": "Selecciona una fecha específica.",
+        "errorOutdatedTrigger": "No pudimos crear el proyecto porque la base de datos tiene un trigger desactualizado. Aplica la migración de notificaciones y vuelve a intentar.",
         "error": "No pudimos crear el proyecto. Intenta nuevamente.",
         "helpfulHint": {
           "title": "¿No estás seguro?",

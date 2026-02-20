@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
     Zap,
@@ -9,7 +9,9 @@ import {
     Sparkles,
     Briefcase,
     Calendar,
-    Users
+    Users,
+    CalendarClock,
+    X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -18,14 +20,18 @@ import heroBgMobile from '../../assets/PORTADA_1_MOVIL.webp';
 import heroBgDesktop from '../../assets/PORTADA_1.webp';
 import dteLogo from '../../assets/LOGODTE.svg';
 
+const getSchedulePromptPendingKey = (userId) => `schedulePromptPending:${userId}`;
+const getSchedulePromptDismissedKey = (userId) => `schedulePromptDismissed:${userId}`;
+
 const DashboardHome = () => {
     const { t } = useTranslation();
-    const { profile, user } = useAuth();
+    const { profile, user, onboardingStatus } = useAuth();
     const navigate = useNavigate();
     const role = profile?.role || 'client';
     const [stats, setStats] = useState({
         nextAppointmentAt: null,
     });
+    const [showSchedulePrompt, setShowSchedulePrompt] = useState(false);
 
     useEffect(() => {
         const run = async () => {
@@ -127,6 +133,38 @@ const DashboardHome = () => {
 
         run();
     }, [user?.id, role]);
+
+    useEffect(() => {
+        if (!user?.id || role !== 'client' || onboardingStatus !== 'new') return;
+
+        const pendingKey = getSchedulePromptPendingKey(user.id);
+        const dismissedKey = getSchedulePromptDismissedKey(user.id);
+        const hasPendingPrompt = sessionStorage.getItem(pendingKey) === '1';
+        const isDismissed = sessionStorage.getItem(dismissedKey) === '1';
+
+        if (isDismissed && !hasPendingPrompt) return;
+
+        const timer = window.setTimeout(() => {
+            setShowSchedulePrompt(true);
+            if (hasPendingPrompt) {
+                sessionStorage.removeItem(pendingKey);
+            }
+        }, 3500);
+
+        return () => window.clearTimeout(timer);
+    }, [user?.id, role, onboardingStatus]);
+
+    const closeSchedulePrompt = () => {
+        if (user?.id) {
+            sessionStorage.setItem(getSchedulePromptDismissedKey(user.id), '1');
+        }
+        setShowSchedulePrompt(false);
+    };
+
+    const goToScheduleCall = () => {
+        closeSchedulePrompt();
+        navigate('/schedule-call');
+    };
 
     const dashboardContent = useMemo(() => {
         const name = profile?.full_name || profile?.name || (role === 'admin' ? 'Admin' : role === 'worker' ? 'Equipo' : 'Cliente');
@@ -282,6 +320,64 @@ const DashboardHome = () => {
                     </motion.div>
                 ))}
             </div>
+
+            <AnimatePresence>
+                {showSchedulePrompt && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[80] bg-black/45 backdrop-blur-[2px] px-4"
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 20, scale: 0.98 }}
+                            transition={{ duration: 0.2 }}
+                            className="mx-auto mt-24 md:mt-28 max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+                        >
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="inline-flex items-center gap-2 rounded-full bg-skyblue/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-skyblue">
+                                    <CalendarClock size={14} />
+                                    Onboarding
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={closeSchedulePrompt}
+                                    className="rounded-full p-2 text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900"
+                                    aria-label="Cerrar modal"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <h2 className="mt-5 text-2xl font-black tracking-tight text-neutral-900">
+                                Agenda una reunion ahora
+                            </h2>
+                            <p className="mt-3 text-sm leading-relaxed text-neutral-600">
+                                Si prefieres no agendar por ahora, no hay problema: nuestro equipo se pondra en contacto contigo.
+                            </p>
+
+                            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                                <button
+                                    type="button"
+                                    onClick={goToScheduleCall}
+                                    className="inline-flex flex-1 items-center justify-center rounded-xl bg-skyblue px-4 py-3 text-sm font-bold text-white transition hover:bg-skyblue/95"
+                                >
+                                    Agenda una reunion ahora
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeSchedulePrompt}
+                                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
+                                >
+                                    Prefiero esperar contacto
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

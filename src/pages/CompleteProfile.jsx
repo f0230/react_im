@@ -34,10 +34,12 @@ const parsePhoneForForm = (phone, fallbackCountryCode = DEFAULT_COUNTRY_CODE) =>
     return { countryCode: fallbackCountryCode, number: normalized.replace(/\D/g, '') };
 };
 
+const getSchedulePromptPendingKey = (userId) => `schedulePromptPending:${userId}`;
+
 const CompleteProfile = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const { user, profile, client, refreshClient, onboardingStatus, isProfileIncomplete } = useAuth();
+    const { user, profile, client, refreshClient, isProfileIncomplete } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [formData, setFormData] = useState({
@@ -66,13 +68,9 @@ const CompleteProfile = () => {
     // If already complete, redirect away
     useEffect(() => {
         if (!isProfileIncomplete && user && !loading) {
-            if (onboardingStatus === 'new') {
-                navigate('/dashboard/projects', { state: { showCreateProject: true, isOnboarding: true } });
-            } else {
-                navigate('/dashboard');
-            }
+            navigate('/dashboard', { replace: true });
         }
-    }, [isProfileIncomplete, user, onboardingStatus, navigate, loading]);
+    }, [isProfileIncomplete, user, navigate, loading]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -107,6 +105,19 @@ const CompleteProfile = () => {
             }
 
             if (result.error) throw result.error;
+
+            if (user?.id) {
+                sessionStorage.setItem(getSchedulePromptPendingKey(user.id), '1');
+            }
+
+            if (!existingClient && user?.email) {
+                fetch('/api/client-welcome-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: user.email, full_name: formData.full_name }),
+                    keepalive: true,
+                }).catch(err => console.warn('Welcome email failed:', err));
+            }
 
             await refreshClient();
             // Redirect will happen via useEffect
