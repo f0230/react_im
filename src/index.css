@@ -120,7 +120,7 @@ html, body {
 }
 
 @media (max-width: 767px) {
-  .dashboard-mobile-zoom {
-    zoom: 80%;
+  html.dashboard-mobile-compact {
+    font-size: 80%;
   }
 }
