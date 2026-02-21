@@ -582,7 +582,7 @@ const Inbox = () => {
                 >
                     {selectedThread ? (
                         <>
-                            <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white/90 backdrop-blur">
+                            <div className="sticky top-0 z-20 shrink-0 border-b border-neutral-200 bg-white/90 backdrop-blur">
                                 <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <button
@@ -675,7 +675,7 @@ const Inbox = () => {
 
                             <div
                                 ref={messagesContainerRef}
-                                className="flex-1 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50"
+                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50"
                                 style={{ paddingBottom: `${composerHeight}px` }}
                             >
                                 {loadingMessages && (

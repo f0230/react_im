@@ -954,7 +954,7 @@ const TeamChat = () => {
                 <div className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     {selectedChannel ? (
                         <>
-                            <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white/90 backdrop-blur">
+                            <div className="sticky top-0 z-20 shrink-0 border-b border-neutral-200 bg-white/90 backdrop-blur">
                                 <div className="px-4 py-3 flex items-center justify-between gap-4">
                                     <div className="min-w-0 flex items-center gap-2">
                                         <button
@@ -985,7 +985,7 @@ const TeamChat = () => {
 
                             <div
                                 ref={messagesContainerRef}
-                                className="flex-1 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
+                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
                                 style={{ paddingBottom: `calc(${composerHeight}px)` }}
                             >
                                 {loadingMessages && (
