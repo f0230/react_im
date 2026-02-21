@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Calendar, Link as LinkIcon, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
+import { Calendar, Link as LinkIcon, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
+import LoadingFallback from '@/components/ui/LoadingFallback';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 
@@ -76,9 +77,7 @@ const ClientAppointments = () => {
             </header>
 
             {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <Loader2 className="animate-spin text-skyblue w-10 h-10" />
-                </div>
+                <LoadingFallback type="spinner" />
             ) : error ? (
                 <div className="bg-red-50 p-6 rounded-[24px] border border-red-100 flex items-center gap-4 text-red-600">
                     <AlertCircle />

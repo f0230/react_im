@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import OptimizedImage from "./OptimizedImage";
 import HamburgerButton from "./ui/HamburgerButton";
 import logo from "../assets/Group 255.svg";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { User, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 
@@ -11,6 +11,8 @@ import LoginModal from "./LoginModal";
 import ToolsPopover from "./ToolsPopover";
 import { useUI } from "@/context/UIContext";
 import { useAuth } from "@/context/AuthContext";
+import { PrefetchLink } from "@/components/navigation/PrefetchLink";
+import { preloadRoute } from "@/router/routePrefetch";
 
 
 
@@ -41,6 +43,7 @@ const Navbar = () => {
 
     const handleMenuItemClick = async (url) => {
         const menu = document.getElementById("mobile-menu");
+        void preloadRoute(url);
 
         // Protege si no se encuentra el menú
         if (!menu) {
@@ -106,27 +109,19 @@ const Navbar = () => {
     useEffect(() => {
         const handleScroll = () => {
             const currentScrollY = window.scrollY;
+            const shouldShowNavbar = !(currentScrollY > lastScrollYRef.current && currentScrollY > 100);
 
-            // Mostrar navbar al hacer scroll hacia arriba o estar arriba de todo
-            if (currentScrollY > lastScrollYRef.current && currentScrollY > 100) {
-                setShowNavbar(false);
-            } else {
-                setShowNavbar(true);
-            }
+            setShowNavbar((prev) => (prev === shouldShowNavbar ? prev : shouldShowNavbar));
+            setHasScrolled((prev) => (prev === (currentScrollY > 10) ? prev : currentScrollY > 10));
 
             lastScrollYRef.current = currentScrollY;
-            setIsMenuOpen(false);
-            setIsUserMenuOpen(false);
+            setIsMenuOpen((prev) => (prev ? false : prev));
+            setIsUserMenuOpen((prev) => (prev ? false : prev));
         };
 
-        const onScroll = () => setHasScrolled(window.scrollY > 10);
-
-        window.addEventListener("scroll", handleScroll);
-        window.addEventListener("scroll", onScroll);
-
+        window.addEventListener("scroll", handleScroll, { passive: true });
         return () => {
             window.removeEventListener("scroll", handleScroll);
-            window.removeEventListener("scroll", onScroll);
         };
     }, []);
 
@@ -274,7 +269,7 @@ const Navbar = () => {
                     aria-controls="mobile-menu"
                 >
                     {/* Logo */}
-                    <Link to="/">
+                    <PrefetchLink to="/">
                         <OptimizedImage
                             src={logo}
                             alt="Logo DTE"
@@ -282,18 +277,18 @@ const Navbar = () => {
                             height={18}
                             className="h-[18px] w-auto"
                         />
-                    </Link>
+                    </PrefetchLink>
 
                     {/* Ítems desktop */}
                     <ul className="hidden md:flex items-center gap-6">
                         {menuItems?.map((item, i) => (
                             <li key={i}>
-                                <Link
+                                <PrefetchLink
                                     to={item.url}
                                     className="text-white text-sm font-bold hover:underline"
                                 >
                                     {t(item.key)}
-                                </Link>
+                                </PrefetchLink>
                             </li>
                         ))}
                         <li aria-label={t("nav.languageLabel")}>
@@ -339,14 +334,14 @@ const Navbar = () => {
                                     {/* User Dropdown */}
                                     {isUserMenuOpen && (
                                         <div className="absolute top-full right-0 mt-2 w-48 bg-[#1a1a1a] border border-white/10 rounded-xl shadow-xl overflow-hidden py-1 z-50">
-                                            <Link
+                                            <PrefetchLink
                                                 to="/dashboard"
                                                 className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 hover:bg-white/5 transition-colors"
                                                 onClick={() => setIsUserMenuOpen(false)}
                                             >
                                                 <LayoutDashboard size={16} />
                                                 Dashboard
-                                            </Link>
+                                            </PrefetchLink>
                                             <button
                                                 onClick={handleSignOut}
                                                 className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-400 hover:bg-white/5 transition-colors text-left"
@@ -430,6 +425,7 @@ const Navbar = () => {
                                         <button
                                             onClick={() => {
                                                 setIsMenuOpen(false);
+                                                void preloadRoute('/dashboard');
                                                 navigate('/dashboard');
                                             }}
                                             className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px] flex items-center justify-center gap-2"

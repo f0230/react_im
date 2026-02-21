@@ -1,9 +1,10 @@
 import React from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PopoverPanel from '../components/ui/PopoverPanel';
 import { POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
+import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
 
 const ProfileMenu = ({ isOpen, onClose }) => {
     const { user, profile, signOut } = useAuth();
@@ -48,7 +49,7 @@ const ProfileMenu = ({ isOpen, onClose }) => {
             </div>
 
             <div className="p-2 space-y-1">
-                <NavLink
+                <PrefetchNavLink
                     to="/dashboard/profile"
                     onClick={onClose}
                     className={({ isActive }) => `
@@ -60,9 +61,9 @@ const ProfileMenu = ({ isOpen, onClose }) => {
                 >
                     <User size={18} className="group-hover:text-skyblue transition-colors" />
                     <span className="text-sm">Mi Perfil</span>
-                </NavLink>
+                </PrefetchNavLink>
 
-                <NavLink
+                <PrefetchNavLink
                     to="/dashboard/settings"
                     onClick={onClose}
                     className={({ isActive }) => `
@@ -74,7 +75,7 @@ const ProfileMenu = ({ isOpen, onClose }) => {
                 >
                     <Settings size={18} className="group-hover:text-skyblue transition-colors" />
                     <span className="text-sm">Configuración</span>
-                </NavLink>
+                </PrefetchNavLink>
 
                 <div className="h-px bg-white/5 my-2 mx-2" />
 

@@ -1,9 +1,9 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, MessageSquare, Calendar, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, Settings, MessageSquare, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PopoverPanel from '../components/ui/PopoverPanel';
 import { POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
+import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
 
 const DashboardMenu = ({ isOpen, onClose }) => {
     const { profile, signOut } = useAuth();
@@ -28,7 +28,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: Calendar, label: 'Citas', path: '/dashboard/appointments' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: FileText, label: 'Facturación', path: '/dashboard/billing' },
+            { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
             { icon: Settings, label: 'Configuración', path: '/dashboard/settings' },
         ]
     };
@@ -45,7 +45,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         >
             <div className="p-2 space-y-1">
                 {navLinks.map((item) => (
-                    <NavLink
+                    <PrefetchNavLink
                         key={item.path}
                         to={item.path}
                         end={item.path === '/dashboard'}
@@ -59,7 +59,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
                     >
                         <item.icon size={18} className="group-hover:text-skyblue transition-colors" />
                         <span className="font-product text-sm">{item.label}</span>
-                    </NavLink>
+                    </PrefetchNavLink>
                 ))}
             </div>
         </PopoverPanel>

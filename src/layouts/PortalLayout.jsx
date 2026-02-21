@@ -80,11 +80,7 @@ const PortalLayout = () => {
     }, [profile?.role, location.pathname]);
 
     if (!isAuthReady) {
-        return (
-            <div className="h-screen w-full flex items-center justify-center">
-                <LoadingFallback type="spinner" />
-            </div>
-        );
+        return <LoadingFallback type="brand" fullScreen />;
     }
 
     if (!user) {

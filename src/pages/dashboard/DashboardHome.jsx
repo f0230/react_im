@@ -10,7 +10,6 @@ import {
     Briefcase,
     Calendar,
     Users,
-    CalendarClock,
     X
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -19,6 +18,7 @@ import { useTranslation } from "react-i18next";
 import heroBgMobile from '../../assets/PORTADA_1_MOVIL.webp';
 import heroBgDesktop from '../../assets/PORTADA_1.webp';
 import dteLogo from '../../assets/LOGODTE.svg';
+import dteWhite from '../../assets/dte-white.svg';
 
 const getSchedulePromptPendingKey = (userId) => `schedulePromptPending:${userId}`;
 const getSchedulePromptDismissedKey = (userId) => `schedulePromptDismissed:${userId}`;
@@ -327,52 +327,63 @@ const DashboardHome = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[80] bg-black/45 backdrop-blur-[2px] px-4"
+                        onClick={closeSchedulePrompt}
+                        className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 px-4 backdrop-blur-md"
                     >
                         <motion.div
                             initial={{ opacity: 0, y: 20, scale: 0.98 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 20, scale: 0.98 }}
-                            transition={{ duration: 0.2 }}
-                            className="mx-auto mt-24 md:mt-28 max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+                            transition={{ duration: 0.22, ease: 'easeOut' }}
+                            onClick={(event) => event.stopPropagation()}
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="schedule-onboarding-title"
+                            className="relative flex w-full max-w-[840px] items-center justify-center overflow-hidden rounded-[12px] border border-white/5 bg-[#111] px-6 py-14 shadow-[0_40px_90px_-35px_rgba(0,0,0,0.95)] sm:min-h-[500px] sm:px-10"
                         >
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="inline-flex items-center gap-2 rounded-full bg-skyblue/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-skyblue">
-                                    <CalendarClock size={14} />
-                                    Onboarding
+                            <button
+                                type="button"
+                                onClick={closeSchedulePrompt}
+                                className="absolute right-4 top-4 rounded-full p-2 text-neutral-500 transition hover:bg-white/5 hover:text-neutral-300"
+                                aria-label="Cerrar modal"
+                            >
+                                <X size={20} />
+                            </button>
+
+                            <div className="w-full max-w-md text-center">
+                                <div className="inline-flex items-center justify-center gap-2">
+                                    <img src={dteWhite} alt="DTE" className="h-[26px] w-auto sm:h-[40px]" />
+                                    <h2
+                                        id="schedule-onboarding-title"
+                                        className="text-[44px] font-bold leading-none tracking-tight text-green sm:text-[56px]"
+                                    >
+                                        Platform
+                                    </h2>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={closeSchedulePrompt}
-                                    className="rounded-full p-2 text-neutral-500 transition hover:bg-neutral-100 hover:text-neutral-900"
-                                    aria-label="Cerrar modal"
-                                >
-                                    <X size={18} />
-                                </button>
-                            </div>
 
-                            <h2 className="mt-5 text-2xl font-black tracking-tight text-neutral-900">
-                                Agenda una reunion ahora
-                            </h2>
-                            <p className="mt-3 text-sm leading-relaxed text-neutral-600">
-                                Si prefieres no agendar por ahora, no hay problema: nuestro equipo se pondra en contacto contigo.
-                            </p>
+                                <p className="mx-auto mt-4 max-w-sm text-sm font-semibold leading-relaxed text-neutral-300 sm:text-base">
+                                    Listo, ya estas registrado como cliente.
+                                </p>
+                                <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-neutral-400 sm:text-base">
+                                    El siguiente paso es agendar una reunion para que podamos crear tu proyecto juntos. Agenda la reunion o, de lo contrario, espera a ser contactado.
+                                </p>
 
-                            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                                <button
-                                    type="button"
-                                    onClick={goToScheduleCall}
-                                    className="inline-flex flex-1 items-center justify-center rounded-xl bg-skyblue px-4 py-3 text-sm font-bold text-white transition hover:bg-skyblue/95"
-                                >
-                                    Agenda una reunion ahora
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={closeSchedulePrompt}
-                                    className="inline-flex flex-1 items-center justify-center rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50"
-                                >
-                                    Prefiero esperar contacto
-                                </button>
+                                <div className="mx-auto mt-8 flex max-w-xs flex-col gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={goToScheduleCall}
+                                        className="inline-flex w-full items-center justify-center rounded-[6px] border border-white/10 bg-black px-4 py-3 text-sm font-bold text-white transition hover:bg-black/70"
+                                    >
+                                        Agenda la reunion
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={closeSchedulePrompt}
+                                        className="text-xs font-medium text-neutral-500 transition hover:text-neutral-300"
+                                    >
+                                        Prefiero esperar contacto
+                                    </button>
+                                </div>
                             </div>
                         </motion.div>
                     </motion.div>

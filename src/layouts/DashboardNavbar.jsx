@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import OptimizedImage from '../components/OptimizedImage'; // Adjust path if needed
 import logo from '../assets/Group 255.svg'; // Check path
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +12,7 @@ import NotificationPanel from '@/components/notifications/NotificationPanel';
 import ProfileMenu from './ProfileMenu';
 import DashboardMenu from './DashboardMenu';
 import ToolsPopover from '@/components/ToolsPopover';
+import { PrefetchLink } from '@/components/navigation/PrefetchLink';
 
 const DashboardNavbar = () => {
     const [scrolled, setScrolled] = useState(false);
@@ -37,8 +37,11 @@ const DashboardNavbar = () => {
     const firstName = (user?.user_metadata?.full_name || profile?.full_name || '').split(' ')[0];
 
     useEffect(() => {
-        const handleScroll = () => setScrolled(window.scrollY > 20);
-        window.addEventListener('scroll', handleScroll);
+        const handleScroll = () => {
+            const nextScrolled = window.scrollY > 20;
+            setScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled));
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
@@ -48,7 +51,7 @@ const DashboardNavbar = () => {
         >
             <div className="mx-auto px-6 md:px-10 flex items-center justify-between bg-black min-h-[45px]">
                 {/* Logo */}
-                <Link to="/dashboard" className="flex items-center gap-2 group">
+                <PrefetchLink to="/dashboard" className="flex items-center gap-2 group">
                     <OptimizedImage
                         src={logo}
                         alt="DTE Logo"
@@ -59,7 +62,7 @@ const DashboardNavbar = () => {
                     <span className="text-white/30 text-xs font-product tracking-widest pl-2 border-l border-white/10 ml-2 hidden sm:block">
                         PLATFORM
                     </span>
-                </Link>
+                </PrefetchLink>
 
                 {/* Actions */}
                 <div className="flex items-center gap-2">

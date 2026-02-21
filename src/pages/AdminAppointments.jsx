@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Loader2, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import AdminCalendar from '@/components/AdminCalendar';
 import AppointmentActionModal from '@/components/AppointmentActionModal';
 import AdminCreateAppointmentModal from '@/components/AdminCreateAppointmentModal';
+import LoadingFallback from '@/components/ui/LoadingFallback';
 
 const AdminAppointments = () => {
     const { t } = useTranslation();
@@ -120,9 +121,7 @@ const AdminAppointments = () => {
             </header>
 
             {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <Loader2 className="animate-spin text-black w-8 h-8" />
-                </div>
+                <LoadingFallback type="spinner" />
             ) : error ? (
                 <div className="bg-red-50 p-4 rounded-xl border border-red-100 flex items-center gap-3 text-red-600">
                     <AlertCircle />

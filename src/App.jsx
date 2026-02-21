@@ -1,99 +1,102 @@
 // App.jsx
-import React, { Suspense, lazy, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
+import React, { Suspense, useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
-
-
-
-
-const Home = lazy(() => import("@/pages/Home"));
-const About = lazy(() => import("@/pages/About"));
-const Contact = lazy(() => import("@/pages/Contact"));
-const Services = lazy(() => import("@/pages/Services"));
-const LandingDespega = lazy(() => import("@/pages/LandingDespega"));
-const Terminos = lazy(() => import("@/pages/TerminosCondiciones"));
-const PoliticaPrivacidad = lazy(() => import("@/pages/PoliticaPrivacidad"));
-const Development = lazy(() => import("@/pages/Development"));
-const LandingDTE = lazy(() => import("@/pages/LandingDTE"));
-const AdminLogin = lazy(() => import("@/pages/AdminLogin"));
-const Registro = lazy(() => import("@/pages/Registro"));
-const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
-const DashboardHome = lazy(() => import("@/pages/dashboard/DashboardHome"));
-const Clients = lazy(() => import("@/pages/dashboard/crm/Clients"));
-const ClientDetail = lazy(() => import("@/pages/dashboard/crm/ClientDetail"));
-const Projects = lazy(() => import("@/pages/dashboard/projects/Projects"));
-const ProjectTasks = lazy(() => import("@/pages/dashboard/projects/ProjectTasks"));
-const ProjectReports = lazy(() => import("@/pages/dashboard/projects/ProjectReports"));
-const ProjectInvoices = lazy(() => import("@/pages/dashboard/projects/ProjectInvoices"));
-const ClientAppointments = lazy(() => import("@/pages/dashboard/projects/ClientAppointments"));
-const Invoices = lazy(() => import("@/pages/dashboard/invoices/Invoices"));
-const Inbox = lazy(() => import("@/pages/dashboard/inbox/Inbox"));
-const TeamChat = lazy(() => import("@/pages/dashboard/chat/TeamChat"));
-const ClientChat = lazy(() => import("@/pages/dashboard/chat/ClientChat"));
-const MessagingHubRedirect = lazy(() => import("@/pages/dashboard/messages/MessagingHubRedirect"));
-const Settings = lazy(() => import("@/pages/dashboard/settings/Settings"));
-const ScheduleCall = lazy(() => import("@/pages/ScheduleCall"));
-const AdminAppointments = lazy(() => import("@/pages/AdminAppointments"));
+import { lazyRoute, routeKeys, scheduleIdlePreload } from "@/router/routePrefetch";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
 import PortalLayout from "@/layouts/PortalLayout";
-import { Navigate } from "react-router-dom";
-import { motion } from "framer-motion";
 
-import dteLogo from "@/assets/LOGODTE.svg";
+const Home = lazyRoute(routeKeys.home);
+const About = lazyRoute(routeKeys.about);
+const Contact = lazyRoute(routeKeys.contact);
+const Services = lazyRoute(routeKeys.services);
+const LandingDespega = lazyRoute(routeKeys.landingDespega);
+const Terminos = lazyRoute(routeKeys.terminos);
+const PoliticaPrivacidad = lazyRoute(routeKeys.politicaPrivacidad);
+const Development = lazyRoute(routeKeys.development);
+const LandingDTE = lazyRoute(routeKeys.landingDte);
+const AdminLogin = lazyRoute(routeKeys.adminLogin);
+const Registro = lazyRoute(routeKeys.registro);
+const CompleteProfile = lazyRoute(routeKeys.completeProfile);
+const DashboardHome = lazyRoute(routeKeys.dashboardHome);
+const Clients = lazyRoute(routeKeys.clients);
+const ClientDetail = lazyRoute(routeKeys.clientDetail);
+const Projects = lazyRoute(routeKeys.projects);
+const ProjectTasks = lazyRoute(routeKeys.projectTasks);
+const ProjectReports = lazyRoute(routeKeys.projectReports);
+const ClientAppointments = lazyRoute(routeKeys.clientAppointments);
+const Invoices = lazyRoute(routeKeys.invoices);
+const Inbox = lazyRoute(routeKeys.inbox);
+const TeamChat = lazyRoute(routeKeys.teamChat);
+const ClientChat = lazyRoute(routeKeys.clientChat);
+const MessagingHubRedirect = lazyRoute(routeKeys.messagingHubRedirect);
+const Settings = lazyRoute(routeKeys.settings);
+const ScheduleCall = lazyRoute(routeKeys.scheduleCall);
+const AdminAppointments = lazyRoute(routeKeys.adminAppointments);
 
 const AppContent = () => {
   const { isNavbarOpen } = useUI();
   const { user, onboardingStatus, loading, isProfileIncomplete } = useAuth();
+  const location = useLocation();
   const navigate = useNavigate();
+  const isDashboardPath = location.pathname.toLowerCase().startsWith('/dashboard');
+  const [isDashboardReloadFallback, setIsDashboardReloadFallback] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const navigationEntry = performance.getEntriesByType('navigation')?.[0];
+    const isReload = navigationEntry?.type === 'reload';
+    return isReload && window.location.pathname.toLowerCase().startsWith('/dashboard');
+  });
+
+  useEffect(() => {
+    const publicCandidates = ["/servicios", "/desarrollo", "/dte", "/contacto", "/nosotros"];
+    const dashboardCandidates = [
+      "/dashboard/projects",
+      "/dashboard/messages",
+      "/dashboard/team-chat",
+      "/dashboard/client-chat",
+      "/dashboard/tasks",
+      "/dashboard/invoices",
+      "/dashboard/settings",
+      "/dashboard/my-appointments",
+    ];
+
+    const isDashboardPath = location.pathname.toLowerCase().startsWith("/dashboard");
+    const routes = user || isDashboardPath ? dashboardCandidates : publicCandidates;
+    return scheduleIdlePreload(routes, 1200);
+  }, [user, location.pathname]);
+
+  useEffect(() => {
+    if (!isDashboardReloadFallback) return;
+    const timer = window.setTimeout(() => setIsDashboardReloadFallback(false), 0);
+    return () => window.clearTimeout(timer);
+  }, [isDashboardReloadFallback]);
 
   useEffect(() => {
     // Handle the initial landing after OAuth login
     const justLoggedIn = sessionStorage.getItem('justLoggedIn') === '1';
+    const currentPath = location.pathname.toLowerCase();
 
     if (user && justLoggedIn && onboardingStatus !== 'loading') {
       sessionStorage.removeItem('justLoggedIn');
 
       // 1. If profile is incomplete, that's priority #1
-      if (isProfileIncomplete) {
+      if (isProfileIncomplete && currentPath !== '/complete-profile') {
         navigate('/complete-profile', { replace: true });
         return;
       }
 
-      // 2. If profile is complete, continue to dashboard
-      navigate('/dashboard', { replace: true });
+      // 2. If profile is complete, continue to dashboard unless user is on public home
+      if (currentPath !== '/') {
+        navigate('/dashboard', { replace: true });
+      }
     }
-  }, [user, onboardingStatus, isProfileIncomplete, navigate]);
+  }, [user, onboardingStatus, isProfileIncomplete, navigate, location.pathname]);
 
   // Premium Loader for initial auth/onboarding detection
   if (loading || (user && onboardingStatus === 'loading' && sessionStorage.getItem('justLoggedIn') === '1')) {
-    return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-white font-product">
-        <motion.img
-          src={dteLogo}
-          alt="DTE"
-          className="w-[180px] mb-8"
-          animate={{
-            opacity: [0.5, 1, 0.5],
-            scale: [0.98, 1, 0.98]
-          }}
-          transition={{
-            duration: 2,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <div className="w-48 h-[2px] bg-neutral-100 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-[#00D1FF]"
-            initial={{ width: "0%" }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
-          />
-        </div>
-      </div>
-    );
+    return <LoadingFallback type="brand" fullScreen />;
   }
 
   return (
@@ -108,7 +111,13 @@ const AppContent = () => {
         />
       )}
 
-      <Suspense fallback={<LoadingFallback type="spinner" />}>
+      <Suspense
+        fallback={
+          isDashboardPath && isDashboardReloadFallback
+            ? <LoadingFallback type="brand" fullScreen />
+            : <LoadingFallback type="spinner" />
+        }
+      >
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
