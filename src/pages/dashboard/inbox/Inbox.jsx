@@ -491,7 +491,7 @@ const Inbox = () => {
         <div
             className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
             style={{
-                top: '45px',
+                top: 'calc(45px + var(--app-viewport-offset-top, 0px))',
                 height: 'calc(var(--app-height, 100dvh) - 45px)',
             }}
         >
