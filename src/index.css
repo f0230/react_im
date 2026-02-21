@@ -118,3 +118,9 @@ html, body {
   flex: 0 0 auto;
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+@media (max-width: 767px) {
+  .dashboard-mobile-zoom {
+    zoom: 80%;
+  }
+}

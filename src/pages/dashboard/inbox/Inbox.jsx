@@ -578,11 +578,11 @@ const Inbox = () => {
 
                 {/* Chat Side */}
                 <div
-                    className={`flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedThreadId ? 'hidden lg:flex' : 'flex'}`}
+                    className={`relative flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedThreadId ? 'hidden lg:flex' : 'flex'}`}
                 >
                     {selectedThread ? (
                         <>
-                            <div className="sticky top-0 z-20 shrink-0 border-b border-neutral-200 bg-white/90 backdrop-blur">
+                            <div className="sticky top-0 z-40 shrink-0 border-b border-neutral-200 bg-white shadow-sm supports-[backdrop-filter]:bg-white/90 backdrop-blur">
                                 <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <button
