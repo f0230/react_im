@@ -374,6 +374,7 @@ async function callOpenClaw({
     serviceStats,
   });
 
+  console.log('Calling OpenClaw URL:', url);
   const response = await fetch(url, {
     method: 'POST',
     headers,
@@ -388,7 +389,17 @@ async function callOpenClaw({
     }),
   });
 
-  const payload = await response.json().catch(() => ({}));
+  console.log('OpenClaw response status:', response.status);
+  const rawPayload = await response.text();
+  console.log('OpenClaw response body (first 500 chars):', rawPayload.slice(0, 500));
+
+  let payload = {};
+  try {
+    payload = JSON.parse(rawPayload);
+  } catch (e) {
+    console.error('Failed to parse OpenClaw response as JSON');
+  }
+
   if (!response.ok) {
     throw new Error(payload?.error?.message || payload?.error || `OpenClaw failed with ${response.status}`);
   }
@@ -430,12 +441,14 @@ export default async function handler(req, res) {
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
-    return res.status(500).json({ error: 'Server configuration error: missing Supabase credentials' });
+    console.error('Clawbot: Missing Supabase credentials (SERVICE_ROLE_KEY)');
+    return res.status(500).json({ error: 'Server configuration error: missing Supabase admin credentials' });
   }
 
   try {
     const currentUser = await resolveCurrentUser({ supabase, req });
     if (currentUser.error) {
+      console.warn('Clawbot: Auth failed:', currentUser.error);
       return res.status(currentUser.status).json({ error: currentUser.error });
     }
 
@@ -453,6 +466,7 @@ export default async function handler(req, res) {
         .maybeSingle();
 
       if (memberError) {
+        console.error('Clawbot: Membership verify error:', memberError);
         return res.status(500).json({ error: 'Failed to verify channel membership' });
       }
       if (!member) {
@@ -468,6 +482,7 @@ export default async function handler(req, res) {
       .limit(contextLimit);
 
     if (messagesError) {
+      console.error('Clawbot: Messages load error:', messagesError);
       return res.status(500).json({ error: 'Failed to load channel context', detail: messagesError.message });
     }
 
@@ -482,20 +497,29 @@ export default async function handler(req, res) {
     const sessionPrefix = sanitizeText(process.env.CLAWBOT_SESSION_PREFIX, 'team-channel');
     const sessionKey = `${sessionPrefix}:${channelId}`;
 
-    const openClawReply = await callOpenClaw({
-      sessionKey,
-      botName,
-      channel,
-      triggerPrompt,
-      triggerMessageId,
-      currentUser,
-      project: linkedProject,
-      serviceStats,
-      contextMessages,
-    });
+    let openClawReply;
+    try {
+      openClawReply = await callOpenClaw({
+        sessionKey,
+        botName,
+        channel,
+        triggerPrompt,
+        triggerMessageId,
+        currentUser,
+        project: linkedProject,
+        serviceStats,
+        contextMessages,
+      });
+    } catch (aiError) {
+      console.error('Clawbot: OpenAI/OpenClaw call failed:', aiError);
+      return res.status(500).json({
+        error: 'Clawbot failed to generate a response',
+        detail: aiError.message
+      });
+    }
 
     let botAuthorId = sanitizeText(process.env.CLAWBOT_PROFILE_ID);
-    if (!botAuthorId) {
+    if (!botAuthorId || botAuthorId.length < 20) { // Naive check for UUID (main/id etc are too short)
       botAuthorId = currentUser.user.id;
     }
 
@@ -515,6 +539,7 @@ export default async function handler(req, res) {
       .single();
 
     if (insertResult.error && botAuthorId !== currentUser.user.id) {
+      console.warn('Clawbot: Failed to insert with botAuthorId, falling back to currentUser:', insertResult.error.message);
       insertPayload = {
         ...insertPayload,
         author_id: currentUser.user.id,
@@ -527,6 +552,7 @@ export default async function handler(req, res) {
     }
 
     if (insertResult.error) {
+      console.error('Clawbot: Failed to persist message:', insertResult.error);
       return res.status(500).json({ error: 'Failed to persist Clawbot message', detail: insertResult.error.message });
     }
 
@@ -538,9 +564,9 @@ export default async function handler(req, res) {
       model: openClawReply.model,
     });
   } catch (error) {
-    console.error('clawbot-team-chat error:', error);
+    console.error('clawbot-team-chat handler panic:', error);
     return res.status(500).json({
-      error: 'Clawbot request failed',
+      error: 'Internal server error',
       detail: error?.message || String(error),
     });
   }
