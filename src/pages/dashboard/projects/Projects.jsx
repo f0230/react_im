@@ -1,15 +1,29 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Briefcase, Plus, Users, ArrowRight } from 'lucide-react';
-import { useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { Briefcase, Plus, Users, X } from 'lucide-react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import CreateProjectModal from '@/components/CreateProjectModal';
+import FigmaPanel from '@/components/FigmaPanel';
 import facImage from '@/assets/Dahsboardx/fac.webp';
 import informImage from '@/assets/Dahsboardx/inform.webp';
 import servicesImage from '@/assets/Dahsboardx/ser.webp';
+
+// Figma logo inline SVG component (no external dependency)
+function FigmaLogo({ size = 18, className = '' }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 38 57" fill="none" className={className}>
+            <path d="M19 28.5A9.5 9.5 0 0 1 28.5 19H19a9.5 9.5 0 0 0 0 19h9.5A9.5 9.5 0 0 1 19 28.5Z" fill="#1ABCFE" />
+            <path d="M9.5 47.5A9.5 9.5 0 0 1 19 38h9.5a9.5 9.5 0 1 1-19 0Z" fill="#0ACF83" />
+            <path d="M9.5 9.5A9.5 9.5 0 0 0 19 19h9.5A9.5 9.5 0 1 0 9.5 9.5Z" fill="#FF7262" />
+            <path d="M9.5 28.5A9.5 9.5 0 0 0 19 38V19a9.5 9.5 0 0 0-9.5 9.5Z" fill="#F24E1E" />
+            <path d="M28.5 19a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19Z" fill="#A259FF" />
+        </svg>
+    );
+}
 
 const getProjectTitle = (project, fallback) => {
     return project?.title || project?.name || project?.project_name || fallback;
@@ -74,6 +88,8 @@ const Projects = () => {
     const [assignmentError, setAssignmentError] = useState(null);
     const [teamModalProject, setTeamModalProject] = useState(null);
     const [teamSelection, setTeamSelection] = useState([]);
+    // Figma panel state
+    const [figmaProject, setFigmaProject] = useState(null);
 
     const clientId = client?.id;
     const userId = user?.id;
@@ -444,6 +460,22 @@ const Projects = () => {
                                                     )}
                                                 </div>
                                             </div>
+
+                                            {/* Figma button */}
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setFigmaProject(project);
+                                                }}
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all shadow-sm ${project?.figma_project_id
+                                                        ? 'bg-violet-100 text-violet-700 hover:bg-violet-200'
+                                                        : 'bg-neutral-100 text-neutral-500 hover:bg-violet-100 hover:text-violet-600'
+                                                    }`}
+                                            >
+                                                <FigmaLogo size={13} />
+                                                {project?.figma_project_id ? 'Ver diseño' : 'Vincular Figma'}
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -542,6 +574,73 @@ const Projects = () => {
                             </button>
                         </motion.div>
                     </div>
+                )}
+            </AnimatePresence>
+
+            {/* ── Figma Panel Drawer ── */}
+            <AnimatePresence>
+                {figmaProject && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setFigmaProject(null)}
+                            className="fixed inset-0 z-[130] bg-black/50 backdrop-blur-sm"
+                        />
+                        {/* Drawer */}
+                        <motion.div
+                            initial={{ x: '100%' }}
+                            animate={{ x: 0 }}
+                            exit={{ x: '100%' }}
+                            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                            className="fixed right-0 top-0 bottom-0 z-[140] w-full max-w-[420px] bg-neutral-50 shadow-2xl flex flex-col"
+                        >
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 bg-white">
+                                <div className="flex items-center gap-2.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width={20} height={20} viewBox="0 0 38 57" fill="none">
+                                        <path d="M19 28.5A9.5 9.5 0 0 1 28.5 19H19a9.5 9.5 0 0 0 0 19h9.5A9.5 9.5 0 0 1 19 28.5Z" fill="#1ABCFE" />
+                                        <path d="M9.5 47.5A9.5 9.5 0 0 1 19 38h9.5a9.5 9.5 0 1 1-19 0Z" fill="#0ACF83" />
+                                        <path d="M9.5 9.5A9.5 9.5 0 0 0 19 19h9.5A9.5 9.5 0 1 0 9.5 9.5Z" fill="#FF7262" />
+                                        <path d="M9.5 28.5A9.5 9.5 0 0 0 19 38V19a9.5 9.5 0 0 0-9.5 9.5Z" fill="#F24E1E" />
+                                        <path d="M28.5 19a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19Z" fill="#A259FF" />
+                                    </svg>
+                                    <div>
+                                        <p className="text-sm font-bold text-neutral-900">Figma</p>
+                                        <p className="text-[11px] text-neutral-400 truncate max-w-[260px]">
+                                            {figmaProject?.title || figmaProject?.name || 'Proyecto'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setFigmaProject(null)}
+                                    className="p-2 rounded-xl hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            {/* Scrollable content */}
+                            <div className="flex-1 overflow-y-auto p-5">
+                                <FigmaPanel
+                                    project={figmaProject}
+                                    isAdmin={isAdmin}
+                                    onFigmaProjectUpdate={(newProjectId) => {
+                                        // Update figmaProject local state so the drawer refreshes
+                                        setFigmaProject((prev) => ({ ...prev, figma_project_id: newProjectId }));
+                                        // Also update in the projects list
+                                        setProjects((prev) =>
+                                            prev.map((p) =>
+                                                p.id === figmaProject.id ? { ...p, figma_project_id: newProjectId } : p
+                                            )
+                                        );
+                                    }}
+                                />
+                            </div>
+                        </motion.div>
+                    </>
                 )}
             </AnimatePresence>
         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, MessageSquare, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, Settings, MessageSquare, Calendar, Figma } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PopoverPanel from '../components/ui/PopoverPanel';
 import { POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
@@ -15,17 +15,20 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: Calendar, label: 'Mis Citas', path: '/dashboard/my-appointments' },
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
+            { icon: Figma, label: 'Diseños', path: '/dashboard/figma' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
+            { icon: Figma, label: 'Diseños', path: '/dashboard/figma' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
+            { icon: Figma, label: 'Diseños', path: '/dashboard/figma' },
             { icon: Calendar, label: 'Citas', path: '/dashboard/appointments' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },

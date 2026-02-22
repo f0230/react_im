@@ -37,6 +37,7 @@ const MessagingHubRedirect = lazyRoute(routeKeys.messagingHubRedirect);
 const Settings = lazyRoute(routeKeys.settings);
 const ScheduleCall = lazyRoute(routeKeys.scheduleCall);
 const AdminAppointments = lazyRoute(routeKeys.adminAppointments);
+const FigmaProjects = lazyRoute(routeKeys.figmaProjects);
 
 const AppContent = () => {
   const { isNavbarOpen } = useUI();
@@ -76,28 +77,30 @@ const AppContent = () => {
   }, [isDashboardReloadFallback]);
 
   useEffect(() => {
-    // Handle the initial landing after OAuth login
+    // Handle the initial landing after a REAL new login (not tab refocus/token refresh).
+    // `justLoggedIn` is only set in AuthContext when prevUser was null/different user.
     const justLoggedIn = sessionStorage.getItem('justLoggedIn') === '1';
     const currentPath = location.pathname.toLowerCase();
 
     if (user && justLoggedIn && onboardingStatus !== 'loading') {
       sessionStorage.removeItem('justLoggedIn');
 
-      // 1. If profile is incomplete, that's priority #1
+      // 1. If profile is incomplete, go to complete-profile
       if (isProfileIncomplete && currentPath !== '/complete-profile') {
         navigate('/complete-profile', { replace: true });
         return;
       }
 
-      // 2. If profile is complete, continue to dashboard unless user is on public home
-      if (currentPath !== '/') {
+      // 2. Only redirect to /dashboard if the user is on a public-facing page.
+      // If they're already inside /dashboard/*, let them stay where they are.
+      const isOnPublicPage = !currentPath.startsWith('/dashboard');
+      if (isOnPublicPage && currentPath !== '/complete-profile') {
         navigate('/dashboard', { replace: true });
       }
     }
   }, [user, onboardingStatus, isProfileIncomplete, navigate, location.pathname]);
 
-  const shouldShowAuthLoader =
-    loading || (user && onboardingStatus === 'loading' && sessionStorage.getItem('justLoggedIn') === '1');
+  const shouldShowAuthLoader = loading;
   const showAuthLoader = useCycleLockedVisibility(Boolean(shouldShowAuthLoader), BRAND_LOADER_CYCLE_MS);
   const showDashboardReloadBrandFallback = useCycleLockedVisibility(
     isDashboardPath && isDashboardReloadFallback,
@@ -166,6 +169,7 @@ const AppContent = () => {
             <Route path="my-appointments" element={<ClientAppointments />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Settings />} />
+            <Route path="figma" element={<FigmaProjects />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

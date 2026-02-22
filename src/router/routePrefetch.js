@@ -41,6 +41,7 @@ export const routeKeys = Object.freeze({
     adminAppointments: 'adminAppointments',
     clientAppointments: 'clientAppointments',
     settings: 'settings',
+    figmaProjects: 'figmaProjects',
 });
 
 const routeImporters = {
@@ -71,6 +72,7 @@ const routeImporters = {
     [routeKeys.adminAppointments]: once(() => import('@/pages/AdminAppointments')),
     [routeKeys.clientAppointments]: once(() => import('@/pages/dashboard/projects/ClientAppointments')),
     [routeKeys.settings]: once(() => import('@/pages/dashboard/settings/Settings')),
+    [routeKeys.figmaProjects]: once(() => import('@/pages/dashboard/figma/FigmaProjects')),
 };
 
 const pathKeyMap = new Map([
@@ -101,6 +103,7 @@ const pathKeyMap = new Map([
     ['/dashboard/my-appointments', routeKeys.clientAppointments],
     ['/dashboard/settings', routeKeys.settings],
     ['/dashboard/profile', routeKeys.settings],
+    ['/dashboard/figma', routeKeys.figmaProjects],
 ]);
 
 const normalizePath = (to) => {
@@ -157,7 +160,7 @@ export const preloadRoutes = (routes = []) =>
     Promise.allSettled(routes.map((route) => preloadRoute(route)));
 
 export const scheduleIdlePreload = (routes = [], timeout = 1400) => {
-    if (typeof window === 'undefined' || routes.length === 0) return () => {};
+    if (typeof window === 'undefined' || routes.length === 0) return () => { };
 
     const warmup = () => {
         void preloadRoutes(routes);

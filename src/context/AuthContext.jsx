@@ -9,7 +9,10 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
     const [client, setClient] = useState(null);
-    const [loading, setLoading] = useState(true);
+    // `authInitialized`: true only after the FIRST session check completes. This is
+    // the only flag that should gate the brand loader / authReady. profileLoading
+    // is intentionally kept separate so background re-fetches never trigger loaders.
+    const [authInitialized, setAuthInitialized] = useState(false);
     const [profileLoading, setProfileLoading] = useState(false);
 
     // Compatibility states for PortalLayout
@@ -146,36 +149,47 @@ export const AuthProvider = ({ children }) => {
                 setOnboardingStatus('completed');
             } finally {
                 if (mounted) {
-                    setLoading(false);
+                    setAuthInitialized(true);
                 }
             }
         };
 
         initAuth();
 
-        // Listen for changes
+        // Listen for auth state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (!mounted) return;
 
             if (session?.user) {
-                setUser((prev) => {
-                    if (prev?.id !== session.user.id) {
-                        fetchProfileData(session.user);
-                        return session.user;
-                    }
-                    return prev;
-                });
-
-                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-                    fetchProfileData(session.user);
-                }
-
+                // SIGNED_IN fires on real logins AND on silent session recovery (e.g. tab refocus
+                // after an extended absence). Only re-fetch the profile if this is a genuinely
+                // new user or if the profile was never loaded. Otherwise just update the user obj.
+                // USER_UPDATED always re-fetches (e.g. email change confirmed).
+                // TOKEN_REFRESHED / INITIAL_SESSION / other events: silently update user only.
                 if (event === 'SIGNED_IN') {
-                    // Logic for App.jsx to handle initial landing from login
-                    sessionStorage.setItem('justLoggedIn', '1');
+                    setUser((prevUser) => {
+                        const isNewUser = !prevUser || prevUser.id !== session.user.id;
+                        if (isNewUser) {
+                            // Genuinely new login — fetch profile and mark as just-logged-in
+                            fetchProfileData(session.user);
+                            sessionStorage.setItem('justLoggedIn', '1');
+                        }
+                        // If same user (silent session recovery): do nothing, keep existing profile
+                        return session.user;
+                    });
+                } else if (event === 'USER_UPDATED') {
+                    setUser(session.user);
+                    fetchProfileData(session.user);
+                } else {
+                    // TOKEN_REFRESHED, INITIAL_SESSION, etc. — only update user obj if it changed
+                    setUser((prev) => {
+                        if (!prev || prev.id !== session.user.id) {
+                            fetchProfileData(session.user);
+                        }
+                        return session.user;
+                    });
                 }
-
-            } else {
+            } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
                 setClient(null);
@@ -183,8 +197,6 @@ export const AuthProvider = ({ children }) => {
                 setProfileError(null);
                 setOnboardingStatus('completed');
             }
-
-            setLoading(false);
         });
 
         return () => {
@@ -194,19 +206,11 @@ export const AuthProvider = ({ children }) => {
     }, [fetchProfileData]);
 
     const signOut = useCallback(async () => {
-        setLoading(true);
         try {
             await supabase.auth.signOut();
-            setUser(null);
-            setProfile(null);
-            setClient(null);
-            setProfileStatus('idle');
-            setProfileError(null);
-            setOnboardingStatus('completed');
+            // State is reset by the SIGNED_OUT event in onAuthStateChange
         } catch (error) {
             console.error('Sign out error:', error);
-        } finally {
-            setLoading(false);
         }
     }, []);
 
@@ -222,12 +226,14 @@ export const AuthProvider = ({ children }) => {
         user,
         profile,
         client,
-        loading: loading || profileLoading,
-        authReady: !loading,
+        // `loading` only reflects the initial one-time auth check, NOT background re-fetches.
+        // This prevents the brand loader from reappearing on tab focus / token refresh.
+        loading: !authInitialized,
+        authReady: authInitialized,
         profileStatus,
         profileError,
         onboardingStatus,
-        isProfileIncomplete, // New flag
+        isProfileIncomplete,
         signOut,
         refreshProfile,
         refreshClient: refreshProfile
