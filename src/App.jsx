@@ -3,10 +3,12 @@ import React, { Suspense, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
+import { BRAND_LOADER_CYCLE_MS } from "@/components/ui/loadingFallback.constants";
 import { lazyRoute, routeKeys, scheduleIdlePreload } from "@/router/routePrefetch";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
 import PortalLayout from "@/layouts/PortalLayout";
+import useCycleLockedVisibility from "@/hooks/useCycleLockedVisibility";
 
 const Home = lazyRoute(routeKeys.home);
 const About = lazyRoute(routeKeys.about);
@@ -94,8 +96,16 @@ const AppContent = () => {
     }
   }, [user, onboardingStatus, isProfileIncomplete, navigate, location.pathname]);
 
+  const shouldShowAuthLoader =
+    loading || (user && onboardingStatus === 'loading' && sessionStorage.getItem('justLoggedIn') === '1');
+  const showAuthLoader = useCycleLockedVisibility(Boolean(shouldShowAuthLoader), BRAND_LOADER_CYCLE_MS);
+  const showDashboardReloadBrandFallback = useCycleLockedVisibility(
+    isDashboardPath && isDashboardReloadFallback,
+    BRAND_LOADER_CYCLE_MS
+  );
+
   // Premium Loader for initial auth/onboarding detection
-  if (loading || (user && onboardingStatus === 'loading' && sessionStorage.getItem('justLoggedIn') === '1')) {
+  if (showAuthLoader) {
     return <LoadingFallback type="brand" fullScreen />;
   }
 
@@ -113,7 +123,7 @@ const AppContent = () => {
 
       <Suspense
         fallback={
-          isDashboardPath && isDashboardReloadFallback
+          showDashboardReloadBrandFallback
             ? <LoadingFallback type="brand" fullScreen />
             : <LoadingFallback type="spinner" />
         }

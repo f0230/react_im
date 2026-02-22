@@ -81,61 +81,6 @@ function getProjectStatus(project) {
   );
 }
 
-function scoreProject(project, terms) {
-  if (!project || !Array.isArray(terms) || terms.length === 0) return 0;
-  const pool = [
-    sanitizeText(project?.id),
-    sanitizeText(project?.title),
-    sanitizeText(project?.name),
-    sanitizeText(project?.project_name),
-    sanitizeText(project?.description),
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  if (!pool) return 0;
-
-  let score = 0;
-  for (const term of terms) {
-    if (!term || term.length < 3) continue;
-    if (pool.includes(term)) score += term.length;
-  }
-  return score;
-}
-
-function extractSearchTerms(values) {
-  const stopWords = new Set([
-    'the',
-    'and',
-    'para',
-    'con',
-    'por',
-    'que',
-    'como',
-    'this',
-    'that',
-    'from',
-    'canal',
-    'chat',
-    'team',
-    'proyecto',
-  ]);
-
-  const merged = values
-    .filter((value) => typeof value === 'string')
-    .join(' ')
-    .toLowerCase();
-
-  return [...new Set(
-    merged
-      .split(/[^a-z0-9áéíóúñ]+/i)
-      .map((term) => term.trim())
-      .filter((term) => term.length >= 3 && !stopWords.has(term))
-      .slice(0, 24)
-  )];
-}
-
 function toOpenAiContextMessages(rows, botName) {
   if (!Array.isArray(rows)) return [];
   return rows.map((row) => {
@@ -323,45 +268,10 @@ async function resolveCurrentUser({ supabase, req }) {
   };
 }
 
-async function resolveProjectFromChannel({ supabase, channel, triggerPrompt }) {
+async function resolveProjectFromChannel({ supabase, channel }) {
   if (!channel) return null;
 
-  let projectId = channel.project_id || null;
-
-  if (!projectId) {
-    const rawMap = sanitizeText(process.env.CLAWBOT_CHANNEL_PROJECT_MAP);
-    if (rawMap) {
-      try {
-        const parsed = JSON.parse(rawMap);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          projectId = parsed[channel.id] || parsed[channel.slug] || null;
-        }
-      } catch {
-        projectId = null;
-      }
-    }
-  }
-
-  if (!projectId) {
-    const terms = extractSearchTerms([channel.name, channel.slug, channel.description, triggerPrompt]);
-    if (terms.length > 0) {
-      const { data: projects, error } = await supabase
-        .from('projects')
-        .select('*')
-        .limit(200);
-
-      if (!error && Array.isArray(projects) && projects.length > 0) {
-        const bestMatch = projects
-          .map((project) => ({ project, score: scoreProject(project, terms) }))
-          .sort((a, b) => b.score - a.score)[0];
-
-        if (bestMatch && bestMatch.score >= 6) {
-          projectId = bestMatch.project.id;
-        }
-      }
-    }
-  }
-
+  const projectId = channel.project_id || null;
   if (!projectId) return null;
 
   const { data: project } = await supabase
@@ -563,11 +473,7 @@ export default async function handler(req, res) {
 
     const contextMessages = toOpenAiContextMessages((recentMessages || []).slice().reverse(), botName);
 
-    const linkedProject = await resolveProjectFromChannel({
-      supabase,
-      channel,
-      triggerPrompt,
-    });
+    const linkedProject = await resolveProjectFromChannel({ supabase, channel });
     const serviceStats = await loadServiceStats({
       supabase,
       projectId: linkedProject?.id || null,

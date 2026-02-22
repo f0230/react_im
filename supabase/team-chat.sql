@@ -6,6 +6,7 @@ create table if not exists public.team_channels (
     name text not null,
     slug text not null unique,
     description text,
+    project_id uuid references public.projects(id) on delete set null,
     is_public boolean not null default false,
     created_by uuid references public.profiles(id) on delete set null,
     created_at timestamptz not null default now()
@@ -13,8 +14,27 @@ create table if not exists public.team_channels (
 
 alter table public.team_channels
     add column if not exists is_public boolean not null default false;
+alter table public.team_channels
+    add column if not exists project_id uuid;
+
+do $$
+begin
+    if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'team_channels_project_id_fkey'
+          and conrelid = 'public.team_channels'::regclass
+    ) then
+        alter table public.team_channels
+            add constraint team_channels_project_id_fkey
+            foreign key (project_id)
+            references public.projects(id)
+            on delete set null;
+    end if;
+end $$;
 
 create index if not exists team_channels_name_idx on public.team_channels (name);
+create index if not exists team_channels_project_id_idx on public.team_channels (project_id);
 
 create table if not exists public.team_channel_members (
     id uuid primary key default gen_random_uuid(),

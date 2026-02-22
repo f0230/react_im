@@ -3,9 +3,11 @@ import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import DashboardNavbar from './DashboardNavbar';
 import { useAuth } from '../context/AuthContext';
 import LoadingFallback from '../components/ui/LoadingFallback';
+import { BRAND_LOADER_CYCLE_MS } from '../components/ui/loadingFallback.constants';
 import CreateProjectModal from '../components/CreateProjectModal';
 import { AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import useCycleLockedVisibility from '../hooks/useCycleLockedVisibility';
 
 const PortalLayout = () => {
     const {
@@ -26,6 +28,7 @@ const PortalLayout = () => {
     const role = profile?.role;
 
     const isAuthReady = typeof authReady === 'boolean' ? authReady : !loading;
+    const showAuthLoader = useCycleLockedVisibility(!isAuthReady, BRAND_LOADER_CYCLE_MS);
 
     // Use a redirection instead of a modal for profile completion
     useEffect(() => {
@@ -79,7 +82,7 @@ const PortalLayout = () => {
         return checks.some((check) => check(path));
     }, [profile?.role, location.pathname]);
 
-    if (!isAuthReady) {
+    if (showAuthLoader) {
         return <LoadingFallback type="brand" fullScreen />;
     }
 

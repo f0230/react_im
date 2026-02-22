@@ -1,5 +1,6 @@
 // src/components/ui/LoadingFallback.jsx
 import dteLogo from "@/assets/LOGODTE.svg";
+import { BRAND_LOADER_CYCLE_MS } from "@/components/ui/loadingFallback.constants";
 
 const LoadingFallback = ({ type = "spinner", fullScreen = false, className = "" }) => {
     if (type === "skeleton") {
@@ -24,7 +25,10 @@ const LoadingFallback = ({ type = "spinner", fullScreen = false, className = "" 
                     className="w-[180px] mb-8 animate-pulse"
                 />
                 <div className="w-48 h-[2px] bg-neutral-100 rounded-full overflow-hidden">
-                    <div className="h-full w-1/2 bg-[#00D1FF] animate-pulse" />
+                    <div
+                        className="h-full w-full origin-left bg-[#00D1FF] animate-brand-loader-fill"
+                        style={{ animationDuration: `${BRAND_LOADER_CYCLE_MS}ms` }}
+                    />
                 </div>
             </div>
         );

@@ -124,3 +124,21 @@ html, body {
     font-size: 80%;
   }
 }
+
+@keyframes brand-loader-fill {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-brand-loader-fill {
+  transform: scaleX(0);
+  animation-name: brand-loader-fill;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}

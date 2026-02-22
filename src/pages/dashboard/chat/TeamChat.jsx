@@ -60,6 +60,20 @@ const isMessageFromClawbot = (message) =>
 const shouldTriggerClawbot = (value) =>
     typeof value === 'string' && CLAWBOT_TRIGGER_REGEX.test(value);
 
+const getProjectLabel = (project) => {
+    if (!project) return '';
+    return project?.title
+        || project?.name
+        || project?.project_name
+        || (project?.id ? `Proyecto ${String(project.id).slice(0, 8)}` : 'Proyecto');
+};
+
+const isMissingProjectColumnError = (error) => {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '').toLowerCase();
+    return code === '42703' || code === 'PGRST204' || message.includes('project_id');
+};
+
 const TeamChat = () => {
     useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
 
@@ -93,14 +107,21 @@ const TeamChat = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newChannelName, setNewChannelName] = useState('');
+    const [newChannelProjectId, setNewChannelProjectId] = useState('');
     const [channelError, setChannelError] = useState('');
     const [creatingChannel, setCreatingChannel] = useState(false);
+    const [projects, setProjects] = useState([]);
+    const [projectsLoading, setProjectsLoading] = useState(false);
+    const [projectsError, setProjectsError] = useState('');
     const [people, setPeople] = useState([]);
     const [members, setMembers] = useState([]);
     const [membersLoading, setMembersLoading] = useState(false);
     const [membersError, setMembersError] = useState('');
     const [isMembersOpen, setIsMembersOpen] = useState(false);
     const [selectedMemberIds, setSelectedMemberIds] = useState([]);
+    const [selectedChannelProjectId, setSelectedChannelProjectId] = useState('');
+    const [savingProjectLink, setSavingProjectLink] = useState(false);
+    const [projectLinkError, setProjectLinkError] = useState('');
     const [savingMembers, setSavingMembers] = useState(false);
     const [uploadingAudio, setUploadingAudio] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
@@ -129,6 +150,17 @@ const TeamChat = () => {
         () => channels.find((channel) => channel.id === selectedChannelId) || null,
         [channels, selectedChannelId]
     );
+
+    const projectsById = useMemo(
+        () => new Map(projects.map((project) => [project.id, project])),
+        [projects]
+    );
+
+    const selectedChannelProjectLabel = useMemo(() => {
+        if (!selectedChannel?.project_id) return '';
+        const relatedProject = projectsById.get(selectedChannel.project_id);
+        return getProjectLabel(relatedProject) || `Proyecto ${selectedChannel.project_id.slice(0, 8)}`;
+    }, [projectsById, selectedChannel]);
 
     const messageIdKey = useMemo(
         () => messages.map((message) => message.id).join(','),
@@ -167,6 +199,12 @@ const TeamChat = () => {
                 .some((value) => value.toLowerCase().includes(term))
         );
     }, [channels, searchTerm]);
+
+    const sortedProjects = useMemo(() => {
+        const next = [...projects];
+        next.sort((a, b) => getProjectLabel(a).localeCompare(getProjectLabel(b)));
+        return next;
+    }, [projects]);
 
     const otherReadAt = useMemo(() => {
         if (!channelReads.length || !user?.id) return null;
@@ -241,6 +279,25 @@ const TeamChat = () => {
 
         if (!background) setLoadingMessages(false);
     }, [hydrateMediaMessages, isAllowed]);
+
+    const loadProjects = useCallback(async () => {
+        if (!canCreateChannel) return;
+        setProjectsLoading(true);
+        setProjectsError('');
+
+        const { data, error: supaError } = await supabase
+            .from('projects')
+            .select('*')
+            .limit(500);
+
+        if (supaError) {
+            setProjectsError(supaError.message || 'No se pudieron cargar los proyectos.');
+        } else {
+            setProjects(data || []);
+        }
+
+        setProjectsLoading(false);
+    }, [canCreateChannel]);
 
     const loadPeople = useCallback(async () => {
         if (!canCreateChannel) return;
@@ -595,15 +652,35 @@ const TeamChat = () => {
 
         const slug = buildSlug(name) || `canal-${Date.now()}`;
 
-        const { data, error: supaError } = await supabase
+        const insertPayload = {
+            name,
+            slug,
+            created_by: user.id,
+            project_id: newChannelProjectId || null,
+        };
+
+        let { data, error: supaError } = await supabase
             .from('team_channels')
-            .insert({
-                name,
-                slug,
-                created_by: user.id,
-            })
+            .insert(insertPayload)
             .select()
             .single();
+
+        if (supaError && isMissingProjectColumnError(supaError)) {
+            const retry = await supabase
+                .from('team_channels')
+                .insert({
+                    name,
+                    slug,
+                    created_by: user.id,
+                })
+                .select()
+                .single();
+            data = retry.data;
+            supaError = retry.error;
+            if (!supaError) {
+                setChannelError('Canal creado, pero falta la migracion de project_id en team_channels.');
+            }
+        }
 
         if (supaError) {
             setChannelError(supaError.message || 'No se pudo crear el canal.');
@@ -614,6 +691,7 @@ const TeamChat = () => {
             });
             setSelectedChannelId(data.id);
             setNewChannelName('');
+            setNewChannelProjectId('');
             setIsCreateOpen(false);
             const { error: memberError } = await supabase
                 .from('team_channel_members')
@@ -627,12 +705,38 @@ const TeamChat = () => {
         }
 
         setCreatingChannel(false);
-    }, [canCreateChannel, creatingChannel, newChannelName, user?.id]);
+    }, [canCreateChannel, creatingChannel, newChannelName, newChannelProjectId, user?.id]);
 
     const handleSaveMembers = useCallback(async () => {
         if (!canCreateChannel || !selectedChannelId || savingMembers) return;
         setSavingMembers(true);
         setMembersError('');
+
+        const previousProjectId = selectedChannel?.project_id || '';
+        const nextProjectId = selectedChannelProjectId || '';
+
+        if (previousProjectId !== nextProjectId) {
+            const { data: updatedChannel, error: updateError } = await supabase
+                .from('team_channels')
+                .update({ project_id: nextProjectId || null })
+                .eq('id', selectedChannelId)
+                .select('*')
+                .single();
+
+            if (updateError) {
+                if (isMissingProjectColumnError(updateError)) {
+                    setMembersError('Falta la migracion project_id en team_channels para vincular proyectos.');
+                } else {
+                    setMembersError(updateError.message || 'No se pudo guardar el proyecto vinculado.');
+                }
+            } else if (updatedChannel) {
+                setChannels((prev) =>
+                    prev
+                        .map((channel) => (channel.id === updatedChannel.id ? updatedChannel : channel))
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                );
+            }
+        }
 
         const currentIds = new Set(members.map((member) => member.member_id));
         const selectedIds = new Set(selectedMemberIds);
@@ -667,7 +771,45 @@ const TeamChat = () => {
 
         await loadMembers(selectedChannelId);
         setSavingMembers(false);
-    }, [canCreateChannel, loadMembers, members, savingMembers, selectedChannelId, selectedMemberIds, user?.id]);
+    }, [canCreateChannel, loadMembers, members, savingMembers, selectedChannel, selectedChannelId, selectedChannelProjectId, selectedMemberIds, user?.id]);
+
+    const handleSaveChannelProject = useCallback(async () => {
+        if (!canCreateChannel || !selectedChannelId || savingProjectLink) return;
+
+        const previousProjectId = selectedChannel?.project_id || '';
+        const nextProjectId = selectedChannelProjectId || '';
+        if (previousProjectId === nextProjectId) return;
+
+        setSavingProjectLink(true);
+        setProjectLinkError('');
+
+        const { data: updatedChannel, error: updateError } = await supabase
+            .from('team_channels')
+            .update({ project_id: nextProjectId || null })
+            .eq('id', selectedChannelId)
+            .select('*')
+            .single();
+
+        if (updateError) {
+            if (isMissingProjectColumnError(updateError)) {
+                setProjectLinkError('Falta la migracion project_id en team_channels para vincular proyectos.');
+            } else {
+                setProjectLinkError(updateError.message || 'No se pudo guardar el proyecto del canal.');
+            }
+            setSavingProjectLink(false);
+            return;
+        }
+
+        if (updatedChannel) {
+            setChannels((prev) =>
+                prev
+                    .map((channel) => (channel.id === updatedChannel.id ? updatedChannel : channel))
+                    .sort((a, b) => a.name.localeCompare(b.name))
+            );
+        }
+
+        setSavingProjectLink(false);
+    }, [canCreateChannel, savingProjectLink, selectedChannel, selectedChannelId, selectedChannelProjectId]);
 
     useEffect(() => {
         if (!isAllowed) return;
@@ -709,6 +851,22 @@ const TeamChat = () => {
         if (!canCreateChannel) return;
         loadPeople();
     }, [canCreateChannel, loadPeople]);
+
+    useEffect(() => {
+        if (!canCreateChannel) return;
+        loadProjects();
+    }, [canCreateChannel, loadProjects]);
+
+    useEffect(() => {
+        if (!canCreateChannel) return;
+        setSelectedChannelProjectId(selectedChannel?.project_id || '');
+        setProjectLinkError('');
+    }, [canCreateChannel, selectedChannel]);
+
+    useEffect(() => {
+        if (!isMembersOpen) return;
+        setSelectedChannelProjectId(selectedChannel?.project_id || '');
+    }, [isMembersOpen, selectedChannel]);
 
     useEffect(() => {
         if (!selectedChannelId || !isAllowed) return;
@@ -919,6 +1077,29 @@ const TeamChat = () => {
                                     placeholder="Nombre del canal"
                                     className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:border-neutral-400 focus:outline-none"
                                 />
+                                <div className="space-y-1">
+                                    <label className="text-[11px] font-medium text-neutral-500">
+                                        Proyecto vinculado (opcional)
+                                    </label>
+                                    <select
+                                        value={newChannelProjectId}
+                                        onChange={(event) => setNewChannelProjectId(event.target.value)}
+                                        className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:border-neutral-400 focus:outline-none"
+                                    >
+                                        <option value="">Sin proyecto</option>
+                                        {sortedProjects.map((project) => (
+                                            <option key={project.id} value={project.id}>
+                                                {getProjectLabel(project)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {projectsLoading && (
+                                        <p className="text-[11px] text-neutral-400">Cargando proyectos...</p>
+                                    )}
+                                    {projectsError && (
+                                        <p className="text-[11px] text-amber-600">{projectsError}</p>
+                                    )}
+                                </div>
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={handleCreateChannel}
@@ -931,6 +1112,7 @@ const TeamChat = () => {
                                         onClick={() => {
                                             setIsCreateOpen(false);
                                             setNewChannelName('');
+                                            setNewChannelProjectId('');
                                             setChannelError('');
                                         }}
                                         className="text-xs text-neutral-500 hover:text-neutral-700"
@@ -963,6 +1145,10 @@ const TeamChat = () => {
                         {filteredChannels.map((channel) => {
                             const isActive = channel.id === selectedChannelId;
                             const unreadCount = unreadByChannel.get(channel.id) || 0;
+                            const channelProject = channel?.project_id ? projectsById.get(channel.project_id) : null;
+                            const channelProjectLabel = channel?.project_id
+                                ? (getProjectLabel(channelProject) || `Proyecto ${channel.project_id.slice(0, 8)}`)
+                                : '';
                             return (
                                 <button
                                     key={channel.id}
@@ -1001,6 +1187,11 @@ const TeamChat = () => {
                                             {channel.description}
                                         </p>
                                     )}
+                                    {channelProjectLabel && (
+                                        <p className={`text-[11px] mt-1 truncate ${isActive ? 'text-white/70' : 'text-neutral-500'}`}>
+                                            Proyecto: {channelProjectLabel}
+                                        </p>
+                                    )}
                                 </button>
                             );
                         })}
@@ -1012,7 +1203,7 @@ const TeamChat = () => {
                         <>
                             <div className="sticky top-0 z-40 shrink-0 border-b border-neutral-200 bg-white shadow-sm supports-[backdrop-filter]:bg-white/90 backdrop-blur">
                                 <div className="px-4 py-3 flex items-center justify-between gap-4">
-                                    <div className="min-w-0 flex items-center gap-2">
+                                    <div className="min-w-0 flex items-start gap-2">
                                         <button
                                             onClick={() => setSelectedChannelId(null)}
                                             className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
@@ -1020,23 +1211,57 @@ const TeamChat = () => {
                                         >
                                             <ArrowLeft size={20} />
                                         </button>
-                                        <p className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0">
-                                            <Hash size={16} className="text-neutral-400" />
-                                            <span className="truncate">{selectedChannel.name}</span>
-                                        </p>
+                                        <div className="min-w-0">
+                                            <p className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0">
+                                                <Hash size={16} className="text-neutral-400" />
+                                                <span className="truncate">{selectedChannel.name}</span>
+                                            </p>
+                                            {selectedChannelProjectLabel && (
+                                                <p className="text-[11px] text-neutral-500 truncate mt-0.5">
+                                                    Proyecto: {selectedChannelProjectLabel}
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                     {canCreateChannel && (
-                                        <button
-                                            onClick={() => {
-                                                setIsMembersOpen(true);
-                                                loadMembers(selectedChannelId);
-                                            }}
-                                            className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:border-neutral-400"
-                                        >
-                                            Miembros
-                                        </button>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={selectedChannelProjectId}
+                                                onChange={(event) => setSelectedChannelProjectId(event.target.value)}
+                                                className="max-w-[220px] rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-700 focus:border-neutral-400 focus:outline-none"
+                                            >
+                                                <option value="">Sin proyecto</option>
+                                                {sortedProjects.map((project) => (
+                                                    <option key={project.id} value={project.id}>
+                                                        {getProjectLabel(project)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={handleSaveChannelProject}
+                                                disabled={savingProjectLink || !selectedChannelId}
+                                                className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:border-neutral-400 disabled:opacity-60"
+                                            >
+                                                {savingProjectLink ? 'Guardando...' : 'Guardar proyecto'}
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setIsMembersOpen(true);
+                                                    setSelectedChannelProjectId(selectedChannel?.project_id || '');
+                                                    loadMembers(selectedChannelId);
+                                                }}
+                                                className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:border-neutral-400"
+                                            >
+                                                Miembros
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
+                                {projectLinkError && (
+                                    <div className="px-4 pb-2">
+                                        <p className="text-[11px] text-amber-600">{projectLinkError}</p>
+                                    </div>
+                                )}
                             </div>
 
                             <div
@@ -1287,8 +1512,8 @@ const TeamChat = () => {
                         <div className="relative w-full max-w-3xl h-[80svh] rounded-3xl bg-white shadow-2xl border border-neutral-200 overflow-hidden flex flex-col">
                             <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-200 bg-white">
                                 <div>
-                                    <p className="text-sm font-semibold text-neutral-900">Miembros del canal</p>
-                                    <p className="text-xs text-neutral-500">Selecciona quienes pueden ver este canal.</p>
+                                    <p className="text-sm font-semibold text-neutral-900">Configuracion del canal</p>
+                                    <p className="text-xs text-neutral-500">Vincula el proyecto y define quienes pueden ver este canal.</p>
                                 </div>
                                 <button
                                     type="button"
@@ -1300,6 +1525,32 @@ const TeamChat = () => {
                                 </button>
                             </div>
                             <div className="flex-1 overflow-y-auto bg-neutral-50 p-4 space-y-3">
+                                <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
+                                    <label className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                                        Proyecto vinculado
+                                    </label>
+                                    <select
+                                        value={selectedChannelProjectId}
+                                        onChange={(event) => setSelectedChannelProjectId(event.target.value)}
+                                        className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:border-neutral-400 focus:outline-none"
+                                    >
+                                        <option value="">Sin proyecto</option>
+                                        {sortedProjects.map((project) => (
+                                            <option key={project.id} value={project.id}>
+                                                {getProjectLabel(project)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    {projectsLoading && (
+                                        <p className="mt-1 text-[11px] text-neutral-400">Cargando proyectos...</p>
+                                    )}
+                                    {projectsError && (
+                                        <p className="mt-1 text-[11px] text-amber-600">{projectsError}</p>
+                                    )}
+                                </div>
+                                <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
+                                    Miembros del canal
+                                </p>
                                 {membersLoading && (
                                     <div className="text-xs text-neutral-400">Cargando miembros...</div>
                                 )}

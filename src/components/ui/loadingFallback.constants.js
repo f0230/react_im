@@ -1,0 +1,1 @@
+export const BRAND_LOADER_CYCLE_MS = 1400;
