@@ -25,6 +25,8 @@ const buildSlug = (value) => {
 
 const linkRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 const isHttpUrl = (value) => /^https?:\/\//i.test(value);
+const CLAWBOT_TRIGGER_REGEX = /(^|\s)@?clawbot\b/i;
+const CLAWBOT_AUTO_REPLY = String(import.meta.env.VITE_CLAWBOT_AUTO_REPLY || '').toLowerCase() === 'true';
 
 const renderTextWithLinks = (text) => {
     if (!text) return null;
@@ -47,6 +49,16 @@ const renderTextWithLinks = (text) => {
         return <span key={`${part}-${index}`}>{part}</span>;
     });
 };
+
+const looksLikeClawbot = (value) => typeof value === 'string' && /clawbot/i.test(value);
+
+const isMessageFromClawbot = (message) =>
+    looksLikeClawbot(message?.author_name)
+    || looksLikeClawbot(message?.author?.full_name)
+    || looksLikeClawbot(message?.author?.email);
+
+const shouldTriggerClawbot = (value) =>
+    typeof value === 'string' && CLAWBOT_TRIGGER_REGEX.test(value);
 
 const TeamChat = () => {
     useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
@@ -356,33 +368,77 @@ const TeamChat = () => {
         }
     }, [reactionTable, user?.id]);
 
+    const triggerClawbotReply = useCallback(async ({ channelId, prompt, triggerMessageId }) => {
+        if (!channelId || !prompt || !triggerMessageId) return;
+
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        if (!accessToken) {
+            throw new Error('Sesion expirada');
+        }
+
+        const response = await fetch('/api/clawbot-team-chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+                channel_id: channelId,
+                prompt,
+                trigger_message_id: triggerMessageId,
+            }),
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || payload?.ok === false) {
+            throw new Error(payload?.error || 'Clawbot no pudo responder');
+        }
+    }, []);
+
     const handleSend = useCallback(async () => {
         if (!selectedChannelId || sending || !user?.id) return;
         const body = messageText.trim();
         if (!body) return;
 
+        const replyTarget = replyingTo;
+        const shouldCallClawbot = CLAWBOT_AUTO_REPLY || shouldTriggerClawbot(body) || isMessageFromClawbot(replyTarget);
+
         setSending(true);
         setSendError('');
 
-        const { error: supaError } = await supabase
+        const { data: insertedMessage, error: supaError } = await supabase
             .from('team_messages')
             .insert({
                 channel_id: selectedChannelId,
                 author_id: user.id,
                 body,
                 message_type: 'text',
-                reply_to_id: replyingTo?.id || null,
-            });
+                reply_to_id: replyTarget?.id || null,
+            })
+            .select('id')
+            .single();
 
         if (supaError) {
             setSendError('No se pudo enviar el mensaje.');
         } else {
             setMessageText('');
             setReplyingTo(null);
+
+            if (shouldCallClawbot && insertedMessage?.id) {
+                triggerClawbotReply({
+                    channelId: selectedChannelId,
+                    prompt: body,
+                    triggerMessageId: insertedMessage.id,
+                }).catch((error) => {
+                    console.error('Clawbot reply error:', error);
+                    setSendError('Tu mensaje se envio, pero Clawbot no pudo responder.');
+                });
+            }
         }
 
         setSending(false);
-    }, [messageText, selectedChannelId, sending, user?.id]);
+    }, [messageText, replyingTo, selectedChannelId, sending, triggerClawbotReply, user?.id]);
 
     const uploadAudioBlob = useCallback(async (blob, fileName) => {
         if (!selectedChannelId || !user?.id) return;
@@ -995,11 +1051,12 @@ const TeamChat = () => {
                                     <div className="text-sm text-neutral-400">No hay mensajes en este canal.</div>
                                 )}
                                 {messages.map((message) => {
-                                    const isOutbound = message.author_id === user?.id;
+                                    const botMessage = isMessageFromClawbot(message);
+                                    const isOutbound = message.author_id === user?.id && !botMessage;
                                     const authorName = isOutbound
                                         ? 'Tú'
-                                        : message?.author?.full_name
-                                        || message?.author_name
+                                        : message?.author_name
+                                        || message?.author?.full_name
                                         || message?.author?.email
                                         || 'Equipo';
                                     const mediaUrl = message?.resolved_media_url || message?.media_url;
@@ -1011,8 +1068,8 @@ const TeamChat = () => {
                                     const repliedMessage = message.reply_to_id
                                         ? messages.find((item) => item.id === message.reply_to_id)
                                         : null;
-                                    const repliedAuthor = repliedMessage?.author?.full_name
-                                        || repliedMessage?.author_name
+                                    const repliedAuthor = repliedMessage?.author_name
+                                        || repliedMessage?.author?.full_name
                                         || repliedMessage?.author?.email
                                         || 'Mensaje original';
                                     const repliedBody = repliedMessage?.body || '...';
