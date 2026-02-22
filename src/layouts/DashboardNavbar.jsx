@@ -29,6 +29,7 @@ const DashboardNavbar = () => {
         notifications,
         messageUnreadTotal,
         markAllNotificationsRead,
+        markNotificationRead,
     } = useUnreadCounts();
 
     // Get avatar from Google metadata (faster) or profile table
@@ -109,6 +110,7 @@ const DashboardNavbar = () => {
                             onClose={() => setIsNotificationsOpen(false)}
                             notifications={notifications}
                             onMarkAllRead={markAllNotificationsRead}
+                            onMarkRead={markNotificationRead}
                         />
                     </div>
                     {/* Profile Menu Trigger (Desktop & Mobile) */}

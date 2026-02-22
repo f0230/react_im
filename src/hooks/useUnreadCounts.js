@@ -305,6 +305,16 @@ export const useUnreadCounts = () => {
         await refreshAll();
     }, [refreshAll, user?.id]);
 
+    const markNotificationRead = useCallback(async (notificationId) => {
+        if (!user?.id || !notificationId) return;
+        await supabase
+            .from('notifications')
+            .update({ read_at: new Date().toISOString() })
+            .eq('id', notificationId)
+            .eq('recipient_id', user.id);
+        await refreshAll();
+    }, [refreshAll, user?.id]);
+
     useEffect(() => {
         if (!canUse) {
             setCounts(EMPTY_COUNTS);
@@ -420,5 +430,6 @@ export const useUnreadCounts = () => {
         messageUnreadTotal,
         refreshAll,
         markAllNotificationsRead,
+        markNotificationRead,
     };
 };

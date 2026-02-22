@@ -41,6 +41,7 @@ const ProjectTasks = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryProjectId = searchParams.get('projectId');
+  const queryServiceId = searchParams.get('serviceId');
   const { user, profile, client } = useAuth();
 
   // State
@@ -127,9 +128,18 @@ const ProjectTasks = () => {
       .eq('project_id', projectId)
       .order('created_at', { ascending: false });
 
-    if (!error) setServices(data || []);
+    if (!error && data) {
+      setServices(data);
+      if (queryServiceId) {
+        const target = data.find(s => s.id === queryServiceId);
+        if (target) {
+          setSelectedService(target);
+          setShowDetail(true);
+        }
+      }
+    }
     setServiceLoading(false);
-  }, []);
+  }, [queryServiceId]);
 
   // 3. Fetch Service Details
   const fetchServiceDetails = useCallback(async (serviceId) => {
@@ -187,7 +197,7 @@ const ProjectTasks = () => {
       const ids = selectedProject.project_assignments?.map(pa => pa.worker_id) || [];
       fetchTeamMemberProfiles(ids);
     }
-  }, [selectedProject, fetchServices, fetchTeamMemberProfiles]);
+  }, [selectedProject, fetchServices, fetchTeamMemberProfiles, queryServiceId]);
 
   useEffect(() => {
     if (selectedService?.id) {

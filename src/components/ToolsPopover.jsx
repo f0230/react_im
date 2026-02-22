@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, Plus, Sparkles, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
 import PopoverPanel from './ui/PopoverPanel';
+import { POPOVER_PANEL_CLASS } from './ui/popoverStyles';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
 
@@ -98,94 +99,101 @@ const ToolsPopover = () => {
                     setIsOpen(false);
                     setIsAdding(false);
                 }}
-                className="fixed top-14 left-4 right-4 sm:left-auto sm:right-0 sm:top-full sm:absolute mt-2 w-auto sm:w-[360px] bg-[#1a1a1a]/95 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl p-6 z-50 origin-top overflow-hidden"
+                className={POPOVER_PANEL_CLASS}
                 initial={{ opacity: 0, scale: 0.9, y: -10, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, scale: 0.9, y: -10, filter: 'blur(10px)' }}
                 transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
             >
                 {/* Header */}
-                <div className="mb-6">
-                    <h3 className="text-white font-medium text-lg">Tools</h3>
+                <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center justify-between bg-white/5">
+                    <div className="flex items-center gap-2 text-white">
+                        <LayoutGrid size={16} />
+                        <span className="text-sm font-semibold">Herramientas</span>
+                    </div>
                 </div>
 
-                {/* Add Tool Form */}
-                {isAdding ? (
-                    <form onSubmit={handleAddTool} className="flex flex-col gap-3 mb-2 animate-in fade-in zoom-in duration-200">
-                        <input
-                            type="text"
-                            placeholder="Tool Name"
-                            value={newTool.name}
-                            onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
-                            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
-                            autoFocus
-                        />
-                        <input
-                            type="text"
-                            placeholder="URL (e.g., google.com)"
-                            value={newTool.url}
-                            onChange={(e) => setNewTool({ ...newTool, url: e.target.value })}
-                            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
-                        />
-                        <div className="flex items-center gap-2 mt-2">
+                <div className="p-4">
+
+
+                    {/* Add Tool Form */}
+                    {isAdding ? (
+                        <form onSubmit={handleAddTool} className="flex flex-col gap-3 mb-2 animate-in fade-in zoom-in duration-200">
+                            <input
+                                type="text"
+                                placeholder="Tool Name"
+                                value={newTool.name}
+                                onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
+                                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                                autoFocus
+                            />
+                            <input
+                                type="text"
+                                placeholder="URL (e.g., google.com)"
+                                value={newTool.url}
+                                onChange={(e) => setNewTool({ ...newTool, url: e.target.value })}
+                                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                            />
+                            <div className="flex items-center gap-2 mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAdding(false)}
+                                    className="flex-1 bg-white/5 hover:bg-white/10 text-white/70 text-sm py-2 rounded-xl transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!newTool.name || !newTool.url}
+                                    className="flex-1 bg-white text-black text-sm font-medium py-2 rounded-xl hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Add Tool
+                                </button>
+                            </div>
+                        </form>
+                    ) : (
+                        /* Grid */
+                        <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto p-2 custom-scrollbar">
+                            {tools.map((tool) => {
+                                const IconComp = getIcon(tool.icon);
+                                return (
+                                    <a
+                                        key={tool.id}
+                                        href={tool.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="group flex flex-col items-center gap-2 relative"
+                                    >
+                                        <div className={cn(
+                                            "w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform duration-200 group-hover:scale-105 group-active:scale-95",
+                                            tool.color || "bg-neutral-700"
+                                        )}>
+                                            <IconComp size={24} />
+                                        </div>
+                                        <span className="text-[11px] text-white/80 text-center font-medium truncate w-full px-1 group-hover:text-white transition-colors">
+                                            {tool.name}
+                                        </span>
+
+                                        {/* Delete option could be added here later */}
+                                    </a>
+                                );
+                            })}
+
+                            {/* Add New Trigger */}
                             <button
-                                type="button"
-                                onClick={() => setIsAdding(false)}
-                                className="flex-1 bg-white/5 hover:bg-white/10 text-white/70 text-sm py-2 rounded-xl transition-colors"
+                                onClick={() => setIsAdding(true)}
+                                className="group flex flex-col items-center gap-2"
                             >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={!newTool.name || !newTool.url}
-                                className="flex-1 bg-white text-black text-sm font-medium py-2 rounded-xl hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Add Tool
+                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white/50 bg-white/5 border-2 border-dashed border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-200 group-hover:scale-105 group-active:scale-95">
+                                    <Plus size={24} />
+                                </div>
+                                <span className="text-[11px] text-white/50 text-center font-medium truncate w-full px-1 group-hover:text-white/70 transition-colors">
+                                    New
+                                </span>
                             </button>
                         </div>
-                    </form>
-                ) : (
-                    /* Grid */
-                    <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto p-2 custom-scrollbar">
-                        {tools.map((tool) => {
-                            const IconComp = getIcon(tool.icon);
-                            return (
-                                <a
-                                    key={tool.id}
-                                    href={tool.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="group flex flex-col items-center gap-2 relative"
-                                >
-                                    <div className={cn(
-                                        "w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform duration-200 group-hover:scale-105 group-active:scale-95",
-                                        tool.color || "bg-neutral-700"
-                                    )}>
-                                        <IconComp size={24} />
-                                    </div>
-                                    <span className="text-[11px] text-white/80 text-center font-medium truncate w-full px-1 group-hover:text-white transition-colors">
-                                        {tool.name}
-                                    </span>
-
-                                    {/* Delete option could be added here later */}
-                                </a>
-                            );
-                        })}
-
-                        {/* Add New Trigger */}
-                        <button
-                            onClick={() => setIsAdding(true)}
-                            className="group flex flex-col items-center gap-2"
-                        >
-                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white/50 bg-white/5 border-2 border-dashed border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-200 group-hover:scale-105 group-active:scale-95">
-                                <Plus size={24} />
-                            </div>
-                            <span className="text-[11px] text-white/50 text-center font-medium truncate w-full px-1 group-hover:text-white/70 transition-colors">
-                                New
-                            </span>
-                        </button>
-                    </div>
-                )}
+                    )}
+                </div>
             </PopoverPanel>
         </div>
     );

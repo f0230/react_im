@@ -39,11 +39,14 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         <PopoverPanel
             isOpen={isOpen}
             onClose={onClose}
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
             className={POPOVER_PANEL_CLASS}
         >
+            <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center gap-2 bg-white/5">
+                <LayoutDashboard size={16} className="text-white" />
+                <span className="text-sm font-semibold text-white">Menú</span>
+            </div>
             <div className="p-2 space-y-1">
+
                 {navLinks.map((item) => (
                     <PrefetchNavLink
                         key={item.path}

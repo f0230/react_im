@@ -25,10 +25,9 @@ const ProfileMenu = ({ isOpen, onClose }) => {
         <PopoverPanel
             isOpen={isOpen}
             onClose={onClose}
-            initial={{ opacity: 0, scale: 0.95, y: -10 }}
-            exit={{ opacity: 0, scale: 0.95, y: -10 }}
             className={`${POPOVER_PANEL_CLASS} font-product`}
         >
+
             {/* User Info Header */}
             <div className="p-4 border-b border-white/5 bg-white/5">
                 <div className="flex items-center gap-3">
