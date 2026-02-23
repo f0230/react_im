@@ -48,9 +48,9 @@ const DashboardNavbar = () => {
 
     return (
         <header
-            className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 border-b  ${scrolled ? 'bg-black/80 backdrop-blur-md border-white/10 ' : 'bg-transparent border-transparent '}`}
+            className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 border-b bg-black ${scrolled ? 'bg-black/80 backdrop-blur-md border-white/10' : 'border-transparent'}`}
         >
-            <div className="mx-auto px-6 md:px-10 flex items-center justify-between bg-black min-h-[45px] max-w-[1080px]">
+            <div className="mx-auto px-6 md:px-10 flex items-center justify-between min-h-[45px] max-w-[1350px]">
                 {/* Logo */}
                 <PrefetchLink to="/dashboard" className="flex items-center gap-2 group">
                     <OptimizedImage
