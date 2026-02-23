@@ -115,6 +115,7 @@ const Projects = () => {
     const isAdmin = role === 'admin';
     const isWorker = role === 'worker';
     const isClient = role === 'client';
+    const isClientLeader = isClient && profile?.is_client_leader;
 
     const fetchProjects = useCallback(async () => {
         if (!userId) {
@@ -236,32 +237,46 @@ const Projects = () => {
     }, []);
 
     const fetchClients = useCallback(async () => {
-        if (!isAdmin) return;
-        const { data, error: fetchError } = await supabase
+        if (!isAdmin && !isClientLeader) return;
+
+        let query = supabase
             .from('clients')
             .select('id, user_id, full_name, company_name, email')
             .order('created_at', { ascending: false });
+
+        if (isClientLeader && profile?.client_id) {
+            query = query.eq('id', profile.client_id);
+        }
+
+        const { data, error: fetchError } = await query;
         if (fetchError) {
             console.error('Error loading clients:', fetchError);
             return;
         }
         setClients(data || []);
-    }, [isAdmin]);
+    }, [isAdmin, isClientLeader, profile?.client_id]);
 
     const fetchAllClientUsers = useCallback(async () => {
-        if (!isAdmin) return;
-        const { data, error: fetchError } = await supabase
+        if (!isAdmin && !isClientLeader) return;
+
+        let query = supabase
             .from('profiles')
             .select('id, full_name, email, role, client_id')
             .eq('role', 'client')
             .order('full_name', { ascending: true });
+
+        if (isClientLeader && profile?.client_id) {
+            query = query.eq('client_id', profile.client_id);
+        }
+
+        const { data, error: fetchError } = await query;
 
         if (fetchError) {
             console.error('Error loading client users:', fetchError);
             return;
         }
         setAllClientUsers(data || []);
-    }, [isAdmin]);
+    }, [isAdmin, isClientLeader, profile?.client_id]);
 
     useEffect(() => {
         fetchProjects();
@@ -694,7 +709,7 @@ const Projects = () => {
                                                                 </div>
                                                             );
                                                         })}
-                                                        {isAdmin && (
+                                                        {(isAdmin || isClientLeader) && (
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => {
@@ -848,7 +863,7 @@ const Projects = () => {
                     </div>
                 )}
 
-                {isAdmin && clientModalProject && (
+                {(isAdmin || isClientLeader) && clientModalProject && (
                     <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
@@ -873,39 +888,41 @@ const Projects = () => {
 
                             <div className="mt-6 space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                                 {/* Section 1: Client Entities */}
-                                <div>
-                                    <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Empresas / Clientes Principales</h4>
-                                    <div className="space-y-2">
-                                        {clients.map((c) => {
-                                            const isSelected = clientSelection.includes(c.id);
-                                            return (
-                                                <button
-                                                    key={c.id}
-                                                    onClick={() => setClientSelection(prev =>
-                                                        isSelected ? prev.filter(id => id !== c.id) : [...prev, c.id]
-                                                    )}
-                                                    className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${isSelected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-neutral-200 bg-neutral-50'
-                                                        }`}
-                                                >
-                                                    <span className="font-medium text-left">{c.company_name || c.full_name || c.email}</span>
-                                                    <span className="text-[10px] uppercase font-bold">{isSelected ? 'Asignado' : 'Asignar'}</span>
-                                                </button>
-                                            );
-                                        })}
+                                {isAdmin && (
+                                    <div>
+                                        <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Empresas / Clientes Principales</h4>
+                                        <div className="space-y-2">
+                                            {clients.map((c) => {
+                                                const isSelected = clientSelection.includes(c.id);
+                                                return (
+                                                    <button
+                                                        key={c.id}
+                                                        onClick={() => setClientSelection(prev =>
+                                                            isSelected ? prev.filter(id => id !== c.id) : [...prev, c.id]
+                                                        )}
+                                                        className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${isSelected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-neutral-200 bg-neutral-50'
+                                                            }`}
+                                                    >
+                                                        <span className="font-medium text-left">{c.company_name || c.full_name || c.email}</span>
+                                                        <span className="text-[10px] uppercase font-bold">{isSelected ? 'Asignado' : 'Asignar'}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {/* Section 2: Client Users (Team Cliente) */}
                                 <div>
                                     <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Team del Cliente (Usuarios específicos)</h4>
                                     <div className="space-y-2">
-                                        {clientSelection.length === 0 ? (
+                                        {isAdmin && clientSelection.length === 0 ? (
                                             <div className="py-8 text-center border-2 border-dashed border-neutral-100 rounded-2xl">
                                                 <p className="text-sm text-neutral-400">Selecciona un cliente principal para ver su equipo</p>
                                             </div>
                                         ) : (
                                             allClientUsers
-                                                .filter(u => clientSelection.includes(u.client_id))
+                                                .filter(u => isClientLeader ? true : clientSelection.includes(u.client_id))
                                                 .map((u) => {
                                                     const isSelected = clientUserSelection.includes(u.id);
                                                     return (
@@ -930,9 +947,14 @@ const Projects = () => {
                                                     );
                                                 })
                                         )}
-                                        {clientSelection.length > 0 && allClientUsers.filter(u => clientSelection.includes(u.client_id)).length === 0 && (
+                                        {isAdmin && clientSelection.length > 0 && allClientUsers.filter(u => clientSelection.includes(u.client_id)).length === 0 && (
                                             <div className="py-8 text-center border-2 border-dashed border-neutral-100 rounded-2xl">
                                                 <p className="text-sm text-neutral-400">Este cliente aún no tiene un equipo asignado</p>
+                                            </div>
+                                        )}
+                                        {isClientLeader && allClientUsers.length === 0 && (
+                                            <div className="py-8 text-center border-2 border-dashed border-neutral-100 rounded-2xl">
+                                                <p className="text-sm text-neutral-400">Aún no tienes equipo. Invita miembros desde Ajustes.</p>
                                             </div>
                                         )}
                                     </div>

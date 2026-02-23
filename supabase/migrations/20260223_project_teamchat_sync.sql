@@ -59,8 +59,10 @@ BEGIN
     VALUES (v_project_name, v_slug, NEW.id, NULLIF(auth.uid()::text, '')::uuid)
     RETURNING id INTO v_channel_id;
 
-    -- Link the channel back to the project
-    NEW.team_channel_id := v_channel_id;
+    -- Link the channel back to the project using UPDATE (since we are now in AFTER INSERT action)
+    UPDATE public.projects 
+    SET team_channel_id = v_channel_id
+    WHERE id = NEW.id;
 
     RETURN NEW;
 END;
@@ -69,7 +71,7 @@ $$;
 -- Drop if exists, then re-create
 DROP TRIGGER IF EXISTS trg_create_project_channel ON public.projects;
 CREATE TRIGGER trg_create_project_channel
-    BEFORE INSERT ON public.projects
+    AFTER INSERT ON public.projects
     FOR EACH ROW
     EXECUTE FUNCTION public.fn_create_project_channel();
 
