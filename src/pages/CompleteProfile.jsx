@@ -118,7 +118,7 @@ const CompleteProfile = () => {
                 .from('profiles')
                 .update({
                     client_id: clientData.id,
-                    is_client_leader: true,
+                    is_client_leader: profile?.is_client_leader ?? true,
                     full_name: formData.full_name
                 })
                 .eq('id', user.id);

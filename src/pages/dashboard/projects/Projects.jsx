@@ -130,7 +130,7 @@ const Projects = () => {
         const fetchByColumn = async (column, value) => {
             return await supabase
                 .from('projects')
-                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, user_id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
                 .eq(column, value)
                 .order('created_at', { ascending: false });
         };
@@ -139,7 +139,7 @@ const Projects = () => {
         if (role === 'admin') {
             response = await supabase
                 .from('projects')
-                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, user_id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
                 .order('created_at', { ascending: false });
         } else if (role === 'worker') {
             const { data: assignmentsData } = await supabase
@@ -154,7 +154,7 @@ const Projects = () => {
             } else {
                 response = await supabase
                     .from('projects')
-                    .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                    .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, user_id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
                     .in('id', projectIds)
                     .order('created_at', { ascending: false });
             }
@@ -184,7 +184,7 @@ const Projects = () => {
 
             let query = supabase
                 .from('projects')
-                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, user_id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
                 .order('created_at', { ascending: false });
 
             // Build filters
@@ -700,6 +700,23 @@ const Projects = () => {
                                                                 </div>
                                                             );
                                                         })}
+                                                        {/* Always show the Leader (owner) of each assigned client entity */}
+                                                        {(project.project_clients || []).map((pc) => {
+                                                            const c = pc.clients;
+                                                            if (!c || !c.user_id) return null;
+                                                            // Avoid duplicate if leader is already in project_client_users
+                                                            if ((project.project_client_users || []).some(pcu => pcu.user_id === c.user_id)) return null;
+
+                                                            return (
+                                                                <div
+                                                                    key={`leader-${c.user_id}`}
+                                                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-green-50 text-[10px] font-bold text-green-700 shadow-sm"
+                                                                    title={`${c.full_name || 'Líder'} (Líder)`}
+                                                                >
+                                                                    {getInitials(c.full_name)}
+                                                                </div>
+                                                            );
+                                                        })}
                                                         {/* Show Assigned Client Users */}
                                                         {(project.project_client_users || []).map((pcu) => {
                                                             const u = pcu.profiles;
@@ -927,7 +944,7 @@ const Projects = () => {
                                             </div>
                                         ) : (
                                             allClientUsers
-                                                .filter(u => (isAdmin ? clientSelection.includes(u.client_id) : true))
+                                                .filter(u => (isAdmin ? clientSelection.includes(u.client_id) : u.id !== userId))
                                                 .map((u) => {
                                                     const isSelected = clientUserSelection.includes(u.id);
                                                     return (

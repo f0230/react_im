@@ -102,7 +102,7 @@ const Invite = () => {
                                     : "Has sido invitado a unirte al equipo de:"}
                             </p>
                             <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-                                {inviteState.inviteData?.client?.company_name || inviteState.inviteData?.client?.full_name || "tu equipo"}
+                                {inviteState.inviteData?.client?.company_name || (inviteState.inviteData?.client?.leader?.full_name ? "su equipo" : "tu equipo")}
                             </h3>
                         </div>
 
