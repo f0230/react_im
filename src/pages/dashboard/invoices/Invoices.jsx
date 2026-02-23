@@ -98,9 +98,18 @@ const Invoices = () => {
 
     useEffect(() => {
         if (user?.id) {
+            const role = profile?.role;
+            const isClientLeader = profile?.is_client_leader;
+
+            if (role === 'client' && !isClientLeader) {
+                // If the user shouldn't be here, redirect them to dashboard
+                // We use replace to prevent them going back into this route easily
+                window.location.replace('/dashboard');
+                return;
+            }
             fetchData();
         }
-    }, [fetchData, user?.id]);
+    }, [fetchData, user?.id, profile]);
 
     useEffect(() => {
         if (projectIdParam) {
@@ -168,7 +177,7 @@ const Invoices = () => {
         <div className="font-product text-neutral-900 pb-16">
             <div className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                  
+
                     <h1 className="text-4xl md:text-5xl font-black text-neutral-900 tracking-tight">
                         {t('dashboard.invoices.title')}
                     </h1>

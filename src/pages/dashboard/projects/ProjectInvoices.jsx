@@ -31,6 +31,8 @@ const ProjectInvoices = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const isAdmin = profile?.role === 'admin';
+  const isClient = profile?.role === 'client';
+  const isClientLeader = profile?.is_client_leader;
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -61,10 +63,14 @@ const ProjectInvoices = () => {
   }, [projectId]);
 
   useEffect(() => {
+    if (isClient && !isClientLeader) {
+      navigate(`/dashboard/projects/${projectId || ''}`);
+      return;
+    }
     if (projectId) {
       fetchInvoices();
     }
-  }, [fetchInvoices, projectId]);
+  }, [fetchInvoices, projectId, isClient, isClientLeader, navigate]);
 
   const stats = useMemo(() => {
     const total = invoices.reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);

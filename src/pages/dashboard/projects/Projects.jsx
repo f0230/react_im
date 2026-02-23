@@ -171,7 +171,7 @@ const Projects = () => {
             let assignedByClientId = [];
             const effectiveClientId = clientId || profile?.client_id;
 
-            if (effectiveClientId) {
+            if (isClientLeader && effectiveClientId) {
                 const { data: companyAssignmentsData } = await supabase
                     .from('project_clients')
                     .select('project_id')
@@ -191,7 +191,7 @@ const Projects = () => {
             const filters = [];
             filters.push(`user_id.eq.${userId}`);
 
-            if (effectiveClientId) {
+            if (isClientLeader && effectiveClientId) {
                 filters.push(`client_id.eq.${effectiveClientId}`);
             }
 
@@ -490,8 +490,8 @@ const Projects = () => {
         return t('dashboard.projects.subtitle');
     }, [isAdmin, isWorker, isClient, t]);
 
-    const actionCards = useMemo(
-        () => [
+    const actionCards = useMemo(() => {
+        const baseCards = [
             {
                 key: 'tasks',
                 label: t('dashboard.projects.detail.tabs.services'),
@@ -506,16 +506,21 @@ const Projects = () => {
                 image: informImage,
                 suffix: 'reports',
             },
-            {
+        ];
+
+        // Only add invoices if not a regular (non-leader) client
+        if (!(isClient && !isClientLeader)) {
+            baseCards.push({
                 key: 'invoices',
                 label: t('dashboard.projects.detail.tabs.invoices'),
                 description: t('dashboard.projects.cards.invoices'),
                 image: facImage,
                 suffix: 'invoices',
-            },
-        ],
-        [t]
-    );
+            });
+        }
+
+        return baseCards;
+    }, [t, isClient, isClientLeader]);
 
     if (loading) return <LoadingFallback type="spinner" />;
 
@@ -530,7 +535,7 @@ const Projects = () => {
                         {subtitle}
                     </p>
                 </div>
-                {!isWorker && (
+                {(isAdmin || isClientLeader) && (
                     <button
                         type="button"
                         onClick={() => setIsCreateModalOpen(true)}
@@ -557,7 +562,7 @@ const Projects = () => {
                     <p className="mt-2 text-sm text-neutral-500">
                         {t('dashboard.projects.emptyDescription')}
                     </p>
-                    {!isWorker && (
+                    {(isAdmin || isClientLeader) && (
                         <button
                             type="button"
                             onClick={() => setIsCreateModalOpen(true)}
@@ -605,7 +610,7 @@ const Projects = () => {
                                                     {getInitials(title)}
                                                 </div>
                                             )}
-                                            {isAdmin && (
+                                            {(isAdmin || isClientLeader) && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -922,7 +927,7 @@ const Projects = () => {
                                             </div>
                                         ) : (
                                             allClientUsers
-                                                .filter(u => isClientLeader ? true : clientSelection.includes(u.client_id))
+                                                .filter(u => (isAdmin ? clientSelection.includes(u.client_id) : true))
                                                 .map((u) => {
                                                     const isSelected = clientUserSelection.includes(u.id);
                                                     return (

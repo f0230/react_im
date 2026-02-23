@@ -2,7 +2,12 @@ import React from 'react';
 import { NavLink, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+import { useAuth } from '@/context/AuthContext';
+
 const ProjectDetailLayout = () => {
+  const { profile } = useAuth();
+  const role = profile?.role;
+  const isClientLeader = profile?.is_client_leader;
   const { t } = useTranslation();
   const { projectId } = useParams();
   const basePath = projectId ? `/dashboard/projects/${projectId}` : '/dashboard/projects';
@@ -12,7 +17,9 @@ const ProjectDetailLayout = () => {
         {[
           { to: `${basePath}/tasks`, label: t('dashboard.projects.detail.tabs.services') },
           { to: `${basePath}/reports`, label: t('dashboard.projects.detail.tabs.reports') },
-          { to: `${basePath}/invoices`, label: t('dashboard.projects.detail.tabs.invoices') },
+          ...(role !== 'client' || isClientLeader
+            ? [{ to: `${basePath}/invoices`, label: t('dashboard.projects.detail.tabs.invoices') }]
+            : []),
         ].map((tab) => (
           <NavLink
             key={tab.to}

@@ -15,6 +15,7 @@ const Sidebar = () => {
     };
 
     const role = profile?.role || 'client';
+    const isClientLeader = profile?.is_client_leader;
 
     const menuItems = {
         client: [
@@ -39,7 +40,11 @@ const Sidebar = () => {
         ]
     };
 
-    const navLinks = menuItems[role] || menuItems.client;
+    let navLinks = menuItems[role] || menuItems.client;
+
+    if (role === 'client' && !isClientLeader) {
+        navLinks = navLinks.filter(item => !['/dashboard/messages', '/dashboard/invoices'].includes(item.path));
+    }
 
     return (
         <>

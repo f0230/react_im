@@ -53,7 +53,6 @@ const DashboardHome = () => {
                         supabase
                             .from('projects')
                             .select('id', { count: 'exact', head: true })
-                            .eq('user_id', user.id)
                     ),
                     getCount(
                         supabase
