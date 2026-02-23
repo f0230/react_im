@@ -8,6 +8,10 @@ import calHandler from './cal/index.js';
 import clawbotTeamChatHandler from './clawbot-team-chat.js';
 
 
+import figmaWebhookHandler from './figma-webhook.js';
+import figmaCommentsHandler from './figma/comments.js';
+
+
 dotenv.config();
 
 const app = express();
@@ -21,6 +25,8 @@ app.post('/api/project-created', projectCreatedHandler);
 app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.post('/api/slack-notify', slackNotifyHandler);
 app.post('/api/clawbot-team-chat', clawbotTeamChatHandler);
+app.post('/api/figma-webhook', figmaWebhookHandler);
+app.all('/api/figma/comments', figmaCommentsHandler);
 
 
 

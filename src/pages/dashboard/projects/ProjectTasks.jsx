@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import FigmaComments from '@/components/projects/FigmaComments';
 
 // Figma logo inline SVG component
 function FigmaLogo({ size = 14, className = '' }) {
@@ -87,7 +88,8 @@ const ProjectTasks = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
-  const [mobileView, setMobileView] = useState('list'); // 'list', 'detail', 'comments'
+  const [mobileView, setMobileView] = useState('list'); // 'list', 'detail', 'comments', 'figma'
+  const [chatMode, setChatMode] = useState('internal'); // 'internal', 'figma'
 
   const [loading, setLoading] = useState(true);
   const [serviceLoading, setServiceLoading] = useState(false);
@@ -915,6 +917,14 @@ const ProjectTasks = () => {
                 >
                   Chat {comments.length > 0 && `(${comments.length})`}
                 </button>
+                {selectedProject?.figma_url && (
+                  <button
+                    onClick={() => setMobileView('figma')}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mobileView === 'figma' ? 'bg-black text-white shadow-md' : 'text-neutral-400'}`}
+                  >
+                    Figma
+                  </button>
+                )}
               </div>
 
               {/* Detail Info Panel */}
@@ -1271,6 +1281,22 @@ const ProjectTasks = () => {
                     <MessageSquare size={14} className="text-skyblue" />
                     Comentarios
                   </h3>
+                  {selectedProject?.figma_url && (
+                    <div className="flex bg-neutral-200/50 p-0.5 rounded-lg ml-4">
+                      <button
+                        onClick={() => setChatMode('internal')}
+                        className={`px-2 py-1 text-[9px] font-black uppercase tracking-tight rounded-md transition-all ${chatMode === 'internal' ? 'bg-white text-black shadow-sm' : 'text-neutral-400 hover:text-neutral-600'}`}
+                      >
+                        Tarea
+                      </button>
+                      <button
+                        onClick={() => setChatMode('figma')}
+                        className={`px-2 py-1 text-[9px] font-black uppercase tracking-tight rounded-md transition-all ${chatMode === 'figma' ? 'bg-white text-black shadow-sm' : 'text-neutral-400 hover:text-neutral-600'}`}
+                      >
+                        Figma
+                      </button>
+                    </div>
+                  )}
                   <div className="flex md:hidden items-center gap-2">
                     <motion.button
                       whileTap={{ scale: 0.95 }}
@@ -1289,40 +1315,52 @@ const ProjectTasks = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-6 space-y-4 scrollbar-hide py-4" ref={scrollRef}>
-                  {comments.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center opacity-40 py-8">
-                      <MessageSquare size={32} className="mb-3" />
-                      <p className="text-xs font-bold">Sin comentarios aún</p>
-                      <p className="text-[10px] mt-1">Sé el primero en comentar</p>
+                <div className="flex-1 overflow-hidden relative">
+                  {chatMode === 'figma' && selectedProject?.figma_url ? (
+                    <div className="h-full">
+                      <FigmaComments figmaUrl={selectedProject.figma_url} />
                     </div>
-                  ) : comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3 p-4 rounded-2xl bg-white border border-neutral-100/60 shadow-sm">
-                      <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-neutral-50">
-                        <img src={comment.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.full_name || 'U')}`} className="w-full h-full object-cover" alt="" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2 mb-0.5">
-                          <span className="text-xs font-bold text-neutral-900 truncate">{comment.profiles?.full_name}</span>
-                          <span className="text-[9px] text-neutral-400 font-bold whitespace-nowrap">{new Date(comment.created_at).toLocaleDateString()}</span>
+                  ) : (
+                    <>
+                      <div className="h-full flex flex-col min-h-0">
+                        <div className="flex-1 overflow-y-auto px-6 space-y-4 scrollbar-hide py-4 pb-12" ref={scrollRef}>
+                          {comments.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-center opacity-40 py-8">
+                              <MessageSquare size={32} className="mb-3" />
+                              <p className="text-xs font-bold">Sin comentarios aún</p>
+                              <p className="text-[10px] mt-1">Sé el primero en comentar</p>
+                            </div>
+                          ) : comments.map((comment) => (
+                            <div key={comment.id} className="flex gap-3 p-4 rounded-2xl bg-white border border-neutral-100/60 shadow-sm">
+                              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-neutral-50">
+                                <img src={comment.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.full_name || 'U')}`} className="w-full h-full object-cover" alt="" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                  <span className="text-xs font-bold text-neutral-900 truncate">{comment.profiles?.full_name}</span>
+                                  <span className="text-[9px] text-neutral-400 font-bold whitespace-nowrap">{new Date(comment.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-xs text-neutral-500 leading-relaxed">{comment.body}</p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <p className="text-xs text-neutral-500 leading-relaxed">{comment.body}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
 
-                <div className="p-6 pt-2">
-                  <form onSubmit={handleSendComment} className="flex items-center gap-2 bg-white p-1.5 pl-3 pr-2 rounded-full shadow-lg border border-neutral-50 ring-2 ring-black/5">
-                    <input value={newComment} onChange={(e) => setNewComment(e.target.value)} type="text" placeholder="Comentar..." className="flex-1 bg-transparent text-xs outline-none placeholder:text-neutral-400 py-2" />
-                    <AnimatePresence>
-                      {newComment.trim() && (
-                        <motion.button initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} type="submit" disabled={isSending} className="p-2.5 bg-black text-white rounded-full shadow-lg hover:bg-neutral-800 transition-all flex items-center justify-center shrink-0">
-                          {isSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-                        </motion.button>
-                      )}
-                    </AnimatePresence>
-                  </form>
+                        <div className="p-6 pt-2">
+                          <form onSubmit={handleSendComment} className="flex items-center gap-2 bg-white p-1.5 pl-3 pr-2 rounded-full shadow-lg border border-neutral-50 ring-2 ring-black/5">
+                            <input value={newComment} onChange={(e) => setNewComment(e.target.value)} type="text" placeholder="Comentar..." className="flex-1 bg-transparent text-xs outline-none placeholder:text-neutral-400 py-2" />
+                            <AnimatePresence>
+                              {newComment.trim() && (
+                                <motion.button initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} type="submit" disabled={isSending} className="p-2.5 bg-black text-white rounded-full shadow-lg hover:bg-neutral-800 transition-all flex items-center justify-center shrink-0">
+                                  {isSending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                                </motion.button>
+                              )}
+                            </AnimatePresence>
+                          </form>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </motion.div>
