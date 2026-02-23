@@ -67,36 +67,56 @@ const Invite = () => {
     }
 
     return (
-        <div className="min-h-screen bg-black flex items-center justify-center font-product p-4 relative">
+        <div className="min-h-screen bg-[#050505] flex items-center justify-center font-product p-4 relative overflow-hidden">
+            {/* Ambient Background Effects */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[120px]" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px]" />
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 rounded-full blur-[120px] animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-green/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
             </div>
 
-            <div className="relative w-full max-w-[500px] bg-[#111] rounded-[10px] shadow-2xl p-8 border border-white/10 text-center">
-                <h2 className="text-[25px] md:text-[35px] font-bold mb-6 text-white inline-flex items-center justify-center gap-2">
-                    <img
-                        src={dteWhite}
-                        alt="DTE"
-                        className="h-[24px] md:h-[35px] w-auto"
-                    />
-                    <span className="text-green">Platform</span>
-                </h2>
-
-                <div className="mb-8 p-4 bg-white/5 rounded-lg border border-white/10">
-                    <p className="text-gray-300 mb-2">
-                        You have been invited to join the team:
-                    </p>
-                    <h3 className="text-xl font-bold text-white">
-                        {inviteState.inviteData?.client?.company_name || inviteState.inviteData?.client?.full_name || "tu equipo"}
-                    </h3>
+            <div className="relative w-full max-w-[480px]">
+                {/* Logo Header */}
+                <div className="text-center mb-8">
+                    <h2 className="text-[32px] md:text-[40px] font-bold text-white inline-flex items-center justify-center gap-3">
+                        <img
+                            src={dteWhite}
+                            alt="DTE"
+                            className="h-[30px] md:h-[38px] w-auto"
+                        />
+                        <span className="text-green">Platform</span>
+                    </h2>
                 </div>
 
-                <p className="text-gray-400 mb-6 text-sm">
-                    Log in with Google to accept the invitation and securely join the workspace.
-                </p>
+                <div className="bg-[#111]/80 backdrop-blur-xl rounded-[24px] shadow-2xl p-8 md:p-10 border border-white/10 text-center relative overflow-hidden">
+                    {/* Subtle inner gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
 
-                <LoginPanelBody />
+                    <div className="relative z-10">
+                        <div className="mb-10">
+                            <span className="inline-block px-3 py-1 bg-green/10 text-green text-[10px] font-bold uppercase tracking-widest rounded-full mb-4 border border-green/20">
+                                Invitación Exclusiva
+                            </span>
+                            <p className="text-gray-400 mb-3 text-sm">
+                                Has sido invitado a unirte al equipo de:
+                            </p>
+                            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
+                                {inviteState.inviteData?.client?.company_name || inviteState.inviteData?.client?.full_name || "tu equipo"}
+                            </h3>
+                        </div>
+
+                        <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-10" />
+
+                        <p className="text-gray-300 mb-8 text-sm leading-relaxed max-w-[280px] mx-auto">
+                            Inicia sesión con Google para aceptar la invitación y acceder a tu espacio de trabajo.
+                        </p>
+
+                        <LoginPanelBody showLogo={false} showDescription={false} />
+                    </div>
+                </div>
+
+                <p className="text-center text-gray-500 mt-8 text-xs font-inter">
+                    {t("footer.copyright", "© 2025 Grupo DTE")} • All rights reserved
+                </p>
             </div>
         </div>
     );
