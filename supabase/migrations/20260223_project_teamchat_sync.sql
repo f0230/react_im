@@ -64,6 +64,13 @@ BEGIN
     SET team_channel_id = v_channel_id
     WHERE id = NEW.id;
 
+    -- NEW: Add all existing admins to the new channel automatically
+    INSERT INTO public.team_channel_members (channel_id, member_id, added_by)
+    SELECT v_channel_id, p.id, NULLIF(auth.uid()::text, '')::uuid
+    FROM public.profiles p
+    WHERE p.role = 'admin'
+    ON CONFLICT (channel_id, member_id) DO NOTHING;
+
     RETURN NEW;
 END;
 $$;

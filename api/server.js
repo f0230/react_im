@@ -8,25 +8,16 @@ import calHandler from './cal/index.js';
 import clawbotTeamChatHandler from './clawbot-team-chat.js';
 
 
-import figmaWebhookHandler from './figma-webhook.js';
-import figmaCommentsHandler from './figma/comments.js';
-
-
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Adapter to convert Express req/res to Vercel-like handler signature (if needed)
-// Luckily, Vercel default handlers (req, res) are compatible with Express middleware signature.
-
 app.post('/api/project-created', projectCreatedHandler);
 app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.post('/api/slack-notify', slackNotifyHandler);
 app.post('/api/clawbot-team-chat', clawbotTeamChatHandler);
-app.post('/api/figma-webhook', figmaWebhookHandler);
-app.all('/api/figma/comments', figmaCommentsHandler);
 
 
 
