@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Mail, CheckCircle, AlertCircle, ArrowRight, ShieldX, UserX } from 'lucide-react';
+import { Loader2, Mail, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
 import Aurora from '@/components/ui/Aurora';
 import { useTranslation, Trans } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
-// Figma logo SVG
+// Figma logo SVG oficial
 const FigmaLogo = ({ className }) => (
     <svg className={className} viewBox="0 0 38 57" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M19 28.5C19 25.9804 20.0009 23.5641 21.7825 21.7825C23.5641 20.0009 25.9804 19 28.5 19C31.0196 19 33.4359 20.0009 35.2175 21.7825C36.9991 23.5641 38 25.9804 38 28.5C38 31.0196 36.9991 33.4359 35.2175 35.2175C33.4359 36.9991 31.0196 38 28.5 38C25.9804 38 23.5641 36.9991 21.7825 35.2175C20.0009 33.4359 19 31.0196 19 28.5Z" fill="#1ABCFE" />
@@ -17,14 +17,6 @@ const FigmaLogo = ({ className }) => (
     </svg>
 );
 
-// Mapeo de errores OAuth a mensajes legibles
-const oauthErrors = {
-    figma_denied: 'Cancelaste el acceso a Figma.',
-    not_found: 'Tu cuenta de Figma no está registrada en el sistema.',
-    not_admin: 'Tu cuenta de Figma no tiene permisos de administrador.',
-    server_error: 'Ocurrió un error al verificar tu identidad. Intenta de nuevo.',
-};
-
 const AdminLogin = () => {
     const { t } = useTranslation();
     const [searchParams] = useSearchParams();
@@ -34,14 +26,16 @@ const AdminLogin = () => {
     const [message, setMessage] = useState(null);
     const [error, setError] = useState(null);
 
-    // Detectar errores que vienen del callback de Figma en la URL
+    // Detectar error de OAuth en la URL (?error=...)
     useEffect(() => {
         const oauthError = searchParams.get('error');
-        if (oauthError && oauthErrors[oauthError]) {
-            setError(oauthErrors[oauthError]);
+        const oauthErrorDesc = searchParams.get('error_description');
+        if (oauthError) {
+            setError(oauthErrorDesc || 'Error al iniciar sesión con Figma.');
         }
     }, [searchParams]);
 
+    // Magic link por email
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
@@ -56,36 +50,41 @@ const AdminLogin = () => {
                     shouldCreateUser: false,
                 },
             });
-
             if (error) throw error;
-
             setMessage(true);
-        } catch (error) {
-            setError(error.message || t('admin.login.errors.magicLink'));
+        } catch (err) {
+            setError(err.message || t('admin.login.errors.magicLink'));
         } finally {
             setLoading(false);
         }
     };
 
-    const handleFigmaLogin = () => {
+    // OAuth nativo de Supabase con Figma
+    const handleFigmaLogin = async () => {
         setFigmaLoading(true);
         setError(null);
-        // Redirigir al backend para iniciar el flujo OAuth de Figma
-        window.location.href = '/api/figma-auth/login';
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'figma',
+                options: {
+                    redirectTo: `${window.location.origin}/dashboard`,
+                },
+            });
+            if (error) throw error;
+        } catch (err) {
+            setError(err.message || 'Error al conectar con Figma.');
+            setFigmaLoading(false);
+        }
     };
 
     return (
         <div className="relative min-h-screen w-full flex items-center justify-center bg-black overflow-hidden font-product selection:bg-indigo-500/30">
-            {/* Background Effects */}
+            {/* Background */}
             <div className="absolute inset-0 z-0 opacity-40">
-                <Aurora
-                    colorStops={['#ff2222', '#000000', '#f2f2f2']}
-                    speed={0.5}
-                />
+                <Aurora colorStops={['#ff2222', '#000000', '#f2f2f2']} speed={0.5} />
             </div>
 
             <div className="relative z-10 w-full max-w-md px-6">
-
                 <div className="mb-10 text-center">
                     <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 mb-2 tracking-tight">
                         {t('admin.login.title')}
@@ -130,7 +129,7 @@ const AdminLogin = () => {
                             exit={{ opacity: 0 }}
                             className="space-y-4"
                         >
-                            {/* ── Botón Figma OAuth ─────────────────────────────── */}
+                            {/* ── Botón Figma OAuth nativo ────────────────────── */}
                             <motion.button
                                 id="figma-login-btn"
                                 type="button"
@@ -154,14 +153,14 @@ const AdminLogin = () => {
                                 )}
                             </motion.button>
 
-                            {/* ── Separador ─────────────────────────────────────── */}
+                            {/* ── Separador ──────────────────────────────────── */}
                             <div className="relative flex items-center gap-3 py-1">
                                 <div className="flex-1 h-px bg-white/10" />
                                 <span className="text-xs text-zinc-600 uppercase tracking-widest">o</span>
                                 <div className="flex-1 h-px bg-white/10" />
                             </div>
 
-                            {/* ── Formulario Magic Link ──────────────────────────── */}
+                            {/* ── Magic link por email ────────────────────────── */}
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <div className="relative group/input">
                                     <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within/input:text-white transition-colors" />
@@ -176,7 +175,6 @@ const AdminLogin = () => {
                                     />
                                 </div>
 
-                                {/* Error */}
                                 <AnimatePresence>
                                     {error && (
                                         <motion.div

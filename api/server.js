@@ -6,7 +6,6 @@ import clientWelcomeEmailHandler from './client-welcome-email.js';
 import slackNotifyHandler from './slack-notify.js';
 import calHandler from './cal/index.js';
 import clawbotTeamChatHandler from './clawbot-team-chat.js';
-import figmaAuthHandler from './figma-auth.js';
 
 
 dotenv.config();
@@ -20,8 +19,6 @@ app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.post('/api/slack-notify', slackNotifyHandler);
 app.post('/api/clawbot-team-chat', clawbotTeamChatHandler);
 
-// Figma OAuth routes
-app.get('/api/figma-auth/:action', figmaAuthHandler);
 
 
 
