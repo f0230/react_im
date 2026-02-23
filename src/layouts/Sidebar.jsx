@@ -23,7 +23,6 @@ const Sidebar = () => {
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
-            { icon: Settings, label: 'Configuración', path: '/dashboard/settings' },
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -37,7 +36,6 @@ const Sidebar = () => {
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
-            { icon: Settings, label: 'Configuración', path: '/dashboard/settings' },
         ]
     };
 
