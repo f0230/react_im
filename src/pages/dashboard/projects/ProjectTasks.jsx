@@ -40,6 +40,40 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 
+// Figma logo inline SVG component
+function FigmaLogo({ size = 14, className = '' }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size * (38 / 57)} height={size} viewBox="0 0 38 57" fill="none" className={className}>
+      <path d="M19 28.5C19 25.9861 20.0009 23.5752 21.7825 21.7936C23.5641 20.0121 25.975 19.0112 28.4889 19.0112H38V28.5H28.4889C25.975 28.5 23.5641 29.5009 21.7825 31.2825C20.0009 33.0641 19 35.475 19 37.9889V47.5C19 50.0139 17.9991 52.4248 16.2175 54.2064C14.4359 55.9879 12.025 56.9888 9.51111 56.9888C6.99725 56.9888 4.58636 55.9879 2.80481 54.2064C1.02326 52.4248 0.022421 50.0139 0.022421 47.5C0.022421 44.9861 1.02326 42.5752 2.80481 40.7936C4.56408 39.0121 6.99725 38.0112 9.51111 38.0112H19V28.5Z" fill="#1ABCFE" />
+      <path d="M0 9.5C0 6.98614 1.00089 4.57522 2.78249 2.79363C4.56408 1.01205 6.975 0.0112247 9.48889 0.0112247H19V19H9.48889C6.975 19 4.56408 17.9991 2.78249 16.2175C1.00089 14.4359 0 12.025 0 9.5Z" fill="#F24E1E" />
+      <path d="M19 0.0112247H28.5111C31.025 0.0112247 33.4359 1.01205 35.2175 2.79363C36.9991 4.57522 38 6.98614 38 9.5C38 12.0139 36.9991 14.4248 35.2175 16.2064C33.4359 17.9879 31.025 18.9888 28.5111 18.9888H19V0.0112247Z" fill="#FF7262" />
+      <path d="M0 28.5C0 25.9861 1.00089 23.5752 2.78249 21.7936C4.56408 20.0121 6.975 19.0112 9.48889 19.0112H19V38H9.48889C6.975 38 4.56408 36.9991 2.78249 35.2175C1.00089 33.4359 0 31.025 0 28.5Z" fill="#A259FF" />
+      <path d="M19 19H28.5111C31.025 19 33.4359 20.0009 35.2175 21.7825C36.9991 23.5641 38 25.975 38 28.4889C38 31.0028 36.9991 33.4137 35.2175 35.1952C33.4359 36.9768 31.025 37.9777 28.5111 37.9777H19V19Z" fill="#1ABCFE" />
+    </svg>
+  );
+}
+
+// Figma Jam logo inline SVG
+function JamLogo({ size = 14, className = '' }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
+      <rect width="32" height="32" rx="8" fill="#A259FF" />
+      <rect x="10" y="10" width="12" height="12" rx="1" fill="white" />
+    </svg>
+  );
+}
+
+// Google Drive logo inline SVG
+function DriveLogo({ size = 14, className = '' }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size * (443 / 512)} viewBox="0 0 512 443" fill="none" className={className}>
+      <path d="M165 0h182l165 282H347z" fill="#FFBA00" />
+      <path d="M0 282L83 443h330L330 282z" fill="#2196F3" />
+      <path d="M165 0L0 282l83 161 165-281z" fill="#00AC47" />
+    </svg>
+  );
+}
+
 const ProjectTasks = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -72,6 +106,13 @@ const ProjectTasks = () => {
   const [editedDesc, setEditedDesc] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingDesc, setIsSavingDesc] = useState(false);
+  const [editedFields, setEditedFields] = useState({
+    deadline: '',
+    priority: 'medium',
+    budget: '',
+    deliverables: '',
+    requirements: ''
+  });
   const [replacingFile, setReplacingFile] = useState(null);
   const [deletingFileId, setDeletingFileId] = useState(null);
 
@@ -529,15 +570,34 @@ const ProjectTasks = () => {
     return words.slice(0, 2).map(w => w[0]).join('').toUpperCase();
   };
 
-  // File icon based on type
-  const getFileIcon = (fileType) => {
-    if (!fileType) return <FileText size={22} className="text-neutral-400" />;
-    if (fileType.startsWith('image/')) return <span className="text-2xl">🖼️</span>;
-    if (fileType.includes('pdf')) return <span className="text-2xl">📄</span>;
-    if (fileType.includes('zip') || fileType.includes('rar')) return <span className="text-2xl">🗜️</span>;
-    if (fileType.includes('word') || fileType.includes('doc')) return <span className="text-2xl">📝</span>;
-    if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('csv')) return <span className="text-2xl">📊</span>;
-    return <FileText size={22} className="text-neutral-400" />;
+  // File preview/icon based on type
+  const renderFilePreview = (file) => {
+    const type = file.file_type;
+    const url = file.file_url;
+
+    if (type?.startsWith('image/')) {
+      return (
+        <div className="w-full h-full relative overflow-hidden bg-neutral-50 flex items-center justify-center">
+          <img
+            src={url}
+            alt={file.file_name}
+            className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110 group-hover:blur-[1px]"
+          />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-white/30 backdrop-blur-md border border-white/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 shadow-lg">
+              <Download size={14} className="text-white" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (type?.includes('pdf')) return <div className="flex flex-col items-center gap-1.5"><span className="text-4xl transition-transform group-hover:scale-110 drop-shadow-sm">📄</span><span className="text-[9px] font-black text-rose-500 uppercase tracking-tighter bg-rose-50 px-1.5 py-0.5 rounded-md">PDF</span></div>;
+    if (type?.includes('zip') || type?.includes('rar')) return <div className="flex flex-col items-center gap-1.5"><span className="text-4xl transition-transform group-hover:scale-110 drop-shadow-sm">🗜️</span><span className="text-[9px] font-black text-amber-600 uppercase tracking-tighter bg-amber-50 px-1.5 py-0.5 rounded-md">ZIP</span></div>;
+    if (type?.includes('word') || type?.includes('doc')) return <div className="flex flex-col items-center gap-1.5"><span className="text-4xl transition-transform group-hover:scale-110 drop-shadow-sm">📝</span><span className="text-[9px] font-black text-blue-600 uppercase tracking-tighter bg-blue-50 px-1.5 py-0.5 rounded-md">DOC</span></div>;
+    if (type?.includes('sheet') || type?.includes('excel') || type?.includes('csv')) return <div className="flex flex-col items-center gap-1.5"><span className="text-4xl transition-transform group-hover:scale-110 drop-shadow-sm">📊</span><span className="text-[9px] font-black text-emerald-600 uppercase tracking-tighter bg-emerald-50 px-1.5 py-0.5 rounded-md">XLS</span></div>;
+
+    return <FileText size={32} className="text-neutral-200 transition-all group-hover:scale-110 group-hover:text-neutral-400" />;
   };
 
   if (loading) {
@@ -664,6 +724,48 @@ const ProjectTasks = () => {
                 )}
               </div>
             </div>
+
+            {/* Project Links Section */}
+            {(selectedProject?.figma_url || selectedProject?.jam_url || selectedProject?.drive_url) && (
+              <div className="mt-3.5 flex flex-wrap items-center justify-center gap-2">
+                {selectedProject.figma_url && (
+                  <a
+                    href={selectedProject.figma_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white/50 hover:bg-white rounded-full transition-all text-neutral-600 hover:text-black border border-white/20 shadow-sm"
+                    title="Figma Design"
+                  >
+                    <FigmaLogo size={12} />
+                    <span className="text-[9px] font-black uppercase tracking-wide">Diseño</span>
+                  </a>
+                )}
+                {selectedProject.jam_url && (
+                  <a
+                    href={selectedProject.jam_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white/50 hover:bg-white rounded-full transition-all text-neutral-600 hover:text-black border border-white/20 shadow-sm"
+                    title="Figma Jam"
+                  >
+                    <JamLogo size={12} />
+                    <span className="text-[9px] font-black uppercase tracking-wide">FigJam</span>
+                  </a>
+                )}
+                {selectedProject.drive_url && (
+                  <a
+                    href={selectedProject.drive_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white/50 hover:bg-white rounded-full transition-all text-neutral-600 hover:text-black border border-white/20 shadow-sm"
+                    title="Google Drive"
+                  >
+                    <DriveLogo size={12} />
+                    <span className="text-[9px] font-black uppercase tracking-wide">Drive</span>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex-1 flex flex-col min-h-0 bg-[#EBEBEB]">
@@ -1137,12 +1239,12 @@ const ProjectTasks = () => {
                         </div>
                       )}
                       {files.map(file => (
-                        <div key={file.id} className="relative group w-20">
-                          <a href={file.file_url} target="_blank" rel="noreferrer" className="block w-20" title={file.file_name}>
-                            <div className={`w-20 h-24 rounded-2xl bg-white border border-neutral-50 shadow-sm flex flex-col items-center justify-center gap-1 group-hover:bg-neutral-50 transition-all ${deletingFileId === file.id ? 'opacity-50' : ''}`}>
-                              {getFileIcon(file.file_type)}
+                        <div key={file.id} className="relative group w-24">
+                          <a href={file.file_url} target="_blank" rel="noreferrer" className="block w-24" title={file.file_name}>
+                            <div className={`w-24 h-28 rounded-2xl bg-white border border-neutral-100 shadow-sm flex flex-col items-center justify-center overflow-hidden transition-all group-hover:shadow-md group-hover:border-neutral-200 ${deletingFileId === file.id ? 'opacity-50' : ''}`}>
+                              {renderFilePreview(file)}
                             </div>
-                            <p className="text-[10px] text-center mt-2 font-bold text-neutral-400 truncate w-full px-1">{file.file_name}</p>
+                            <p className="text-[10px] text-center mt-2.5 font-bold text-neutral-400 truncate w-full px-1 group-hover:text-black transition-colors">{file.file_name}</p>
                           </a>
                           {/* Delete button - always visible for managers */}
                           {canManage && (
@@ -1233,7 +1335,7 @@ const ProjectTasks = () => {
           )}
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

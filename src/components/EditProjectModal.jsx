@@ -18,6 +18,7 @@ const EditProjectModal = ({
         name: '',
         figma_url: '',
         jam_url: '',
+        drive_url: '',
         avatar_url: '',
     });
     const [loading, setLoading] = useState(false);
@@ -31,6 +32,7 @@ const EditProjectModal = ({
                 name: project.name || project.title || project.project_name || '',
                 figma_url: project.figma_url || '',
                 jam_url: project.jam_url || '',
+                drive_url: project.drive_url || '',
                 avatar_url: project.avatar_url || project.profile_image_url || '',
             });
             setError(null);
@@ -108,6 +110,7 @@ const EditProjectModal = ({
                 [nameColumn]: formData.name,
                 figma_url: formData.figma_url || null,
                 jam_url: formData.jam_url || null,
+                drive_url: formData.drive_url || null,
                 avatar_url: formData.avatar_url || null,
             };
 
@@ -238,6 +241,22 @@ const EditProjectModal = ({
                                                         onChange={handleChange}
                                                         className={`${inputClass} pl-10`}
                                                         placeholder="https://www.figma.com/board/..."
+                                                    />
+                                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                        <LinkIcon size={16} />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className={labelClass}>Link de Carpeta Drive</label>
+                                                <div className="relative">
+                                                    <input
+                                                        name="drive_url"
+                                                        value={formData.drive_url}
+                                                        onChange={handleChange}
+                                                        className={`${inputClass} pl-10`}
+                                                        placeholder="https://drive.google.com/drive/folders/..."
                                                     />
                                                     <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
                                                         <LinkIcon size={16} />

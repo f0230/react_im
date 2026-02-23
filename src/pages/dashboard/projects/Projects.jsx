@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Briefcase, Plus, Users, X, Pencil } from 'lucide-react';
+import { Briefcase, Plus, Users, X, Pencil, Folder } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
@@ -15,12 +15,12 @@ import servicesImage from '@/assets/Dahsboardx/ser.webp';
 // Figma logo inline SVG component
 function FigmaLogo({ size = 14, className = '' }) {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 38 57" fill="none" className={className}>
-            <path d="M19 28.5A9.5 9.5 0 0 1 28.5 19H19a9.5 9.5 0 0 0 0 19h9.5A9.5 9.5 0 0 1 19 28.5Z" fill="#1ABCFE" />
-            <path d="M9.5 47.5A9.5 9.5 0 0 1 19 38h9.5a9.5 9.5 0 1 1-19 0Z" fill="#0ACF83" />
-            <path d="M9.5 9.5A9.5 9.5 0 0 0 19 19h9.5A9.5 9.5 0 1 0 9.5 9.5Z" fill="#FF7262" />
-            <path d="M9.5 28.5A9.5 9.5 0 0 0 19 38V19a9.5 9.5 0 0 0-9.5 9.5Z" fill="#F24E1E" />
-            <path d="M28.5 19a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19Z" fill="#A259FF" />
+        <svg xmlns="http://www.w3.org/2000/svg" width={size * (38 / 57)} height={size} viewBox="0 0 38 57" fill="none" className={className}>
+            <path d="M19 28.5C19 25.9861 20.0009 23.5752 21.7825 21.7936C23.5641 20.0121 25.975 19.0112 28.4889 19.0112H38V28.5H28.4889C25.975 28.5 23.5641 29.5009 21.7825 31.2825C20.0009 33.0641 19 35.475 19 37.9889V47.5C19 50.0139 17.9991 52.4248 16.2175 54.2064C14.4359 55.9879 12.025 56.9888 9.51111 56.9888C6.99725 56.9888 4.58636 55.9879 2.80481 54.2064C1.02326 52.4248 0.022421 50.0139 0.022421 47.5C0.022421 44.9861 1.02326 42.5752 2.80481 40.7936C4.56408 39.0121 6.99725 38.0112 9.51111 38.0112H19V28.5Z" fill="#1ABCFE" />
+            <path d="M0 9.5C0 6.98614 1.00089 4.57522 2.78249 2.79363C4.56408 1.01205 6.975 0.0112247 9.48889 0.0112247H19V19H9.48889C6.975 19 4.56408 17.9991 2.78249 16.2175C1.00089 14.4359 0 12.025 0 9.5Z" fill="#F24E1E" />
+            <path d="M19 0.0112247H28.5111C31.025 0.0112247 33.4359 1.01205 35.2175 2.79363C36.9991 4.57522 38 6.98614 38 9.5C38 12.0139 36.9991 14.4248 35.2175 16.2064C33.4359 17.9879 31.025 18.9888 28.5111 18.9888H19V0.0112247Z" fill="#FF7262" />
+            <path d="M0 28.5C0 25.9861 1.00089 23.5752 2.78249 21.7936C4.56408 20.0121 6.975 19.0112 9.48889 19.0112H19V38H9.48889C6.975 38 4.56408 36.9991 2.78249 35.2175C1.00089 33.4359 0 31.025 0 28.5V28.5Z" fill="#A259FF" />
+            <path d="M19 19H28.5111C31.025 19 33.4359 20.0009 35.2175 21.7825C36.9991 23.5641 38 25.975 38 28.4889C38 31.0028 36.9991 33.4137 35.2175 35.1952C33.4359 36.9768 31.025 37.9777 28.5111 37.9777H19V19Z" fill="#1ABCFE" />
         </svg>
     );
 }
@@ -29,8 +29,19 @@ function FigmaLogo({ size = 14, className = '' }) {
 function JamLogo({ size = 14, className = '' }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
-            <rect x="4" y="4" width="24" height="24" rx="6" fill="#A259FF" />
-            <rect x="11" y="11" width="10" height="10" rx="1" fill="white" />
+            <rect width="32" height="32" rx="8" fill="#A259FF" />
+            <rect x="10" y="10" width="12" height="12" rx="1" fill="white" />
+        </svg>
+    );
+}
+
+// Google Drive logo inline SVG
+function DriveLogo({ size = 14, className = '' }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size * (443 / 512)} viewBox="0 0 512 443" fill="none" className={className}>
+            <path d="M165 0h182l165 282H347z" fill="#FFBA00" />
+            <path d="M0 282L83 443h330L330 282z" fill="#2196F3" />
+            <path d="M165 0L0 282l83 161 165-281z" fill="#00AC47" />
         </svg>
     );
 }
@@ -707,6 +718,10 @@ const Projects = () => {
                                                             // Avoid duplicate if leader is already in project_client_users
                                                             if ((project.project_client_users || []).some(pcu => pcu.user_id === c.user_id)) return null;
 
+                                                            // Avoid duplicate if client entity name is same as leader name (individual client)
+                                                            const companyName = c.company_name || c.full_name;
+                                                            if (companyName === c.full_name) return null;
+
                                                             return (
                                                                 <div
                                                                     key={`leader-${c.user_id}`}
@@ -721,6 +736,13 @@ const Projects = () => {
                                                         {(project.project_client_users || []).map((pcu) => {
                                                             const u = pcu.profiles;
                                                             if (!u) return null;
+
+                                                            // Avoid duplicate if already shown as a Client Entity (with same name)
+                                                            const isSameAsEntity = (project.project_clients || []).some(pc => {
+                                                                const companyName = pc.clients?.company_name || pc.clients?.full_name;
+                                                                return companyName === u.full_name;
+                                                            });
+                                                            if (isSameAsEntity) return null;
                                                             return (
                                                                 <div
                                                                     key={pcu.user_id}
@@ -747,8 +769,8 @@ const Projects = () => {
                                                 </div>
 
                                                 {/* Links Section */}
-                                                {(project.figma_url || project.jam_url) && (
-                                                    <div className="flex items-center gap-2 pl-3 md:border-l border-white/30 self-stretch">
+                                                {(project.figma_url || project.jam_url || project.drive_url) && (
+                                                    <div className="flex flex-wrap items-center gap-2 pl-3 md:border-l border-white/30 self-stretch">
                                                         {project.figma_url && (
                                                             <a
                                                                 href={project.figma_url}
@@ -773,6 +795,19 @@ const Projects = () => {
                                                             >
                                                                 <JamLogo size={14} />
                                                                 <span className="text-[10px] font-bold uppercase tracking-wide">FigJam</span>
+                                                            </a>
+                                                        )}
+                                                        {project.drive_url && (
+                                                            <a
+                                                                href={project.drive_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/50 hover:bg-white rounded-full transition-all text-neutral-600 hover:text-black border border-white/20 shadow-sm"
+                                                                title="Google Drive"
+                                                            >
+                                                                <DriveLogo size={14} />
+                                                                <span className="text-[10px] font-bold uppercase tracking-wide">Drive</span>
                                                             </a>
                                                         )}
                                                     </div>
