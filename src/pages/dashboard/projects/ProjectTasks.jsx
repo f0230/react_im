@@ -35,8 +35,7 @@ import {
   Calendar,
   AlertCircle,
   DollarSign,
-  ClipboardList,
-  Target
+  ClipboardList
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
