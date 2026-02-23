@@ -31,7 +31,12 @@ import {
   Save,
   UploadCloud,
   Loader2,
-  Trash2
+  Trash2,
+  Calendar,
+  AlertCircle,
+  DollarSign,
+  ClipboardList,
+  Target
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
@@ -274,6 +279,13 @@ const ProjectTasks = () => {
       fetchServiceDetails(selectedService.id);
       setEditedDesc(selectedService.description || '');
       setEditedTitle(selectedService.title || '');
+      setEditedFields({
+        deadline: selectedService.deadline ? new Date(selectedService.deadline).toISOString().split('T')[0] : '',
+        priority: selectedService.priority || 'medium',
+        budget: selectedService.budget || '',
+        deliverables: selectedService.deliverables || '',
+        requirements: selectedService.requirements || ''
+      });
       setIsEditingDesc(false);
       setIsEditingService(false);
       setIsActionsOpen(false);
@@ -357,13 +369,24 @@ const ProjectTasks = () => {
       .from('services')
       .update({
         title: editedTitle.trim(),
-        description: editedDesc.trim()
+        description: editedDesc.trim(),
+        deadline: editedFields.deadline || null,
+        priority: editedFields.priority,
+        budget: editedFields.budget,
+        deliverables: editedFields.deliverables,
+        requirements: editedFields.requirements
       })
       .eq('id', selectedService.id);
 
     if (!error) {
-      setSelectedService(prev => ({ ...prev, title: editedTitle.trim(), description: editedDesc.trim() }));
-      setServices(prev => prev.map(s => s.id === selectedService.id ? { ...s, title: editedTitle.trim(), description: editedDesc.trim() } : s));
+      const updatedService = {
+        ...selectedService,
+        title: editedTitle.trim(),
+        description: editedDesc.trim(),
+        ...editedFields
+      };
+      setSelectedService(updatedService);
+      setServices(prev => prev.map(s => s.id === selectedService.id ? updatedService : s));
       setIsEditingService(false);
       setIsActionsOpen(false);
     } else {
@@ -914,7 +937,7 @@ const ProjectTasks = () => {
                 </div>
 
                 {/* Compact Info Grid */}
-                <div className="grid grid-cols-2 gap-4 py-4 border-y border-neutral-100/60">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y border-neutral-100/60">
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Responsable</span>
                     <div className="flex items-center gap-2">
@@ -926,9 +949,70 @@ const ProjectTasks = () => {
                       <span className="text-xs font-bold text-neutral-700 truncate">{teamMembersMap[selectedService.responsible_id]?.full_name || 'Sin asignar'}</span>
                     </div>
                   </div>
+
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Proyecto</span>
-                    <span className="self-start px-2 py-0.5 rounded-md bg-rose-50 text-rose-500 font-bold text-[10px] uppercase border border-rose-100/50 truncate max-w-full">{selectedProject?.title || 'DTE'}</span>
+                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Entrega</span>
+                    {isEditingService ? (
+                      <input
+                        type="date"
+                        value={editedFields.deadline}
+                        onChange={(e) => setEditedFields(prev => ({ ...prev, deadline: e.target.value }))}
+                        className="text-xs font-bold text-neutral-700 bg-white border border-neutral-100 rounded px-1.5 py-0.5 outline-none focus:border-black"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <Calendar size={12} className="text-neutral-400" />
+                        <span className="text-xs font-bold text-neutral-700">
+                          {selectedService.deadline ? new Date(selectedService.deadline).toLocaleDateString() : 'Sin fecha'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Prioridad</span>
+                    {isEditingService ? (
+                      <select
+                        value={editedFields.priority}
+                        onChange={(e) => setEditedFields(prev => ({ ...prev, priority: e.target.value }))}
+                        className="text-[10px] font-bold text-neutral-700 bg-white border border-neutral-100 rounded px-1.5 py-0.5 outline-none focus:border-black"
+                      >
+                        <option value="low">BAJA</option>
+                        <option value="medium">MEDIA</option>
+                        <option value="high">ALTA</option>
+                      </select>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <AlertCircle size={12} className={
+                          selectedService.priority === 'high' ? 'text-rose-500' :
+                            selectedService.priority === 'medium' ? 'text-amber-500' : 'text-emerald-500'
+                        } />
+                        <span className={`text-[10px] font-black uppercase ${selectedService.priority === 'high' ? 'text-rose-500' :
+                          selectedService.priority === 'medium' ? 'text-amber-500' : 'text-emerald-500'
+                          }`}>
+                          {selectedService.priority === 'high' ? 'Alta' :
+                            selectedService.priority === 'medium' ? 'Media' : 'Baja'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Presupuesto</span>
+                    {isEditingService ? (
+                      <input
+                        type="text"
+                        placeholder="$0.00"
+                        value={editedFields.budget}
+                        onChange={(e) => setEditedFields(prev => ({ ...prev, budget: e.target.value }))}
+                        className="text-xs font-bold text-neutral-700 bg-white border border-neutral-100 rounded px-1.5 py-0.5 outline-none focus:border-black"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <DollarSign size={12} className="text-neutral-400" />
+                        <span className="text-xs font-bold text-neutral-700">{selectedService.budget || 'N/A'}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -970,6 +1054,46 @@ const ProjectTasks = () => {
                       )}
                     </div>
                   )}
+                </div>
+
+                {/* Requirements & Deliverables Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <ClipboardList size={14} className="text-neutral-400" />
+                      <h3 className="text-sm font-bold text-neutral-800">Requerimientos</h3>
+                    </div>
+                    {isEditingService ? (
+                      <textarea
+                        value={editedFields.requirements}
+                        onChange={(e) => setEditedFields(prev => ({ ...prev, requirements: e.target.value }))}
+                        className="w-full bg-white/50 border border-neutral-200 rounded-xl p-3 text-xs text-neutral-600 outline-none focus:border-black transition-colors min-h-[80px]"
+                        placeholder="Qué necesitamos del cliente..."
+                      />
+                    ) : (
+                      <p className="text-xs text-neutral-500 leading-relaxed min-h-[40px]">
+                        {selectedService.requirements || "Sin requerimientos definidos."}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Target size={14} className="text-neutral-400" />
+                      <h3 className="text-sm font-bold text-neutral-800">Entregables</h3>
+                    </div>
+                    {isEditingService ? (
+                      <textarea
+                        value={editedFields.deliverables}
+                        onChange={(e) => setEditedFields(prev => ({ ...prev, deliverables: e.target.value }))}
+                        className="w-full bg-white/50 border border-neutral-200 rounded-xl p-3 text-xs text-neutral-600 outline-none focus:border-black transition-colors min-h-[80px]"
+                        placeholder="Qué se va a entregar..."
+                      />
+                    ) : (
+                      <p className="text-xs text-neutral-500 leading-relaxed min-h-[40px]">
+                        {selectedService.deliverables || "Sin entregables definidos."}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Files Section */}
