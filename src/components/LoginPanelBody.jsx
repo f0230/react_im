@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from "react-i18next";
 import dteWhite from '../assets/dte-white.svg';
 
-const LoginPanelBody = ({ showLogo = true, showDescription = true }) => {
+const LoginPanelBody = ({ showLogo = true, showDescription = true, redirectTo = "/dashboard" }) => {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -15,7 +15,7 @@ const LoginPanelBody = ({ showLogo = true, showDescription = true }) => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/dashboard`,
+                    redirectTo: `${window.location.origin}${redirectTo}`,
                     queryParams: {
                         access_type: 'offline',
                         prompt: 'consent',

@@ -12,7 +12,7 @@ const Registro = () => {
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 className="relative w-full max-w-[840px] h-[550px] bg-[#111] rounded-[10px] shadow-2xl overflow-hidden flex items-center justify-center"
             >
-                <LoginPanelBody />
+                <LoginPanelBody redirectTo="/complete-profile" />
             </motion.div>
         </div>
     );

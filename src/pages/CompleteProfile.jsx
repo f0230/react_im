@@ -163,6 +163,10 @@ const CompleteProfile = () => {
         }
     };
 
+    if (!isProfileIncomplete && user && !loading) {
+        return null;
+    }
+
     return (
         <div className="fixed inset-0 z-[101] flex items-center justify-center font-product bg-[#E8E8E8]">
             <motion.div
