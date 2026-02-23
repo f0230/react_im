@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Camera, Link as LinkIcon, ExternalLink, Save } from 'lucide-react';
+import { X, Camera, Link as LinkIcon, Save, MessageSquare } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 
 const EditProjectModal = ({
@@ -12,6 +13,7 @@ const EditProjectModal = ({
     onUpdated,
 }) => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: '',
         figma_url: '',
@@ -21,6 +23,7 @@ const EditProjectModal = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [uploading, setUploading] = useState(false);
+    const [linkedChannel, setLinkedChannel] = useState(null);
 
     useEffect(() => {
         if (isOpen && project) {
@@ -31,6 +34,25 @@ const EditProjectModal = ({
                 avatar_url: project.avatar_url || project.profile_image_url || '',
             });
             setError(null);
+            setLinkedChannel(null);
+
+            // Load the linked TeamChat channel
+            if (project.team_channel_id) {
+                supabase
+                    .from('team_channels')
+                    .select('id, name')
+                    .eq('id', project.team_channel_id)
+                    .maybeSingle()
+                    .then(({ data }) => setLinkedChannel(data || null));
+            } else {
+                // Fallback: look for a channel by project_id
+                supabase
+                    .from('team_channels')
+                    .select('id, name')
+                    .eq('project_id', project.id)
+                    .maybeSingle()
+                    .then(({ data }) => setLinkedChannel(data || null));
+            }
         }
     }, [isOpen, project]);
 
@@ -223,11 +245,39 @@ const EditProjectModal = ({
                                                 </div>
                                             </div>
 
+                                            {/* TeamChat Channel */}
+                                            <div className="rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <MessageSquare size={16} className="text-neutral-400 shrink-0" />
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Team Chat</p>
+                                                        {linkedChannel ? (
+                                                            <p className="text-xs font-semibold text-neutral-700 truncate">#{linkedChannel.name}</p>
+                                                        ) : (
+                                                            <p className="text-xs text-neutral-400">Canal automático pendiente...</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {linkedChannel && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            onClose();
+                                                            navigate(`/dashboard/team-chat?channel=${linkedChannel.id}`);
+                                                        }}
+                                                        className="shrink-0 text-[11px] font-semibold text-neutral-600 hover:text-black underline underline-offset-2 transition"
+                                                    >
+                                                        Ir al chat →
+                                                    </button>
+                                                )}
+                                            </div>
+
                                             {error && (
                                                 <p className="text-xs text-red-500 bg-red-50 p-2 rounded-lg text-center">
                                                     {error}
                                                 </p>
                                             )}
+
 
                                             <div className="pt-2">
                                                 <button

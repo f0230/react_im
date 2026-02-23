@@ -1077,29 +1077,7 @@ const TeamChat = () => {
                                     placeholder="Nombre del canal"
                                     className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:border-neutral-400 focus:outline-none"
                                 />
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-medium text-neutral-500">
-                                        Proyecto vinculado (opcional)
-                                    </label>
-                                    <select
-                                        value={newChannelProjectId}
-                                        onChange={(event) => setNewChannelProjectId(event.target.value)}
-                                        className="w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:border-neutral-400 focus:outline-none"
-                                    >
-                                        <option value="">Sin proyecto</option>
-                                        {sortedProjects.map((project) => (
-                                            <option key={project.id} value={project.id}>
-                                                {getProjectLabel(project)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {projectsLoading && (
-                                        <p className="text-[11px] text-neutral-400">Cargando proyectos...</p>
-                                    )}
-                                    {projectsError && (
-                                        <p className="text-[11px] text-amber-600">{projectsError}</p>
-                                    )}
-                                </div>
+
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={handleCreateChannel}
@@ -1187,11 +1165,7 @@ const TeamChat = () => {
                                             {channel.description}
                                         </p>
                                     )}
-                                    {channelProjectLabel && (
-                                        <p className={`text-[11px] mt-1 truncate ${isActive ? 'text-white/70' : 'text-neutral-500'}`}>
-                                            Proyecto: {channelProjectLabel}
-                                        </p>
-                                    )}
+
                                 </button>
                             );
                         })}
@@ -1212,42 +1186,29 @@ const TeamChat = () => {
                                             <ArrowLeft size={20} />
                                         </button>
                                         <div className="min-w-0">
-                                            <p className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0">
-                                                <Hash size={16} className="text-neutral-400" />
-                                                <span className="truncate">{selectedChannel.name}</span>
-                                            </p>
-                                            {selectedChannelProjectLabel && (
-                                                <p className="text-[11px] text-neutral-500 truncate mt-0.5">
-                                                    Proyecto: {selectedChannelProjectLabel}
+                                            {selectedChannel.project_id ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(`/dashboard/projects/${selectedChannel.project_id}`)}
+                                                    className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0 hover:text-blue-600 transition-colors group/title"
+                                                    title="Ver proyecto"
+                                                >
+                                                    <Hash size={16} className="text-neutral-400 group-hover/title:text-blue-400 transition-colors" />
+                                                    <span className="truncate underline-offset-2 group-hover/title:underline">{selectedChannel.name}</span>
+                                                </button>
+                                            ) : (
+                                                <p className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0">
+                                                    <Hash size={16} className="text-neutral-400" />
+                                                    <span className="truncate">{selectedChannel.name}</span>
                                                 </p>
                                             )}
                                         </div>
                                     </div>
                                     {canCreateChannel && (
                                         <div className="flex items-center gap-2">
-                                            <select
-                                                value={selectedChannelProjectId}
-                                                onChange={(event) => setSelectedChannelProjectId(event.target.value)}
-                                                className="max-w-[220px] rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-700 focus:border-neutral-400 focus:outline-none"
-                                            >
-                                                <option value="">Sin proyecto</option>
-                                                {sortedProjects.map((project) => (
-                                                    <option key={project.id} value={project.id}>
-                                                        {getProjectLabel(project)}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <button
-                                                onClick={handleSaveChannelProject}
-                                                disabled={savingProjectLink || !selectedChannelId}
-                                                className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:border-neutral-400 disabled:opacity-60"
-                                            >
-                                                {savingProjectLink ? 'Guardando...' : 'Guardar proyecto'}
-                                            </button>
                                             <button
                                                 onClick={() => {
                                                     setIsMembersOpen(true);
-                                                    setSelectedChannelProjectId(selectedChannel?.project_id || '');
                                                     loadMembers(selectedChannelId);
                                                 }}
                                                 className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:border-neutral-400"
@@ -1257,16 +1218,12 @@ const TeamChat = () => {
                                         </div>
                                     )}
                                 </div>
-                                {projectLinkError && (
-                                    <div className="px-4 pb-2">
-                                        <p className="text-[11px] text-amber-600">{projectLinkError}</p>
-                                    </div>
-                                )}
+
                             </div>
 
                             <div
                                 ref={messagesContainerRef}
-                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3 custom-scrollbar overscroll-y-contain bg-neutral-50"
+                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-1.5 custom-scrollbar overscroll-y-contain bg-neutral-50"
                                 style={{ paddingBottom: `calc(${composerHeight}px)` }}
                             >
                                 {loadingMessages && (
@@ -1300,19 +1257,29 @@ const TeamChat = () => {
                                     const repliedBody = repliedMessage?.body || '...';
                                     return (
                                         <div key={message.id} className={`flex flex-col min-w-0 max-w-[85%] group ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                            <div className="flex items-center gap-2 mb-0.5 px-1">
-                                                <span className={`text-[10px] font-bold ${getUserColor(authorName)}`}>
+                                            <div className="flex items-center gap-1.5 mb-0 px-1">
+                                                {isOutbound && (
+                                                    <button
+                                                        onClick={() => setReplyingTo(message)}
+                                                        className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600 leading-none"
+                                                    >
+                                                        • Responder
+                                                    </button>
+                                                )}
+                                                <span className={`text-[10px] font-bold leading-none ${getUserColor(authorName)}`}>
                                                     {authorName}
                                                 </span>
-                                                <span className="text-[9px] text-neutral-400">
+                                                <span className="text-[9px] text-neutral-400 leading-none">
                                                     {formatShortDateTime(message.created_at)}
                                                 </span>
-                                                <button
-                                                    onClick={() => setReplyingTo(message)}
-                                                    className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600"
-                                                >
-                                                    • Responder
-                                                </button>
+                                                {!isOutbound && (
+                                                    <button
+                                                        onClick={() => setReplyingTo(message)}
+                                                        className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600 leading-none"
+                                                    >
+                                                        • Responder
+                                                    </button>
+                                                )}
                                             </div>
                                             <ReactionPickerPopover
                                                 onSelect={(emoji) => handleToggleReaction(message.id, emoji)}
@@ -1382,11 +1349,7 @@ const TeamChat = () => {
                                                     ) : (
                                                         <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderTextWithLinks(message.body)}</p>
                                                     )}
-                                                    {isOutbound && (
-                                                        <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
-                                                            <span>{isSeen ? '✓✓' : '✓'}</span>
-                                                        </div>
-                                                    )}
+
                                                 </div>
                                             </ReactionPickerPopover>
                                             <MessageReactionsBar
@@ -1513,7 +1476,7 @@ const TeamChat = () => {
                             <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-200 bg-white">
                                 <div>
                                     <p className="text-sm font-semibold text-neutral-900">Configuracion del canal</p>
-                                    <p className="text-xs text-neutral-500">Vincula el proyecto y define quienes pueden ver este canal.</p>
+                                    <p className="text-xs text-neutral-500">Define quienes pueden ver este canal.</p>
                                 </div>
                                 <button
                                     type="button"
@@ -1525,29 +1488,7 @@ const TeamChat = () => {
                                 </button>
                             </div>
                             <div className="flex-1 overflow-y-auto bg-neutral-50 p-4 space-y-3">
-                                <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm">
-                                    <label className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
-                                        Proyecto vinculado
-                                    </label>
-                                    <select
-                                        value={selectedChannelProjectId}
-                                        onChange={(event) => setSelectedChannelProjectId(event.target.value)}
-                                        className="mt-2 w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs focus:border-neutral-400 focus:outline-none"
-                                    >
-                                        <option value="">Sin proyecto</option>
-                                        {sortedProjects.map((project) => (
-                                            <option key={project.id} value={project.id}>
-                                                {getProjectLabel(project)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {projectsLoading && (
-                                        <p className="mt-1 text-[11px] text-neutral-400">Cargando proyectos...</p>
-                                    )}
-                                    {projectsError && (
-                                        <p className="mt-1 text-[11px] text-amber-600">{projectsError}</p>
-                                    )}
-                                </div>
+
                                 <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
                                     Miembros del canal
                                 </p>
