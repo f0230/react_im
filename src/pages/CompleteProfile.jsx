@@ -86,14 +86,19 @@ const CompleteProfile = () => {
                 .eq('user_id', user.id)
                 .maybeSingle();
 
-            let result;
+            let clientData = null;
+
             if (existingClient) {
-                result = await supabase
+                const { data, error } = await supabase
                     .from('clients')
                     .update({ full_name: formData.full_name, phone })
-                    .eq('id', existingClient.id);
+                    .eq('id', existingClient.id)
+                    .select()
+                    .single();
+                if (error) throw error;
+                clientData = data;
             } else {
-                result = await supabase
+                const { data, error } = await supabase
                     .from('clients')
                     .insert({
                         user_id: user.id,
@@ -101,10 +106,24 @@ const CompleteProfile = () => {
                         email: user.email,
                         phone,
                         status: 'lead'
-                    });
+                    })
+                    .select()
+                    .single();
+                if (error) throw error;
+                clientData = data;
             }
 
-            if (result.error) throw result.error;
+            // Importante: Marcar el perfil como líder y vincular el client_id
+            const { error: profileError } = await supabase
+                .from('profiles')
+                .update({
+                    client_id: clientData.id,
+                    is_client_leader: true,
+                    full_name: formData.full_name
+                })
+                .eq('id', user.id);
+
+            if (profileError) throw profileError;
 
             if (user?.id) {
                 sessionStorage.setItem(getSchedulePromptPendingKey(user.id), '1');
