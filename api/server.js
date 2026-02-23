@@ -6,7 +6,7 @@ import clientWelcomeEmailHandler from './client-welcome-email.js';
 import slackNotifyHandler from './slack-notify.js';
 import calHandler from './cal/index.js';
 import clawbotTeamChatHandler from './clawbot-team-chat.js';
-import figmaProxyHandler from './figma-proxy.js';
+
 
 dotenv.config();
 
@@ -22,8 +22,7 @@ app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.post('/api/slack-notify', slackNotifyHandler);
 app.post('/api/clawbot-team-chat', clawbotTeamChatHandler);
 
-// Figma Integration
-app.get('/api/figma-proxy', figmaProxyHandler);
+
 
 // Cal.com Routes
 app.all('/api/cal/:action', calHandler);

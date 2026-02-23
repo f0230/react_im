@@ -78,10 +78,12 @@ const ProjectTasks = () => {
   const [isAssigning, setIsAssigning] = useState(false);
   const [isEditingService, setIsEditingService] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
+  const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false);
 
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
   const replaceInputRef = useRef(null);
+  const createInputRef = useRef(null);
 
   const isAdmin = profile?.role === 'admin';
   const isWorker = profile?.role === 'worker';
@@ -92,28 +94,62 @@ const ProjectTasks = () => {
     if (!user?.id) return;
     setLoading(true);
 
-    let query = supabase.from('projects')
-      .select('*, clients (id, full_name, company_name), project_assignments(worker_id)')
-      .order('created_at', { ascending: false });
+    let response;
 
-    if (isWorker) {
+    if (isAdmin) {
+      response = await supabase
+        .from('projects')
+        .select('*, project_assignments(worker_id), project_clients(client_id, clients(id, full_name, company_name)), project_client_users(user_id, profiles(id, full_name))')
+        .order('created_at', { ascending: false });
+    } else if (isWorker) {
       const { data: assignments } = await supabase
         .from('project_assignments')
         .select('project_id')
         .eq('worker_id', user.id);
       const projectIds = assignments?.map(a => a.project_id) || [];
-      query = query.in('id', projectIds);
-    } else if (client?.id) {
-      query = query.eq('client_id', client.id);
-    } else if (!isAdmin) {
-      query = query.eq('user_id', user.id);
+      if (projectIds.length === 0) {
+        response = { data: [] };
+      } else {
+        response = await supabase
+          .from('projects')
+          .select('*, project_assignments(worker_id), project_clients(client_id, clients(id, full_name, company_name)), project_client_users(user_id, profiles(id, full_name))')
+          .in('id', projectIds)
+          .order('created_at', { ascending: false });
+      }
+    } else if (profile?.role === 'client') {
+      const { data: clientUserAssignmentsData } = await supabase
+        .from('project_client_users')
+        .select('project_id')
+        .eq('user_id', user.id);
+      const assignedProjectIds = clientUserAssignmentsData?.map((a) => a.project_id) || [];
+
+      let query = supabase
+        .from('projects')
+        .select('*, project_assignments(worker_id), project_clients(client_id, clients(id, full_name, company_name)), project_client_users(user_id, profiles(id, full_name))')
+        .order('created_at', { ascending: false });
+
+      if (client?.id) {
+        query = query.or(`client_id.eq.${client.id},user_id.eq.${user.id}${assignedProjectIds.length ? `,id.in.(${assignedProjectIds.join(',')})` : ''}`);
+      } else if (assignedProjectIds.length > 0) {
+        query = query.or(`user_id.eq.${user.id},id.in.(${assignedProjectIds.join(',')})`);
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+      response = await query;
+    } else {
+      response = await supabase
+        .from('projects')
+        .select('*, project_assignments(worker_id), project_clients(client_id, clients(id, full_name, company_name)), project_client_users(user_id, profiles(id, full_name))')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
     }
 
-    const { data, error } = await query;
-    if (!error && data) {
-      setProjects(data);
-      let active = queryProjectId ? data.find(p => p.id === queryProjectId) : (data[0] || null);
+    if (!response.error && response.data) {
+      setProjects(response.data);
+      let active = queryProjectId ? response.data.find(p => p.id === queryProjectId) : (response.data[0] || null);
       if (active) setSelectedProject(active);
+    } else if (response.error) {
+      console.error("Error fetching projects:", response.error);
     }
     setLoading(false);
   }, [user?.id, profile?.role, client?.id, queryProjectId, isAdmin, isWorker, navigate]);
@@ -448,7 +484,7 @@ const ProjectTasks = () => {
       .insert({
         project_id: selectedProject.id,
         title: newServiceTitle.trim(),
-        description: 'Nueva descripción de tarea',
+        description: '',
       })
       .select()
       .single();
@@ -459,7 +495,15 @@ const ProjectTasks = () => {
       setIsCreateServiceOpen(false);
       setSelectedService(data);
       setShowDetail(true);
+    } else if (error) {
+      console.error('Error creating service:', error);
+      alert(`Error al crear tarea: ${error.message}`);
     }
+  };
+
+  const handleCreateServiceKeyDown = (e) => {
+    if (e.key === 'Enter') handleCreateService();
+    if (e.key === 'Escape') { setIsCreateServiceOpen(false); setNewServiceTitle(''); }
   };
 
   const projectTeam = useMemo(() => {
@@ -467,8 +511,38 @@ const ProjectTasks = () => {
     return ids.map(id => teamMembersMap[id]).filter(Boolean);
   }, [selectedProject, teamMembersMap]);
 
+  const completedCount = useMemo(() => services.filter(s => s.status === 'completed').length, [services]);
+  const totalCount = services.length;
+
+  const getProjectInitials = (project) => {
+    const title = project?.title || project?.name || project?.project_name || 'DTE';
+    const words = title.trim().split(/\s+/).filter(Boolean);
+    if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
+    return words.slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  };
+
   if (loading) {
     return <LoadingFallback type="spinner" />;
+  }
+
+  if (!loading && projects.length === 0) {
+    return (
+      <div className="font-product min-h-[60vh] flex flex-col items-center justify-center text-center p-8">
+        <div className="w-16 h-16 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
+          <Briefcase size={28} className="text-neutral-300" />
+        </div>
+        <h2 className="text-xl font-black text-neutral-700 mb-2">No hay proyectos</h2>
+        <p className="text-sm text-neutral-400 mb-6 max-w-xs leading-relaxed">
+          Aún no tenés proyectos asignados. Creá uno para comenzar a gestionar tareas.
+        </p>
+        <button
+          onClick={() => navigate('/dashboard/projects')}
+          className="flex items-center gap-2 px-5 py-2.5 bg-black text-white text-sm font-bold rounded-full hover:bg-neutral-800 transition-all shadow-md"
+        >
+          <ArrowLeft size={14} /> Ir a Proyectos
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -477,27 +551,96 @@ const ProjectTasks = () => {
 
         {/* LEFT COLUMN - SERVICE LIST */}
         <div className={`w-full md:w-[320px] lg:w-[360px] flex flex-col bg-white rounded-[24px] md:rounded-[32px] border border-neutral-100 shadow-sm overflow-hidden h-full shrink-0 transition-all ${mobileView !== 'list' ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-6 bg-neutral-100/50 border-b border-neutral-100 flex flex-col items-center text-center">
-            <div className="w-20 h-20 md:w-24 md:h-24 mb-4 rounded-full bg-gradient-to-br from-lime-400 to-emerald-600 shadow-lg flex items-center justify-center text-2xl font-black text-black overflow-hidden bg-white">
-              {selectedProject?.profile_image_url ? (
-                <img src={selectedProject.profile_image_url} alt="" className="w-full h-full object-cover" />
+          <div className="p-6 bg-neutral-100/50 border-b border-neutral-100 flex flex-col items-center text-center relative">
+            {/* Back button */}
+            <button
+              onClick={() => navigate('/dashboard/projects')}
+              className="absolute left-4 top-4 p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all text-neutral-500 hover:text-black"
+              title="Volver a proyectos"
+            >
+              <ArrowLeft size={16} />
+            </button>
+
+            {/* Project switcher if multiple projects */}
+            {projects.length > 1 && (
+              <div className="absolute right-4 top-4">
+                <button
+                  onClick={() => setIsProjectSwitcherOpen(v => !v)}
+                  className="p-2 bg-white rounded-full shadow-sm hover:shadow-md transition-all text-neutral-500 hover:text-black"
+                  title="Cambiar proyecto"
+                >
+                  <Briefcase size={14} />
+                </button>
+                <AnimatePresence>
+                  {isProjectSwitcherOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                      className="absolute right-0 top-10 w-56 bg-white rounded-2xl shadow-2xl border border-neutral-100 z-50 p-2 max-h-64 overflow-y-auto"
+                    >
+                      <div className="text-[9px] font-black uppercase text-neutral-400 px-2 py-1.5 border-b mb-1">Proyectos</div>
+                      {projects.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => { setSelectedProject(p); setSelectedService(null); setShowDetail(false); setIsProjectSwitcherOpen(false); }}
+                          className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all ${selectedProject?.id === p.id ? 'bg-black text-white' : 'hover:bg-neutral-50 text-neutral-700'
+                            }`}
+                        >
+                          <div className={`w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-[10px] font-black ${selectedProject?.id === p.id ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-600'
+                            }`}>
+                            {p.profile_image_url ? (
+                              <img src={p.profile_image_url} alt="" className="w-full h-full object-cover" />
+                            ) : getProjectInitials(p)}
+                          </div>
+                          <span className="text-[12px] font-bold truncate">{p.title || p.name || 'Proyecto'}</span>
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* Project avatar */}
+            <div className="w-20 h-20 md:w-24 md:h-24 mb-3 rounded-full bg-gradient-to-br from-lime-400 to-emerald-600 shadow-lg flex items-center justify-center text-2xl font-black text-black overflow-hidden">
+              {selectedProject?.profile_image_url || selectedProject?.avatar_url ? (
+                <img src={selectedProject.profile_image_url || selectedProject.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                <span className="opacity-40 text-sm">DTE</span>
+                <span className="text-black text-lg font-black">{getProjectInitials(selectedProject)}</span>
               )}
             </div>
-            <h2 className="text-xl md:text-2xl font-black text-neutral-800 tracking-tight">
-              {selectedProject?.title || 'Proyecto'}
+
+            <h2 className="text-xl md:text-2xl font-black text-neutral-800 tracking-tight leading-tight">
+              {selectedProject?.title || selectedProject?.name || selectedProject?.project_name || 'Proyecto'}
             </h2>
-            <div className="mt-3 md:mt-4 flex flex-col items-center gap-2">
-              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-neutral-400">Equipo</span>
+
+            {/* Task progress badge */}
+            {totalCount > 0 && (
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${completedCount === totalCount ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-500'
+                  }`}>
+                  {completedCount}/{totalCount} completadas
+                </span>
+              </div>
+            )}
+
+            {/* Team avatars */}
+            <div className="mt-3 flex flex-col items-center gap-1.5">
+              <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Equipo</span>
               <div className="flex items-center -space-x-2">
                 {projectTeam.length > 0 ? projectTeam.slice(0, 5).map((member, i) => (
-                  <div key={i} className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden" title={member.full_name}>
-                    <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${member.full_name}`} alt="" className="w-full h-full object-cover" />
+                  <div key={i} className="w-7 h-7 rounded-full border-2 border-white bg-white shadow-sm overflow-hidden" title={member.full_name}>
+                    <img src={member.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.full_name || 'U')}`} alt="" className="w-full h-full object-cover" />
                   </div>
                 )) : (
-                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-dashed border-neutral-200 bg-neutral-50 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-full border-2 border-dashed border-neutral-200 bg-neutral-50 flex items-center justify-center">
                     <User size={10} className="text-neutral-300" />
+                  </div>
+                )}
+                {projectTeam.length > 5 && (
+                  <div className="w-7 h-7 rounded-full border-2 border-white bg-neutral-100 flex items-center justify-center text-[9px] font-black text-neutral-500">
+                    +{projectTeam.length - 5}
                   </div>
                 )}
               </div>
@@ -510,7 +653,7 @@ const ProjectTasks = () => {
                 <h3 className="text-lg md:text-xl font-bold text-neutral-800">Tareas</h3>
                 <p className="text-[9px] md:text-[10px] text-neutral-500 uppercase tracking-wide">Seguimiento en curso</p>
               </div>
-              {isAdmin && (
+              {canManage && (
                 <button onClick={() => setIsCreateServiceOpen(!isCreateServiceOpen)} className="p-2 rounded-full bg-black text-white hover:bg-neutral-800 transition-all shadow-md">
                   {isCreateServiceOpen ? <X size={14} /> : <Plus size={14} />}
                 </button>
@@ -519,51 +662,110 @@ const ProjectTasks = () => {
 
             <AnimatePresence>
               {isCreateServiceOpen && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-5 md:px-6 pb-4">
-                  <div className="flex gap-2">
-                    <input value={newServiceTitle} onChange={(e) => setNewServiceTitle(e.target.value)} type="text" placeholder="Nombre..." className="flex-1 px-4 py-2.5 rounded-xl border border-neutral-200 text-sm focus:outline-none focus:border-black" />
-                    <button onClick={handleCreateService} className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl">Crear</button>
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="px-5 md:px-6 pb-3 overflow-hidden"
+                >
+                  <div className="flex gap-2 bg-white rounded-2xl p-1 shadow-sm border border-neutral-100">
+                    <input
+                      ref={createInputRef}
+                      value={newServiceTitle}
+                      onChange={(e) => setNewServiceTitle(e.target.value)}
+                      onKeyDown={handleCreateServiceKeyDown}
+                      type="text"
+                      placeholder="Nombre de la tarea..."
+                      autoFocus
+                      className="flex-1 px-3 py-2 bg-transparent text-sm focus:outline-none text-neutral-800 placeholder:text-neutral-400"
+                    />
+                    <button
+                      onClick={handleCreateService}
+                      disabled={!newServiceTitle.trim()}
+                      className="px-4 py-2 bg-black text-white text-xs font-bold rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-800 transition-all shrink-0"
+                    >
+                      Crear
+                    </button>
                   </div>
+                  <p className="text-[10px] text-neutral-400 mt-1.5 px-1">Presiona Enter para crear · Esc para cancelar</p>
                 </motion.div>
               )}
             </AnimatePresence>
 
             <div className="flex-1 overflow-y-auto px-5 md:px-6 py-4 space-y-2 scrollbar-hide">
-              {services.map(s => (
-                <motion.div
-                  key={s.id}
-                  onClick={() => {
-                    setSelectedService(s);
-                    setShowDetail(true);
-                    setMobileView('detail');
-                  }}
-                  className={`group p-4 rounded-xl cursor-pointer transition-all border flex items-center justify-between ${selectedService?.id === s.id ? 'bg-black/5 border-black/10' : 'bg-white/50 border-white/40 hover:bg-white hover:shadow-sm'}`}
-                >
-                  <div className="flex items-center gap-3">
+              {serviceLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 size={20} className="animate-spin text-neutral-300" />
+                </div>
+              ) : services.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-neutral-200/40 flex items-center justify-center mb-3">
+                    <Layers size={20} className="text-neutral-300" />
+                  </div>
+                  <p className="text-sm font-bold text-neutral-400">Sin tareas aún</p>
+                  <p className="text-[11px] text-neutral-400 mt-1 mb-4 max-w-[180px] leading-relaxed">Crea la primera tarea para este proyecto</p>
+                  {canManage && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleStatus(s.id, s.status);
-                      }}
-                      className={`p-1 rounded-md transition-all ${s.status === 'completed' ? 'text-emerald-500' : 'text-neutral-300 hover:text-neutral-400'}`}
+                      onClick={() => { setIsCreateServiceOpen(true); setTimeout(() => createInputRef.current?.focus(), 100); }}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-black text-white text-xs font-bold rounded-full hover:bg-neutral-800 transition-all shadow-md"
                     >
-                      {s.status === 'completed' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                      <Plus size={12} /> Nueva tarea
                     </button>
-                    <div className="flex flex-col gap-1">
-                      <span className={`self-start px-2 py-0.5 rounded text-[9px] font-bold uppercase ${selectedService?.id === s.id ? 'bg-black text-white' : 'bg-rose-100 text-rose-500'}`}>{selectedProject?.title || 'DTE'}</span>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold text-sm ${s.status === 'completed' ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>{s.title}</span>
-                        {s.responsible_id && teamMembersMap[s.responsible_id] && (
-                          <div className="w-5 h-5 rounded-full overflow-hidden border border-white shadow-sm shrink-0" title={`Responsable: ${teamMembersMap[s.responsible_id].full_name}`}>
-                            <img src={teamMembersMap[s.responsible_id].avatar_url || `https://ui-avatars.com/api/?name=${teamMembersMap[s.responsible_id].full_name}`} className="w-full h-full object-cover" />
-                          </div>
+                  )}
+                </div>
+              ) : (
+                services.map(s => (
+                  <motion.div
+                    key={s.id}
+                    layout
+                    onClick={() => {
+                      setSelectedService(s);
+                      setShowDetail(true);
+                      setMobileView('detail');
+                    }}
+                    className={`group p-4 rounded-xl cursor-pointer transition-all border flex items-center justify-between ${selectedService?.id === s.id
+                      ? 'bg-black/5 border-black/10'
+                      : 'bg-white/50 border-white/40 hover:bg-white hover:shadow-sm'
+                      }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStatus(s.id, s.status);
+                        }}
+                        className={`shrink-0 p-1 rounded-md transition-all ${s.status === 'completed' ? 'text-emerald-500' : 'text-neutral-300 hover:text-neutral-400'
+                          }`}
+                      >
+                        {s.status === 'completed' ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                      </button>
+                      <div className="flex flex-col gap-0.5 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`font-bold text-sm truncate ${s.status === 'completed' ? 'text-neutral-400 line-through' : 'text-neutral-800'
+                            }`}>{s.title}</span>
+                          {s.responsible_id && teamMembersMap[s.responsible_id] && (
+                            <div
+                              className="w-5 h-5 rounded-full overflow-hidden border border-white shadow-sm shrink-0"
+                              title={`Responsable: ${teamMembersMap[s.responsible_id].full_name}`}
+                            >
+                              <img
+                                src={teamMembersMap[s.responsible_id].avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(teamMembersMap[s.responsible_id].full_name || 'U')}`}
+                                className="w-full h-full object-cover"
+                                alt=""
+                              />
+                            </div>
+                          )}
+                        </div>
+                        {s.status === 'completed' && (
+                          <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-wide">Completada</span>
                         )}
                       </div>
                     </div>
-                  </div>
-                  <ArrowRight size={16} className={selectedService?.id === s.id ? 'text-black' : 'text-neutral-300 group-hover:text-black'} />
-                </motion.div>
-              ))}
+                    <ArrowRight size={16} className={`shrink-0 ${selectedService?.id === s.id ? 'text-black' : 'text-neutral-300 group-hover:text-black'
+                      }`} />
+                  </motion.div>
+                ))
+              )}
             </div>
           </div>
         </div>

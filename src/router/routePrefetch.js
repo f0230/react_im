@@ -25,6 +25,7 @@ export const routeKeys = Object.freeze({
     landingDte: 'landingDte',
     adminLogin: 'adminLogin',
     registro: 'registro',
+    invite: 'invite',
     completeProfile: 'completeProfile',
     scheduleCall: 'scheduleCall',
     dashboardHome: 'dashboardHome',
@@ -41,7 +42,6 @@ export const routeKeys = Object.freeze({
     adminAppointments: 'adminAppointments',
     clientAppointments: 'clientAppointments',
     settings: 'settings',
-    figmaProjects: 'figmaProjects',
 });
 
 const routeImporters = {
@@ -56,6 +56,7 @@ const routeImporters = {
     [routeKeys.landingDte]: once(() => import('@/pages/LandingDTE')),
     [routeKeys.adminLogin]: once(() => import('@/pages/AdminLogin')),
     [routeKeys.registro]: once(() => import('@/pages/Registro')),
+    [routeKeys.invite]: once(() => import('@/pages/Invite')),
     [routeKeys.completeProfile]: once(() => import('@/pages/CompleteProfile')),
     [routeKeys.scheduleCall]: once(() => import('@/pages/ScheduleCall')),
     [routeKeys.dashboardHome]: once(() => import('@/pages/dashboard/DashboardHome')),
@@ -72,7 +73,6 @@ const routeImporters = {
     [routeKeys.adminAppointments]: once(() => import('@/pages/AdminAppointments')),
     [routeKeys.clientAppointments]: once(() => import('@/pages/dashboard/projects/ClientAppointments')),
     [routeKeys.settings]: once(() => import('@/pages/dashboard/settings/Settings')),
-    [routeKeys.figmaProjects]: once(() => import('@/pages/dashboard/figma/FigmaProjects')),
 };
 
 const pathKeyMap = new Map([
@@ -87,6 +87,7 @@ const pathKeyMap = new Map([
     ['/dte', routeKeys.landingDte],
     ['/admin', routeKeys.adminLogin],
     ['/registro', routeKeys.registro],
+    ['/invite', routeKeys.invite],
     ['/complete-profile', routeKeys.completeProfile],
     ['/schedule-call', routeKeys.scheduleCall],
     ['/dashboard', routeKeys.dashboardHome],
@@ -103,7 +104,6 @@ const pathKeyMap = new Map([
     ['/dashboard/my-appointments', routeKeys.clientAppointments],
     ['/dashboard/settings', routeKeys.settings],
     ['/dashboard/profile', routeKeys.settings],
-    ['/dashboard/figma', routeKeys.figmaProjects],
 ]);
 
 const normalizePath = (to) => {

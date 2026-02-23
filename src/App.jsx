@@ -21,6 +21,7 @@ const Development = lazyRoute(routeKeys.development);
 const LandingDTE = lazyRoute(routeKeys.landingDte);
 const AdminLogin = lazyRoute(routeKeys.adminLogin);
 const Registro = lazyRoute(routeKeys.registro);
+const Invite = lazyRoute(routeKeys.invite);
 const CompleteProfile = lazyRoute(routeKeys.completeProfile);
 const DashboardHome = lazyRoute(routeKeys.dashboardHome);
 const Clients = lazyRoute(routeKeys.clients);
@@ -37,7 +38,6 @@ const MessagingHubRedirect = lazyRoute(routeKeys.messagingHubRedirect);
 const Settings = lazyRoute(routeKeys.settings);
 const ScheduleCall = lazyRoute(routeKeys.scheduleCall);
 const AdminAppointments = lazyRoute(routeKeys.adminAppointments);
-const FigmaProjects = lazyRoute(routeKeys.figmaProjects);
 
 const AppContent = () => {
   const { isNavbarOpen } = useUI();
@@ -144,6 +144,7 @@ const AppContent = () => {
           <Route path="/dte" element={<LandingDTE />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/registro" element={<Registro />} />
+          <Route path="/invite" element={<Invite />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/schedule-call/:projectId?" element={<ScheduleCall />} />
 
@@ -169,7 +170,6 @@ const AppContent = () => {
             <Route path="my-appointments" element={<ClientAppointments />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Settings />} />
-            <Route path="figma" element={<FigmaProjects />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

@@ -268,8 +268,7 @@ const CreateProjectModal = ({
             if (
                 !formData.title.trim() ||
                 !formData.need_type ||
-                !formData.objective ||
-                (isAdmin && !formData.client_id)
+                !formData.objective
             ) {
                 setError(t('dashboard.projects.create.errorMissingRequired'));
                 return false;
@@ -299,6 +298,7 @@ const CreateProjectModal = ({
             const description = formData.description.trim();
             const { resolvedClientId, resolvedUserId } = await resolveClientForSubmit();
 
+            /* 
             if (!resolvedClientId) {
                 console.warn('Create project blocked due to missing client_id', {
                     role,
@@ -309,11 +309,12 @@ const CreateProjectModal = ({
                 setError(t('dashboard.projects.create.errorMissingClient'));
                 return;
             }
+            */
 
             const payload = {
                 name: formData.title.trim(),
-                client_id: resolvedClientId,
             };
+            if (resolvedClientId) payload.client_id = resolvedClientId;
             if (resolvedUserId) payload.user_id = resolvedUserId;
             if (formData.need_type) payload.need_type = formData.need_type;
             if (formData.objective) payload.objective = formData.objective;

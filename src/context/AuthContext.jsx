@@ -6,7 +6,7 @@ const AuthContext = createContext({});
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(undefined);
     const [profile, setProfile] = useState(null);
     const [client, setClient] = useState(null);
     // `authInitialized`: true only after the FIRST session check completes. This is
@@ -66,6 +66,43 @@ export const AuthProvider = ({ children }) => {
             }
 
             if (profileData) {
+                // Check if the user has a pending invitation to join a team
+                const pendingInviteToken = localStorage.getItem('pending_invite_token');
+                if (pendingInviteToken) {
+                    try {
+                        const { data: inviteData } = await supabase
+                            .from('client_invitations')
+                            .select('*')
+                            .eq('token', pendingInviteToken)
+                            .single();
+
+                        if (inviteData && inviteData.email === currentUser.email) {
+                            console.log("Accepting invitation to join client team:", inviteData.client_id);
+
+                            // Update profile to join the team
+                            await supabase
+                                .from('profiles')
+                                .update({ client_id: inviteData.client_id, role: 'client', is_client_leader: false })
+                                .eq('id', currentUser.id);
+
+                            // Delete the invitation
+                            await supabase
+                                .from('client_invitations')
+                                .delete()
+                                .eq('id', inviteData.id);
+
+                            // Reflect changes in local data before proceeding
+                            profileData.client_id = inviteData.client_id;
+                            profileData.role = 'client';
+                            profileData.is_client_leader = false;
+                        }
+                    } catch (err) {
+                        console.error("Error processing invite token:", err);
+                    } finally {
+                        localStorage.removeItem('pending_invite_token');
+                    }
+                }
+
                 setProfile(profileData);
                 setProfileStatus('ready');
 
@@ -168,13 +205,16 @@ export const AuthProvider = ({ children }) => {
                 // TOKEN_REFRESHED / INITIAL_SESSION / other events: silently update user only.
                 if (event === 'SIGNED_IN') {
                     setUser((prevUser) => {
-                        const isNewUser = !prevUser || prevUser.id !== session.user.id;
-                        if (isNewUser) {
+                        // prevUser is undefined during the very first initialization check.
+                        // We only want to set 'justLoggedIn' if it was a transition from
+                        // logged-out (null) or a different user.
+                        const isNewLogin = prevUser !== undefined && (!prevUser || prevUser.id !== session.user.id);
+
+                        if (isNewLogin) {
                             // Genuinely new login — fetch profile and mark as just-logged-in
                             fetchProfileData(session.user);
                             sessionStorage.setItem('justLoggedIn', '1');
                         }
-                        // If same user (silent session recovery): do nothing, keep existing profile
                         return session.user;
                     });
                 } else if (event === 'USER_UPDATED') {

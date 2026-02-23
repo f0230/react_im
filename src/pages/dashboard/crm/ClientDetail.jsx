@@ -34,6 +34,7 @@ const ClientDetail = ({ clientIdOverride = null, hideBackLink = false }) => {
     const { clientId: routeClientId } = useParams();
     const clientId = clientIdOverride || routeClientId;
     const [client, setClient] = useState(null);
+    const [team, setTeam] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -55,6 +56,15 @@ const ClientDetail = ({ clientIdOverride = null, hideBackLink = false }) => {
             setClient(null);
         } else {
             setClient(data);
+
+            // Fetch team members linked to this client
+            const { data: teamData } = await supabase
+                .from('profiles')
+                .select('id, full_name, email, phone')
+                .eq('client_id', clientId)
+                .order('full_name', { ascending: true });
+
+            setTeam(teamData || []);
         }
         setIsLoading(false);
     }, [clientId]);
@@ -167,33 +177,55 @@ const ClientDetail = ({ clientIdOverride = null, hideBackLink = false }) => {
                         <p className="mt-3 text-xs text-neutral-500 whitespace-pre-wrap">{client.notes}</p>
                     )}
                 </div>
-                <div className="rounded-3xl bg-white border border-black/5 shadow-lg p-6 space-y-4">
-                    <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-400">
-                        Contacto
-                    </h3>
-                    {client && !error && (
-                        <div className="space-y-2 text-sm text-neutral-600">
-                            <div className="flex items-center gap-2">
-                                <Mail size={14} />
-                                {client?.email || 'Sin correo'}
+                <div className="flex flex-col gap-6">
+                    {/* Sección de Contacto */}
+                    <div className="rounded-3xl bg-white border border-black/5 shadow-lg p-6 space-y-4">
+                        <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-400">
+                            Contacto
+                        </h3>
+                        {client && !error && (
+                            <div className="space-y-2 text-sm text-neutral-600">
+                                <div className="flex items-center gap-2">
+                                    <Mail size={14} />
+                                    {client?.email || 'Sin correo'}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Phone size={14} />
+                                    {client?.phone || 'Sin telefono'}
+                                </div>
+                                {normalizedPhone ? (
+                                    <Link
+                                        to={`/dashboard/inbox?wa=${normalizedPhone}`}
+                                        className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-700 hover:text-neutral-900"
+                                    >
+                                        Abrir chat en Inbox
+                                    </Link>
+                                ) : (
+                                    <p className="text-xs text-neutral-400">Sin telefono para abrir chat.</p>
+                                )}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Phone size={14} />
-                                {client?.phone || 'Sin telefono'}
-                            </div>
-                            {normalizedPhone ? (
-                                <Link
-                                    to={`/dashboard/inbox?wa=${normalizedPhone}`}
-                                    className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-700 hover:text-neutral-900"
-                                >
-                                    Abrir chat en Inbox
-                                </Link>
+                        )}
+                        {error && <p className="text-xs text-red-500">{error}</p>}
+                    </div>
+
+                    {/* Sección de Team */}
+                    <div className="rounded-3xl bg-white border border-black/5 shadow-lg p-6 space-y-4">
+                        <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-400">
+                            Team / Usuarios
+                        </h3>
+                        <div className="space-y-3">
+                            {team.length === 0 ? (
+                                <p className="text-xs text-neutral-400">No hay usuarios asignados a este cliente.</p>
                             ) : (
-                                <p className="text-xs text-neutral-400">Sin telefono para abrir chat.</p>
+                                team.map((member) => (
+                                    <div key={member.id} className="flex flex-col gap-0.5 border-b border-black/[0.03] pb-2 last:border-0">
+                                        <p className="text-sm font-medium">{member.full_name || 'Sin nombre'}</p>
+                                        <p className="text-[10px] text-neutral-500 truncate">{member.email}</p>
+                                    </div>
+                                ))
                             )}
                         </div>
-                    )}
-                    {error && <p className="text-xs text-red-500">{error}</p>}
+                    </div>
                 </div>
             </div>
         </div>

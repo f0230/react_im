@@ -1,19 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Briefcase, Plus, Users, X } from 'lucide-react';
+import { Briefcase, Plus, Users, X, Pencil } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import CreateProjectModal from '@/components/CreateProjectModal';
-import FigmaPanel from '@/components/FigmaPanel';
+import EditProjectModal from '@/components/EditProjectModal';
 import facImage from '@/assets/Dahsboardx/fac.webp';
 import informImage from '@/assets/Dahsboardx/inform.webp';
 import servicesImage from '@/assets/Dahsboardx/ser.webp';
 
-// Figma logo inline SVG component (no external dependency)
-function FigmaLogo({ size = 18, className = '' }) {
+// Figma logo inline SVG component
+function FigmaLogo({ size = 14, className = '' }) {
     return (
         <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 38 57" fill="none" className={className}>
             <path d="M19 28.5A9.5 9.5 0 0 1 28.5 19H19a9.5 9.5 0 0 0 0 19h9.5A9.5 9.5 0 0 1 19 28.5Z" fill="#1ABCFE" />
@@ -24,6 +24,18 @@ function FigmaLogo({ size = 18, className = '' }) {
         </svg>
     );
 }
+
+// Figma Jam logo inline SVG
+function JamLogo({ size = 14, className = '' }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 32 32" fill="none" className={className}>
+            <rect x="4" y="4" width="24" height="24" rx="6" fill="#A259FF" />
+            <rect x="11" y="11" width="10" height="10" rx="1" fill="white" />
+        </svg>
+    );
+}
+
+
 
 const getProjectTitle = (project, fallback) => {
     return project?.title || project?.name || project?.project_name || fallback;
@@ -72,6 +84,7 @@ const Projects = () => {
     const [isOnboarding, setIsOnboarding] = useState(
         Boolean(location.state?.isOnboarding)
     );
+    const [projectToEdit, setProjectToEdit] = useState(null);
 
     useEffect(() => {
         if (shouldPromptCreate) {
@@ -88,8 +101,13 @@ const Projects = () => {
     const [assignmentError, setAssignmentError] = useState(null);
     const [teamModalProject, setTeamModalProject] = useState(null);
     const [teamSelection, setTeamSelection] = useState([]);
-    // Figma panel state
-    const [figmaProject, setFigmaProject] = useState(null);
+
+    const [clientAssignments, setClientAssignments] = useState({});
+    const [clientUserAssignments, setClientUserAssignments] = useState({});
+    const [clientModalProject, setClientModalProject] = useState(null);
+    const [clientSelection, setClientSelection] = useState([]);
+    const [clientUserSelection, setClientUserSelection] = useState([]);
+    const [allClientUsers, setAllClientUsers] = useState([]);
 
     const clientId = client?.id;
     const userId = user?.id;
@@ -111,7 +129,7 @@ const Projects = () => {
         const fetchByColumn = async (column, value) => {
             return await supabase
                 .from('projects')
-                .select('*, project_assignments (worker_id)')
+                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
                 .eq(column, value)
                 .order('created_at', { ascending: false });
         };
@@ -120,7 +138,7 @@ const Projects = () => {
         if (role === 'admin') {
             response = await supabase
                 .from('projects')
-                .select('*, clients (id, full_name, company_name, email), project_assignments (worker_id)')
+                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
                 .order('created_at', { ascending: false });
         } else if (role === 'worker') {
             const { data: assignmentsData } = await supabase
@@ -135,15 +153,33 @@ const Projects = () => {
             } else {
                 response = await supabase
                     .from('projects')
-                    .select('*, clients (id, full_name, company_name, email), project_assignments (worker_id)')
+                    .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
                     .in('id', projectIds)
                     .order('created_at', { ascending: false });
             }
-        } else if (clientId) {
-            response = await fetchByColumn('client_id', clientId);
-            if (response.error) {
-                response = await fetchByColumn('user_id', userId);
+        } else if (role === 'client') {
+            const { data: clientUserAssignmentsData } = await supabase
+                .from('project_client_users')
+                .select('project_id')
+                .eq('user_id', userId);
+
+            const assignedProjectIds = clientUserAssignmentsData?.map((a) => a.project_id) || [];
+
+            let query = supabase
+                .from('projects')
+                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                .order('created_at', { ascending: false });
+
+            if (clientId) {
+                // If they have a direct clientId (legacy or primary), show those too
+                query = query.or(`client_id.eq.${clientId},user_id.eq.${userId}${assignedProjectIds.length ? `,id.in.(${assignedProjectIds.join(',')})` : ''}`);
+            } else if (assignedProjectIds.length > 0) {
+                query = query.or(`user_id.eq.${userId},id.in.(${assignedProjectIds.join(',')})`);
+            } else {
+                query = query.eq('user_id', userId);
             }
+
+            response = await query;
         } else {
             response = await fetchByColumn('user_id', userId);
         }
@@ -192,13 +228,29 @@ const Projects = () => {
         setClients(data || []);
     }, [isAdmin]);
 
+    const fetchAllClientUsers = useCallback(async () => {
+        if (!isAdmin) return;
+        const { data, error: fetchError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, role, client_id')
+            .eq('role', 'client')
+            .order('full_name', { ascending: true });
+
+        if (fetchError) {
+            console.error('Error loading client users:', fetchError);
+            return;
+        }
+        setAllClientUsers(data || []);
+    }, [isAdmin]);
+
     useEffect(() => {
         fetchProjects();
     }, [fetchProjects]);
 
     useEffect(() => {
         fetchClients();
-    }, [fetchClients]);
+        fetchAllClientUsers();
+    }, [fetchClients, fetchAllClientUsers]);
 
     useEffect(() => {
         if (isAdmin) {
@@ -235,15 +287,37 @@ const Projects = () => {
         [fetchProjects, isOnboarding, navigate]
     );
 
+    const handleProjectUpdated = (updatedProject) => {
+        setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, ...updatedProject } : p));
+    };
+
     useEffect(() => {
-        const map = {};
+        const workerMap = {};
+        const clientMap = {};
+        const clientUserMap = {};
+
         projects.forEach((project) => {
-            const ids = (project?.project_assignments || [])
+            if (!project?.id) return;
+
+            const workerIds = (project?.project_assignments || [])
                 .map((assignment) => assignment.worker_id)
                 .filter(Boolean);
-            if (project?.id) map[project.id] = ids;
+            workerMap[project.id] = workerIds;
+
+            const clientIds = (project?.project_clients || [])
+                .map((c) => c.client_id)
+                .filter(Boolean);
+            clientMap[project.id] = clientIds;
+
+            const cUserIds = (project?.project_client_users || [])
+                .map((cu) => cu.user_id)
+                .filter(Boolean);
+            clientUserMap[project.id] = cUserIds;
         });
-        setAssignments(map);
+
+        setAssignments(workerMap);
+        setClientAssignments(clientMap);
+        setClientUserAssignments(clientUserMap);
     }, [projects]);
 
     const handleAssignmentsChange = async (projectId, nextIds) => {
@@ -286,6 +360,84 @@ const Projects = () => {
         setTeamModalProject(project);
     };
 
+    const handleClientAssignmentsChange = async (projectId, nextIds) => {
+        if (!projectId) return;
+        const currentIds = clientAssignments[projectId] || [];
+        const toAdd = nextIds.filter((id) => !currentIds.includes(id));
+        const toRemove = currentIds.filter((id) => !nextIds.includes(id));
+
+        try {
+            if (toRemove.length) {
+                await supabase
+                    .from('project_clients')
+                    .delete()
+                    .eq('project_id', projectId)
+                    .in('client_id', toRemove);
+            }
+            if (toAdd.length) {
+                await supabase
+                    .from('project_clients')
+                    .insert(
+                        toAdd.map((clientId) => ({
+                            project_id: projectId,
+                            client_id: clientId,
+                        }))
+                    );
+            }
+            setClientAssignments((prev) => ({ ...prev, [projectId]: nextIds }));
+        } catch (err) {
+            console.error('Error updating client assignments:', err);
+        }
+    };
+
+    const handleClientUserAssignmentsChange = async (projectId, nextIds) => {
+        if (!projectId) return;
+        const currentIds = clientUserAssignments[projectId] || [];
+        const toAdd = nextIds.filter((id) => !currentIds.includes(id));
+        const toRemove = currentIds.filter((id) => !nextIds.includes(id));
+
+        try {
+            if (toRemove.length) {
+                await supabase
+                    .from('project_client_users')
+                    .delete()
+                    .eq('project_id', projectId)
+                    .in('user_id', toRemove);
+            }
+            if (toAdd.length) {
+                await supabase
+                    .from('project_client_users')
+                    .insert(
+                        toAdd.map((userId) => ({
+                            project_id: projectId,
+                            user_id: userId,
+                        }))
+                    );
+            }
+            setClientUserAssignments((prev) => ({ ...prev, [projectId]: nextIds }));
+        } catch (err) {
+            console.error('Error updating client user assignments:', err);
+        }
+    };
+
+    const openClientTeamModal = (project) => {
+        if (!project?.id) return;
+        setClientSelection(clientAssignments[project.id] || []);
+        setClientUserSelection(clientUserAssignments[project.id] || []);
+        setClientModalProject(project);
+    };
+
+    const closeClientTeamModal = async () => {
+        if (!clientModalProject?.id) {
+            setClientModalProject(null);
+            return;
+        }
+        await handleClientAssignmentsChange(clientModalProject.id, clientSelection);
+        await handleClientUserAssignmentsChange(clientModalProject.id, clientUserSelection);
+        setClientModalProject(null);
+        await fetchProjects();
+    };
+
     const closeTeamModal = async () => {
         if (!teamModalProject?.id) {
             setTeamModalProject(null);
@@ -293,6 +445,7 @@ const Projects = () => {
         }
         await handleAssignmentsChange(teamModalProject.id, teamSelection);
         setTeamModalProject(null);
+        await fetchProjects();
     };
 
     const subtitle = useMemo(() => {
@@ -417,65 +570,157 @@ const Projects = () => {
                                                     {getInitials(title)}
                                                 </div>
                                             )}
+                                            {isAdmin && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setProjectToEdit(project);
+                                                    }}
+                                                    className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-md border border-neutral-100 text-neutral-400 hover:text-black hover:scale-110 active:scale-95 transition-all z-10"
+                                                    title="Editar proyecto"
+                                                >
+                                                    <Pencil size={12} />
+                                                </button>
+                                            )}
                                         </div>
 
-                                        <div className="flex flex-col gap-3 items-center md:items-start md:gap-4">
-                                            <h3
-                                                onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
-                                                className={`text-xl md:text-3xl font-bold text-neutral-800 leading-tight ${projectId ? 'cursor-pointer hover:text-neutral-600 transition-colors' : ''}`}
-                                            >
-                                                {title}
-                                            </h3>
-
-                                            <div className="flex flex-col items-center md:items-start gap-1">
-                                                <span className="text-[13px] font-medium text-neutral-500 uppercase tracking-wide">
-                                                    {t('dashboard.projects.teamLabel') || 'Equipo'}
-                                                </span>
-                                                <div className="flex items-center -space-x-2">
-                                                    {projectTeam.slice(0, 4).map((member) => (
-                                                        <div
-                                                            key={member.id}
-                                                            className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-white text-[10px] font-bold text-neutral-700 shadow-sm"
-                                                            title={member.full_name || member.email}
-                                                        >
-                                                            {getInitials(member.full_name || member.email)}
-                                                        </div>
-                                                    ))}
-                                                    {assignedCount > 4 && (
-                                                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-neutral-100 text-[10px] font-bold text-neutral-500 shadow-sm">
-                                                            +{assignedCount - 4}
-                                                        </div>
-                                                    )}
-                                                    {isAdmin && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                openTeamModal(project);
-                                                            }}
-                                                            className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 hover:bg-[#e4e4e4] hover:text-black transition shadow-sm"
-                                                        >
-                                                            <Plus size={14} />
-                                                        </button>
-                                                    )}
-                                                </div>
+                                        <div className="flex flex-col gap-3 items-center md:items-start md:gap-4 flex-1">
+                                            <div className="flex items-center gap-2 group/title">
+                                                <h3
+                                                    onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
+                                                    className={`text-xl md:text-3xl font-bold text-neutral-800 leading-tight ${projectId ? 'cursor-pointer hover:text-neutral-600 transition-colors' : ''}`}
+                                                >
+                                                    {title}
+                                                </h3>
+                                                {isAdmin && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setProjectToEdit(project);
+                                                        }}
+                                                        className="p-1.5 rounded-lg hover:bg-black/5 text-neutral-300 hover:text-neutral-600 transition-all opacity-0 group-hover/toolbar:opacity-100 md:group-hover:opacity-100"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                )}
                                             </div>
 
-                                            {/* Figma button */}
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setFigmaProject(project);
-                                                }}
-                                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all shadow-sm ${project?.figma_project_id
-                                                        ? 'bg-violet-100 text-violet-700 hover:bg-violet-200'
-                                                        : 'bg-neutral-100 text-neutral-500 hover:bg-violet-100 hover:text-violet-600'
-                                                    }`}
-                                            >
-                                                <FigmaLogo size={13} />
-                                                {project?.figma_project_id ? 'Ver diseño' : 'Vincular Figma'}
-                                            </button>
+                                            <div className="flex flex-wrap items-center gap-3">
+                                                <div className="flex flex-col items-center md:items-start gap-1">
+                                                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                                                        {t('dashboard.projects.teamLabel') || 'Equipo DTE'}
+                                                    </span>
+                                                    <div className="flex items-center -space-x-2">
+                                                        {projectTeam.slice(0, 4).map((member) => (
+                                                            <div
+                                                                key={member.id}
+                                                                className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-white text-[10px] font-bold text-neutral-700 shadow-sm"
+                                                                title={member.full_name || member.email}
+                                                            >
+                                                                {getInitials(member.full_name || member.email)}
+                                                            </div>
+                                                        ))}
+                                                        {assignedCount > 4 && (
+                                                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-neutral-100 text-[10px] font-bold text-neutral-500 shadow-sm">
+                                                                +{assignedCount - 4}
+                                                            </div>
+                                                        )}
+                                                        {isAdmin && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    openTeamModal(project);
+                                                                }}
+                                                                className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 hover:bg-[#e4e4e4] hover:text-black transition shadow-sm"
+                                                            >
+                                                                <Plus size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Client & Client Team Section */}
+                                                <div className="flex flex-col items-center md:items-start gap-1 pl-3 md:border-l border-white/30">
+                                                    <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                                                        {t('dashboard.projects.clientLabel') || 'Cliente & Team'}
+                                                    </span>
+                                                    <div className="flex items-center -space-x-2">
+                                                        {/* Show Assigned Clients (Entities) */}
+                                                        {(project.project_clients || []).map((pc) => {
+                                                            const c = pc.clients;
+                                                            if (!c) return null;
+                                                            return (
+                                                                <div
+                                                                    key={pc.client_id}
+                                                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-blue-50 text-[10px] font-bold text-blue-700 shadow-sm"
+                                                                    title={c.company_name || c.full_name || 'Cliente'}
+                                                                >
+                                                                    {getInitials(c.company_name || c.full_name)}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {/* Show Assigned Client Users */}
+                                                        {(project.project_client_users || []).map((pcu) => {
+                                                            const u = pcu.profiles;
+                                                            if (!u) return null;
+                                                            return (
+                                                                <div
+                                                                    key={pcu.user_id}
+                                                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-green-50 text-[10px] font-bold text-green-700 shadow-sm"
+                                                                    title={u.full_name || u.email}
+                                                                >
+                                                                    {getInitials(u.full_name || u.email)}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {isAdmin && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    openClientTeamModal(project);
+                                                                }}
+                                                                className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 hover:bg-[#e4e4e4] hover:text-black transition shadow-sm"
+                                                            >
+                                                                <Plus size={14} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Links Section */}
+                                                {(project.figma_url || project.jam_url) && (
+                                                    <div className="flex items-center gap-2 pl-3 md:border-l border-white/30 self-stretch">
+                                                        {project.figma_url && (
+                                                            <a
+                                                                href={project.figma_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/50 hover:bg-white rounded-full transition-all text-neutral-600 hover:text-black border border-white/20 shadow-sm"
+                                                                title="Figma Design"
+                                                            >
+                                                                <FigmaLogo size={14} />
+                                                                <span className="text-[10px] font-bold uppercase tracking-wide">Diseño</span>
+                                                            </a>
+                                                        )}
+                                                        {project.jam_url && (
+                                                            <a
+                                                                href={project.jam_url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/50 hover:bg-white rounded-full transition-all text-neutral-600 hover:text-black border border-white/20 shadow-sm"
+                                                                title="Figma Jam"
+                                                            >
+                                                                <JamLogo size={14} />
+                                                                <span className="text-[10px] font-bold uppercase tracking-wide">FigJam</span>
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -511,6 +756,13 @@ const Projects = () => {
                     })}
                 </div>
             )}
+
+            <EditProjectModal
+                isOpen={!!projectToEdit}
+                project={projectToEdit}
+                onClose={() => setProjectToEdit(null)}
+                onUpdated={handleProjectUpdated}
+            />
 
             <CreateProjectModal
                 isOpen={isCreateModalOpen}
@@ -575,74 +827,109 @@ const Projects = () => {
                         </motion.div>
                     </div>
                 )}
-            </AnimatePresence>
 
-            {/* ── Figma Panel Drawer ── */}
-            <AnimatePresence>
-                {figmaProject && (
-                    <>
-                        {/* Backdrop */}
+                {isAdmin && clientModalProject && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => setFigmaProject(null)}
-                            className="fixed inset-0 z-[130] bg-black/50 backdrop-blur-sm"
+                            onClick={closeClientTeamModal}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         />
-                        {/* Drawer */}
                         <motion.div
-                            initial={{ x: '100%' }}
-                            animate={{ x: 0 }}
-                            exit={{ x: '100%' }}
-                            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                            className="fixed right-0 top-0 bottom-0 z-[140] w-full max-w-[420px] bg-neutral-50 shadow-2xl flex flex-col"
+                            initial={{ scale: 0.96, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.96, opacity: 0, y: 20 }}
+                            className="relative w-full max-w-[500px] bg-white rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-7"
                         >
-                            {/* Header */}
-                            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-200 bg-white">
-                                <div className="flex items-center gap-2.5">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width={20} height={20} viewBox="0 0 38 57" fill="none">
-                                        <path d="M19 28.5A9.5 9.5 0 0 1 28.5 19H19a9.5 9.5 0 0 0 0 19h9.5A9.5 9.5 0 0 1 19 28.5Z" fill="#1ABCFE" />
-                                        <path d="M9.5 47.5A9.5 9.5 0 0 1 19 38h9.5a9.5 9.5 0 1 1-19 0Z" fill="#0ACF83" />
-                                        <path d="M9.5 9.5A9.5 9.5 0 0 0 19 19h9.5A9.5 9.5 0 1 0 9.5 9.5Z" fill="#FF7262" />
-                                        <path d="M9.5 28.5A9.5 9.5 0 0 0 19 38V19a9.5 9.5 0 0 0-9.5 9.5Z" fill="#F24E1E" />
-                                        <path d="M28.5 19a9.5 9.5 0 1 1 0 19 9.5 9.5 0 0 1 0-19Z" fill="#A259FF" />
-                                    </svg>
-                                    <div>
-                                        <p className="text-sm font-bold text-neutral-900">Figma</p>
-                                        <p className="text-[11px] text-neutral-400 truncate max-w-[260px]">
-                                            {figmaProject?.title || figmaProject?.name || 'Proyecto'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setFigmaProject(null)}
-                                    className="p-2 rounded-xl hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition"
-                                >
-                                    <X size={18} />
-                                </button>
+                            <div className="text-center">
+                                <Users size={40} className="mx-auto text-blue-600 mb-4" />
+                                <h3 className="text-xl font-bold text-neutral-900">
+                                    Asignar Clientes y Team
+                                </h3>
+                                <p className="text-sm text-neutral-500 mt-1">Configura quiénes tienen acceso desde el lado del cliente</p>
                             </div>
 
-                            {/* Scrollable content */}
-                            <div className="flex-1 overflow-y-auto p-5">
-                                <FigmaPanel
-                                    project={figmaProject}
-                                    isAdmin={isAdmin}
-                                    onFigmaProjectUpdate={(newProjectId) => {
-                                        // Update figmaProject local state so the drawer refreshes
-                                        setFigmaProject((prev) => ({ ...prev, figma_project_id: newProjectId }));
-                                        // Also update in the projects list
-                                        setProjects((prev) =>
-                                            prev.map((p) =>
-                                                p.id === figmaProject.id ? { ...p, figma_project_id: newProjectId } : p
-                                            )
-                                        );
-                                    }}
-                                />
+                            <div className="mt-6 space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+                                {/* Section 1: Client Entities */}
+                                <div>
+                                    <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Empresas / Clientes Principales</h4>
+                                    <div className="space-y-2">
+                                        {clients.map((c) => {
+                                            const isSelected = clientSelection.includes(c.id);
+                                            return (
+                                                <button
+                                                    key={c.id}
+                                                    onClick={() => setClientSelection(prev =>
+                                                        isSelected ? prev.filter(id => id !== c.id) : [...prev, c.id]
+                                                    )}
+                                                    className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${isSelected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-neutral-200 bg-neutral-50'
+                                                        }`}
+                                                >
+                                                    <span className="font-medium text-left">{c.company_name || c.full_name || c.email}</span>
+                                                    <span className="text-[10px] uppercase font-bold">{isSelected ? 'Asignado' : 'Asignar'}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Section 2: Client Users (Team Cliente) */}
+                                <div>
+                                    <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Team del Cliente (Usuarios específicos)</h4>
+                                    <div className="space-y-2">
+                                        {clientSelection.length === 0 ? (
+                                            <div className="py-8 text-center border-2 border-dashed border-neutral-100 rounded-2xl">
+                                                <p className="text-sm text-neutral-400">Selecciona un cliente principal para ver su equipo</p>
+                                            </div>
+                                        ) : (
+                                            allClientUsers
+                                                .filter(u => clientSelection.includes(u.client_id))
+                                                .map((u) => {
+                                                    const isSelected = clientUserSelection.includes(u.id);
+                                                    return (
+                                                        <button
+                                                            key={u.id}
+                                                            onClick={() => setClientUserSelection(prev =>
+                                                                isSelected ? prev.filter(id => id !== u.id) : [...prev, u.id]
+                                                            )}
+                                                            className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${isSelected ? 'border-green-600 bg-green-50 text-green-700' : 'border-neutral-200 bg-neutral-50'
+                                                                }`}
+                                                        >
+                                                            <div className="flex flex-col items-start">
+                                                                <span className="font-medium">{u.full_name || u.email}</span>
+                                                                {u.client_id && (
+                                                                    <span className="text-[10px] text-neutral-400">
+                                                                        {clients.find(c => c.id === u.client_id)?.company_name || 'Empresa'}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-[10px] uppercase font-bold">{isSelected ? 'En el Team' : 'Agregar'}</span>
+                                                        </button>
+                                                    );
+                                                })
+                                        )}
+                                        {clientSelection.length > 0 && allClientUsers.filter(u => clientSelection.includes(u.client_id)).length === 0 && (
+                                            <div className="py-8 text-center border-2 border-dashed border-neutral-100 rounded-2xl">
+                                                <p className="text-sm text-neutral-400">Este cliente aún no tiene un equipo asignado</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
+
+                            <button
+                                onClick={closeClientTeamModal}
+                                className="mt-8 w-full rounded-2xl bg-black py-4 text-sm font-bold text-white hover:bg-neutral-800 transition active:scale-[0.98]"
+                            >
+                                Guardar Configuración
+                            </button>
                         </motion.div>
-                    </>
+                    </div>
                 )}
             </AnimatePresence>
+
         </div>
     );
 };
