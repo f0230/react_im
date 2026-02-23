@@ -1324,6 +1324,7 @@ const ProjectTasks = () => {
                     </AnimatePresence>
                   </form>
                 </div>
+              </div>
             </motion.div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-neutral-400 p-8 text-center bg-white/40">
@@ -1334,7 +1335,7 @@ const ProjectTasks = () => {
           )}
         </div>
       </div>
-    </div >
+    </div>
   );
 };
 
