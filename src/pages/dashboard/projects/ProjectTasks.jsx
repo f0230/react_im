@@ -57,8 +57,8 @@ const ProjectTasks = () => {
   // Detail Data
   const [comments, setComments] = useState([]);
   const [files, setFiles] = useState([]);
-  const [teamMembersMap, setTeamMembersMap] = useState({}); // Map of id -> profile
-  const [allWorkers, setAllWorkers] = useState([]); // List for assignment
+  const [teamMembersMap, setTeamMembersMap] = useState({});
+  const [allWorkers, setAllWorkers] = useState([]);
 
   const [newComment, setNewComment] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -69,7 +69,7 @@ const ProjectTasks = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingDesc, setIsSavingDesc] = useState(false);
   const [replacingFile, setReplacingFile] = useState(null);
-
+  const [deletingFileId, setDeletingFileId] = useState(null);
 
   // UI Helpers
   const [isCreateServiceOpen, setIsCreateServiceOpen] = useState(false);
@@ -79,15 +79,29 @@ const ProjectTasks = () => {
   const [isEditingService, setIsEditingService] = useState(false);
   const [editedTitle, setEditedTitle] = useState('');
   const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false);
+  const [isActionsOpen, setIsActionsOpen] = useState(false);
 
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
   const replaceInputRef = useRef(null);
   const createInputRef = useRef(null);
+  const actionsRef = useRef(null);
 
   const isAdmin = profile?.role === 'admin';
   const isWorker = profile?.role === 'worker';
   const canManage = isAdmin || isWorker;
+
+  // Close actions dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (actionsRef.current && !actionsRef.current.contains(e.target)) {
+        setIsActionsOpen(false);
+        setIsAssigning(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // 1. Fetch Projects
   const fetchProjects = useCallback(async () => {
@@ -121,20 +135,40 @@ const ProjectTasks = () => {
         .from('project_client_users')
         .select('project_id')
         .eq('user_id', user.id);
-      const assignedProjectIds = clientUserAssignmentsData?.map((a) => a.project_id) || [];
+
+      const assignedByUserId = clientUserAssignmentsData?.map((a) => a.project_id) || [];
+
+      let assignedByClientId = [];
+      const effectiveClientId = client?.id || profile?.client_id;
+
+      if (effectiveClientId) {
+        const { data: companyAssignmentsData } = await supabase
+          .from('project_clients')
+          .select('project_id')
+          .eq('client_id', effectiveClientId);
+
+        assignedByClientId = companyAssignmentsData?.map((a) => a.project_id) || [];
+      }
+
+      const allAssignedProjectIds = Array.from(new Set([...assignedByUserId, ...assignedByClientId]));
 
       let query = supabase
         .from('projects')
         .select('*, project_assignments(worker_id), project_clients(client_id, clients(id, full_name, company_name)), project_client_users(user_id, profiles(id, full_name))')
         .order('created_at', { ascending: false });
 
-      if (client?.id) {
-        query = query.or(`client_id.eq.${client.id},user_id.eq.${user.id}${assignedProjectIds.length ? `,id.in.(${assignedProjectIds.join(',')})` : ''}`);
-      } else if (assignedProjectIds.length > 0) {
-        query = query.or(`user_id.eq.${user.id},id.in.(${assignedProjectIds.join(',')})`);
-      } else {
-        query = query.eq('user_id', user.id);
+      const filters = [];
+      filters.push(`user_id.eq.${user.id}`);
+
+      if (effectiveClientId) {
+        filters.push(`client_id.eq.${effectiveClientId}`);
       }
+
+      if (allAssignedProjectIds.length > 0) {
+        filters.push(`id.in.(${allAssignedProjectIds.join(',')})`);
+      }
+
+      query = query.or(filters.join(','));
       response = await query;
     } else {
       response = await supabase
@@ -242,7 +276,9 @@ const ProjectTasks = () => {
       setEditedTitle(selectedService.title || '');
       setIsEditingDesc(false);
       setIsEditingService(false);
-      setMobileView('detail'); // Switch to detail view on mobile
+      setIsActionsOpen(false);
+      setIsAssigning(false);
+      setMobileView('detail');
       if (selectedService.responsible_id && !teamMembersMap[selectedService.responsible_id]) {
         fetchTeamMemberProfiles([selectedService.responsible_id]);
       }
@@ -308,8 +344,8 @@ const ProjectTasks = () => {
       setServices(prev => prev.map(s => s.id === selectedService.id ? { ...s, description: editedDesc } : s));
       setIsEditingDesc(false);
     } else {
-      console.error('Error updating description:', error.message, error.details, error.hint);
-      alert(`Error al actualizar descripción: ${error.message} `);
+      console.error('Error updating description:', error.message);
+      alert(`Error al actualizar descripción: ${error.message}`);
     }
     setIsSavingDesc(false);
   };
@@ -329,15 +365,18 @@ const ProjectTasks = () => {
       setSelectedService(prev => ({ ...prev, title: editedTitle.trim(), description: editedDesc.trim() }));
       setServices(prev => prev.map(s => s.id === selectedService.id ? { ...s, title: editedTitle.trim(), description: editedDesc.trim() } : s));
       setIsEditingService(false);
+      setIsActionsOpen(false);
     } else {
       console.error('Error saving service:', error.message);
-      alert(`Error al guardar: ${error.message} `);
+      alert(`Error al guardar: ${error.message}`);
     }
     setIsSavingDesc(false);
   };
 
   const handleDeleteFile = async (file) => {
     if (!window.confirm('¿Estás seguro de eliminar este archivo?')) return;
+
+    setDeletingFileId(file.id);
 
     // 1. Delete from Storage
     const storagePath = file.file_url.split('/storage/v1/object/public/service-attachments/')[1];
@@ -358,17 +397,20 @@ const ProjectTasks = () => {
       setFiles(prev => prev.filter(f => f.id !== file.id));
     } else {
       console.error('DB delete error:', error);
-      alert(`Error al eliminar registro: ${error.message} `);
+      alert(`Error al eliminar registro: ${error.message}`);
     }
+    setDeletingFileId(null);
   };
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !selectedService) return;
+    // Reset input so same file can be re-uploaded
+    e.target.value = '';
 
     setIsUploading(true);
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt} `;
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2)}.${fileExt}`;
     const filePath = `${selectedService.id}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -396,69 +438,12 @@ const ProjectTasks = () => {
       if (!insertError && data) {
         setFiles(prev => [data, ...prev]);
       }
+    } else {
+      console.error('Upload error:', uploadError);
+      alert(`Error al subir archivo: ${uploadError.message}`);
     }
     setIsUploading(false);
   };
-
-  const handleFileReplace = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedService || !replacingFile) return;
-
-    setIsUploading(true);
-
-    try {
-      // 1. Delete old file from Storage
-      const oldStoragePath = replacingFile.file_url.split('/storage/v1/object/public/service-attachments/')[1];
-      if (oldStoragePath) {
-        const { error: storageError } = await supabase.storage
-          .from('service-attachments')
-          .remove([oldStoragePath]);
-        if (storageError) console.error('Storage delete error (old file):', storageError);
-      }
-
-      // 2. Upload new file
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${selectedService.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('service-attachments')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('service-attachments')
-        .getPublicUrl(filePath);
-
-      // 3. Update DB
-      const { data, error: updateError } = await supabase
-        .from('service_files')
-        .update({
-          file_url: publicUrl,
-          file_name: file.name,
-          file_type: file.type,
-          file_size: file.size,
-          uploaded_by: user.id
-        })
-        .eq('id', replacingFile.id)
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
-      if (data) {
-        setFiles(prev => prev.map(f => f.id === replacingFile.id ? data : f));
-      }
-    } catch (error) {
-      console.error('File replacement error:', error);
-      alert(`Error al reemplazar archivo: ${error.message}`);
-    } finally {
-      setIsUploading(false);
-      setReplacingFile(null);
-      if (replaceInputRef.current) replaceInputRef.current.value = '';
-    }
-  };
-
 
   const handleAssignResponsible = async (workerId) => {
     if (!selectedService) return;
@@ -470,9 +455,10 @@ const ProjectTasks = () => {
     if (!error) {
       setSelectedService(prev => ({ ...prev, responsible_id: workerId }));
       setIsAssigning(false);
+      setIsActionsOpen(false);
       if (workerId && !teamMembersMap[workerId]) fetchTeamMemberProfiles([workerId]);
     } else {
-      console.error('Error assigning responsible:', error.message, error.details, error.hint);
+      console.error('Error assigning responsible:', error.message);
       alert(`Error al asignar responsable: ${error.message}`);
     }
   };
@@ -519,6 +505,17 @@ const ProjectTasks = () => {
     const words = title.trim().split(/\s+/).filter(Boolean);
     if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
     return words.slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  };
+
+  // File icon based on type
+  const getFileIcon = (fileType) => {
+    if (!fileType) return <FileText size={22} className="text-neutral-400" />;
+    if (fileType.startsWith('image/')) return <span className="text-2xl">🖼️</span>;
+    if (fileType.includes('pdf')) return <span className="text-2xl">📄</span>;
+    if (fileType.includes('zip') || fileType.includes('rar')) return <span className="text-2xl">🗜️</span>;
+    if (fileType.includes('word') || fileType.includes('doc')) return <span className="text-2xl">📝</span>;
+    if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('csv')) return <span className="text-2xl">📊</span>;
+    return <FileText size={22} className="text-neutral-400" />;
   };
 
   if (loading) {
@@ -761,7 +758,7 @@ const ProjectTasks = () => {
                         )}
                       </div>
                     </div>
-                    <ArrowRight size={16} className={`shrink-0 ${selectedService?.id === s.id ? 'text-black' : 'text-neutral-300 group-hover:text-black'
+                    <ChevronRight size={16} className={`shrink-0 ${selectedService?.id === s.id ? 'text-black' : 'text-neutral-300 group-hover:text-black'
                       }`} />
                   </motion.div>
                 ))
@@ -799,8 +796,8 @@ const ProjectTasks = () => {
               {/* Detail Info Panel */}
               <div className={`flex-1 flex flex-col border-r border-neutral-200/40 p-5 md:p-6 lg:p-8 space-y-6 overflow-y-auto scrollbar-hide ${mobileView === 'comments' ? 'hidden lg:flex' : 'flex'}`}>
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    {/* Back Button for mobile - High Visibility */}
+                  <div className="flex-1 min-w-0">
+                    {/* Back Button for mobile */}
                     <motion.button
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setMobileView('list')}
@@ -820,74 +817,118 @@ const ProjectTasks = () => {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => handleToggleStatus(selectedService.id, selectedService.status)}
-                          className={`p-1 rounded-md transition-all ${selectedService.status === 'completed' ? 'text-emerald-500' : 'text-neutral-300 hover:text-neutral-400'}`}
+                          className={`p-1 rounded-md transition-all shrink-0 ${selectedService.status === 'completed' ? 'text-emerald-500' : 'text-neutral-300 hover:text-neutral-400'}`}
                         >
                           {selectedService.status === 'completed' ? <CheckCircle2 size={24} /> : <Circle size={24} />}
                         </button>
-                        <h2 className={`text-2xl font-black tracking-tight leading-tight ${selectedService.status === 'completed' ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>
+                        <h2 className={`text-xl md:text-2xl font-black tracking-tight leading-tight truncate ${selectedService.status === 'completed' ? 'text-neutral-400 line-through' : 'text-neutral-800'}`}>
                           {selectedService.title}
                         </h2>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {canManage && !isEditingService && (
-                      <button onClick={() => setIsEditingService(true)} className="p-2 rounded-full hover:bg-black hover:text-white text-neutral-400 transition-all shadow-sm bg-white border border-neutral-100">
-                        <Edit3 size={18} />
-                      </button>
-                    )}
-                    {isEditingService && (
+
+                  {/* Unified Actions Button */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isEditingService ? (
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setIsEditingService(false)} className="px-3 py-2 text-xs font-bold uppercase text-neutral-400 hover:text-neutral-600">Cancelar</button>
+                        <button onClick={() => { setIsEditingService(false); setIsActionsOpen(false); }} className="px-3 py-2 text-xs font-bold uppercase text-neutral-400 hover:text-neutral-600">Cancelar</button>
                         <button onClick={handleSaveService} disabled={isSavingDesc} className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl text-xs font-bold uppercase shadow-md hover:bg-neutral-800">
                           {isSavingDesc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                           Guardar
                         </button>
                       </div>
-                    )}
-                    <button
-                      onClick={() => { setSelectedService(null); setShowDetail(false); }}
-                      className="p-1 text-neutral-300 hover:text-black transition-colors transform rotate-45"
-                    >
-                      <ArrowLeft size={22} />
-                    </button>
+                    ) : canManage ? (
+                      <div ref={actionsRef} className="relative">
+                        <button
+                          onClick={() => { setIsActionsOpen(v => !v); setIsAssigning(false); }}
+                          className="p-2 rounded-full hover:bg-black hover:text-white text-neutral-400 transition-all shadow-sm bg-white border border-neutral-100"
+                          title="Más opciones"
+                        >
+                          <MoreVertical size={18} />
+                        </button>
+                        <AnimatePresence>
+                          {isActionsOpen && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95, y: -5 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              exit={{ opacity: 0, scale: 0.95, y: -5 }}
+                              className="absolute right-0 top-10 w-52 bg-white rounded-2xl shadow-2xl border border-neutral-100 z-50 p-2 overflow-hidden"
+                            >
+                              {/* Edit title/desc */}
+                              <button
+                                onClick={() => { setIsEditingService(true); setIsActionsOpen(false); }}
+                                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-neutral-50 text-left transition-all"
+                              >
+                                <Edit3 size={14} className="text-neutral-500 shrink-0" />
+                                <span className="text-xs font-bold text-neutral-700">Editar tarea</span>
+                              </button>
+
+                              {/* Assign responsible */}
+                              <button
+                                onClick={() => setIsAssigning(v => !v)}
+                                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-neutral-50 text-left transition-all"
+                              >
+                                <UserPlus size={14} className="text-neutral-500 shrink-0" />
+                                <span className="text-xs font-bold text-neutral-700">Asignar responsable</span>
+                              </button>
+
+                              {/* Upload file */}
+                              <button
+                                onClick={() => { fileInputRef.current?.click(); setIsActionsOpen(false); }}
+                                disabled={isUploading}
+                                className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-neutral-50 text-left transition-all disabled:opacity-50"
+                              >
+                                {isUploading ? <Loader2 size={14} className="animate-spin text-neutral-500 shrink-0" /> : <UploadCloud size={14} className="text-neutral-500 shrink-0" />}
+                                <span className="text-xs font-bold text-neutral-700">Subir archivo</span>
+                              </button>
+
+                              {/* Workers sub-list for assigning */}
+                              <AnimatePresence>
+                                {isAssigning && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden border-t border-neutral-100 mt-1 pt-1"
+                                  >
+                                    <div className="text-[9px] font-black uppercase text-neutral-400 px-2 py-1.5">Asignar a...</div>
+                                    <div className="max-h-40 overflow-y-auto">
+                                      {allWorkers.map(w => (
+                                        <button key={w.id} onClick={() => handleAssignResponsible(w.id)} className={`w-full flex items-center gap-2.5 p-2 rounded-xl hover:bg-neutral-50 text-left transition-all ${selectedService.responsible_id === w.id ? 'bg-emerald-50' : ''}`}>
+                                          <img src={w.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(w.full_name || 'U')}`} className="w-6 h-6 rounded-full shrink-0" alt="" />
+                                          <span className="text-xs font-bold text-neutral-700 truncate">{w.full_name}</span>
+                                          {selectedService.responsible_id === w.id && <CheckCircle2 size={12} className="text-emerald-500 ml-auto shrink-0" />}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
                 {/* Compact Info Grid */}
                 <div className="grid grid-cols-2 gap-4 py-4 border-y border-neutral-100/60">
-                  <div className="flex flex-col gap-1.5 relative">
+                  <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Responsable</span>
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full overflow-hidden bg-neutral-200 shadow-sm border border-white">
+                      <div className="w-7 h-7 rounded-full overflow-hidden bg-neutral-200 shadow-sm border border-white shrink-0">
                         {teamMembersMap[selectedService.responsible_id]?.avatar_url ? (
                           <img src={teamMembersMap[selectedService.responsible_id].avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : <User className="w-full h-full p-1.5 text-neutral-400" />}
                       </div>
-                      <span className="text-xs font-bold text-neutral-700">{teamMembersMap[selectedService.responsible_id]?.full_name || 'Sin asignar'}</span>
-                      {canManage && (
-                        <button onClick={() => setIsAssigning(!isAssigning)} className="ml-1 p-1 rounded-full text-neutral-300 hover:text-black hover:bg-neutral-100 transition-all">
-                          <UserPlus size={12} />
-                        </button>
-                      )}
+                      <span className="text-xs font-bold text-neutral-700 truncate">{teamMembersMap[selectedService.responsible_id]?.full_name || 'Sin asignar'}</span>
                     </div>
-                    <AnimatePresence>
-                      {isAssigning && (
-                        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="absolute left-0 top-12 w-48 bg-white rounded-2xl shadow-2xl border border-neutral-100 z-50 p-2 max-h-60 overflow-y-auto">
-                          <div className="text-[9px] font-black uppercase text-neutral-400 p-2 border-b mb-1">Asignar a...</div>
-                          {allWorkers.map(w => (
-                            <button key={w.id} onClick={() => handleAssignResponsible(w.id)} className="w-full flex items-center gap-2 p-1.5 rounded-lg hover:bg-neutral-50 text-left">
-                              <img src={w.avatar_url || `https://ui-avatars.com/api/?name=${w.full_name}`} className="w-5 h-5 rounded-full" />
-                              <span className="text-[11px] font-bold text-neutral-700 truncate">{w.full_name}</span>
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <span className="text-[10px] text-neutral-400 font-bold uppercase tracking-wider">Proyecto</span>
-                    <span className="self-start px-2 py-0.5 rounded-md bg-rose-50 text-rose-500 font-bold text-[10px] uppercase border border-rose-100/50">{selectedProject?.title || 'DTE'}</span>
+                    <span className="self-start px-2 py-0.5 rounded-md bg-rose-50 text-rose-500 font-bold text-[10px] uppercase border border-rose-100/50 truncate max-w-full">{selectedProject?.title || 'DTE'}</span>
                   </div>
                 </div>
 
@@ -897,21 +938,35 @@ const ProjectTasks = () => {
                     <h3 className="text-sm font-bold text-neutral-800">Descripción</h3>
                   </div>
                   {isEditingService || isEditingDesc ? (
-                    <textarea
-                      value={editedDesc}
-                      onChange={(e) => setEditedDesc(e.target.value)}
-                      className="w-full bg-white/50 border border-neutral-200 rounded-xl p-4 text-sm text-neutral-600 outline-none focus:border-black transition-colors min-h-[100px]"
-                      placeholder="Describe la tarea..."
-                    />
+                    <div className="space-y-2">
+                      <textarea
+                        value={editedDesc}
+                        onChange={(e) => setEditedDesc(e.target.value)}
+                        className="w-full bg-white/50 border border-neutral-200 rounded-xl p-4 text-sm text-neutral-600 outline-none focus:border-black transition-colors min-h-[100px]"
+                        placeholder="Describe la tarea..."
+                      />
+                      {isEditingDesc && !isEditingService && (
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => setIsEditingDesc(false)} className="px-3 py-1.5 text-xs font-bold text-neutral-400 hover:text-neutral-600">Cancelar</button>
+                          <button onClick={handleUpdateDescription} disabled={isSavingDesc} className="flex items-center gap-1.5 px-4 py-1.5 bg-black text-white rounded-lg text-xs font-bold hover:bg-neutral-800 disabled:opacity-50">
+                            {isSavingDesc ? <Loader2 size={12} className="animate-spin" /> : <Save size={12} />}
+                            Guardar
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ) : (
-                    <div className="relative group">
+                    <div
+                      className="relative group cursor-text"
+                      onClick={canManage ? () => { setIsEditingDesc(true); setIsEditingService(false); } : undefined}
+                    >
                       <p className="text-sm text-neutral-500 leading-relaxed italic pr-4">
-                        {selectedService.description || "Sin descripción asignada."}
+                        {selectedService.description || "Sin descripción. Haz clic para agregar una."}
                       </p>
                       {canManage && (
-                        <button onClick={() => { setIsEditingDesc(true); setIsEditingService(false); }} className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-neutral-200 text-neutral-400 transition-all">
-                          <Edit3 size={14} />
-                        </button>
+                        <span className="absolute right-0 top-0 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-neutral-200 text-neutral-400 transition-all pointer-events-none">
+                          <Edit3 size={12} />
+                        </span>
                       )}
                     </div>
                   )}
@@ -920,69 +975,67 @@ const ProjectTasks = () => {
                 {/* Files Section */}
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-neutral-800">Archivos</h3>
+                    <h3 className="text-sm font-bold text-neutral-800">
+                      Archivos {files.length > 0 && <span className="text-neutral-400 font-normal">({files.length})</span>}
+                    </h3>
                     {canManage && (
                       <>
                         <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
-                        <input type="file" ref={replaceInputRef} onChange={handleFileReplace} className="hidden" />
+                        <input type="file" ref={replaceInputRef} onChange={handleFileUpload} className="hidden" />
                         <button
-                          onClick={() => fileInputRef.current.click()}
+                          onClick={() => fileInputRef.current?.click()}
                           disabled={isUploading}
-                          className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-black border border-neutral-100 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm hover:shadow-md transition-all active:scale-95"
+                          className="flex items-center gap-1.5 px-4 py-1.5 bg-white text-black border border-neutral-100 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm hover:shadow-md transition-all active:scale-95 disabled:opacity-50"
                         >
                           {isUploading ? <Loader2 size={12} className="animate-spin" /> : <UploadCloud size={14} />}
                           Subir
                         </button>
                       </>
-
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-3">
-                    {files.map(file => (
-                      <div key={file.id} className="relative group w-20">
-                        <a href={file.file_url} target="_blank" rel="noreferrer" className="block w-20">
-                          <div className="w-20 h-24 rounded-2xl bg-white border border-neutral-50 shadow-sm flex flex-col items-center justify-center gap-1 group-hover:bg-neutral-50 transition-all">
-                            <FileText size={24} className="text-neutral-500" />
+
+                  {files.length === 0 && !isUploading ? (
+                    <div
+                      onClick={canManage ? () => fileInputRef.current?.click() : undefined}
+                      className={`flex flex-col items-center justify-center py-8 rounded-2xl border-2 border-dashed border-neutral-200 bg-white/40 text-neutral-400 transition-all ${canManage ? 'cursor-pointer hover:border-neutral-400 hover:bg-white/60' : ''}`}
+                    >
+                      <UploadCloud size={28} className="mb-2 opacity-30" />
+                      <p className="text-xs font-bold">Sin archivos adjuntos</p>
+                      {canManage && <p className="text-[10px] mt-1 opacity-60">Haz clic para subir un archivo</p>}
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-3">
+                      {isUploading && (
+                        <div className="w-20 flex flex-col items-center">
+                          <div className="w-20 h-24 rounded-2xl bg-white border border-neutral-100 border-dashed flex items-center justify-center animate-pulse">
+                            <Loader2 size={20} className="animate-spin text-neutral-300" />
                           </div>
-                          <p className="text-[10px] text-center mt-2 font-bold text-neutral-400 truncate w-full px-1">{file.file_name}</p>
-                        </a>
-                        {isEditingService && (
-                          <div className="absolute -top-2 -right-2 flex flex-col gap-1 z-10">
+                          <p className="text-[9px] mt-2 text-neutral-400 font-bold">Subiendo...</p>
+                        </div>
+                      )}
+                      {files.map(file => (
+                        <div key={file.id} className="relative group w-20">
+                          <a href={file.file_url} target="_blank" rel="noreferrer" className="block w-20" title={file.file_name}>
+                            <div className={`w-20 h-24 rounded-2xl bg-white border border-neutral-50 shadow-sm flex flex-col items-center justify-center gap-1 group-hover:bg-neutral-50 transition-all ${deletingFileId === file.id ? 'opacity-50' : ''}`}>
+                              {getFileIcon(file.file_type)}
+                            </div>
+                            <p className="text-[10px] text-center mt-2 font-bold text-neutral-400 truncate w-full px-1">{file.file_name}</p>
+                          </a>
+                          {/* Delete button - always visible for managers */}
+                          {canManage && (
                             <button
-                              onClick={() => {
-                                setReplacingFile(file);
-                                setTimeout(() => replaceInputRef.current?.click(), 0);
-                              }}
-                              className="p-1.5 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition-all active:scale-90"
-                              title="Reemplazar archivo"
-                            >
-                              <Edit3 size={10} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteFile(file)}
-                              className="p-1.5 bg-rose-500 text-white rounded-full shadow-lg hover:bg-rose-600 transition-all active:scale-90"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeleteFile(file); }}
+                              disabled={deletingFileId === file.id}
+                              className="absolute -top-2 -right-2 p-1.5 bg-rose-500 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 hover:bg-rose-600 transition-all active:scale-90 disabled:opacity-50 z-10"
                               title="Eliminar archivo"
                             >
-                              <Trash2 size={10} />
+                              {deletingFileId === file.id ? <Loader2 size={10} className="animate-spin" /> : <Trash2 size={10} />}
                             </button>
-                          </div>
-                        )}
-
-                      </div>
-                    ))}
-                    {files.length === 0 && (
-                      <div className="flex gap-4 opacity-30">
-                        {[1, 2].map(i => (
-                          <div key={i} className="w-20 flex flex-col items-center">
-                            <div className="w-20 h-24 rounded-2xl bg-neutral-200/40 border border-dashed border-neutral-300 flex items-center justify-center">
-                              <FileText size={24} className="text-neutral-300" />
-                            </div>
-                            <p className="text-[9px] mt-2 font-black uppercase tracking-tighter text-neutral-400">Adjunto {i}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1012,10 +1065,16 @@ const ProjectTasks = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-6 space-y-4 scrollbar-hide py-4" ref={scrollRef}>
-                  {comments.map((comment) => (
+                  {comments.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center opacity-40 py-8">
+                      <MessageSquare size={32} className="mb-3" />
+                      <p className="text-xs font-bold">Sin comentarios aún</p>
+                      <p className="text-[10px] mt-1">Sé el primero en comentar</p>
+                    </div>
+                  ) : comments.map((comment) => (
                     <div key={comment.id} className="flex gap-3 p-4 rounded-2xl bg-white border border-neutral-100/60 shadow-sm">
                       <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border border-neutral-50">
-                        <img src={comment.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${comment.profiles?.full_name}`} className="w-full h-full object-cover" alt="" />
+                        <img src={comment.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.profiles?.full_name || 'U')}`} className="w-full h-full object-cover" alt="" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-0.5">

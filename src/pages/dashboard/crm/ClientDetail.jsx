@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Mail, Phone } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, Plus, Copy, Check, Trash2, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
@@ -33,31 +33,38 @@ const ClientDetail = ({ clientIdOverride = null, hideBackLink = false }) => {
     const isAllowed = profile?.role === 'admin';
     const { clientId: routeClientId } = useParams();
     const clientId = clientIdOverride || routeClientId;
+
     const [client, setClient] = useState(null);
     const [team, setTeam] = useState([]);
+    const [invitations, setInvitations] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const loadClient = useCallback(async () => {
+    // Invitation states
+    const [newEmail, setNewEmail] = useState('');
+    const [inviting, setInviting] = useState(false);
+    const [copiedToken, setCopiedToken] = useState(null);
+
+    const loadClientData = useCallback(async () => {
         if (!clientId) {
             setError('No se pudo identificar el cliente.');
             return;
         }
         setIsLoading(true);
         setError('');
-        const { data, error: supaError } = await supabase
-            .from('clients')
-            .select('id, created_at, full_name, company_name, email, phone, status, notes')
-            .eq('id', clientId)
-            .single();
 
-        if (supaError) {
-            setError('No se pudo cargar el cliente.');
-            setClient(null);
-        } else {
-            setClient(data);
+        try {
+            // Fetch client details
+            const { data: clientData, error: clientError } = await supabase
+                .from('clients')
+                .select('id, created_at, full_name, company_name, email, phone, status, notes')
+                .eq('id', clientId)
+                .single();
 
-            // Fetch team members linked to this client
+            if (clientError) throw clientError;
+            setClient(clientData);
+
+            // Fetch team members
             const { data: teamData } = await supabase
                 .from('profiles')
                 .select('id, full_name, email, phone')
@@ -65,14 +72,84 @@ const ClientDetail = ({ clientIdOverride = null, hideBackLink = false }) => {
                 .order('full_name', { ascending: true });
 
             setTeam(teamData || []);
+
+            // Fetch pending invitations
+            const { data: invData } = await supabase
+                .from('client_invitations')
+                .select('*')
+                .eq('client_id', clientId);
+
+            setInvitations(invData || []);
+
+        } catch (supaError) {
+            console.error('Error loading client data:', supaError);
+            setError('No se pudo cargar la información del cliente.');
+            setClient(null);
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
     }, [clientId]);
 
     useEffect(() => {
         if (!isAllowed) return;
-        loadClient();
-    }, [isAllowed, loadClient]);
+        loadClientData();
+    }, [isAllowed, loadClientData]);
+
+    const handleInvite = async (e) => {
+        e.preventDefault();
+        if (!newEmail || !newEmail.includes('@')) return;
+
+        try {
+            setInviting(true);
+            const token = crypto.randomUUID();
+
+            const { data, error: invError } = await supabase
+                .from('client_invitations')
+                .insert([{
+                    client_id: clientId,
+                    email: newEmail.trim().toLowerCase(),
+                    token: token
+                }])
+                .select()
+                .single();
+
+            if (invError) {
+                if (invError.code === '23505') throw new Error('Ya existe una invitación para este correo.');
+                throw invError;
+            }
+
+            setInvitations([...invitations, data]);
+            setNewEmail('');
+        } catch (err) {
+            console.error('Invite error:', err);
+            alert(err.message || 'Error al enviar invitación');
+        } finally {
+            setInviting(false);
+        }
+    };
+
+    const handleRevoke = async (id) => {
+        if (!window.confirm('¿Revocar esta invitación?')) return;
+        try {
+            const { error: revokeError } = await supabase
+                .from('client_invitations')
+                .delete()
+                .eq('id', id);
+
+            if (revokeError) throw revokeError;
+            setInvitations(invitations.filter(inv => inv.id !== id));
+        } catch (err) {
+            console.error('Revoke error:', err);
+        }
+    };
+
+    const copyInviteLink = (token) => {
+        const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+        const url = `${baseUrl}/invite?token=${token}`;
+        navigator.clipboard.writeText(url);
+        setCopiedToken(token);
+        setTimeout(() => setCopiedToken(null), 2000);
+    };
 
     const statusMeta = useMemo(() => {
         if (!client?.status) return STATUS_META.lead;
@@ -210,20 +287,77 @@ const ClientDetail = ({ clientIdOverride = null, hideBackLink = false }) => {
 
                     {/* Sección de Team */}
                     <div className="rounded-3xl bg-white border border-black/5 shadow-lg p-6 space-y-4">
-                        <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-400">
-                            Team / Usuarios
-                        </h3>
-                        <div className="space-y-3">
-                            {team.length === 0 ? (
-                                <p className="text-xs text-neutral-400">No hay usuarios asignados a este cliente.</p>
-                            ) : (
-                                team.map((member) => (
-                                    <div key={member.id} className="flex flex-col gap-0.5 border-b border-black/[0.03] pb-2 last:border-0">
-                                        <p className="text-sm font-medium">{member.full_name || 'Sin nombre'}</p>
-                                        <p className="text-[10px] text-neutral-500 truncate">{member.email}</p>
-                                    </div>
-                                ))
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-semibold uppercase tracking-[0.2em] text-neutral-400">
+                                Team / Usuarios
+                            </h3>
+                        </div>
+
+                        {/* Invitar Usuario Form */}
+                        <form onSubmit={handleInvite} className="flex gap-2">
+                            <input
+                                type="email"
+                                value={newEmail}
+                                onChange={(e) => setNewEmail(e.target.value)}
+                                placeholder="Email de invitación"
+                                className="flex-1 bg-neutral-50 border border-black/10 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-black/30"
+                                required
+                            />
+                            <button
+                                type="submit"
+                                disabled={inviting || !newEmail}
+                                className="bg-black text-white px-3 py-1.5 rounded-xl text-xs font-bold hover:opacity-80 transition disabled:opacity-50"
+                            >
+                                <Plus size={14} className="inline mr-1" /> Invitar
+                            </button>
+                        </form>
+
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                            {/* Pendientes */}
+                            {invitations.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Invitaciones Pendientes</p>
+                                    {invitations.map(inv => (
+                                        <div key={inv.id} className="flex items-center justify-between p-2 bg-amber-50/50 border border-amber-100 rounded-xl">
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-medium truncate">{inv.email}</p>
+                                                <p className="text-[9px] text-amber-600">Pendiente</p>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    onClick={() => copyInviteLink(inv.token)}
+                                                    className="p-1.5 hover:bg-white rounded-lg transition"
+                                                    title="Copiar Link"
+                                                >
+                                                    {copiedToken === inv.token ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRevoke(inv.id)}
+                                                    className="p-1.5 hover:bg-white text-red-500 rounded-lg transition"
+                                                    title="Revocar"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             )}
+
+                            {/* Activos */}
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Miembros Activos</p>
+                                {team.length === 0 ? (
+                                    <p className="text-xs text-neutral-400">No hay usuarios asignados.</p>
+                                ) : (
+                                    team.map((member) => (
+                                        <div key={member.id} className="flex flex-col gap-0.5 border-b border-black/[0.03] pb-2 last:border-0">
+                                            <p className="text-sm font-medium">{member.full_name || 'Sin nombre'}</p>
+                                            <p className="text-[10px] text-neutral-500 truncate">{member.email}</p>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

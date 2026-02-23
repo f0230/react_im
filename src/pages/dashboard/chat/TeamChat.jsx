@@ -78,6 +78,7 @@ const TeamChat = () => {
     useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
 
     const { user, profile } = useAuth();
+    const navigate = useNavigate();
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     const { teamPreviews } = useUnreadCounts();
@@ -1189,7 +1190,7 @@ const TeamChat = () => {
                                             {selectedChannel.project_id ? (
                                                 <button
                                                     type="button"
-                                                    onClick={() => navigate(`/dashboard/projects/${selectedChannel.project_id}`)}
+                                                    onClick={() => navigate(`/dashboard/tasks?projectId=${selectedChannel.project_id}`)}
                                                     className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0 hover:text-blue-600 transition-colors group/title"
                                                     title="Ver proyecto"
                                                 >

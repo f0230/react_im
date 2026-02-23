@@ -25,7 +25,7 @@ const Invite = () => {
                 // Unauthenticated users can view if expires_at > now() based on our RLS
                 const { data, error } = await supabase
                     .from('client_invitations')
-                    .select('*, client:clients(name)')
+                    .select('*, client:clients(id, full_name, company_name)')
                     .eq('token', token)
                     .single();
 
@@ -88,7 +88,7 @@ const Invite = () => {
                         You have been invited to join the team:
                     </p>
                     <h3 className="text-xl font-bold text-white">
-                        {inviteState.inviteData?.client?.name || "Loading..."}
+                        {inviteState.inviteData?.client?.company_name || inviteState.inviteData?.client?.full_name || "tu equipo"}
                     </h3>
                 </div>
 

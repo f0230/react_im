@@ -158,27 +158,47 @@ const Projects = () => {
                     .order('created_at', { ascending: false });
             }
         } else if (role === 'client') {
+            // 1. Get projects where this specific user is assigned
             const { data: clientUserAssignmentsData } = await supabase
                 .from('project_client_users')
                 .select('project_id')
                 .eq('user_id', userId);
 
-            const assignedProjectIds = clientUserAssignmentsData?.map((a) => a.project_id) || [];
+            const assignedByUserId = clientUserAssignmentsData?.map((a) => a.project_id) || [];
+
+            // 2. Get projects where the user's company (client_id) is assigned
+            let assignedByClientId = [];
+            const effectiveClientId = clientId || profile?.client_id;
+
+            if (effectiveClientId) {
+                const { data: companyAssignmentsData } = await supabase
+                    .from('project_clients')
+                    .select('project_id')
+                    .eq('client_id', effectiveClientId);
+
+                assignedByClientId = companyAssignmentsData?.map((a) => a.project_id) || [];
+            }
+
+            const allAssignedProjectIds = Array.from(new Set([...assignedByUserId, ...assignedByClientId]));
 
             let query = supabase
                 .from('projects')
                 .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
                 .order('created_at', { ascending: false });
 
-            if (clientId) {
-                // If they have a direct clientId (legacy or primary), show those too
-                query = query.or(`client_id.eq.${clientId},user_id.eq.${userId}${assignedProjectIds.length ? `,id.in.(${assignedProjectIds.join(',')})` : ''}`);
-            } else if (assignedProjectIds.length > 0) {
-                query = query.or(`user_id.eq.${userId},id.in.(${assignedProjectIds.join(',')})`);
-            } else {
-                query = query.eq('user_id', userId);
+            // Build filters
+            const filters = [];
+            filters.push(`user_id.eq.${userId}`);
+
+            if (effectiveClientId) {
+                filters.push(`client_id.eq.${effectiveClientId}`);
             }
 
+            if (allAssignedProjectIds.length > 0) {
+                filters.push(`id.in.(${allAssignedProjectIds.join(',')})`);
+            }
+
+            query = query.or(filters.join(','));
             response = await query;
         } else {
             response = await fetchByColumn('user_id', userId);

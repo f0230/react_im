@@ -20,7 +20,7 @@ const CreateProjectModal = ({
 }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const { user, client } = useAuth();
+    const { user, client, profile } = useAuth();
     const isAdmin = role === 'admin';
     const labelClass = 'text-[22px] text-[#000000] text-center block';
     const inputClass =
@@ -230,6 +230,15 @@ const CreateProjectModal = ({
             };
         }
 
+        // Fallback for client team members who don't have a record in the 'clients' table with their user_id
+        // but have client_id in their profile.
+        if (profile?.client_id) {
+            return {
+                resolvedClientId: profile.client_id,
+                resolvedUserId: user?.id ?? null,
+            };
+        }
+
         if (!user?.id) {
             return {
                 resolvedClientId: null,
@@ -335,6 +344,22 @@ const CreateProjectModal = ({
             if (insertError) {
                 console.error('Insert attempt failed for payload:', payload, 'with error:', insertError);
                 throw insertError;
+            }
+
+            // Also link to project_clients table for the many-to-many refactor
+            if (resolvedClientId && data?.id) {
+                try {
+                    await supabase
+                        .from('project_clients')
+                        .insert({
+                            project_id: data.id,
+                            client_id: resolvedClientId
+                        });
+                } catch (pcError) {
+                    console.warn('Failed to link project to project_clients:', pcError);
+                    // We don't throw here to avoid failing the whole project creation 
+                    // since the main projects table already has the client_id
+                }
             }
 
             void sendProjectCreatedWebhook(data);

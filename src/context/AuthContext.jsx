@@ -108,13 +108,27 @@ export const AuthProvider = ({ children }) => {
 
                 // 2. Fetch Client (if applicable)
                 if (profileData.role === 'client') {
-                    const { data: clientData } = await supabase
-                        .from('clients')
-                        .select('*')
-                        .eq('user_id', currentUser.id)
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
+                    let clientData = null;
+
+                    if (profileData.is_client_leader) {
+                        // Leaders own a row in `clients` linked by user_id
+                        const { data } = await supabase
+                            .from('clients')
+                            .select('*')
+                            .eq('user_id', currentUser.id)
+                            .order('created_at', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+                        clientData = data;
+                    } else if (profileData.client_id) {
+                        // Team members are linked via profile.client_id
+                        const { data } = await supabase
+                            .from('clients')
+                            .select('*')
+                            .eq('id', profileData.client_id)
+                            .maybeSingle();
+                        clientData = data;
+                    }
 
                     setClient(clientData);
 
@@ -260,7 +274,13 @@ export const AuthProvider = ({ children }) => {
         }
     }, [user, fetchProfileData]);
 
-    const isProfileIncomplete = profile?.role === 'client' && (!client || !client.full_name || !client.phone);
+    // Only client LEADERS need to complete their profile (name + phone in `clients` table).
+    // Team members (is_client_leader === false) are invited users who don't own a clients row.
+    // If is_client_leader is null/undefined the user self-registered and should also complete profile.
+    const isProfileIncomplete =
+        profile?.role === 'client' &&
+        profile?.is_client_leader !== false &&   // true or null/undefined → needs completion
+        (!client || !client.full_name || !client.phone);
 
     const value = {
         user,

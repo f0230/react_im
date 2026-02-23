@@ -126,7 +126,8 @@ const Settings = () => {
     };
 
     const copyInviteLink = (token) => {
-        const url = `${window.location.origin}/invite?token=${token}`;
+        const baseUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+        const url = `${baseUrl}/invite?token=${token}`;
         navigator.clipboard.writeText(url);
         setCopiedToken(token);
         setTimeout(() => setCopiedToken(null), 2000);
