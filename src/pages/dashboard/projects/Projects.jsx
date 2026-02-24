@@ -828,7 +828,8 @@ const Projects = () => {
                         );
                     })}
                 </div>
-            )}
+            )
+            }
 
             <EditProjectModal
                 isOpen={!!projectToEdit}
@@ -1010,7 +1011,7 @@ const Projects = () => {
                 )}
             </AnimatePresence>
 
-        </div>
+        </div >
     );
 };
 

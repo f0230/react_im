@@ -668,8 +668,8 @@ const ProjectTasks = () => {
                         >
                           <div className={`w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-[10px] font-black ${selectedProject?.id === p.id ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-600'
                             }`}>
-                            {p.profile_image_url ? (
-                              <img src={p.profile_image_url} alt="" className="w-full h-full object-cover" />
+                            {p.avatar_url ? (
+                              <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
                             ) : getProjectInitials(p)}
                           </div>
                           <span className="text-[12px] font-bold truncate">{p.title || p.name || 'Proyecto'}</span>
@@ -683,8 +683,8 @@ const ProjectTasks = () => {
 
             {/* Project avatar */}
             <div className="w-20 h-20 md:w-24 md:h-24 mb-3 rounded-full bg-gradient-to-br from-lime-400 to-emerald-600 shadow-lg flex items-center justify-center text-2xl font-black text-black overflow-hidden">
-              {selectedProject?.profile_image_url || selectedProject?.avatar_url ? (
-                <img src={selectedProject.profile_image_url || selectedProject.avatar_url} alt="" className="w-full h-full object-cover" />
+              {selectedProject?.avatar_url ? (
+                <img src={selectedProject.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-black text-lg font-black">{getProjectInitials(selectedProject)}</span>
               )}

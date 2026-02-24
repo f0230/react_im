@@ -92,24 +92,24 @@ const MultiUseSelect = ({
         listPlacement === 'top'
             ? 'left-0 right-0 bottom-full mb-2'
             : listPlacement === 'right'
-            ? 'left-full top-0 ml-2'
-            : listPlacement === 'left'
-            ? 'right-full top-0 mr-2'
-            : 'left-0 right-0 top-full mt-2';
+                ? 'left-full top-0 ml-2'
+                : listPlacement === 'left'
+                    ? 'right-full top-0 mr-2'
+                    : 'left-0 right-0 top-full mt-2';
 
     const isModal = variant === 'modal';
     const modalContainerClass =
         modalAlign === 'right'
             ? 'justify-end pr-6'
             : modalAlign === 'left'
-            ? 'justify-start pl-6'
-            : 'justify-center';
+                ? 'justify-start pl-6'
+                : 'justify-center';
     const anchorPanelClass =
         modalAlign === 'left'
             ? 'sm:absolute sm:right-full sm:top-1/2 sm:translate-x-0 sm:mr-3'
             : modalAlign === 'center'
-            ? 'sm:absolute sm:left-1/2 sm:top-full sm:-translate-x-1/2 sm:translate-y-0 sm:mt-3'
-            : 'sm:absolute sm:left-full sm:top-1/2 sm:translate-x-0 sm:ml-3';
+                ? 'sm:absolute sm:left-1/2 sm:top-full sm:-translate-x-1/2 sm:translate-y-0 sm:mt-3'
+                : 'sm:absolute sm:left-full sm:top-1/2 sm:translate-x-0 sm:ml-3';
 
     return (
         <div ref={wrapperRef} className={`relative w-full ${className}`}>
@@ -120,7 +120,7 @@ const MultiUseSelect = ({
                     disabled={disabled}
                     className={`flex w-full items-center justify-between gap-3 rounded-[8px] bg-[#DBDBDB] px-3 py-2 text-left text-sm text-[#666666] transition ${disabled ? 'opacity-60 cursor-not-allowed' : ''} ${buttonClassName}`}
                 >
-                    <span className="text-[#8A8A8A]">
+                    <span className={selectedValues.length > 0 ? '' : 'text-[#8A8A8A]'}>
                         {displayValue}
                     </span>
                     <ChevronDown
@@ -146,16 +146,14 @@ const MultiUseSelect = ({
                                     <button
                                         type="button"
                                         onClick={() => handleSelect(optionValue)}
-                                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-white/5 ${
-                                            isSelected ? 'text-white' : ''
-                                        } ${optionClassName}`}
+                                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-white/5 ${isSelected ? 'text-white' : ''
+                                            } ${optionClassName}`}
                                         role="option"
                                         aria-selected={isSelected}
                                     >
                                         <span
-                                            className={`h-2 w-2 rounded-full ${
-                                                isSelected ? 'bg-[#FF3B3B]' : 'bg-transparent'
-                                            }`}
+                                            className={`h-2 w-2 rounded-full ${isSelected ? 'bg-[#FF3B3B]' : 'bg-transparent'
+                                                }`}
                                         />
                                         <span className="flex-1">{optionLabel}</span>
                                     </button>
@@ -189,16 +187,14 @@ const MultiUseSelect = ({
                                         <button
                                             type="button"
                                             onClick={() => handleSelect(optionValue)}
-                                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-white/5 ${
-                                                isSelected ? 'text-white' : ''
-                                            } ${optionClassName}`}
+                                            className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-white/5 ${isSelected ? 'text-white' : ''
+                                                } ${optionClassName}`}
                                             role="option"
                                             aria-selected={isSelected}
                                         >
                                             <span
-                                                className={`h-2 w-2 rounded-full ${
-                                                    isSelected ? 'bg-[#FF3B3B]' : 'bg-transparent'
-                                                }`}
+                                                className={`h-2 w-2 rounded-full ${isSelected ? 'bg-[#FF3B3B]' : 'bg-transparent'
+                                                    }`}
                                             />
                                             <span className="flex-1">{optionLabel}</span>
                                         </button>
@@ -226,16 +222,14 @@ const MultiUseSelect = ({
                                     <button
                                         type="button"
                                         onClick={() => handleSelect(optionValue)}
-                                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-white/5 ${
-                                            isSelected ? 'text-white' : ''
-                                        } ${optionClassName}`}
+                                        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-white/5 ${isSelected ? 'text-white' : ''
+                                            } ${optionClassName}`}
                                         role="option"
                                         aria-selected={isSelected}
                                     >
                                         <span
-                                            className={`h-2 w-2 rounded-full ${
-                                                isSelected ? 'bg-[#FF3B3B]' : 'bg-transparent'
-                                            }`}
+                                            className={`h-2 w-2 rounded-full ${isSelected ? 'bg-[#FF3B3B]' : 'bg-transparent'
+                                                }`}
                                         />
                                         <span className="flex-1">{optionLabel}</span>
                                     </button>

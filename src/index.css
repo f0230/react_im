@@ -37,6 +37,7 @@ body {
 }
 
 @layer base {
+
   input,
   textarea,
   select {
@@ -80,6 +81,42 @@ img {
   scrollbar-width: none;
 }
 
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #00000072;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #1a1a1a;
+}
+
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-button:start:decrement,
+::-webkit-scrollbar-button:end:increment,
+::-webkit-scrollbar-button:vertical:start:decrement,
+::-webkit-scrollbar-button:vertical:end:increment,
+::-webkit-scrollbar-button:horizontal:start:decrement,
+::-webkit-scrollbar-button:horizontal:end:increment {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Firefox */
+* {
+
+  scrollbar-color: #000000/80 transparent;
+}
 
 /* index.css */
 *:focus {
@@ -92,7 +129,8 @@ img {
 
 
 
-html, body {
+html,
+body {
   height: 100%;
 }
 

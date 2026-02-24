@@ -122,13 +122,13 @@ const DashboardNavbar = () => {
                                 setIsNotificationsOpen(false);
                                 setIsMenuOpen(false);
                             }}
-                            className="flex items-center  group mt-2"
+                            className="flex items-center group"
                         >
-                            <div className="w-7 h-7 rounded-full overflow-hidden border border-white/10 relative">
+                            <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 relative transition-transform group-hover:scale-105">
                                 {avatarUrl ? (
                                     <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full bg-skyblue flex items-center justify-center text-[10px] font-bold text-white">
+                                    <div className="w-full h-full bg-skyblue flex items-center justify-center text-xs font-bold text-white">
                                         {initial}
                                     </div>
                                 )}

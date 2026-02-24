@@ -165,7 +165,7 @@ const EditProjectModal = ({
                         <Dialog.Content asChild>
                             <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 pointer-events-none">
                                 <motion.div
-                                    className="w-full max-w-[440px] bg-white rounded-[28px] shadow-2xl overflow-hidden font-product p-0 border border-neutral-100 pointer-events-auto"
+                                    className="w-full max-w-[440px] bg-white rounded-[28px] shadow-2xl font-product p-0 border border-neutral-100 pointer-events-auto"
                                     initial={{ opacity: 0, scale: 0.95, y: 15 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95, y: 10 }}

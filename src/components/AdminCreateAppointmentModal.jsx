@@ -189,6 +189,8 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.clientLabel")}</label>
                                     <div className="relative">
                                         <MultiUseSelect
+                                            variant="modal"
+                                            modalScope="anchor"
                                             options={clients}
                                             value={selectedClient}
                                             onChange={(val) => setSelectedClient(val)}
@@ -207,6 +209,8 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                     <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.projectLabel")}</label>
                                     <div className="relative">
                                         <MultiUseSelect
+                                            variant="modal"
+                                            modalScope="anchor"
                                             options={filteredProjects}
                                             value={selectedProject}
                                             onChange={(val) => setSelectedProject(val)}

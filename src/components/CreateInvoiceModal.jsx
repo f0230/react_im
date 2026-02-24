@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, DollarSign, Calendar, FileText, Briefcase, User, Receipt, Download, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
+import MultiUseSelect from './MultiUseSelect';
+
 
 const CreateInvoiceModal = ({
     isOpen,
@@ -47,14 +49,54 @@ const CreateInvoiceModal = ({
     useEffect(() => {
         if (formData.project_id) {
             const project = projects.find(p => p.id === formData.project_id);
-            if (project && project.client_id) {
-                setFormData(prev => ({ ...prev, client_id: project.client_id }));
+            if (project) {
+                if (project.client_id) {
+                    setFormData(prev => ({ ...prev, client_id: project.client_id }));
+                } else if (project.project_clients && project.project_clients.length > 0) {
+                    setFormData(prev => ({ ...prev, client_id: project.project_clients[0].client_id }));
+                }
             }
         }
     }, [formData.project_id, projects]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
+    const filteredClients = useMemo(() => {
+        if (!formData.project_id) return clients;
+        const project = projects.find(p => p.id === formData.project_id);
+        if (!project) return clients;
+
+        // Try to get clients from project_clients (multi-client projects)
+        if (project.project_clients && project.project_clients.length > 0) {
+            return project.project_clients.map(pc => pc.clients).filter(Boolean);
+        }
+
+        // Fallback to project.client_id
+        if (project.client_id) {
+            return clients.filter(c => c.id === project.client_id);
+        }
+
+        return clients;
+    }, [formData.project_id, projects, clients]);
+
+    const projectOptions = useMemo(() =>
+        projects.map(p => ({
+            value: p.id,
+            label: p.title || p.name || p.project_name || 'Proyecto sin nombre'
+        })), [projects]);
+
+    const clientOptions = useMemo(() =>
+        filteredClients.map(c => ({
+            value: c.id,
+            label: c.company_name ? `${c.company_name} (${c.full_name})` : c.full_name
+        })), [filteredClients]);
+
+    const statusOptions = [
+        { value: 'pending', label: t('dashboard.invoices.table.status.pending') },
+        { value: 'paid', label: t('dashboard.invoices.table.status.paid') },
+        { value: 'overdue', label: t('dashboard.invoices.table.status.overdue') },
+        { value: 'cancelled', label: t('dashboard.invoices.table.status.cancelled') },
+    ];
+
+    const handleChange = (name, value) => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
@@ -104,7 +146,7 @@ const CreateInvoiceModal = ({
                         initial={{ scale: 0.95, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                        className="relative w-full max-w-xl bg-[#F8F9FA] rounded-[40px] shadow-2xl overflow-hidden"
+                        className="relative w-full max-w-xl bg-[#F8F9FA] rounded-[40px] shadow-2xl"
                     >
                         <div className="p-8 md:p-12">
                             <div className="flex items-center justify-between mb-8">
@@ -161,41 +203,18 @@ const CreateInvoiceModal = ({
                                     </div>
 
                                     {/* Project Select */}
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 md:col-span-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-4 flex items-center gap-2">
                                             <Briefcase size={12} />
                                             {t('dashboard.invoices.create.project')}
                                         </label>
-                                        <select
-                                            required
+                                        <MultiUseSelect
+                                            options={projectOptions}
                                             value={formData.project_id}
-                                            onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
-                                            className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-[20px] font-bold focus:ring-2 focus:ring-black outline-none transition-all appearance-none"
-                                        >
-                                            <option value="">{t('dashboard.invoices.create.projectSelect')}</option>
-                                            {projects.map(p => (
-                                                <option key={p.id} value={p.id}>{p.title || p.project_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Client Select */}
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-4 flex items-center gap-2">
-                                            <User size={12} />
-                                            {t('dashboard.invoices.create.client')}
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.client_id}
-                                            onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-                                            className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-[20px] font-bold focus:ring-2 focus:ring-black outline-none transition-all appearance-none"
-                                        >
-                                            <option value="">{t('dashboard.invoices.create.clientSelect')}</option>
-                                            {clients.map(c => (
-                                                <option key={c.id} value={c.id}>{c.company_name} ({c.full_name})</option>
-                                            ))}
-                                        </select>
+                                            onChange={(val) => handleChange('project_id', val)}
+                                            placeholder={t('dashboard.invoices.create.projectSelect')}
+                                            buttonClassName="!bg-neutral-50 !border-neutral-100 !rounded-[20px] !px-6 !py-4 !text-sm !font-bold !text-neutral-900 focus:!ring-2 focus:!ring-black !h-auto"
+                                        />
                                     </div>
 
                                     {/* Description */}
@@ -234,17 +253,12 @@ const CreateInvoiceModal = ({
                                         <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-4 flex items-center gap-2">
                                             {t('dashboard.invoices.create.status')}
                                         </label>
-                                        <select
-                                            required
+                                        <MultiUseSelect
+                                            options={statusOptions}
                                             value={formData.status}
-                                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                            className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-[20px] font-bold focus:ring-2 focus:ring-black outline-none transition-all appearance-none"
-                                        >
-                                            <option value="pending">{t('dashboard.invoices.table.status.pending')}</option>
-                                            <option value="paid">{t('dashboard.invoices.table.status.paid')}</option>
-                                            <option value="overdue">{t('dashboard.invoices.table.status.overdue')}</option>
-                                            <option value="cancelled">{t('dashboard.invoices.table.status.cancelled')}</option>
-                                        </select>
+                                            onChange={(val) => handleChange('status', val)}
+                                            buttonClassName="!bg-neutral-50 !border-neutral-100 !rounded-[20px] !px-6 !py-4 !text-sm !font-bold !text-neutral-900 focus:!ring-2 focus:!ring-black !h-auto"
+                                        />
                                     </div>
                                 </div>
 

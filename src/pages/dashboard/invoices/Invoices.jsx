@@ -80,7 +80,7 @@ const Invoices = () => {
         // Fetch projects for filters and modal
         const { data: projectsData } = await supabase
             .from('projects')
-            .select('*')
+            .select('*, project_clients(client_id, clients(*))')
             .order('created_at', { ascending: false });
 
         setProjects(projectsData || []);
