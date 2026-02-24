@@ -138,19 +138,30 @@ const Projects = () => {
         setLoading(true);
         setError(null);
 
+        console.log('[FetchProjects] Context:', {
+            userId,
+            role,
+            profileClientId: profile?.client_id,
+            isLeader: profile?.is_client_leader,
+            contextClientId: client?.id
+        });
+
         const fetchByColumn = async (column, value) => {
+            const selectStr = '*, project_assignments(worker_id), project_clients(client_id, clients(*)), project_client_users(user_id, profiles(*))';
             return await supabase
                 .from('projects')
-                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, user_id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                .select(selectStr)
                 .eq(column, value)
                 .order('created_at', { ascending: false });
         };
+
+        const selectStr = '*, project_assignments(worker_id), project_clients(client_id, clients(*)), project_client_users(user_id, profiles(*))';
 
         let response;
         if (role === 'admin') {
             response = await supabase
                 .from('projects')
-                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, user_id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                .select(selectStr)
                 .order('created_at', { ascending: false });
         } else if (role === 'worker') {
             const { data: assignmentsData } = await supabase
@@ -165,53 +176,22 @@ const Projects = () => {
             } else {
                 response = await supabase
                     .from('projects')
-                    .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, user_id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                    .select(selectStr)
                     .in('id', projectIds)
                     .order('created_at', { ascending: false });
             }
         } else if (role === 'client') {
-            // 1. Get projects where this specific user is assigned
-            const { data: clientUserAssignmentsData } = await supabase
-                .from('project_client_users')
-                .select('project_id')
-                .eq('user_id', userId);
-
-            const assignedByUserId = clientUserAssignmentsData?.map((a) => a.project_id) || [];
-
-            // 2. Get projects where the user's company (client_id) is assigned
-            let assignedByClientId = [];
-            const effectiveClientId = clientId || profile?.client_id;
-
-            if (isClientLeader && effectiveClientId) {
-                const { data: companyAssignmentsData } = await supabase
-                    .from('project_clients')
-                    .select('project_id')
-                    .eq('client_id', effectiveClientId);
-
-                assignedByClientId = companyAssignmentsData?.map((a) => a.project_id) || [];
-            }
-
-            const allAssignedProjectIds = Array.from(new Set([...assignedByUserId, ...assignedByClientId]));
-
-            let query = supabase
+            // Simplify: Let RLS handle visibility.
+            // This ensures that all projects reachable via fn_has_project_access are returned.
+            response = await supabase
                 .from('projects')
-                .select('*, project_assignments (worker_id), project_clients(client_id, clients(id, user_id, full_name, company_name, email)), project_client_users(user_id, profiles(id, full_name, email))')
+                .select(selectStr)
                 .order('created_at', { ascending: false });
 
-            // Build filters
-            const filters = [];
-            filters.push(`user_id.eq.${userId}`);
-
-            if (isClientLeader && effectiveClientId) {
-                filters.push(`client_id.eq.${effectiveClientId}`);
+            console.log(`[FetchProjects] Client role: found ${response.data?.length || 0} projects`);
+            if (response.error) {
+                console.error('[FetchProjects] Error fetching projects for client:', response.error);
             }
-
-            if (allAssignedProjectIds.length > 0) {
-                filters.push(`id.in.(${allAssignedProjectIds.join(',')})`);
-            }
-
-            query = query.or(filters.join(','));
-            response = await query;
         } else {
             response = await fetchByColumn('user_id', userId);
         }
@@ -699,7 +679,7 @@ const Projects = () => {
                                                     <div className="flex items-center -space-x-2">
                                                         {/* Show Assigned Clients (Entities) */}
                                                         {(project.project_clients || []).map((pc) => {
-                                                            const c = pc.clients;
+                                                            const c = pc.clients || pc.client;
                                                             if (!c) return null;
                                                             return (
                                                                 <div
@@ -713,7 +693,7 @@ const Projects = () => {
                                                         })}
                                                         {/* Always show the Leader (owner) of each assigned client entity */}
                                                         {(project.project_clients || []).map((pc) => {
-                                                            const c = pc.clients;
+                                                            const c = pc.clients || pc.client;
                                                             if (!c || !c.user_id) return null;
                                                             // Avoid duplicate if leader is already in project_client_users
                                                             if ((project.project_client_users || []).some(pcu => pcu.user_id === c.user_id)) return null;
@@ -734,12 +714,13 @@ const Projects = () => {
                                                         })}
                                                         {/* Show Assigned Client Users */}
                                                         {(project.project_client_users || []).map((pcu) => {
-                                                            const u = pcu.profiles;
+                                                            const u = pcu.profiles || pcu.profile;
                                                             if (!u) return null;
 
                                                             // Avoid duplicate if already shown as a Client Entity (with same name)
                                                             const isSameAsEntity = (project.project_clients || []).some(pc => {
-                                                                const companyName = pc.clients?.company_name || pc.clients?.full_name;
+                                                                const c = pc.clients || pc.client;
+                                                                const companyName = c?.company_name || c?.full_name;
                                                                 return companyName === u.full_name;
                                                             });
                                                             if (isSameAsEntity) return null;

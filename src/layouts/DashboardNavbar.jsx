@@ -122,7 +122,7 @@ const DashboardNavbar = () => {
                                 setIsNotificationsOpen(false);
                                 setIsMenuOpen(false);
                             }}
-                            className="flex items-center  group"
+                            className="flex items-center  group mt-2"
                         >
                             <div className="w-7 h-7 rounded-full overflow-hidden border border-white/10 relative">
                                 {avatarUrl ? (

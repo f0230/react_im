@@ -1,9 +1,8 @@
 
--- Migration: Final fix for project access and leader/member distinction
--- This migration ensures that non-leaders ONLY see projects they are explicitly assigned to,
--- and leaders see projects belonging to their company.
+-- FINAL FAIL-SAFE PROJECT ACCESS FUNCTION
+-- This version is designed to be extremely resilient, checking all possible links 
+-- between a user and a project (Direct, Company-wide, Leader-owned, Worker-assigned).
 
--- 1. Ensure fn_has_project_access is strictly defined
 CREATE OR REPLACE FUNCTION public.fn_has_project_access(p_id uuid, u_id uuid)
 RETURNS boolean AS $$
 DECLARE
@@ -11,95 +10,64 @@ DECLARE
     v_profile_client_id uuid;
     v_is_client_leader boolean;
 BEGIN
-    -- Get user role, client_id, and leader status from profile
-    SELECT role, client_id, is_client_leader INTO v_role, v_profile_client_id, v_is_client_leader
+    -- 1. Gather user context (Internal fetch bypasses RLS)
+    SELECT role, client_id, is_client_leader 
+    INTO v_role, v_profile_client_id, v_is_client_leader
     FROM public.profiles
     WHERE id = u_id;
 
-    -- Admin: Always access
+    -- A. Admin: Immediate access
     IF v_role = 'admin' THEN
         RETURN true;
     END IF;
 
-    -- Worker: Access if assigned in project_assignments
-    IF v_role = 'worker' THEN
-        RETURN EXISTS (
-            SELECT 1 FROM public.project_assignments 
-            WHERE project_id = p_id AND worker_id = u_id
-        );
+    -- B. Direct Table Check: Creator of the project
+    IF EXISTS (SELECT 1 FROM public.projects WHERE id = p_id AND user_id = u_id) THEN
+        RETURN true;
     END IF;
 
-    -- Client access logic
+    -- C. Shared Assignment Checks (Workers and Specific Client Users)
+    -- This covers workers assigned in project_assignments AND users assigned in project_client_users
+    IF EXISTS (SELECT 1 FROM public.project_assignments WHERE project_id = p_id AND worker_id = u_id) THEN
+        RETURN true;
+    END IF;
+    
+    IF EXISTS (SELECT 1 FROM public.project_client_users WHERE project_id = p_id AND user_id = u_id) THEN
+        RETURN true;
+    END IF;
+
+    -- D. Company-Wide Access (For all Client-role members)
     IF v_role = 'client' THEN
-        -- A. Access if they literally created the project (user_id matches)
-        IF EXISTS (SELECT 1 FROM public.projects WHERE id = p_id AND user_id = u_id) THEN
-            RETURN true;
-        END IF;
-
-        -- B. Access if they are explicitly assigned to it (project_client_users)
-        -- This is the PRIMARY way for non-leaders to see projects.
-        IF EXISTS (SELECT 1 FROM public.project_client_users WHERE project_id = p_id AND user_id = u_id) THEN
-            RETURN true;
-        END IF;
-
-        -- C. If they are a LEADER, they also see projects belonging to their company
-        IF v_is_client_leader = true AND v_profile_client_id IS NOT NULL THEN
-            -- Check if company is assigned via many-to-many project_clients
+        
+        -- 1. Check projects assigned to the company ID in their profile
+        IF v_profile_client_id IS NOT NULL THEN
+            -- Check many-to-many junction
             IF EXISTS (SELECT 1 FROM public.project_clients WHERE project_id = p_id AND client_id = v_profile_client_id) THEN
                 RETURN true;
             END IF;
-
-            -- Check legacy direct client_id column on projects table
+            -- Check legacy direct link
             IF EXISTS (SELECT 1 FROM public.projects WHERE id = p_id AND client_id = v_profile_client_id) THEN
                 RETURN true;
             END IF;
         END IF;
 
-        -- D. If they are the "owner" of a client entity (user_id in clients table)
-        -- they should see everything of that company
+        -- 2. Leader Check: Check projects assigned to any company they OWN (linked via clients.user_id)
+        -- We do this separately because leaders often have client_id=NULL in their profiles
         IF EXISTS (
-            SELECT 1 FROM public.projects p
-            JOIN public.clients c ON (p.client_id = c.id OR EXISTS (SELECT 1 FROM public.project_clients pc WHERE pc.project_id = p.id AND pc.client_id = c.id))
-            WHERE p.id = p_id AND c.user_id = u_id
+            SELECT 1 FROM public.clients c 
+            WHERE c.user_id = u_id 
+            AND (
+                EXISTS (SELECT 1 FROM public.projects p2 WHERE p2.id = p_id AND p2.client_id = c.id)
+                OR EXISTS (SELECT 1 FROM public.project_clients pc2 WHERE pc2.project_id = p_id AND pc2.client_id = c.id)
+            )
         ) THEN
             RETURN true;
         END IF;
+
     END IF;
 
     RETURN false;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 2. Clean up profiles data
--- Ensure that users who are part of a team but NOT the primary creator are marked as NOT leaders.
--- Unless they were explicitly promoted, but by default, team members shouldn't see everything.
-UPDATE public.profiles p
-SET is_client_leader = false
-WHERE role = 'client'
-  AND client_id IS NOT NULL
-  AND is_client_leader = true -- current leaders
-  AND NOT EXISTS (SELECT 1 FROM public.clients c WHERE c.id = p.client_id AND c.user_id = p.id); -- not the owner
-
--- 3. Ensure the SELECT policy on projects is using our refined function
-DROP POLICY IF EXISTS "Users can select projects" ON public.projects;
-CREATE POLICY "Users can select projects" ON public.projects
-FOR SELECT TO authenticated USING (
-    fn_has_project_access(id, auth.uid())
-);
-
--- 4. Ensure non-leaders can also view related objects ONLY if they have project access
--- Most of these already use fn_has_project_access, but let's be sure about tasks/files.
-
-DROP POLICY IF EXISTS "Users can view services" ON public.services;
-CREATE POLICY "Users can view services" ON public.services
-FOR SELECT TO authenticated USING (
-    fn_has_project_access(project_id, auth.uid())
-);
-
-DROP POLICY IF EXISTS "Users can view invoices" ON public.invoices;
-CREATE POLICY "Users can view invoices" ON public.invoices
-FOR SELECT TO authenticated USING (
-    fn_has_project_access(project_id, auth.uid())
-);
-
-COMMENT ON FUNCTION public.fn_has_project_access IS 'Strict project access check: Non-leaders ONLY see explicit assignments. Leaders see company projects.';
+COMMENT ON FUNCTION public.fn_has_project_access IS 'Final robust project access logic: Checks creators, assignments (staff/client), and company ownership (leaders/members).';
