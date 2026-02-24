@@ -203,10 +203,25 @@ const Projects = () => {
         } else {
             let fetchedProjects = [];
             fetchedProjects = response.data || [];
+
+            // Defensive fallback:
+            // if backend RLS is stale, non-leader client members should still only
+            // see projects explicitly assigned to them (or created by them).
+            const isClientOwner = role === 'client' && client?.user_id === userId;
+            const isLeader = role === 'client' && (profile?.is_client_leader || isClientOwner);
+            if (role === 'client' && !isLeader) {
+                fetchedProjects = fetchedProjects.filter((project) => {
+                    const explicitlyAssigned = (project?.project_client_users || []).some(
+                        (assignment) => assignment?.user_id === userId
+                    );
+                    const isCreator = project?.user_id === userId;
+                    return explicitlyAssigned || isCreator;
+                });
+            }
             setProjects(fetchedProjects);
         }
         setLoading(false);
-    }, [clientId, userId, role]);
+    }, [client?.user_id, clientId, profile?.is_client_leader, userId, role]);
 
     const fetchTeamMembers = useCallback(async (memberIds = []) => {
         let query = supabase

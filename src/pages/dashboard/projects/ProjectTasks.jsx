@@ -134,6 +134,8 @@ const ProjectTasks = () => {
 
   const isAdmin = profile?.role === 'admin';
   const isWorker = profile?.role === 'worker';
+  const isClient = profile?.role === 'client';
+  const isClientLeader = isClient && (profile?.is_client_leader || client?.user_id === user?.id);
   const canManage = isAdmin || isWorker;
 
   // Close actions dropdown on outside click
@@ -186,7 +188,7 @@ const ProjectTasks = () => {
       let assignedByClientId = [];
       const effectiveClientId = client?.id || profile?.client_id;
 
-      if (effectiveClientId) {
+      if (isClientLeader && effectiveClientId) {
         const { data: companyAssignmentsData } = await supabase
           .from('project_clients')
           .select('project_id')
@@ -205,7 +207,7 @@ const ProjectTasks = () => {
       const filters = [];
       filters.push(`user_id.eq.${user.id}`);
 
-      if (effectiveClientId) {
+      if (isClientLeader && effectiveClientId) {
         filters.push(`client_id.eq.${effectiveClientId}`);
       }
 
@@ -231,7 +233,7 @@ const ProjectTasks = () => {
       console.error("Error fetching projects:", response.error);
     }
     setLoading(false);
-  }, [user?.id, profile?.role, client?.id, queryProjectId, isAdmin, isWorker, navigate]);
+  }, [user?.id, profile?.role, profile?.is_client_leader, client?.id, client?.user_id, queryProjectId, isAdmin, isWorker, isClientLeader, navigate]);
 
   // 2. Fetch Services
   const fetchServices = useCallback(async (projectId) => {
