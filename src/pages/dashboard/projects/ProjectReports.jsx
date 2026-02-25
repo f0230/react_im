@@ -11,11 +11,38 @@ import {
   Filter,
   MoreVertical,
   CheckCircle,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+
+const formatInt = (value) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(value);
+};
+
+const formatCurrency = (value, currency = 'USD') => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  try {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${value.toFixed(2)} ${currency}`;
+  }
+};
+
+const safeJson = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    return {};
+  }
+};
 
 const ProjectReports = () => {
   const { projectId: routeProjectId } = useParams();
@@ -26,6 +53,9 @@ const ProjectReports = () => {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [reportSummary, setReportSummary] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState('');
 
   const activeProjectId = routeProjectId || queryProjectId || null;
 
@@ -48,11 +78,53 @@ const ProjectReports = () => {
     setLoading(false);
   }, [activeProjectId]);
 
+  const getApiToken = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  }, []);
+
+  const fetchReportSummary = useCallback(async (projectId) => {
+    if (!projectId || !user?.id) return;
+
+    setReportLoading(true);
+    setReportError('');
+    try {
+      const token = await getApiToken();
+      if (!token) {
+        throw new Error('Sesión inválida. Volvé a iniciar sesión.');
+      }
+
+      const response = await fetch(`/api/meta/report-summary?projectId=${projectId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const payload = await safeJson(response);
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'No se pudieron cargar métricas reales.');
+      }
+
+      setReportSummary(payload);
+    } catch (error) {
+      setReportSummary(null);
+      setReportError(error?.message || 'No se pudieron cargar métricas reales.');
+    } finally {
+      setReportLoading(false);
+    }
+  }, [getApiToken, user?.id]);
+
   useEffect(() => {
     if (user?.id) {
       fetchProject();
     }
   }, [fetchProject, user?.id]);
+
+  useEffect(() => {
+    if (project?.id) {
+      fetchReportSummary(project.id);
+    }
+  }, [project?.id, fetchReportSummary]);
 
   if (loading) return <LoadingFallback type="spinner" />;
 
@@ -117,6 +189,41 @@ const ProjectReports = () => {
     ))
     : reports;
 
+  const hasConnectedSource = Boolean(reportSummary?.connected);
+  const pageMetrics = reportSummary?.page || null;
+  const adsMetrics = reportSummary?.ads || null;
+  const pageError = pageMetrics?.error || null;
+  const adsError = adsMetrics?.error || null;
+  const selectedPageName = pageMetrics?.selectedName || null;
+  const selectedAdsName = adsMetrics?.selectedName || null;
+
+  const statsCards = [
+    {
+      label: 'Alcance página (7d)',
+      value: formatInt(pageMetrics?.reach7d),
+      icon: TrendingUp,
+      color: 'text-blue-500',
+    },
+    {
+      label: 'Interacciones (7d)',
+      value: formatInt(pageMetrics?.engagedUsers7d),
+      icon: BarChart3,
+      color: 'text-green',
+    },
+    {
+      label: 'Impresiones Ads (7d)',
+      value: formatInt(adsMetrics?.impressions7d),
+      icon: FileText,
+      color: 'text-amber-500',
+    },
+    {
+      label: 'Gasto Ads (7d)',
+      value: formatCurrency(adsMetrics?.spend7d, adsMetrics?.currency || 'USD'),
+      icon: Calendar,
+      color: 'text-purple-500',
+    },
+  ];
+
   return (
     <div className="font-product text-neutral-900 pb-16">
       <div className="mb-10">
@@ -128,17 +235,53 @@ const ProjectReports = () => {
           Informes & Métricas
         </h1>
         <p className="text-neutral-500 mt-3 max-w-2xl text-lg">
-          Esta vista queda limpia para mostrar sólo datos de redes y performance del proyecto.
+          Vista de métricas reales del proyecto (Meta/Ads) para pruebas.
         </p>
       </div>
 
+      <div className="bg-white rounded-[24px] border border-neutral-100 shadow-sm px-5 py-4 mb-6">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="text-sm text-neutral-600">
+            {!hasConnectedSource ? (
+              <>
+                Sin conexión Meta para este proyecto.
+                {' '}
+                <Link className="font-semibold text-black underline" to={`/dashboard/integrations?projectId=${project.id}`}>
+                  Ir a integraciones
+                </Link>
+              </>
+            ) : (
+              <>
+                Fuente: <span className="font-semibold">{selectedPageName || 'Página no seleccionada'}</span>
+                {selectedAdsName ? <span> · Ads: <span className="font-semibold">{selectedAdsName}</span></span> : null}
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchReportSummary(project.id)}
+            disabled={reportLoading}
+            className="inline-flex items-center gap-2 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-60"
+          >
+            <RefreshCw size={16} />
+            {reportLoading ? 'Actualizando...' : 'Refrescar métricas'}
+          </button>
+        </div>
+
+        {reportError && (
+          <p className="mt-3 text-sm text-red-600">{reportError}</p>
+        )}
+        {!reportError && (pageError || adsError) && (
+          <p className="mt-3 text-sm text-amber-600">
+            {pageError ? `Página: ${pageError}` : ''}
+            {pageError && adsError ? ' · ' : ''}
+            {adsError ? `Ads: ${adsError}` : ''}
+          </p>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {[
-          { label: 'Informes Totales', value: '12', icon: FileText, color: 'text-blue-500' },
-          { label: 'Crecimiento Mes', value: '+14.5%', icon: TrendingUp, color: 'text-green' },
-          { label: 'Próximo Reporte', value: 'En 3 días', icon: Calendar, color: 'text-amber-500' },
-          { label: 'KPIs Activos', value: '4/5', icon: BarChart3, color: 'text-purple-500' }
-        ].map((stat, i) => (
+        {statsCards.map((stat, i) => (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -261,4 +404,3 @@ const ProjectReports = () => {
 };
 
 export default ProjectReports;
-

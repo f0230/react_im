@@ -7,6 +7,7 @@ import {
   exchangeCodeForUserToken,
   exchangeForLongLivedToken,
   fetchMetaAccountsSnapshot,
+  graphGet,
   getAppBaseUrl,
   getGraphVersion,
   getMetaRedirectUri,
@@ -54,6 +55,27 @@ function resolveProjectId(req, body = {}) {
     getQueryParam(req, 'projectId')
     || normalizeNullableText(body?.projectId)
   );
+}
+
+function toNumber(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+}
+
+function sumInsightMetric(rows, metricName) {
+  if (!Array.isArray(rows)) return 0;
+  const row = rows.find((item) => String(item?.name || '') === metricName);
+  if (!row || !Array.isArray(row.values)) return 0;
+
+  return row.values.reduce((sum, item) => {
+    const value = item?.value;
+    if (typeof value === 'number') return sum + value;
+    if (typeof value === 'string') return sum + toNumber(value);
+    if (value && typeof value === 'object') {
+      return sum + Object.values(value).reduce((acc, entry) => acc + toNumber(entry), 0);
+    }
+    return sum;
+  }, 0);
 }
 
 async function handleConnectUrl(req, res) {
@@ -386,6 +408,131 @@ async function handleRefreshAccounts(req, res) {
   });
 }
 
+async function handleReportSummary(req, res) {
+  if (req.method !== 'GET') {
+    res.setHeader('Allow', 'GET');
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const projectId = getQueryParam(req, 'projectId');
+  if (!projectId) {
+    return res.status(400).json({ error: 'projectId is required' });
+  }
+
+  const supabase = getSupabaseOrThrow();
+  const { user } = await verifyCurrentUser(req, supabase);
+  await assertProjectAccess({ supabase, projectId, userId: user.id });
+
+  const connection = await loadProjectConnection(supabase, projectId);
+  if (!connection) {
+    return res.status(200).json({
+      connected: false,
+      projectId,
+      generatedAt: new Date().toISOString(),
+      page: null,
+      ads: null,
+    });
+  }
+
+  const graphVersion = getGraphVersion();
+  const result = {
+    connected: true,
+    projectId,
+    generatedAt: new Date().toISOString(),
+    page: {
+      selectedId: connection.selected_page_id || null,
+      selectedName: connection.selected_page_name || null,
+      fanCount: null,
+      followersCount: null,
+      impressions7d: null,
+      reach7d: null,
+      engagedUsers7d: null,
+      error: null,
+    },
+    ads: {
+      selectedId: connection.selected_ad_account_id || null,
+      selectedName: connection.selected_ad_account_name || null,
+      impressions7d: null,
+      reach7d: null,
+      clicks7d: null,
+      spend7d: null,
+      currency: null,
+      error: null,
+    },
+  };
+
+  if (connection.selected_page_id && connection.selected_page_access_token) {
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const since = now - (7 * 24 * 60 * 60);
+
+      const [pageInfo, pageInsights] = await Promise.all([
+        graphGet({
+          path: connection.selected_page_id,
+          accessToken: connection.selected_page_access_token,
+          graphVersion,
+          params: { fields: 'id,name,fan_count,followers_count' },
+        }),
+        graphGet({
+          path: `${connection.selected_page_id}/insights`,
+          accessToken: connection.selected_page_access_token,
+          graphVersion,
+          params: {
+            metric: 'page_impressions,page_reach,page_engaged_users',
+            period: 'day',
+            since,
+            until: now,
+          },
+        }),
+      ]);
+
+      result.page.selectedName = pageInfo?.name || result.page.selectedName;
+      result.page.fanCount = toNumber(pageInfo?.fan_count) || 0;
+      result.page.followersCount = toNumber(pageInfo?.followers_count) || 0;
+      result.page.impressions7d = sumInsightMetric(pageInsights?.data, 'page_impressions');
+      result.page.reach7d = sumInsightMetric(pageInsights?.data, 'page_reach');
+      result.page.engagedUsers7d = sumInsightMetric(pageInsights?.data, 'page_engaged_users');
+    } catch (error) {
+      result.page.error = error?.message || 'No se pudieron cargar métricas de página';
+    }
+  }
+
+  if (connection.selected_ad_account_id && connection.user_access_token) {
+    try {
+      const normalizedId = String(connection.selected_ad_account_id).startsWith('act_')
+        ? String(connection.selected_ad_account_id)
+        : `act_${connection.selected_ad_account_id}`;
+
+      const adsData = await graphGet({
+        path: `${normalizedId}/insights`,
+        accessToken: connection.user_access_token,
+        graphVersion,
+        params: {
+          fields: 'impressions,reach,clicks,spend',
+          date_preset: 'last_7d',
+          level: 'account',
+          limit: '1',
+        },
+      });
+
+      const row = Array.isArray(adsData?.data) ? adsData.data[0] : null;
+      const adAccountList = Array.isArray(connection.ad_accounts) ? connection.ad_accounts : [];
+      const accountMeta = adAccountList.find((item) => item?.id === connection.selected_ad_account_id);
+
+      result.ads.selectedName = accountMeta?.name || result.ads.selectedName;
+      result.ads.currency = accountMeta?.currency || null;
+      result.ads.impressions7d = toNumber(row?.impressions);
+      result.ads.reach7d = toNumber(row?.reach);
+      result.ads.clicks7d = toNumber(row?.clicks);
+      result.ads.spend7d = toNumber(row?.spend);
+    } catch (error) {
+      result.ads.error = error?.message || 'No se pudieron cargar métricas de Ads';
+    }
+  }
+
+  return res.status(200).json(result);
+}
+
 export default async function handler(req, res) {
   const action = resolveAction(req);
 
@@ -394,6 +541,7 @@ export default async function handler(req, res) {
     if (action === 'callback') return await handleCallback(req, res);
     if (action === 'project-connection') return await handleProjectConnection(req, res);
     if (action === 'refresh-accounts') return await handleRefreshAccounts(req, res);
+    if (action === 'report-summary') return await handleReportSummary(req, res);
 
     return res.status(404).json({ error: 'Meta route not found' });
   } catch (error) {
@@ -403,4 +551,3 @@ export default async function handler(req, res) {
     });
   }
 }
-
