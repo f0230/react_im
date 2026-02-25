@@ -60,12 +60,16 @@ export function getGraphVersion() {
 }
 
 export function getRequiredMetaConfig() {
-  const appId = normalizeText(process.env.META_APP_ID);
-  const appSecret = normalizeText(process.env.META_APP_SECRET);
+  const appId =
+    normalizeText(process.env.META_APP_MARKETING_ID)
+    || normalizeText(process.env.META_APP_ID);
+  const appSecret =
+    normalizeText(process.env.META_APP_MARKETING_SECRET)
+    || normalizeText(process.env.META_APP_SECRET);
 
   if (!appId || !appSecret) {
     throw Object.assign(
-      new Error('META_APP_ID / META_APP_SECRET are required'),
+      new Error('META_APP_MARKETING_ID / META_APP_MARKETING_SECRET (or META_APP_ID / META_APP_SECRET) are required'),
       { status: 500 }
     );
   }
@@ -198,10 +202,12 @@ function getStateSecret() {
   const explicit = normalizeText(process.env.META_OAUTH_STATE_SECRET);
   if (explicit) return explicit;
 
-  const fallback = normalizeText(process.env.META_APP_SECRET);
+  const fallback =
+    normalizeText(process.env.META_APP_MARKETING_SECRET)
+    || normalizeText(process.env.META_APP_SECRET);
   if (fallback) return fallback;
 
-  throw Object.assign(new Error('META_OAUTH_STATE_SECRET (or META_APP_SECRET) is required'), { status: 500 });
+  throw Object.assign(new Error('META_OAUTH_STATE_SECRET (or META_APP_MARKETING_SECRET / META_APP_SECRET) is required'), { status: 500 });
 }
 
 export function createSignedState(payload) {
