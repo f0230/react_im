@@ -22,6 +22,10 @@
       "destination": "/api/cal?action=:action"
     },
     {
+      "source": "/api/meta/:action",
+      "destination": "/api/meta?action=:action"
+    },
+    {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
