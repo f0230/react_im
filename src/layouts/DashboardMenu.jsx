@@ -14,6 +14,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
+            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: Calendar, label: 'Mis Citas', path: '/dashboard/my-appointments' },
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
@@ -21,6 +22,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
+            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
         ],
         admin: [
@@ -29,6 +31,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: Calendar, label: 'Citas', path: '/dashboard/appointments' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
+            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
         ]
     };

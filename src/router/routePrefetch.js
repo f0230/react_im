@@ -34,6 +34,7 @@ export const routeKeys = Object.freeze({
     projects: 'projects',
     projectTasks: 'projectTasks',
     projectReports: 'projectReports',
+    projectIntegrations: 'projectIntegrations',
     invoices: 'invoices',
     inbox: 'inbox',
     teamChat: 'teamChat',
@@ -65,6 +66,7 @@ const routeImporters = {
     [routeKeys.projects]: once(() => import('@/pages/dashboard/projects/Projects')),
     [routeKeys.projectTasks]: once(() => import('@/pages/dashboard/projects/ProjectTasks')),
     [routeKeys.projectReports]: once(() => import('@/pages/dashboard/projects/ProjectReports')),
+    [routeKeys.projectIntegrations]: once(() => import('@/pages/dashboard/projects/ProjectIntegrations')),
     [routeKeys.invoices]: once(() => import('@/pages/dashboard/invoices/Invoices')),
     [routeKeys.inbox]: once(() => import('@/pages/dashboard/inbox/Inbox')),
     [routeKeys.teamChat]: once(() => import('@/pages/dashboard/chat/TeamChat')),
@@ -94,6 +96,7 @@ const pathKeyMap = new Map([
     ['/dashboard/clients', routeKeys.clients],
     ['/dashboard/tasks', routeKeys.projectTasks],
     ['/dashboard/reports', routeKeys.projectReports],
+    ['/dashboard/integrations', routeKeys.projectIntegrations],
     ['/dashboard/invoices', routeKeys.invoices],
     ['/dashboard/projects', routeKeys.projects],
     ['/dashboard/inbox', routeKeys.inbox],
@@ -135,6 +138,7 @@ const resolveRouteKey = (to) => {
 
     if (path.startsWith('/schedule-call/')) return routeKeys.scheduleCall;
     if (path.startsWith('/dashboard/clients/')) return routeKeys.clientDetail;
+    if (path.startsWith('/dashboard/projects/') && path.endsWith('/integrations')) return routeKeys.projectIntegrations;
     if (path.startsWith('/dashboard/projects/')) return routeKeys.projects;
 
     return null;

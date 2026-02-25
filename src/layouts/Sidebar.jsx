@@ -21,6 +21,7 @@ const Sidebar = () => {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
+            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
@@ -28,6 +29,7 @@ const Sidebar = () => {
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
+            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
         ],
         admin: [
@@ -35,6 +37,7 @@ const Sidebar = () => {
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
+            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ]
