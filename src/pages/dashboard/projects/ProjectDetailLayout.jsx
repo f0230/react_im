@@ -17,7 +17,6 @@ const ProjectDetailLayout = () => {
         {[
           { to: `${basePath}/tasks`, label: t('dashboard.projects.detail.tabs.services') },
           { to: `${basePath}/reports`, label: t('dashboard.projects.detail.tabs.reports') },
-          { to: `${basePath}/integrations`, label: t('dashboard.projects.detail.tabs.integrations', { defaultValue: 'Integraciones' }) },
           ...(role !== 'client' || isClientLeader
             ? [{ to: `${basePath}/invoices`, label: t('dashboard.projects.detail.tabs.invoices') }]
             : []),

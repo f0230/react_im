@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Briefcase, FileText, Settings, LogOut, Menu, X, MessageSquare, CheckSquare, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, LogOut, Menu, X, MessageSquare, CheckSquare, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
@@ -21,7 +21,6 @@ const Sidebar = () => {
         client: [
             { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
@@ -29,7 +28,6 @@ const Sidebar = () => {
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
         ],
         admin: [
@@ -37,7 +35,6 @@ const Sidebar = () => {
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: Settings, label: 'Integraciones', path: '/dashboard/integrations' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ]

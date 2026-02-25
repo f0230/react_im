@@ -476,13 +476,6 @@ const Projects = () => {
                 image: informImage,
                 suffix: 'reports',
             },
-            {
-                key: 'integrations',
-                label: 'Integraciones',
-                description: 'Conectá canales y herramientas del proyecto.',
-                image: informImage,
-                suffix: 'integrations',
-            },
         ];
 
         // Only add invoices if not a regular (non-leader) client
