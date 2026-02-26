@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from '../../server/utils/supabaseServer.js';
 import { verifyAdmin } from '../../server/utils/auth.js';
+import { createHmac } from 'node:crypto';
 
 
 const CAL_API_URL = process.env.CAL_COM_API_URL || 'https://api.cal.com/v2';
@@ -123,7 +124,7 @@ const verifySignature = (body, signature, secret) => {
     if (!signature) return false;
 
     const payload = JSON.stringify(body);
-    const hmac = crypto.createHmac('sha256', secret);
+    const hmac = createHmac('sha256', secret);
     const digest = hmac.update(payload).digest('hex');
     return signature === digest;
 };
@@ -362,12 +363,35 @@ const handleBookings = async (req, res) => {
         }
 
         const { status, eventTypeId, afterStart, beforeEnd } = req.query || {};
-        const bookings = await fetchAllCalBookings({
-            status,
-            eventTypeId,
-            afterStart,
-            beforeEnd,
-        });
+        const queryBase = { eventTypeId, afterStart, beforeEnd };
+
+        const safeFetchBookingsByStatus = async (targetStatus) => {
+            try {
+                return await fetchAllCalBookings({ ...queryBase, status: targetStatus });
+            } catch (error) {
+                console.warn(`Cal.com fetch failed for status "${targetStatus}":`, error?.message || error);
+                return [];
+            }
+        };
+
+        let bookings = [];
+        if (status) {
+            bookings = await fetchAllCalBookings({ ...queryBase, status });
+        } else {
+            const [defaultBookings, cancelledBookings, pastBookings] = await Promise.all([
+                fetchAllCalBookings(queryBase),
+                safeFetchBookingsByStatus('cancelled'),
+                safeFetchBookingsByStatus('past'),
+            ]);
+
+            const byId = new Map();
+            [...defaultBookings, ...cancelledBookings, ...pastBookings].forEach((booking) => {
+                const key = booking?.id != null ? String(booking.id) : String(booking?.uid || '');
+                if (!key) return;
+                byId.set(key, booking);
+            });
+            bookings = Array.from(byId.values());
+        }
 
         const upsertData = bookings
             .map(mapCalBookingToAppointment)

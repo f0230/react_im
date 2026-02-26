@@ -62,6 +62,14 @@ const AdminAppointments = () => {
 
     useEffect(() => {
         fetchAppointments();
+
+        const intervalId = window.setInterval(() => {
+            fetchAppointments();
+        }, 30000);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
     }, []);
 
     const getStatusColor = (status) => {
