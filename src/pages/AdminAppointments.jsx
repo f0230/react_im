@@ -120,70 +120,74 @@ const AdminAppointments = () => {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setIsCreateModalOpen(true)}
-                        className="px-4 py-2 bg-black text-white rounded-xl text-sm font-bold shadow-lg shadow-black/20 hover:scale-105 transition-transform flex items-center gap-2"
-                    >
-                        <Plus size={18} />
-                        {t("admin.appointments.newAppointment")}
-                    </button>
+                <div className="w-full md:w-auto">
+                    <div className="overflow-x-auto md:overflow-visible pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                        <div className="flex items-center gap-3 flex-nowrap min-w-max pr-1">
+                            <button
+                                onClick={() => setIsCreateModalOpen(true)}
+                                className="px-4 py-2 bg-black text-white rounded-xl text-sm font-bold shadow-lg shadow-black/20 hover:scale-105 transition-transform flex items-center gap-2"
+                            >
+                                <Plus size={18} />
+                                {t("admin.appointments.newAppointment")}
+                            </button>
 
-                    {/* View Toggler */}
-                    <div className="bg-gray-100 p-1 rounded-xl flex items-center w-fit">
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'list'
-                                ? 'bg-white text-black shadow-sm'
-                                : 'text-gray-500 hover:text-black'
-                                }`}
-                        >
-                            <List size={16} />
-                            {t("admin.appointments.viewList")}
-                        </button>
-                        <button
-                            onClick={() => setViewMode('calendar')}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'calendar'
-                                ? 'bg-white text-black shadow-sm'
-                                : 'text-gray-500 hover:text-black'
-                                }`}
-                        >
-                            <CalendarIcon size={16} />
-                            {t("admin.appointments.viewCalendar")}
-                        </button>
-                    </div>
+                            {/* View Toggler */}
+                            <div className="bg-gray-100 p-1 rounded-xl flex items-center w-fit">
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'list'
+                                        ? 'bg-white text-black shadow-sm'
+                                        : 'text-gray-500 hover:text-black'
+                                        }`}
+                                >
+                                    <List size={16} />
+                                    {t("admin.appointments.viewList")}
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('calendar')}
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'calendar'
+                                        ? 'bg-white text-black shadow-sm'
+                                        : 'text-gray-500 hover:text-black'
+                                        }`}
+                                >
+                                    <CalendarIcon size={16} />
+                                    {t("admin.appointments.viewCalendar")}
+                                </button>
+                            </div>
 
-                    {viewMode === 'list' && (
-                        <div className="bg-gray-100 p-1 rounded-xl flex items-center w-fit">
-                            <button
-                                onClick={() => setListTypeFilter('all')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'all'
-                                    ? 'bg-white text-black shadow-sm'
-                                    : 'text-gray-500 hover:text-black'
-                                    }`}
-                            >
-                                {t("admin.appointments.filters.all") || 'Todas'}
-                            </button>
-                            <button
-                                onClick={() => setListTypeFilter('client')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'client'
-                                    ? 'bg-white text-black shadow-sm'
-                                    : 'text-gray-500 hover:text-black'
-                                    }`}
-                            >
-                                {t("admin.appointments.filters.clients") || 'Clientes'}
-                            </button>
-                            <button
-                                onClick={() => setListTypeFilter('team')}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'team'
-                                    ? 'bg-white text-black shadow-sm'
-                                    : 'text-gray-500 hover:text-black'
-                                    }`}
-                            >
-                                {t("admin.appointments.filters.team") || 'Equipo'}
-                            </button>
+                            {viewMode === 'list' && (
+                                <div className="bg-gray-100 p-1 rounded-xl flex items-center w-fit">
+                                    <button
+                                        onClick={() => setListTypeFilter('all')}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'all'
+                                            ? 'bg-white text-black shadow-sm'
+                                            : 'text-gray-500 hover:text-black'
+                                            }`}
+                                    >
+                                        {t("admin.appointments.filters.all") || 'Todas'}
+                                    </button>
+                                    <button
+                                        onClick={() => setListTypeFilter('client')}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'client'
+                                            ? 'bg-white text-black shadow-sm'
+                                            : 'text-gray-500 hover:text-black'
+                                            }`}
+                                    >
+                                        {t("admin.appointments.filters.clients") || 'Clientes'}
+                                    </button>
+                                    <button
+                                        onClick={() => setListTypeFilter('team')}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'team'
+                                            ? 'bg-white text-black shadow-sm'
+                                            : 'text-gray-500 hover:text-black'
+                                            }`}
+                                    >
+                                        {t("admin.appointments.filters.team") || 'Equipo'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </div>
             </header>
 
