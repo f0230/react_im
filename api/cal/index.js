@@ -48,6 +48,9 @@ const mapCalBookingToAppointment = (booking) => {
     if (booking?.metadata?.userId) {
         mapped.user_id = booking.metadata.userId;
     }
+    if (booking?.metadata?.clientId) {
+        mapped.client_id = booking.metadata.clientId;
+    }
 
     return mapped;
 };
@@ -197,6 +200,10 @@ const handleCreateBooking = async (req, res) => {
         notes,
         projectId,
         userId,
+        clientId,
+        participantType,
+        participantRole,
+        participantId,
         timeZone,
         eventTypeId: bodyEventTypeId,
     } = req.body || {};
@@ -219,6 +226,10 @@ const handleCreateBooking = async (req, res) => {
             metadata: {
                 projectId,
                 userId,
+                clientId,
+                participantType,
+                participantRole,
+                participantId,
                 notes,
             },
         };
@@ -252,9 +263,15 @@ const handleCreateBooking = async (req, res) => {
         }
 
         const booking = calData.data;
-        let resolvedClientId = null;
+        let resolvedClientId = clientId || null;
+        const shouldResolveClientByIdentity = !resolvedClientId
+            && (
+                participantType === 'client'
+                || participantRole === 'client'
+                || (!participantType && !participantRole)
+            );
 
-        if (userId) {
+        if (shouldResolveClientByIdentity && userId) {
             const { data: clientByUser } = await supabase
                 .from('clients')
                 .select('id')
@@ -263,7 +280,7 @@ const handleCreateBooking = async (req, res) => {
             if (clientByUser) resolvedClientId = clientByUser.id;
         }
 
-        if (!resolvedClientId && email) {
+        if (shouldResolveClientByIdentity && !resolvedClientId && email) {
             const { data: clientByEmail } = await supabase
                 .from('clients')
                 .select('id')

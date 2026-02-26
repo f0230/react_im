@@ -580,15 +580,16 @@
   "admin": {
     "appointments": {
       "title": "Citas Agendadas",
-      "subtitle": "Gestiona y visualiza todas las reservas de clientes.",
+      "subtitle": "Gestiona y visualiza todas las reservas de equipo y clientes.",
       "noAppointments": "No se encontraron citas",
-      "emptyDescription": "Cuando los clientes agenden una llamada, aparecerán aquí.",
+      "emptyDescription": "Cuando se agenden reuniones, aparecerán aquí.",
       "newAppointment": "Nueva Cita",
       "viewList": "Lista",
       "viewCalendar": "Calendario",
       "table": {
         "dateTime": "Fecha y Hora",
         "client": "Cliente",
+        "participant": "Participante",
         "project": "Proyecto",
         "status": "Estado",
         "actions": "Acciones",
@@ -633,16 +634,18 @@
       "title": "Nueva Cita",
       "sidebar": {
         "step1": {
-          "title": "Cliente y Proyecto",
+          "title": "Participante y Proyecto",
           "description": "Selecciona para quién es la cita"
         },
         "step2": {
           "title": "Fecha y Hora",
           "description": "Busca disponibilidad"
         },
-        "footer": "La cita se sincronizará con Cal.com y se enviará una notificación al cliente."
+        "footer": "La cita se sincronizará con Cal.com y se enviará una notificación al participante."
       },
       "form": {
+        "participantLabel": "Participante",
+        "participantPlaceholder": "Selecciona un participante",
         "clientLabel": "Cliente",
         "clientPlaceholder": "Selecciona un cliente",
         "projectLabel": "Proyecto (Opcional)",
@@ -658,7 +661,8 @@
         "slotsTitle": "Horarios Disponibles",
         "success": "Cita creada exitosamente",
         "error": "Error al crear la cita",
-        "errorLoading": "Error al cargar datos"
+        "errorLoading": "Error al cargar datos",
+        "errorMissingEmail": "El participante seleccionado no tiene correo electrónico."
       }
     }
   },

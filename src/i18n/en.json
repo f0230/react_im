@@ -580,15 +580,16 @@
   "admin": {
     "appointments": {
       "title": "Scheduled Appointments",
-      "subtitle": "Manage and view all client bookings.",
+      "subtitle": "Manage and view all team and client bookings.",
       "noAppointments": "No appointments found",
-      "emptyDescription": "When clients schedule a call, they will appear here.",
+      "emptyDescription": "When meetings are scheduled, they will appear here.",
       "newAppointment": "New Appointment",
       "viewList": "List",
       "viewCalendar": "Calendar",
       "table": {
         "dateTime": "Date & Time",
         "client": "Client",
+        "participant": "Participant",
         "project": "Project",
         "status": "Status",
         "actions": "Actions",
@@ -633,16 +634,18 @@
       "title": "New Appointment",
       "sidebar": {
         "step1": {
-          "title": "Client and Project",
+          "title": "Participant and Project",
           "description": "Select who the appointment is for"
         },
         "step2": {
           "title": "Date and Time",
           "description": "Check availability"
         },
-        "footer": "The appointment will be synced with Cal.com and a notification will be sent to the client."
+        "footer": "The appointment will be synced with Cal.com and a notification will be sent to the participant."
       },
       "form": {
+        "participantLabel": "Participant",
+        "participantPlaceholder": "Select a participant",
         "clientLabel": "Client",
         "clientPlaceholder": "Select a client",
         "projectLabel": "Project (Optional)",
@@ -658,7 +661,8 @@
         "slotsTitle": "Available Slots",
         "success": "Appointment created successfully",
         "error": "Error creating appointment",
-        "errorLoading": "Error loading data"
+        "errorLoading": "Error loading data",
+        "errorMissingEmail": "The selected participant has no email address."
       }
     }
   },

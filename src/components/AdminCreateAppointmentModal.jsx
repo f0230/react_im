@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, Clock, Check, Loader2, User, Briefcase, Search } from 'lucide-react';
+import { X, Clock, Check, Loader2, User, Briefcase } from 'lucide-react';
 import { useTranslation } from "react-i18next";
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -9,18 +9,30 @@ import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
 
+const PARTICIPANT_TYPE = {
+    CLIENT: 'client',
+    PROFILE: 'profile',
+};
+
+const parseParticipantValue = (value) => {
+    if (!value) return { type: null, id: null };
+    const [type, id] = String(value).split(':');
+    return { type: type || null, id: id || null };
+};
+
 const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
     const { t } = useTranslation();
-    const [step, setStep] = useState(1); // 1: Client/Project, 2: Date/Time
+    const [step, setStep] = useState(1); // 1: Participant/Project, 2: Date/Time
     const [loading, setLoading] = useState(false);
 
     // Data
     const [clients, setClients] = useState([]);
+    const [teamMembers, setTeamMembers] = useState([]);
     const [projects, setProjects] = useState([]);
     const [filteredProjects, setFilteredProjects] = useState([]);
 
     // Selection
-    const [selectedClient, setSelectedClient] = useState('');
+    const [selectedParticipant, setSelectedParticipant] = useState('');
     const [selectedProject, setSelectedProject] = useState('');
     const [notes, setNotes] = useState('');
 
@@ -43,7 +55,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
             fetchData();
             // Reset state
             setStep(1);
-            setSelectedClient('');
+            setSelectedParticipant('');
             setSelectedProject('');
             setNotes('');
             setSelectedDate(new Date());
@@ -51,21 +63,73 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
         }
     }, [isOpen, resetAvailability]);
 
+    const roleLabel = (role) => {
+        if (role === 'admin') return 'Admin';
+        if (role === 'worker') return 'Worker';
+        return 'Cliente';
+    };
+
+    const participants = useMemo(() => {
+        const clientOptions = clients.map((client) => ({
+            value: `${PARTICIPANT_TYPE.CLIENT}:${client.id}`,
+            id: client.id,
+            type: PARTICIPANT_TYPE.CLIENT,
+            role: 'client',
+            name: client.full_name || client.company_name || 'Cliente',
+            email: client.email || '',
+            phone: client.phone || '',
+            user_id: client.user_id || null,
+            client_id: client.id,
+        }));
+
+        const profileOptions = teamMembers.map((member) => ({
+            value: `${PARTICIPANT_TYPE.PROFILE}:${member.id}`,
+            id: member.id,
+            type: PARTICIPANT_TYPE.PROFILE,
+            role: member.role,
+            name: member.full_name || member.email || 'Sin nombre',
+            email: member.email || '',
+            phone: '',
+            user_id: member.id,
+            client_id: member.client_id || null,
+        }));
+
+        return [...clientOptions, ...profileOptions].sort((a, b) => a.name.localeCompare(b.name));
+    }, [clients, teamMembers]);
+
+    const selectedParticipantData = useMemo(() => {
+        if (!selectedParticipant) return null;
+        return participants.find((participant) => participant.value === selectedParticipant) || null;
+    }, [participants, selectedParticipant]);
+
+    const selectedParticipantType = selectedParticipantData?.type || null;
+
     const fetchData = async () => {
         setLoading(true);
         try {
-            const { data: clientsData } = await supabase
-                .from('clients')
-                .select('id, full_name, email, company_name')
-                .order('full_name');
+            const [clientsResult, projectsResult, membersResult] = await Promise.all([
+                supabase
+                    .from('clients')
+                    .select('id, full_name, email, company_name, phone, user_id')
+                    .order('full_name'),
+                supabase
+                    .from('projects')
+                    .select('id, name, client_id, project_clients(client_id)')
+                    .order('created_at', { ascending: false }),
+                supabase
+                    .from('profiles')
+                    .select('id, full_name, email, role, client_id')
+                    .in('role', ['admin', 'worker'])
+                    .order('full_name'),
+            ]);
 
-            const { data: projectsData } = await supabase
-                .from('projects')
-                .select('id, name, client_id')
-                .order('created_at', { ascending: false });
+            if (clientsResult.error) throw clientsResult.error;
+            if (projectsResult.error) throw projectsResult.error;
+            if (membersResult.error) throw membersResult.error;
 
-            setClients(clientsData || []);
-            setProjects(projectsData || []);
+            setClients(clientsResult.data || []);
+            setProjects(projectsResult.data || []);
+            setTeamMembers(membersResult.data || []);
         } catch (error) {
             console.error(error);
             toast.error(t("admin.createAppointment.form.errorLoading"));
@@ -74,32 +138,52 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
         }
     };
 
-    // Filter projects when client changes
+    // Filter projects when participant changes
     useEffect(() => {
-        if (selectedClient) {
-            const clientProjects = projects.filter(p => p.client_id === selectedClient);
+        if (!selectedParticipantData) {
+            setFilteredProjects([]);
+            setSelectedProject('');
+            return;
+        }
+
+        const { type, id } = parseParticipantValue(selectedParticipant);
+
+        if (type === PARTICIPANT_TYPE.CLIENT && id) {
+            const clientProjects = projects.filter((project) => {
+                if (project.client_id === id) return true;
+                return (project.project_clients || []).some((projectClient) => projectClient.client_id === id);
+            });
             setFilteredProjects(clientProjects);
         } else {
-            setFilteredProjects([]);
+            setFilteredProjects(projects);
         }
+
         setSelectedProject('');
-    }, [selectedClient, projects]);
+    }, [projects, selectedParticipant, selectedParticipantData]);
 
     const handleCreate = async () => {
-        if (!selectedSlot || !selectedClient) return;
+        if (!selectedSlot || !selectedParticipantData) return;
 
         setLoading(true);
         try {
-            const client = clients.find(c => c.id === selectedClient);
+            if (!selectedParticipantData.email) {
+                toast.error(t("admin.createAppointment.form.errorMissingEmail"));
+                return;
+            }
 
             const payload = {
                 start: selectedSlot.start,
-                name: client.full_name || client.company_name,
-                email: client.email,
+                name: selectedParticipantData.name,
+                email: selectedParticipantData.email,
+                phone: selectedParticipantData.phone || null,
                 notes: notes,
                 projectId: selectedProject || null,
+                userId: selectedParticipantData.user_id || null,
+                clientId: selectedParticipantData.type === PARTICIPANT_TYPE.CLIENT ? selectedParticipantData.client_id : null,
+                participantType: selectedParticipantData.type,
+                participantRole: selectedParticipantData.role,
+                participantId: selectedParticipantData.id,
                 timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-                // userId is optional, derived from email in create-booking
             };
 
             const response = await fetch('/api/cal/create-booking', {
@@ -186,18 +270,18 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                 className="space-y-6"
                             >
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.clientLabel")}</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.participantLabel")}</label>
                                     <div className="relative">
                                         <MultiUseSelect
                                             variant="modal"
                                             modalScope="anchor"
-                                            options={clients}
-                                            value={selectedClient}
-                                            onChange={(val) => setSelectedClient(val)}
-                                            placeholder={t("admin.createAppointment.form.clientPlaceholder")}
-                                            getOptionValue={(c) => c.id}
-                                            getOptionLabel={(c) => `${c.full_name || c.company_name} (${c.email})`}
-                                            getDisplayLabel={(c) => `${c.full_name || c.company_name} (${c.email})`}
+                                            options={participants}
+                                            value={selectedParticipant}
+                                            onChange={(val) => setSelectedParticipant(val)}
+                                            placeholder={t("admin.createAppointment.form.participantPlaceholder")}
+                                            getOptionValue={(participant) => participant.value}
+                                            getOptionLabel={(participant) => `${participant.name} (${participant.email || 'sin correo'}) - ${roleLabel(participant.role)}`}
+                                            getDisplayLabel={(participant) => `${participant.name} (${participant.email || 'sin correo'}) - ${roleLabel(participant.role)}`}
                                             buttonClassName="pl-10 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:ring-2 focus:ring-black h-[50px]"
                                             className="w-full"
                                         />
@@ -214,8 +298,8 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                             options={filteredProjects}
                                             value={selectedProject}
                                             onChange={(val) => setSelectedProject(val)}
-                                            placeholder={selectedClient && filteredProjects.length === 0 ? t("admin.createAppointment.form.projectPlaceholderEmpty") : t("admin.createAppointment.form.projectPlaceholderActive")}
-                                            disabled={!selectedClient}
+                                            placeholder={selectedParticipantType === PARTICIPANT_TYPE.CLIENT && filteredProjects.length === 0 ? t("admin.createAppointment.form.projectPlaceholderEmpty") : t("admin.createAppointment.form.projectPlaceholderActive")}
+                                            disabled={!selectedParticipantData}
                                             getOptionValue={(p) => p.id}
                                             getOptionLabel={(p) => p.name}
                                             getDisplayLabel={(p) => p.name}
@@ -240,7 +324,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                 <div className="pt-4 flex justify-end">
                                     <button
                                         onClick={() => setStep(2)}
-                                        disabled={!selectedClient}
+                                        disabled={!selectedParticipantData}
                                         className="bg-black text-white px-6 py-3 rounded-xl font-bold hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                     >
                                         {t("admin.createAppointment.form.next")}

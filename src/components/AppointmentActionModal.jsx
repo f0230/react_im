@@ -38,6 +38,7 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
     }, [isOpen, resetAvailability]);
 
     if (!isOpen || !appointment) return null;
+    const hasParticipantEmail = Boolean(appointment.client_email && appointment.client_email !== 'Unknown');
 
     // Calculate position
     const getStyle = () => {
@@ -188,7 +189,7 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                                     <ArrowLeft size={12} />
                                 </button>
                             )}
-                            {action === 'reschedule' ? 'Reprogramar Cita' : appointment.client_name}
+                            {action === 'reschedule' ? 'Reprogramar Cita' : (appointment.client_name || appointment.client_email || 'Participante')}
                         </span>
                         <button onClick={onClose} className="text-gray-400 hover:text-black transition cursor-pointer" onPointerDown={(e) => e.stopPropagation()}>
                             <X size={14} />
@@ -211,14 +212,16 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                                         Unirse
                                     </a>
                                 )}
-                                <a
-                                    href={`mailto:${appointment.client_email}`}
-                                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-black transition w-full text-left"
-                                    onClick={() => onClose()}
-                                >
-                                    <Mail size={14} />
-                                    Enviar Email
-                                </a>
+                                {hasParticipantEmail && (
+                                    <a
+                                        href={`mailto:${appointment.client_email}`}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-black transition w-full text-left"
+                                        onClick={() => onClose()}
+                                    >
+                                        <Mail size={14} />
+                                        Enviar Email
+                                    </a>
+                                )}
                                 <button
                                     onClick={() => setAction('reschedule')}
                                     className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-black transition w-full text-left"

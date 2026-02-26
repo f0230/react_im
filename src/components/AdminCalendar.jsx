@@ -92,7 +92,7 @@ const AdminCalendar = ({ appointments, onSelectAppointment }) => {
     const events = useMemo(() => {
         return appointments.map(apt => ({
             id: apt.id,
-            title: `${apt.client_name} - ${apt.projects?.name || 'Consultation'}`,
+            title: `${apt.client_name || apt.client_email || 'Participant'} - ${apt.projects?.name || 'Consultation'}`,
             start: new Date(apt.scheduled_at),
             end: new Date(new Date(apt.scheduled_at).getTime() + (apt.duration_minutes || 30) * 60000),
             resource: apt,

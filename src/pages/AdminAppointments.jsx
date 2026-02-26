@@ -81,7 +81,7 @@ const AdminAppointments = () => {
                         {t('admin.appointments.title') || 'Scheduled Appointments'}
                     </h1>
                     <p className="text-gray-500">
-                        {t('admin.appointments.subtitle') || 'Manage and view all client bookings.'}
+                        {t('admin.appointments.subtitle') || 'Manage and view all team and client bookings.'}
                     </p>
                 </div>
 
@@ -136,7 +136,7 @@ const AdminAppointments = () => {
                         {t('admin.appointments.noAppointments') || 'No appointments found'}
                     </h3>
                     <p className="text-gray-500">
-                        {t('admin.appointments.emptyDescription') || 'When clients schedule a call, they will appear here.'}
+                        {t('admin.appointments.emptyDescription') || 'When meetings are scheduled, they will appear here.'}
                     </p>
                 </div>
             ) : (
@@ -154,7 +154,7 @@ const AdminAppointments = () => {
                                     <thead>
                                         <tr className="border-b border-gray-100 bg-gray-50/50">
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.dateTime")}</th>
-                                            <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.client")}</th>
+                                            <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.participant")}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.project")}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.status")}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.actions")}</th>
@@ -180,11 +180,11 @@ const AdminAppointments = () => {
                                                 <td className="p-5">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-full bg-[#E8E8E8] flex items-center justify-center text-xs font-bold">
-                                                            {(apt.client_name || '?').charAt(0)}
+                                                            {(apt.client_name || apt.client_email || '?').charAt(0)}
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="font-medium text-gray-900">{apt.client_name}</span>
-                                                            <span className="text-xs text-gray-500">{apt.client_email}</span>
+                                                            <span className="font-medium text-gray-900">{apt.client_name || '-'}</span>
+                                                            <span className="text-xs text-gray-500">{apt.client_email || '-'}</span>
                                                         </div>
                                                     </div>
                                                 </td>
