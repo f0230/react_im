@@ -590,16 +590,27 @@
         "dateTime": "Fecha y Hora",
         "client": "Cliente",
         "participant": "Participante",
+        "type": "Tipo",
         "project": "Proyecto",
         "status": "Estado",
         "actions": "Acciones",
         "join": "Unirme"
       },
+      "filters": {
+        "all": "Todas",
+        "clients": "Clientes",
+        "team": "Equipo"
+      },
+      "type": {
+        "client": "Cliente",
+        "team": "Equipo"
+      },
       "status": {
         "scheduled": "Agendada",
         "completed": "Completada",
         "cancelled": "Cancelada"
-      }
+      },
+      "emptyFiltered": "No hay citas próximas para este filtro."
     },
     "calendar": {
       "toolbar": {
@@ -644,8 +655,13 @@
         "footer": "La cita se sincronizará con Cal.com y se enviará una notificación al participante."
       },
       "form": {
+        "audienceLabel": "Tipo de cita",
+        "audienceClient": "Clientes",
+        "audienceTeam": "Equipo",
         "participantLabel": "Participante",
         "participantPlaceholder": "Selecciona un participante",
+        "participantPlaceholderClient": "Selecciona un cliente",
+        "participantPlaceholderTeam": "Selecciona un miembro del equipo",
         "clientLabel": "Cliente",
         "clientPlaceholder": "Selecciona un cliente",
         "projectLabel": "Proyecto (Opcional)",

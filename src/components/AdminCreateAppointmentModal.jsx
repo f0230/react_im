@@ -14,6 +14,11 @@ const PARTICIPANT_TYPE = {
     PROFILE: 'profile',
 };
 
+const APPOINTMENT_AUDIENCE = {
+    CLIENT: 'client',
+    TEAM: 'team',
+};
+
 const parseParticipantValue = (value) => {
     if (!value) return { type: null, id: null };
     const [type, id] = String(value).split(':');
@@ -32,6 +37,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
     const [filteredProjects, setFilteredProjects] = useState([]);
 
     // Selection
+    const [appointmentAudience, setAppointmentAudience] = useState(APPOINTMENT_AUDIENCE.CLIENT);
     const [selectedParticipant, setSelectedParticipant] = useState('');
     const [selectedProject, setSelectedProject] = useState('');
     const [notes, setNotes] = useState('');
@@ -55,6 +61,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
             fetchData();
             // Reset state
             setStep(1);
+            setAppointmentAudience(APPOINTMENT_AUDIENCE.CLIENT);
             setSelectedParticipant('');
             setSelectedProject('');
             setNotes('');
@@ -70,7 +77,21 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
     };
 
     const participants = useMemo(() => {
-        const clientOptions = clients.map((client) => ({
+        const teamEmailSet = new Set(
+            teamMembers
+                .map((member) => (member.email || '').trim().toLowerCase())
+                .filter(Boolean)
+        );
+        const teamIdSet = new Set(teamMembers.map((member) => member.id).filter(Boolean));
+
+        const clientOptions = clients
+            .filter((client) => {
+                const clientEmail = (client.email || '').trim().toLowerCase();
+                if (client.user_id && teamIdSet.has(client.user_id)) return false;
+                if (clientEmail && teamEmailSet.has(clientEmail)) return false;
+                return true;
+            })
+            .map((client) => ({
             value: `${PARTICIPANT_TYPE.CLIENT}:${client.id}`,
             id: client.id,
             type: PARTICIPANT_TYPE.CLIENT,
@@ -80,7 +101,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
             phone: client.phone || '',
             user_id: client.user_id || null,
             client_id: client.id,
-        }));
+            }));
 
         const profileOptions = teamMembers.map((member) => ({
             value: `${PARTICIPANT_TYPE.PROFILE}:${member.id}`,
@@ -94,12 +115,25 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
             client_id: member.client_id || null,
         }));
 
-        return [...clientOptions, ...profileOptions].sort((a, b) => a.name.localeCompare(b.name));
-    }, [clients, teamMembers]);
+        const allParticipants = [...clientOptions, ...profileOptions].sort((a, b) => a.name.localeCompare(b.name));
+        if (appointmentAudience === APPOINTMENT_AUDIENCE.CLIENT) {
+            return allParticipants.filter((participant) => participant.type === PARTICIPANT_TYPE.CLIENT);
+        }
+        return allParticipants.filter((participant) => participant.type === PARTICIPANT_TYPE.PROFILE);
+    }, [appointmentAudience, clients, teamMembers]);
 
     const selectedParticipantData = useMemo(() => {
         if (!selectedParticipant) return null;
         return participants.find((participant) => participant.value === selectedParticipant) || null;
+    }, [participants, selectedParticipant]);
+
+    useEffect(() => {
+        if (!selectedParticipant) return;
+        const existsInAudience = participants.some((participant) => participant.value === selectedParticipant);
+        if (!existsInAudience) {
+            setSelectedParticipant('');
+            setSelectedProject('');
+        }
     }, [participants, selectedParticipant]);
 
     const selectedParticipantType = selectedParticipantData?.type || null;
@@ -275,6 +309,32 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                 className="space-y-6"
                             >
                                 <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.audienceLabel") || 'Tipo de cita'}</label>
+                                    <div className="inline-flex bg-gray-100 p-1 rounded-xl gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => setAppointmentAudience(APPOINTMENT_AUDIENCE.CLIENT)}
+                                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${appointmentAudience === APPOINTMENT_AUDIENCE.CLIENT
+                                                ? 'bg-white text-black shadow-sm'
+                                                : 'text-gray-500 hover:text-black'
+                                                }`}
+                                        >
+                                            {t("admin.createAppointment.form.audienceClient") || 'Clientes'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAppointmentAudience(APPOINTMENT_AUDIENCE.TEAM)}
+                                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${appointmentAudience === APPOINTMENT_AUDIENCE.TEAM
+                                                ? 'bg-white text-black shadow-sm'
+                                                : 'text-gray-500 hover:text-black'
+                                                }`}
+                                        >
+                                            {t("admin.createAppointment.form.audienceTeam") || 'Equipo'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">{t("admin.createAppointment.form.participantLabel")}</label>
                                     <div className="relative">
                                         <MultiUseSelect
@@ -283,7 +343,10 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                             options={participants}
                                             value={selectedParticipant}
                                             onChange={(val) => setSelectedParticipant(val)}
-                                            placeholder={t("admin.createAppointment.form.participantPlaceholder")}
+                                            placeholder={appointmentAudience === APPOINTMENT_AUDIENCE.CLIENT
+                                                ? (t("admin.createAppointment.form.participantPlaceholderClient") || t("admin.createAppointment.form.participantPlaceholder"))
+                                                : (t("admin.createAppointment.form.participantPlaceholderTeam") || t("admin.createAppointment.form.participantPlaceholder"))
+                                            }
                                             getOptionValue={(participant) => participant.value}
                                             getOptionLabel={(participant) => `${participant.name} (${participant.email || 'sin correo'}) - ${roleLabel(participant.role)}`}
                                             getDisplayLabel={(participant) => `${participant.name} (${participant.email || 'sin correo'}) - ${roleLabel(participant.role)}`}

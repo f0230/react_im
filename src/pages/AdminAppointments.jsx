@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Plus } from 'lucide-react';
@@ -15,9 +15,36 @@ const AdminAppointments = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'calendar'
+    const [listTypeFilter, setListTypeFilter] = useState('all'); // 'all' | 'client' | 'team'
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [modalPosition, setModalPosition] = useState(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    const getAppointmentType = (apt) => {
+        const metadata = apt?.cal_metadata?.metadata || {};
+        const participantType = metadata.participantType;
+        const participantRole = metadata.participantRole;
+
+        if (participantType === 'client' || participantRole === 'client' || apt?.client_id) {
+            return 'client';
+        }
+        return 'team';
+    };
+
+    const listAppointments = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return appointments.filter((apt) => {
+            if (!apt?.scheduled_at) return false;
+            const aptDate = new Date(apt.scheduled_at);
+            const isFutureOrToday = aptDate >= today;
+            if (!isFutureOrToday) return false;
+
+            if (listTypeFilter === 'all') return true;
+            return getAppointmentType(apt) === listTypeFilter;
+        });
+    }, [appointments, listTypeFilter]);
 
     const handleAppointmentClick = (apt, e) => {
         // Capture click coordinates
@@ -125,6 +152,38 @@ const AdminAppointments = () => {
                             {t("admin.appointments.viewCalendar")}
                         </button>
                     </div>
+
+                    {viewMode === 'list' && (
+                        <div className="bg-gray-100 p-1 rounded-xl flex items-center w-fit">
+                            <button
+                                onClick={() => setListTypeFilter('all')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'all'
+                                    ? 'bg-white text-black shadow-sm'
+                                    : 'text-gray-500 hover:text-black'
+                                    }`}
+                            >
+                                {t("admin.appointments.filters.all") || 'Todas'}
+                            </button>
+                            <button
+                                onClick={() => setListTypeFilter('client')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'client'
+                                    ? 'bg-white text-black shadow-sm'
+                                    : 'text-gray-500 hover:text-black'
+                                    }`}
+                            >
+                                {t("admin.appointments.filters.clients") || 'Clientes'}
+                            </button>
+                            <button
+                                onClick={() => setListTypeFilter('team')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${listTypeFilter === 'team'
+                                    ? 'bg-white text-black shadow-sm'
+                                    : 'text-gray-500 hover:text-black'
+                                    }`}
+                            >
+                                {t("admin.appointments.filters.team") || 'Equipo'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </header>
 
@@ -162,6 +221,7 @@ const AdminAppointments = () => {
                                     <thead>
                                         <tr className="border-b border-gray-100 bg-gray-50/50">
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.dateTime")}</th>
+                                            <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.type") || 'Tipo'}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.participant")}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.project")}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.status")}</th>
@@ -169,7 +229,7 @@ const AdminAppointments = () => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {appointments.map((apt) => (
+                                        {listAppointments.map((apt) => (
                                             <tr
                                                 key={apt.id}
                                                 onClick={(e) => handleAppointmentClick(apt, e)}
@@ -184,6 +244,17 @@ const AdminAppointments = () => {
                                                             {new Date(apt.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                         </span>
                                                     </div>
+                                                </td>
+                                                <td className="p-5">
+                                                    {getAppointmentType(apt) === 'client' ? (
+                                                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                                            {t("admin.appointments.type.client") || 'Cliente'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs font-bold text-violet-700 bg-violet-50 px-3 py-1 rounded-full border border-violet-100">
+                                                            {t("admin.appointments.type.team") || 'Equipo'}
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="p-5">
                                                     <div className="flex items-center gap-3">
@@ -228,6 +299,11 @@ const AdminAppointments = () => {
                                         ))}
                                     </tbody>
                                 </table>
+                                {listAppointments.length === 0 && (
+                                    <div className="p-8 text-center text-sm text-gray-500">
+                                        {t("admin.appointments.emptyFiltered") || 'No hay citas próximas para este filtro.'}
+                                    </div>
+                                )}
                             </div>
                         </motion.div>
                     ) : (

@@ -590,16 +590,27 @@
         "dateTime": "Date & Time",
         "client": "Client",
         "participant": "Participant",
+        "type": "Type",
         "project": "Project",
         "status": "Status",
         "actions": "Actions",
         "join": "Join"
       },
+      "filters": {
+        "all": "All",
+        "clients": "Clients",
+        "team": "Team"
+      },
+      "type": {
+        "client": "Client",
+        "team": "Team"
+      },
       "status": {
         "scheduled": "Scheduled",
         "completed": "Completed",
         "cancelled": "Cancelled"
-      }
+      },
+      "emptyFiltered": "No upcoming appointments for this filter."
     },
     "calendar": {
       "toolbar": {
@@ -644,8 +655,13 @@
         "footer": "The appointment will be synced with Cal.com and a notification will be sent to the participant."
       },
       "form": {
+        "audienceLabel": "Appointment Type",
+        "audienceClient": "Clients",
+        "audienceTeam": "Team",
         "participantLabel": "Participant",
         "participantPlaceholder": "Select a participant",
+        "participantPlaceholderClient": "Select a client",
+        "participantPlaceholderTeam": "Select a team member",
         "clientLabel": "Client",
         "clientPlaceholder": "Select a client",
         "projectLabel": "Project (Optional)",
