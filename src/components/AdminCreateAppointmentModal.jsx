@@ -175,7 +175,6 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                 start: selectedSlot.start,
                 name: selectedParticipantData.name,
                 email: selectedParticipantData.email,
-                phone: selectedParticipantData.phone || null,
                 notes: notes,
                 projectId: selectedProject || null,
                 userId: selectedParticipantData.user_id || null,
@@ -185,6 +184,9 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                 participantId: selectedParticipantData.id,
                 timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
             };
+            if (selectedParticipantData.phone) {
+                payload.phone = selectedParticipantData.phone;
+            }
 
             const response = await fetch('/api/cal/create-booking', {
                 method: 'POST',
@@ -192,14 +194,17 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                 body: JSON.stringify(payload)
             });
 
-            if (!response.ok) throw new Error('Failed to create booking');
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                throw new Error(errorPayload?.error || errorPayload?.details?.message || 'Failed to create booking');
+            }
 
             toast.success(t("admin.createAppointment.form.success"));
             onUpdate();
             onClose();
         } catch (error) {
             console.error(error);
-            toast.error(t("admin.createAppointment.form.error"));
+            toast.error(error?.message || t("admin.createAppointment.form.error"));
         } finally {
             setLoading(false);
         }

@@ -210,28 +210,50 @@ const handleCreateBooking = async (req, res) => {
 
     const eventTypeId = bodyEventTypeId || EVENT_TYPE_ID;
     if (!start || !name || !email || !eventTypeId) {
-        return res.status(400).json({ error: 'Missing required fields' });
+        return res.status(400).json({
+            error: 'Missing required fields',
+            details: {
+                hasStart: Boolean(start),
+                hasName: Boolean(name),
+                hasEmail: Boolean(email),
+                hasEventTypeId: Boolean(eventTypeId),
+            },
+        });
     }
 
     try {
+        const parsedEventTypeId = Number(eventTypeId);
+        if (!Number.isFinite(parsedEventTypeId)) {
+            return res.status(400).json({
+                error: 'Invalid Event Type ID',
+                details: { eventTypeId },
+            });
+        }
+
+        const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
+        const attendee = {
+            name,
+            email,
+            timeZone: timeZone || 'UTC',
+        };
+        if (normalizedPhone) {
+            attendee.phoneNumber = normalizedPhone;
+        }
+
+        const metadata = {};
+        if (projectId) metadata.projectId = projectId;
+        if (userId) metadata.userId = userId;
+        if (clientId) metadata.clientId = clientId;
+        if (participantType) metadata.participantType = participantType;
+        if (participantRole) metadata.participantRole = participantRole;
+        if (participantId) metadata.participantId = participantId;
+        if (notes) metadata.notes = notes;
+
         const bookingPayload = {
-            eventTypeId: Number(eventTypeId),
+            eventTypeId: parsedEventTypeId,
             start,
-            attendee: {
-                name,
-                email,
-                timeZone: timeZone || 'UTC',
-                phoneNumber: phone,
-            },
-            metadata: {
-                projectId,
-                userId,
-                clientId,
-                participantType,
-                participantRole,
-                participantId,
-                notes,
-            },
+            attendee,
+            metadata,
         };
 
         const calResponse = await fetch(`${CAL_API_URL}/bookings`, {
