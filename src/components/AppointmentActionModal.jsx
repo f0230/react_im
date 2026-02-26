@@ -4,6 +4,7 @@ import { X, Mail, Trash2, AlertCircle, Loader2, Link as LinkIcon, CalendarClock,
 import toast from 'react-hot-toast';
 import DatePicker from 'react-datepicker';
 import useCalAvailability from '@/hooks/useCalAvailability';
+import { supabase } from '@/lib/supabaseClient';
 import "react-datepicker/dist/react-datepicker.css";
 
 const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, position }) => {
@@ -84,11 +85,17 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
     const handleCancel = async () => {
         setLoading(true);
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const accessToken = session?.access_token;
+            if (!accessToken) {
+                throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
+            }
+
             const response = await fetch('/api/cal/cancel', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-admin-secret': import.meta.env.VITE_ADMIN_API_SECRET
+                    Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
                     bookingUid: appointment.cal_booking_id,
@@ -96,14 +103,17 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                 })
             });
 
-            if (!response.ok) throw new Error('Failed to cancel');
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload?.error || 'No se pudo cancelar la cita');
+            }
 
             toast.success('Cita cancelada correctamente');
             onUpdate();
             onClose();
         } catch (error) {
             console.error(error);
-            toast.error('Error al cancelar la cita');
+            toast.error(error?.message || 'Error al cancelar la cita');
         } finally {
             setLoading(false);
         }
@@ -113,11 +123,17 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
         if (!selectedSlot) return;
         setLoading(true);
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const accessToken = session?.access_token;
+            if (!accessToken) {
+                throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
+            }
+
             const response = await fetch('/api/cal/reschedule', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-admin-secret': import.meta.env.VITE_ADMIN_API_SECRET
+                    Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
                     bookingUid: appointment.cal_booking_id,
@@ -126,14 +142,17 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                 })
             });
 
-            if (!response.ok) throw new Error('Failed to reschedule');
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload?.error || 'No se pudo reprogramar la cita');
+            }
 
             toast.success('Cita reprogramada con éxito');
             onUpdate();
             onClose();
         } catch (error) {
             console.error(error);
-            toast.error('Error al reprogramar');
+            toast.error(error?.message || 'Error al reprogramar');
         } finally {
             setLoading(false);
         }
