@@ -135,6 +135,62 @@ function extractOcrText(payload) {
   );
 }
 
+function normalizeBase64Image(rawValue) {
+  const value = sanitizeText(rawValue);
+  if (!value) return null;
+  if (value.startsWith('data:image/')) return value;
+  return `data:image/png;base64,${value}`;
+}
+
+function extractOcrImages(payload) {
+  const candidates = [];
+  const pushCandidate = (value) => {
+    const image = normalizeBase64Image(value);
+    if (!image) return;
+    candidates.push(image);
+  };
+
+  const pages = payload?.pages || payload?.data?.pages;
+  if (Array.isArray(pages)) {
+    for (const page of pages) {
+      pushCandidate(page?.image_base64);
+      pushCandidate(page?.image);
+
+      if (Array.isArray(page?.images)) {
+        for (const image of page.images) {
+          pushCandidate(image?.image_base64 || image?.base64 || image?.data || image?.content);
+        }
+      }
+    }
+  }
+
+  const rootImages = payload?.images || payload?.data?.images;
+  if (Array.isArray(rootImages)) {
+    for (const image of rootImages) {
+      pushCandidate(image?.image_base64 || image?.base64 || image?.data || image?.content || image);
+    }
+  }
+
+  const unique = Array.from(new Set(candidates));
+  return unique.slice(0, 6);
+}
+
+function isPoorOcrText(value) {
+  const text = sanitizeText(value);
+  if (!text) return true;
+
+  const compact = text.replace(/\s+/g, ' ').trim();
+  if (compact.length < 350) return true;
+
+  const letters = (compact.match(/[A-Za-zÁÉÍÓÚáéíóúÑñ]/g) || []).length;
+  const digits = (compact.match(/\d/g) || []).length;
+
+  if (letters < 140 && digits < 80) return true;
+  if (letters < 120) return true;
+
+  return false;
+}
+
 function getProjectTitle(project) {
   return (
     sanitizeText(project?.title)
@@ -191,7 +247,7 @@ async function callMistralOcr(pdfUrl) {
         type: 'document_url',
         document_url: pdfUrl,
       },
-      include_image_base64: false,
+      include_image_base64: true,
     }),
   });
 
@@ -209,15 +265,22 @@ async function callMistralOcr(pdfUrl) {
   }
 
   const text = extractOcrText(payload);
-  if (!text) {
-    throw new Error('Mistral OCR returned empty text');
+  const images = extractOcrImages(payload);
+  if (!text && images.length === 0) {
+    throw new Error('Mistral OCR returned empty content');
   }
 
-  return text;
+  return {
+    text,
+    images,
+    weakText: isPoorOcrText(text),
+  };
 }
 
 async function callOpenAiReportParser({
   ocrText,
+  ocrImages = [],
+  ocrWeak = false,
   projectTitle,
   reportMonth,
   historicalReports = [],
@@ -230,77 +293,110 @@ async function callOpenAiReportParser({
   const model = sanitizeText(process.env.OPENAI_REPORTS_MODEL, 'gpt-4o-mini');
   const ocrTrimmed = String(ocrText || '').slice(0, 45000);
   const historicalText = JSON.stringify(historicalReports, null, 2).slice(0, 12000);
+  const selectedImages = Array.isArray(ocrImages) ? ocrImages.slice(0, 4) : [];
+  const shouldAttachImages = selectedImages.length > 0 && (ocrWeak || ocrTrimmed.length < 1200);
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: [
-            'Sos un analista senior de performance y operaciones.',
-            'Recibirás texto OCR con ruido; primero limpia mentalmente errores tipicos de OCR y luego extrae datos confiables.',
-            'No inventes datos. Si algo no existe, usa null o [] según corresponda.',
-            'Usa el historial previo para detectar patrones que funcionaron y caminos a reforzar.',
-            'Devolvé SOLO JSON con esta forma exacta:',
-            '{',
-            '  "metrics": {',
-            '    "reach": number | null,',
-            '    "impressions": number | null,',
-            '    "clicks": number | null,',
-            '    "spend": number | null,',
-            '    "leads": number | null',
-            '  },',
-            '  "summary": "resumen ejecutivo breve en espanol (4-6 lineas)",',
-            '  "key_insights": ["insight 1", "insight 2"],',
-            '  "winning_paths": ["camino que funciono 1", "camino que funciono 2"],',
-            '  "next_steps": ["accion recomendada 1", "accion recomendada 2"],',
-            '  "risk_flags": ["riesgo 1", "riesgo 2"],',
-            '  "operational_comment": "sintesis operativa para equipo",',
-            '  "ai_context_text": "contexto compacto para alimentar otro agente"',
-            '}',
-            'Reglas:',
-            '- winning_paths: solo acciones/canales/mensajes que mostraron resultado positivo.',
-            '- next_steps: acciones concretas y accionables para el mes siguiente.',
-            '- risk_flags: frenos de performance o incertidumbres relevantes.',
-          ].join('\n'),
-        },
-        {
-          role: 'user',
-          content: [
-            `Proyecto: ${projectTitle}`,
-            `Mes objetivo del informe: ${reportMonth}`,
-            'Historial reciente (JSON):',
-            historicalText || '[]',
-            'Texto OCR del PDF:',
-            ocrTrimmed,
-          ].join('\n\n'),
-        },
-      ],
-    }),
+  const userPrompt = [
+    `Proyecto: ${projectTitle}`,
+    `Mes objetivo del informe: ${reportMonth}`,
+    'Historial reciente (JSON):',
+    historicalText || '[]',
+    'Texto OCR del PDF (si hay ruido o vacios, prioriza evidencia de imagen adjunta):',
+    ocrTrimmed || '[Sin texto OCR legible]',
+  ].join('\n\n');
+
+  const buildRequestBody = (withImages) => ({
+    model,
+    temperature: 0.1,
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: [
+          'Sos un analista senior de performance y operaciones.',
+          'Recibirás texto OCR con ruido y/o imágenes de páginas escaneadas; primero limpia mentalmente errores tipicos de OCR y luego extrae datos confiables.',
+          'Cuando haya conflicto, prioriza evidencia visual de tablas/valores en las imágenes.',
+          'No inventes datos. Si algo no existe, usa null o [] según corresponda.',
+          'Usa el historial previo para detectar patrones que funcionaron y caminos a reforzar.',
+          'Devolvé SOLO JSON con esta forma exacta:',
+          '{',
+          '  "metrics": {',
+          '    "reach": number | null,',
+          '    "impressions": number | null,',
+          '    "clicks": number | null,',
+          '    "spend": number | null,',
+          '    "leads": number | null',
+          '  },',
+          '  "summary": "resumen ejecutivo breve en espanol (4-6 lineas)",',
+          '  "key_insights": ["insight 1", "insight 2"],',
+          '  "winning_paths": ["camino que funciono 1", "camino que funciono 2"],',
+          '  "next_steps": ["accion recomendada 1", "accion recomendada 2"],',
+          '  "risk_flags": ["riesgo 1", "riesgo 2"],',
+          '  "operational_comment": "sintesis operativa para equipo",',
+          '  "ai_context_text": "contexto compacto para alimentar otro agente"',
+          '}',
+          'Reglas:',
+          '- winning_paths: solo acciones/canales/mensajes que mostraron resultado positivo.',
+          '- next_steps: acciones concretas y accionables para el mes siguiente.',
+          '- risk_flags: frenos de performance o incertidumbres relevantes.',
+        ].join('\n'),
+      },
+      {
+        role: 'user',
+        content: withImages
+          ? [
+            { type: 'text', text: userPrompt },
+            ...selectedImages.map((url) => ({ type: 'image_url', image_url: { url } })),
+          ]
+          : userPrompt,
+      },
+    ],
   });
 
-  const raw = await response.text();
-  let payload = {};
-  try {
-    payload = JSON.parse(raw);
-  } catch {
-    payload = {};
+  const executeRequest = async (withImages) => {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(buildRequestBody(withImages)),
+    });
+
+    const raw = await response.text();
+    let payload = {};
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      payload = {};
+    }
+
+    return { response, raw, payload };
+  };
+
+  let result = await executeRequest(shouldAttachImages);
+
+  if (!result.response.ok && shouldAttachImages) {
+    const detail = sanitizeText(result.raw).toLowerCase();
+    const shouldFallbackToTextOnly = (
+      result.response.status === 400
+      || result.response.status === 415
+      || detail.includes('image')
+      || detail.includes('vision')
+      || detail.includes('content')
+      || detail.includes('unsupported')
+    );
+    if (shouldFallbackToTextOnly) {
+      result = await executeRequest(false);
+    }
   }
 
-  if (!response.ok) {
-    const detail = sanitizeText(raw).slice(0, 280);
-    throw new Error(`OpenAI summarization failed (${response.status}): ${detail || 'unknown error'}`);
+  if (!result.response.ok) {
+    const detail = sanitizeText(result.raw).slice(0, 280);
+    throw new Error(`OpenAI summarization failed (${result.response.status}): ${detail || 'unknown error'}`);
   }
 
-  const content = payload?.choices?.[0]?.message?.content;
+  const content = result.payload?.choices?.[0]?.message?.content;
   const parsed = extractJsonObject(content);
   if (!parsed) {
     throw new Error('OpenAI returned invalid JSON');
@@ -473,7 +569,7 @@ async function handleReportsOcrSummary(req, res) {
 
   try {
     const projectTitle = getProjectTitle(project);
-    const ocrText = await callMistralOcr(pdfUrl);
+    const ocr = await callMistralOcr(pdfUrl);
     const { data: lastReports } = await supabase
       .from('project_reports')
       .select('period_start, period_end, metrics_jsonb, operational_comment')
@@ -484,7 +580,9 @@ async function handleReportsOcrSummary(req, res) {
     const historicalReports = Array.isArray(lastReports) ? lastReports : [];
 
     const parsed = await callOpenAiReportParser({
-      ocrText,
+      ocrText: ocr.text,
+      ocrImages: ocr.images,
+      ocrWeak: ocr.weakText,
       projectTitle,
       reportMonth,
       historicalReports,
