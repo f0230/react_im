@@ -7,6 +7,8 @@ import slackNotifyHandler from './slack-notify.js';
 import calHandler from './cal/index.js';
 import clawbotTeamChatHandler from './clawbot-team-chat.js';
 import metaHandler from './meta.js';
+import reportsAiContextHandler from './reports-ai-context.js';
+import reportsOcrSummaryHandler from './reports-ocr-summary.js';
 
 
 dotenv.config();
@@ -19,6 +21,8 @@ app.post('/api/project-created', projectCreatedHandler);
 app.post('/api/client-welcome-email', clientWelcomeEmailHandler);
 app.post('/api/slack-notify', slackNotifyHandler);
 app.post('/api/clawbot-team-chat', clawbotTeamChatHandler);
+app.get('/api/reports-ai-context', reportsAiContextHandler);
+app.post('/api/reports-ocr-summary', reportsOcrSummaryHandler);
 app.all('/api/meta/:action', metaHandler);
 app.all('/api/meta', metaHandler);
 
