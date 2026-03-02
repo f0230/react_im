@@ -64,6 +64,30 @@ function normalizeDate(value) {
   return parsed.toISOString().slice(0, 10);
 }
 
+function normalizeMonth(value) {
+  const text = sanitizeText(value);
+  if (!/^\d{4}-\d{2}$/.test(text)) return null;
+  return text;
+}
+
+function monthBounds(monthValue) {
+  const month = normalizeMonth(monthValue);
+  if (!month) return null;
+  const [yearText, monthText] = month.split('-');
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return null;
+  }
+
+  const start = new Date(Date.UTC(year, monthIndex, 1));
+  const end = new Date(Date.UTC(year, monthIndex + 1, 0));
+  return {
+    periodStart: start.toISOString().slice(0, 10),
+    periodEnd: end.toISOString().slice(0, 10),
+  };
+}
+
 function extractJsonObject(rawText) {
   const direct = sanitizeText(rawText);
   if (!direct) return null;
@@ -83,6 +107,14 @@ function extractJsonObject(rawText) {
   } catch {
     return null;
   }
+}
+
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => sanitizeText(item))
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 function extractOcrText(payload) {
@@ -118,6 +150,10 @@ function buildAiContextText({
   periodEnd,
   metrics,
   summary,
+  keyInsights = [],
+  winningPaths = [],
+  nextSteps = [],
+  riskFlags = [],
 }) {
   const lines = [];
   lines.push(`Proyecto: ${projectTitle}`);
@@ -129,6 +165,10 @@ function buildAiContextText({
   lines.push(`- Spend: ${metrics.spend ?? 'N/D'}`);
   lines.push(`- Leads: ${metrics.leads ?? 'N/D'}`);
   lines.push(`Resumen IA: ${summary || 'Sin resumen.'}`);
+  if (keyInsights.length) lines.push(`Insights clave: ${keyInsights.join(' | ')}`);
+  if (winningPaths.length) lines.push(`Caminos que funcionaron: ${winningPaths.join(' | ')}`);
+  if (nextSteps.length) lines.push(`Siguientes pasos: ${nextSteps.join(' | ')}`);
+  if (riskFlags.length) lines.push(`Riesgos detectados: ${riskFlags.join(' | ')}`);
   return lines.join('\n');
 }
 
@@ -176,7 +216,12 @@ async function callMistralOcr(pdfUrl) {
   return text;
 }
 
-async function callOpenAiReportParser({ ocrText, projectTitle }) {
+async function callOpenAiReportParser({
+  ocrText,
+  projectTitle,
+  reportMonth,
+  historicalReports = [],
+}) {
   const apiKey = sanitizeText(process.env.OPENAI_API_KEY);
   if (!apiKey) {
     throw new Error('Missing OPENAI_API_KEY');
@@ -184,6 +229,7 @@ async function callOpenAiReportParser({ ocrText, projectTitle }) {
 
   const model = sanitizeText(process.env.OPENAI_REPORTS_MODEL, 'gpt-4o-mini');
   const ocrTrimmed = String(ocrText || '').slice(0, 45000);
+  const historicalText = JSON.stringify(historicalReports, null, 2).slice(0, 12000);
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -199,12 +245,12 @@ async function callOpenAiReportParser({ ocrText, projectTitle }) {
         {
           role: 'system',
           content: [
-            'Sos un analista de performance.',
-            'Extrae datos desde OCR de un informe PDF.',
+            'Sos un analista senior de performance y operaciones.',
+            'Recibirás texto OCR con ruido; primero limpia mentalmente errores tipicos de OCR y luego extrae datos confiables.',
+            'No inventes datos. Si algo no existe, usa null o [] según corresponda.',
+            'Usa el historial previo para detectar patrones que funcionaron y caminos a reforzar.',
             'Devolvé SOLO JSON con esta forma exacta:',
             '{',
-            '  "period_start": "YYYY-MM-DD | null",',
-            '  "period_end": "YYYY-MM-DD | null",',
             '  "metrics": {',
             '    "reach": number | null,',
             '    "impressions": number | null,',
@@ -212,17 +258,27 @@ async function callOpenAiReportParser({ ocrText, projectTitle }) {
             '    "spend": number | null,',
             '    "leads": number | null',
             '  },',
-            '  "summary": "resumen ejecutivo breve en espanol",',
-            '  "operational_comment": "comentario operativo breve",',
-            '  "ai_context_text": "texto compacto para contexto de IA"',
+            '  "summary": "resumen ejecutivo breve en espanol (4-6 lineas)",',
+            '  "key_insights": ["insight 1", "insight 2"],',
+            '  "winning_paths": ["camino que funciono 1", "camino que funciono 2"],',
+            '  "next_steps": ["accion recomendada 1", "accion recomendada 2"],',
+            '  "risk_flags": ["riesgo 1", "riesgo 2"],',
+            '  "operational_comment": "sintesis operativa para equipo",',
+            '  "ai_context_text": "contexto compacto para alimentar otro agente"',
             '}',
-            'Si un dato no existe, usa null. No inventes valores.',
+            'Reglas:',
+            '- winning_paths: solo acciones/canales/mensajes que mostraron resultado positivo.',
+            '- next_steps: acciones concretas y accionables para el mes siguiente.',
+            '- risk_flags: frenos de performance o incertidumbres relevantes.',
           ].join('\n'),
         },
         {
           role: 'user',
           content: [
             `Proyecto: ${projectTitle}`,
+            `Mes objetivo del informe: ${reportMonth}`,
+            'Historial reciente (JSON):',
+            historicalText || '[]',
             'Texto OCR del PDF:',
             ocrTrimmed,
           ].join('\n\n'),
@@ -361,13 +417,14 @@ async function handleReportsOcrSummary(req, res) {
 
   const body = parseJsonBody(req) || {};
   const projectId = sanitizeText(body.projectId);
+  const reportMonth = normalizeMonth(body.reportMonth);
   const pdfUrl = sanitizeText(body.pdfUrl);
   const pdfPath = sanitizeText(body.pdfPath);
   const pdfName = sanitizeText(body.pdfName, 'informe.pdf');
   const fileSize = Number(body.fileSize);
 
-  if (!projectId || !pdfUrl || !pdfPath) {
-    return res.status(400).json({ error: 'projectId, pdfUrl and pdfPath are required' });
+  if (!projectId || !reportMonth || !pdfUrl || !pdfPath) {
+    return res.status(400).json({ error: 'projectId, reportMonth, pdfUrl and pdfPath are required' });
   }
 
   const supabase = getSupabaseAdmin();
@@ -417,7 +474,21 @@ async function handleReportsOcrSummary(req, res) {
   try {
     const projectTitle = getProjectTitle(project);
     const ocrText = await callMistralOcr(pdfUrl);
-    const parsed = await callOpenAiReportParser({ ocrText, projectTitle });
+    const { data: lastReports } = await supabase
+      .from('project_reports')
+      .select('period_start, period_end, metrics_jsonb, operational_comment')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    const historicalReports = Array.isArray(lastReports) ? lastReports : [];
+
+    const parsed = await callOpenAiReportParser({
+      ocrText,
+      projectTitle,
+      reportMonth,
+      historicalReports,
+    });
 
     const parsedMetrics = parsed?.metrics && typeof parsed.metrics === 'object' ? parsed.metrics : {};
     const metrics = {
@@ -428,27 +499,26 @@ async function handleReportsOcrSummary(req, res) {
       leads: toNullableNumber(parsedMetrics.leads ?? parsed.leads),
     };
 
-    let periodStart = normalizeDate(parsed.period_start || parsed.periodStart || parsed?.period?.start);
-    let periodEnd = normalizeDate(parsed.period_end || parsed.periodEnd || parsed?.period?.end);
-    const today = new Date().toISOString().slice(0, 10);
-
-    if (!periodStart && !periodEnd) {
-      periodStart = today;
-      periodEnd = today;
-    } else if (!periodStart && periodEnd) {
-      periodStart = periodEnd;
-    } else if (periodStart && !periodEnd) {
-      periodEnd = periodStart;
+    const monthRange = monthBounds(reportMonth);
+    if (!monthRange) {
+      return res.status(400).json({ error: 'Invalid reportMonth format. Use YYYY-MM' });
     }
-
-    if (periodStart > periodEnd) {
-      const tmp = periodStart;
-      periodStart = periodEnd;
-      periodEnd = tmp;
-    }
+    const periodStart = monthRange.periodStart;
+    const periodEnd = monthRange.periodEnd;
 
     const summary = sanitizeText(parsed.summary || parsed.executive_summary || parsed.operational_comment);
-    const operationalComment = sanitizeText(parsed.operational_comment || summary);
+    const keyInsights = normalizeStringArray(parsed.key_insights || parsed.keyInsights);
+    const winningPaths = normalizeStringArray(parsed.winning_paths || parsed.winningPaths);
+    const nextSteps = normalizeStringArray(parsed.next_steps || parsed.nextSteps);
+    const riskFlags = normalizeStringArray(parsed.risk_flags || parsed.riskFlags);
+
+    const operationalCommentParts = [];
+    if (summary) operationalCommentParts.push(summary);
+    if (winningPaths.length) operationalCommentParts.push(`Caminos que funcionaron: ${winningPaths.join(' | ')}`);
+    if (nextSteps.length) operationalCommentParts.push(`Siguientes pasos: ${nextSteps.join(' | ')}`);
+    if (riskFlags.length) operationalCommentParts.push(`Riesgos: ${riskFlags.join(' | ')}`);
+    const operationalComment = operationalCommentParts.join('\n');
+
     const aiContextText = sanitizeText(parsed.ai_context_text)
       || buildAiContextText({
         projectTitle,
@@ -456,6 +526,10 @@ async function handleReportsOcrSummary(req, res) {
         periodEnd,
         metrics,
         summary,
+        keyInsights,
+        winningPaths,
+        nextSteps,
+        riskFlags,
       });
 
     const { data: inserted, error: insertError } = await supabase
@@ -485,10 +559,15 @@ async function handleReportsOcrSummary(req, res) {
       ok: true,
       report: inserted,
       extracted: {
+        report_month: reportMonth,
         period_start: periodStart,
         period_end: periodEnd,
         metrics,
         summary,
+        key_insights: keyInsights,
+        winning_paths: winningPaths,
+        next_steps: nextSteps,
+        risk_flags: riskFlags,
       },
     });
   } catch (error) {
