@@ -32,15 +32,29 @@ function toNullableNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeDate(value) {
+function normalizeMonth(value) {
   const text = sanitizeText(value);
-  if (!text) return null;
+  if (!/^\d{4}-\d{2}$/.test(text)) return null;
+  return text;
+}
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+function monthBounds(monthValue) {
+  const month = normalizeMonth(monthValue);
+  if (!month) return null;
 
-  const parsed = new Date(text);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toISOString().slice(0, 10);
+  const [yearText, monthText] = month.split('-');
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+  if (!Number.isFinite(year) || !Number.isFinite(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return null;
+  }
+
+  const start = new Date(Date.UTC(year, monthIndex, 1));
+  const end = new Date(Date.UTC(year, monthIndex + 1, 0));
+  return {
+    periodStart: start.toISOString().slice(0, 10),
+    periodEnd: end.toISOString().slice(0, 10),
+  };
 }
 
 function extractJsonObject(rawText) {
@@ -62,6 +76,14 @@ function extractJsonObject(rawText) {
   } catch {
     return null;
   }
+}
+
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => sanitizeText(item))
+    .filter(Boolean)
+    .slice(0, 8);
 }
 
 function extractOcrText(payload) {
@@ -91,23 +113,144 @@ function getProjectTitle(project) {
   );
 }
 
-function buildAiContextText({
+const REPORT_METRICS = [
+  { key: 'reach', label: 'Reach', aliases: ['reach', 'alcance'], core: true },
+  { key: 'impressions', label: 'Impresiones', aliases: ['impressions', 'impresiones'], core: true },
+  { key: 'clicks', label: 'Clicks', aliases: ['clicks', 'clics'], core: true },
+  { key: 'spend', label: 'Spend', aliases: ['spend', 'amount_spent', 'gasto'], core: true },
+  { key: 'leads', label: 'Leads', aliases: ['leads'], core: true },
+  { key: 'link_clicks', label: 'Clicks en enlace', aliases: ['link_clicks', 'linkClicks', 'clicks_enlace'] },
+  { key: 'conversions', label: 'Conversiones', aliases: ['conversions', 'conversiones'] },
+  { key: 'engagements', label: 'Interacciones', aliases: ['engagements', 'interactions', 'interacciones'] },
+  { key: 'followers_gained', label: 'Seguidores ganados', aliases: ['followers_gained', 'new_followers'] },
+  { key: 'followers_lost', label: 'Seguidores perdidos', aliases: ['followers_lost', 'lost_followers'] },
+  { key: 'followers_net', label: 'Seguidores netos', aliases: ['followers_net', 'net_followers'] },
+  { key: 'ctr', label: 'CTR (%)', aliases: ['ctr'] },
+  { key: 'cpc', label: 'CPC', aliases: ['cpc'] },
+  { key: 'cpm', label: 'CPM', aliases: ['cpm'] },
+  { key: 'cpl', label: 'CPL', aliases: ['cpl'] },
+];
+
+function pickMetricFromSources(sources, aliases) {
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') continue;
+    for (const alias of aliases) {
+      const value = toNullableNumber(source[alias]);
+      if (value !== null) return value;
+    }
+  }
+  return null;
+}
+
+function normalizeReportMetrics(parsedMetrics, parsed) {
+  const metrics = {};
+  const sources = [parsedMetrics, parsed];
+
+  for (const definition of REPORT_METRICS) {
+    metrics[definition.key] = pickMetricFromSources(sources, definition.aliases);
+  }
+
+  if (metrics.followers_net === null && metrics.followers_gained !== null && metrics.followers_lost !== null) {
+    metrics.followers_net = metrics.followers_gained - metrics.followers_lost;
+  }
+  if (metrics.ctr === null && metrics.clicks !== null && metrics.impressions > 0) {
+    metrics.ctr = (metrics.clicks / metrics.impressions) * 100;
+  }
+  if (metrics.cpc === null && metrics.spend !== null && metrics.clicks > 0) {
+    metrics.cpc = metrics.spend / metrics.clicks;
+  }
+  if (metrics.cpm === null && metrics.spend !== null && metrics.impressions > 0) {
+    metrics.cpm = (metrics.spend * 1000) / metrics.impressions;
+  }
+  if (metrics.cpl === null && metrics.spend !== null && metrics.leads > 0) {
+    metrics.cpl = metrics.spend / metrics.leads;
+  }
+
+  return metrics;
+}
+
+function formatMetricForContext(metricKey, value) {
+  if (value === null || value === undefined) return 'N/D';
+  if (['spend', 'cpc', 'cpm', 'cpl'].includes(metricKey)) {
+    return `$${Number(value).toFixed(2)}`;
+  }
+  if (metricKey === 'ctr') {
+    return `${Number(value).toFixed(2)}%`;
+  }
+  return Number(value).toFixed(Number.isInteger(value) ? 0 : 2);
+}
+
+function buildOperationalReportFallback({
   projectTitle,
+  reportMonth,
   periodStart,
   periodEnd,
   metrics,
   summary,
+  keyInsights = [],
+  winningPaths = [],
+  nextSteps = [],
+  riskFlags = [],
+}) {
+  const metricLines = REPORT_METRICS
+    .filter((definition) => metrics?.[definition.key] !== null || definition.core)
+    .map((definition) => `- ${definition.label}: ${formatMetricForContext(definition.key, metrics?.[definition.key])}`);
+
+  const lines = [];
+  lines.push('DIAGNOSTICO OPERATIVO EXPERTO');
+  lines.push(`Proyecto: ${projectTitle}`);
+  lines.push(`Mes analizado: ${reportMonth} (${periodStart} a ${periodEnd})`);
+  lines.push('');
+  lines.push('1) LECTURA GENERAL DEL RENDIMIENTO');
+  lines.push(summary || 'No se pudo extraer una sintesis textual completa desde OCR; se detalla analisis cuantitativo con los datos detectados.');
+  lines.push('');
+  lines.push('2) TABLERO DE METRICAS DETECTADAS');
+  lines.push(...metricLines);
+  lines.push('');
+  lines.push('3) HALLAZGOS CLAVE');
+  lines.push(keyInsights.length ? `- ${keyInsights.join('\n- ')}` : '- No se detectaron hallazgos textuales adicionales en el OCR.');
+  lines.push('');
+  lines.push('4) PALANCAS QUE FUNCIONARON');
+  lines.push(winningPaths.length ? `- ${winningPaths.join('\n- ')}` : '- No se pudo confirmar una palanca ganadora con evidencia suficiente.');
+  lines.push('');
+  lines.push('5) PLAN OPERATIVO RECOMENDADO');
+  lines.push(nextSteps.length ? `- ${nextSteps.join('\n- ')}` : '- Definir experimento por audiencia, creatividades y objetivo para el siguiente periodo.');
+  lines.push('');
+  lines.push('6) RIESGOS Y CONTROL');
+  lines.push(riskFlags.length ? `- ${riskFlags.join('\n- ')}` : '- Validar tracking y calidad de datos para reducir incertidumbre en la toma de decisiones.');
+  return lines.join('\n');
+}
+
+function buildAiContextText({
+  projectTitle,
+  reportMonth,
+  periodStart,
+  periodEnd,
+  metrics,
+  summary,
+  keyInsights = [],
+  winningPaths = [],
+  nextSteps = [],
+  riskFlags = [],
 }) {
   const lines = [];
   lines.push(`Proyecto: ${projectTitle}`);
+  lines.push(`Mes objetivo: ${reportMonth || 'N/D'}`);
   lines.push(`Periodo: ${periodStart} a ${periodEnd}`);
   lines.push('Metricas extraidas:');
-  lines.push(`- Reach: ${metrics.reach ?? 'N/D'}`);
-  lines.push(`- Impresiones: ${metrics.impressions ?? 'N/D'}`);
-  lines.push(`- Clicks: ${metrics.clicks ?? 'N/D'}`);
-  lines.push(`- Spend: ${metrics.spend ?? 'N/D'}`);
-  lines.push(`- Leads: ${metrics.leads ?? 'N/D'}`);
+
+  for (const definition of REPORT_METRICS) {
+    const value = metrics?.[definition.key];
+    if (value !== null || definition.core) {
+      lines.push(`- ${definition.label}: ${formatMetricForContext(definition.key, value)}`);
+    }
+  }
+
   lines.push(`Resumen IA: ${summary || 'Sin resumen.'}`);
+  if (keyInsights.length) lines.push(`Insights clave: ${keyInsights.join(' | ')}`);
+  if (winningPaths.length) lines.push(`Caminos que funcionaron: ${winningPaths.join(' | ')}`);
+  if (nextSteps.length) lines.push(`Siguientes pasos: ${nextSteps.join(' | ')}`);
+  if (riskFlags.length) lines.push(`Riesgos detectados: ${riskFlags.join(' | ')}`);
   return lines.join('\n');
 }
 
@@ -155,14 +298,14 @@ async function callMistralOcr(pdfUrl) {
   return text;
 }
 
-async function callOpenAiReportParser({ ocrText, projectTitle }) {
+async function callOpenAiReportParser({ ocrText, projectTitle, reportMonth }) {
   const apiKey = sanitizeText(process.env.OPENAI_API_KEY);
   if (!apiKey) {
     throw new Error('Missing OPENAI_API_KEY');
   }
 
   const model = sanitizeText(process.env.OPENAI_REPORTS_MODEL, 'gpt-4o-mini');
-  const ocrTrimmed = String(ocrText || '').slice(0, 45000);
+  const ocrTrimmed = String(ocrText || '').slice(0, 80000);
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -178,30 +321,49 @@ async function callOpenAiReportParser({ ocrText, projectTitle }) {
         {
           role: 'system',
           content: [
-            'Sos un analista de performance.',
+            'Sos un agente operativo experto en redes sociales, performance y crecimiento.',
             'Extrae datos desde OCR de un informe PDF.',
+            'No devuelvas un comentario corto: devolvé un informe operativo integral y accionable.',
             'Devolvé SOLO JSON con esta forma exacta:',
             '{',
-            '  "period_start": "YYYY-MM-DD | null",',
-            '  "period_end": "YYYY-MM-DD | null",',
             '  "metrics": {',
             '    "reach": number | null,',
             '    "impressions": number | null,',
             '    "clicks": number | null,',
+            '    "link_clicks": number | null,',
             '    "spend": number | null,',
-            '    "leads": number | null',
+            '    "leads": number | null,',
+            '    "conversions": number | null,',
+            '    "engagements": number | null,',
+            '    "followers_gained": number | null,',
+            '    "followers_lost": number | null,',
+            '    "followers_net": number | null,',
+            '    "ctr": number | null,',
+            '    "cpc": number | null,',
+            '    "cpm": number | null,',
+            '    "cpl": number | null',
             '  },',
-            '  "summary": "resumen ejecutivo breve en espanol",',
-            '  "operational_comment": "comentario operativo breve",',
+            '  "summary": "resumen ejecutivo detallado en espanol (8-12 lineas, con datos concretos y variaciones)",',
+            '  "operational_report": "informe operativo experto completo (14-22 lineas) con secciones y analisis integral del reporte",',
+            '  "key_insights": ["insight 1", "insight 2"],',
+            '  "winning_paths": ["camino que funciono 1", "camino que funciono 2"],',
+            '  "next_steps": ["accion recomendada 1", "accion recomendada 2"],',
+            '  "risk_flags": ["riesgo 1", "riesgo 2"],',
+            '  "operational_comment": "devolucion operativa precisa para equipo (que paso, por que paso, que hacer ahora)",',
             '  "ai_context_text": "texto compacto para contexto de IA"',
             '}',
-            'Si un dato no existe, usa null. No inventes valores.',
+            'Si un dato no existe, usa null o [] segun corresponda. No inventes valores.',
+            'El summary, operational_report y operational_comment deben mencionar numeros cuando existan.',
+            'operational_report debe cubrir TODO lo relevante que exista en el reporte: objetivos, embudo (alcance, interaccion, clics, leads/conversion), eficiencia (CTR/CPC/CPM/CPL), lectura de audiencia/creatividades, comparativa historica y plan 7/15/30 dias.',
+            'operational_report debe incluir encabezados numerados y bullets concretos.',
+            'No uses frases genericas: prioriza causalidad, impacto y accion.',
           ].join('\n'),
         },
         {
           role: 'user',
           content: [
             `Proyecto: ${projectTitle}`,
+            `Mes objetivo del informe: ${reportMonth || 'no provisto'}`,
             'Texto OCR del PDF:',
             ocrTrimmed,
           ].join('\n\n'),
@@ -245,13 +407,14 @@ export default async function handler(req, res) {
 
   const body = parseJsonBody(req) || {};
   const projectId = sanitizeText(body.projectId);
+  const reportMonth = normalizeMonth(body.reportMonth);
   const pdfUrl = sanitizeText(body.pdfUrl);
   const pdfPath = sanitizeText(body.pdfPath);
   const pdfName = sanitizeText(body.pdfName, 'informe.pdf');
   const fileSize = Number(body.fileSize);
 
-  if (!projectId || !pdfUrl || !pdfPath) {
-    return res.status(400).json({ error: 'projectId, pdfUrl and pdfPath are required' });
+  if (!projectId || !reportMonth || !pdfUrl || !pdfPath) {
+    return res.status(400).json({ error: 'projectId, reportMonth, pdfUrl and pdfPath are required' });
   }
 
   const supabase = getSupabaseAdmin();
@@ -303,45 +466,62 @@ export default async function handler(req, res) {
 
     const projectTitle = getProjectTitle(project);
     const ocrText = await callMistralOcr(pdfUrl);
-    const parsed = await callOpenAiReportParser({ ocrText, projectTitle });
+    const parsed = await callOpenAiReportParser({ ocrText, projectTitle, reportMonth });
 
     const parsedMetrics = parsed?.metrics && typeof parsed.metrics === 'object' ? parsed.metrics : {};
-    const metrics = {
-      reach: toNullableNumber(parsedMetrics.reach ?? parsed.reach),
-      impressions: toNullableNumber(parsedMetrics.impressions ?? parsed.impressions),
-      clicks: toNullableNumber(parsedMetrics.clicks ?? parsed.clicks),
-      spend: toNullableNumber(parsedMetrics.spend ?? parsed.spend),
-      leads: toNullableNumber(parsedMetrics.leads ?? parsed.leads),
-    };
+    const metrics = normalizeReportMetrics(parsedMetrics, parsed);
 
-    let periodStart = normalizeDate(parsed.period_start || parsed.periodStart || parsed?.period?.start);
-    let periodEnd = normalizeDate(parsed.period_end || parsed.periodEnd || parsed?.period?.end);
-    const today = new Date().toISOString().slice(0, 10);
-
-    if (!periodStart && !periodEnd) {
-      periodStart = today;
-      periodEnd = today;
-    } else if (!periodStart && periodEnd) {
-      periodStart = periodEnd;
-    } else if (periodStart && !periodEnd) {
-      periodEnd = periodStart;
+    const monthRange = monthBounds(reportMonth);
+    if (!monthRange) {
+      return res.status(400).json({ error: 'Invalid reportMonth format. Use YYYY-MM' });
     }
+    const periodStart = monthRange.periodStart;
+    const periodEnd = monthRange.periodEnd;
 
-    if (periodStart > periodEnd) {
-      const temp = periodStart;
-      periodStart = periodEnd;
-      periodEnd = temp;
-    }
+    const summary = sanitizeText(
+      parsed.summary || parsed.executive_summary || parsed.operational_report || parsed.operational_comment
+    );
+    const keyInsights = normalizeStringArray(parsed.key_insights || parsed.keyInsights);
+    const winningPaths = normalizeStringArray(parsed.winning_paths || parsed.winningPaths);
+    const nextSteps = normalizeStringArray(parsed.next_steps || parsed.nextSteps);
+    const riskFlags = normalizeStringArray(parsed.risk_flags || parsed.riskFlags);
+    const operationalReportFromAi = sanitizeText(
+      parsed.operational_report || parsed.operationalReport || parsed.operational_comment
+    );
 
-    const summary = sanitizeText(parsed.summary || parsed.executive_summary || parsed.operational_comment);
-    const operationalComment = sanitizeText(parsed.operational_comment || summary);
-    const aiContextText = sanitizeText(parsed.ai_context_text)
-      || buildAiContextText({
+    const operationalCommentParts = [];
+    if (summary) operationalCommentParts.push(summary);
+    if (keyInsights.length) operationalCommentParts.push(`Insights clave:\n- ${keyInsights.join('\n- ')}`);
+    if (winningPaths.length) operationalCommentParts.push(`Caminos que funcionaron:\n- ${winningPaths.join('\n- ')}`);
+    if (nextSteps.length) operationalCommentParts.push(`Siguientes pasos:\n- ${nextSteps.join('\n- ')}`);
+    if (riskFlags.length) operationalCommentParts.push(`Riesgos:\n- ${riskFlags.join('\n- ')}`);
+    const fallbackComment = operationalCommentParts.join('\n\n');
+    const operationalComment = operationalReportFromAi
+      || fallbackComment
+      || buildOperationalReportFallback({
         projectTitle,
+        reportMonth,
         periodStart,
         periodEnd,
         metrics,
         summary,
+        keyInsights,
+        winningPaths,
+        nextSteps,
+        riskFlags,
+      });
+    const aiContextText = sanitizeText(parsed.ai_context_text)
+      || buildAiContextText({
+        projectTitle,
+        reportMonth,
+        periodStart,
+        periodEnd,
+        metrics,
+        summary,
+        keyInsights,
+        winningPaths,
+        nextSteps,
+        riskFlags,
       });
 
     const { data: inserted, error: insertError } = await supabase
@@ -371,10 +551,16 @@ export default async function handler(req, res) {
       ok: true,
       report: inserted,
       extracted: {
+        report_month: reportMonth,
         period_start: periodStart,
         period_end: periodEnd,
         metrics,
         summary,
+        operational_report: operationalComment,
+        key_insights: keyInsights,
+        winning_paths: winningPaths,
+        next_steps: nextSteps,
+        risk_flags: riskFlags,
       },
     });
   } catch (error) {

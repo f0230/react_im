@@ -54,16 +54,6 @@ function toNullableNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeDate(value) {
-  const text = sanitizeText(value);
-  if (!text) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
-
-  const parsed = new Date(text);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toISOString().slice(0, 10);
-}
-
 function normalizeMonth(value) {
   const text = sanitizeText(value);
   if (!/^\d{4}-\d{2}$/.test(text)) return null;
@@ -200,8 +190,117 @@ function getProjectTitle(project) {
   );
 }
 
+const REPORT_METRICS = [
+  { key: 'reach', label: 'Reach', aliases: ['reach', 'alcance'], core: true },
+  { key: 'impressions', label: 'Impresiones', aliases: ['impressions', 'impresiones'], core: true },
+  { key: 'clicks', label: 'Clicks', aliases: ['clicks', 'clics'], core: true },
+  { key: 'spend', label: 'Spend', aliases: ['spend', 'amount_spent', 'gasto'], core: true },
+  { key: 'leads', label: 'Leads', aliases: ['leads'], core: true },
+  { key: 'link_clicks', label: 'Clicks en enlace', aliases: ['link_clicks', 'linkClicks', 'clicks_enlace'] },
+  { key: 'conversions', label: 'Conversiones', aliases: ['conversions', 'conversiones'] },
+  { key: 'engagements', label: 'Interacciones', aliases: ['engagements', 'interactions', 'interacciones'] },
+  { key: 'followers_gained', label: 'Seguidores ganados', aliases: ['followers_gained', 'new_followers'] },
+  { key: 'followers_lost', label: 'Seguidores perdidos', aliases: ['followers_lost', 'lost_followers'] },
+  { key: 'followers_net', label: 'Seguidores netos', aliases: ['followers_net', 'net_followers'] },
+  { key: 'ctr', label: 'CTR (%)', aliases: ['ctr'] },
+  { key: 'cpc', label: 'CPC', aliases: ['cpc'] },
+  { key: 'cpm', label: 'CPM', aliases: ['cpm'] },
+  { key: 'cpl', label: 'CPL', aliases: ['cpl'] },
+];
+
+function pickMetricFromSources(sources, aliases) {
+  for (const source of sources) {
+    if (!source || typeof source !== 'object') continue;
+    for (const alias of aliases) {
+      const value = toNullableNumber(source[alias]);
+      if (value !== null) return value;
+    }
+  }
+  return null;
+}
+
+function normalizeReportMetrics(parsedMetrics, parsed) {
+  const metrics = {};
+  const sources = [parsedMetrics, parsed];
+
+  for (const definition of REPORT_METRICS) {
+    metrics[definition.key] = pickMetricFromSources(sources, definition.aliases);
+  }
+
+  if (metrics.followers_net === null && metrics.followers_gained !== null && metrics.followers_lost !== null) {
+    metrics.followers_net = metrics.followers_gained - metrics.followers_lost;
+  }
+  if (metrics.ctr === null && metrics.clicks !== null && metrics.impressions > 0) {
+    metrics.ctr = (metrics.clicks / metrics.impressions) * 100;
+  }
+  if (metrics.cpc === null && metrics.spend !== null && metrics.clicks > 0) {
+    metrics.cpc = metrics.spend / metrics.clicks;
+  }
+  if (metrics.cpm === null && metrics.spend !== null && metrics.impressions > 0) {
+    metrics.cpm = (metrics.spend * 1000) / metrics.impressions;
+  }
+  if (metrics.cpl === null && metrics.spend !== null && metrics.leads > 0) {
+    metrics.cpl = metrics.spend / metrics.leads;
+  }
+
+  return metrics;
+}
+
+function formatMetricForContext(metricKey, value) {
+  if (value === null || value === undefined) return 'N/D';
+  if (['spend', 'cpc', 'cpm', 'cpl'].includes(metricKey)) {
+    return `$${Number(value).toFixed(2)}`;
+  }
+  if (metricKey === 'ctr') {
+    return `${Number(value).toFixed(2)}%`;
+  }
+  return Number(value).toFixed(Number.isInteger(value) ? 0 : 2);
+}
+
+function buildOperationalReportFallback({
+  projectTitle,
+  reportMonth,
+  periodStart,
+  periodEnd,
+  metrics,
+  summary,
+  keyInsights = [],
+  winningPaths = [],
+  nextSteps = [],
+  riskFlags = [],
+}) {
+  const metricLines = REPORT_METRICS
+    .filter((definition) => metrics?.[definition.key] !== null || definition.core)
+    .map((definition) => `- ${definition.label}: ${formatMetricForContext(definition.key, metrics?.[definition.key])}`);
+
+  const lines = [];
+  lines.push('DIAGNOSTICO OPERATIVO EXPERTO');
+  lines.push(`Proyecto: ${projectTitle}`);
+  lines.push(`Mes analizado: ${reportMonth} (${periodStart} a ${periodEnd})`);
+  lines.push('');
+  lines.push('1) LECTURA GENERAL DEL RENDIMIENTO');
+  lines.push(summary || 'No se pudo extraer una sintesis textual completa desde OCR; se detalla analisis cuantitativo con los datos detectados.');
+  lines.push('');
+  lines.push('2) TABLERO DE METRICAS DETECTADAS');
+  lines.push(...metricLines);
+  lines.push('');
+  lines.push('3) HALLAZGOS CLAVE');
+  lines.push(keyInsights.length ? `- ${keyInsights.join('\n- ')}` : '- No se detectaron hallazgos textuales adicionales en el OCR.');
+  lines.push('');
+  lines.push('4) PALANCAS QUE FUNCIONARON');
+  lines.push(winningPaths.length ? `- ${winningPaths.join('\n- ')}` : '- No se pudo confirmar una palanca ganadora con evidencia suficiente.');
+  lines.push('');
+  lines.push('5) PLAN OPERATIVO RECOMENDADO');
+  lines.push(nextSteps.length ? `- ${nextSteps.join('\n- ')}` : '- Definir experimento por audiencia, creatividades y objetivo para el siguiente periodo.');
+  lines.push('');
+  lines.push('6) RIESGOS Y CONTROL');
+  lines.push(riskFlags.length ? `- ${riskFlags.join('\n- ')}` : '- Validar tracking y calidad de datos para reducir incertidumbre en la toma de decisiones.');
+  return lines.join('\n');
+}
+
 function buildAiContextText({
   projectTitle,
+  reportMonth,
   periodStart,
   periodEnd,
   metrics,
@@ -213,13 +312,17 @@ function buildAiContextText({
 }) {
   const lines = [];
   lines.push(`Proyecto: ${projectTitle}`);
+  lines.push(`Mes objetivo: ${reportMonth || 'N/D'}`);
   lines.push(`Periodo: ${periodStart} a ${periodEnd}`);
   lines.push('Metricas extraidas:');
-  lines.push(`- Reach: ${metrics.reach ?? 'N/D'}`);
-  lines.push(`- Impresiones: ${metrics.impressions ?? 'N/D'}`);
-  lines.push(`- Clicks: ${metrics.clicks ?? 'N/D'}`);
-  lines.push(`- Spend: ${metrics.spend ?? 'N/D'}`);
-  lines.push(`- Leads: ${metrics.leads ?? 'N/D'}`);
+
+  for (const definition of REPORT_METRICS) {
+    const value = metrics?.[definition.key];
+    if (value !== null || definition.core) {
+      lines.push(`- ${definition.label}: ${formatMetricForContext(definition.key, value)}`);
+    }
+  }
+
   lines.push(`Resumen IA: ${summary || 'Sin resumen.'}`);
   if (keyInsights.length) lines.push(`Insights clave: ${keyInsights.join(' | ')}`);
   if (winningPaths.length) lines.push(`Caminos que funcionaron: ${winningPaths.join(' | ')}`);
@@ -291,7 +394,7 @@ async function callOpenAiReportParser({
   }
 
   const model = sanitizeText(process.env.OPENAI_REPORTS_MODEL, 'gpt-4o-mini');
-  const ocrTrimmed = String(ocrText || '').slice(0, 45000);
+  const ocrTrimmed = String(ocrText || '').slice(0, 80000);
   const historicalText = JSON.stringify(historicalReports, null, 2).slice(0, 12000);
   const selectedImages = Array.isArray(ocrImages) ? ocrImages.slice(0, 4) : [];
   const shouldAttachImages = selectedImages.length > 0 && (ocrWeak || ocrTrimmed.length < 1200);
@@ -313,32 +416,48 @@ async function callOpenAiReportParser({
       {
         role: 'system',
         content: [
-          'Sos un analista senior de performance y operaciones.',
+          'Sos un agente operativo experto en redes sociales, performance y crecimiento.',
           'Recibirás texto OCR con ruido y/o imágenes de páginas escaneadas; primero limpia mentalmente errores tipicos de OCR y luego extrae datos confiables.',
           'Cuando haya conflicto, prioriza evidencia visual de tablas/valores en las imágenes.',
           'No inventes datos. Si algo no existe, usa null o [] según corresponda.',
           'Usa el historial previo para detectar patrones que funcionaron y caminos a reforzar.',
+          'No devuelvas un comentario corto: devolvé un informe operativo integral y accionable.',
           'Devolvé SOLO JSON con esta forma exacta:',
           '{',
           '  "metrics": {',
           '    "reach": number | null,',
           '    "impressions": number | null,',
           '    "clicks": number | null,',
+          '    "link_clicks": number | null,',
           '    "spend": number | null,',
-          '    "leads": number | null',
+          '    "leads": number | null,',
+          '    "conversions": number | null,',
+          '    "engagements": number | null,',
+          '    "followers_gained": number | null,',
+          '    "followers_lost": number | null,',
+          '    "followers_net": number | null,',
+          '    "ctr": number | null,',
+          '    "cpc": number | null,',
+          '    "cpm": number | null,',
+          '    "cpl": number | null',
           '  },',
-          '  "summary": "resumen ejecutivo breve en espanol (4-6 lineas)",',
+          '  "summary": "resumen ejecutivo detallado en espanol (8-12 lineas, con datos concretos y variaciones)",',
+          '  "operational_report": "informe operativo experto completo (14-22 lineas) con secciones y analisis integral del reporte",',
           '  "key_insights": ["insight 1", "insight 2"],',
           '  "winning_paths": ["camino que funciono 1", "camino que funciono 2"],',
           '  "next_steps": ["accion recomendada 1", "accion recomendada 2"],',
           '  "risk_flags": ["riesgo 1", "riesgo 2"],',
-          '  "operational_comment": "sintesis operativa para equipo",',
+          '  "operational_comment": "devolucion operativa precisa para equipo (que paso, por que paso, que hacer ahora)",',
           '  "ai_context_text": "contexto compacto para alimentar otro agente"',
           '}',
           'Reglas:',
+          '- operational_report debe cubrir TODO lo relevante que exista en el reporte: objetivos, embudo (alcance, interaccion, clics, leads/conversion), eficiencia (CTR/CPC/CPM/CPL), lectura de audiencia/creatividades, comparativa con historial, y plan 7/15/30 dias.',
+          '- operational_report debe incluir encabezados numerados y bullets concretos.',
           '- winning_paths: solo acciones/canales/mensajes que mostraron resultado positivo.',
           '- next_steps: acciones concretas y accionables para el mes siguiente.',
           '- risk_flags: frenos de performance o incertidumbres relevantes.',
+          '- summary, operational_report y operational_comment deben incluir numeros cuando existan (valores, diferencias o tasas).',
+          '- Evita frases genericas: prioriza causalidad, impacto y accion.',
         ].join('\n'),
       },
       {
@@ -589,13 +708,7 @@ async function handleReportsOcrSummary(req, res) {
     });
 
     const parsedMetrics = parsed?.metrics && typeof parsed.metrics === 'object' ? parsed.metrics : {};
-    const metrics = {
-      reach: toNullableNumber(parsedMetrics.reach ?? parsed.reach),
-      impressions: toNullableNumber(parsedMetrics.impressions ?? parsed.impressions),
-      clicks: toNullableNumber(parsedMetrics.clicks ?? parsed.clicks),
-      spend: toNullableNumber(parsedMetrics.spend ?? parsed.spend),
-      leads: toNullableNumber(parsedMetrics.leads ?? parsed.leads),
-    };
+    const metrics = normalizeReportMetrics(parsedMetrics, parsed);
 
     const monthRange = monthBounds(reportMonth);
     if (!monthRange) {
@@ -604,22 +717,43 @@ async function handleReportsOcrSummary(req, res) {
     const periodStart = monthRange.periodStart;
     const periodEnd = monthRange.periodEnd;
 
-    const summary = sanitizeText(parsed.summary || parsed.executive_summary || parsed.operational_comment);
+    const summary = sanitizeText(
+      parsed.summary || parsed.executive_summary || parsed.operational_report || parsed.operational_comment
+    );
     const keyInsights = normalizeStringArray(parsed.key_insights || parsed.keyInsights);
     const winningPaths = normalizeStringArray(parsed.winning_paths || parsed.winningPaths);
     const nextSteps = normalizeStringArray(parsed.next_steps || parsed.nextSteps);
     const riskFlags = normalizeStringArray(parsed.risk_flags || parsed.riskFlags);
+    const operationalReportFromAi = sanitizeText(
+      parsed.operational_report || parsed.operationalReport || parsed.operational_comment
+    );
 
     const operationalCommentParts = [];
     if (summary) operationalCommentParts.push(summary);
-    if (winningPaths.length) operationalCommentParts.push(`Caminos que funcionaron: ${winningPaths.join(' | ')}`);
-    if (nextSteps.length) operationalCommentParts.push(`Siguientes pasos: ${nextSteps.join(' | ')}`);
-    if (riskFlags.length) operationalCommentParts.push(`Riesgos: ${riskFlags.join(' | ')}`);
-    const operationalComment = operationalCommentParts.join('\n');
+    if (keyInsights.length) operationalCommentParts.push(`Insights clave:\n- ${keyInsights.join('\n- ')}`);
+    if (winningPaths.length) operationalCommentParts.push(`Caminos que funcionaron:\n- ${winningPaths.join('\n- ')}`);
+    if (nextSteps.length) operationalCommentParts.push(`Siguientes pasos:\n- ${nextSteps.join('\n- ')}`);
+    if (riskFlags.length) operationalCommentParts.push(`Riesgos:\n- ${riskFlags.join('\n- ')}`);
+    const fallbackComment = operationalCommentParts.join('\n\n');
+    const operationalComment = operationalReportFromAi
+      || fallbackComment
+      || buildOperationalReportFallback({
+        projectTitle,
+        reportMonth,
+        periodStart,
+        periodEnd,
+        metrics,
+        summary,
+        keyInsights,
+        winningPaths,
+        nextSteps,
+        riskFlags,
+      });
 
     const aiContextText = sanitizeText(parsed.ai_context_text)
       || buildAiContextText({
         projectTitle,
+        reportMonth,
         periodStart,
         periodEnd,
         metrics,
@@ -662,6 +796,7 @@ async function handleReportsOcrSummary(req, res) {
         period_end: periodEnd,
         metrics,
         summary,
+        operational_report: operationalComment,
         key_insights: keyInsights,
         winning_paths: winningPaths,
         next_steps: nextSteps,

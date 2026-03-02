@@ -54,22 +54,29 @@ const AppContent = () => {
   });
 
   useEffect(() => {
-    const publicCandidates = ["/servicios", "/desarrollo", "/dte", "/contacto", "/nosotros"];
-    const dashboardCandidates = [
-      "/dashboard/projects",
-      "/dashboard/messages",
-      "/dashboard/team-chat",
-      "/dashboard/client-chat",
-      "/dashboard/tasks",
-      "/dashboard/invoices",
-      "/dashboard/integrations",
-      "/dashboard/settings",
-      "/dashboard/my-appointments",
-    ];
+    const path = location.pathname.toLowerCase();
+    const isDashboardPath = path.startsWith("/dashboard");
+    const isAuthenticated = Boolean(user);
 
-    const isDashboardPath = location.pathname.toLowerCase().startsWith("/dashboard");
-    const routes = user || isDashboardPath ? dashboardCandidates : publicCandidates;
-    return scheduleIdlePreload(routes, 1200);
+    const publicCandidates = ["/servicios", "/desarrollo", "/dte", "/contacto", "/nosotros"];
+
+    let routes = publicCandidates;
+    if (isAuthenticated || isDashboardPath) {
+      if (path.startsWith("/dashboard/reports")) {
+        routes = ["/dashboard/projects", "/dashboard/tasks"];
+      } else if (path.startsWith("/dashboard/tasks")) {
+        routes = ["/dashboard/projects", "/dashboard/reports"];
+      } else if (path.startsWith("/dashboard/projects")) {
+        routes = ["/dashboard/tasks", "/dashboard/reports"];
+      } else if (path.startsWith("/dashboard/inbox") || path.startsWith("/dashboard/messages")) {
+        routes = ["/dashboard/projects", "/dashboard/reports"];
+      } else {
+        routes = ["/dashboard/projects", "/dashboard/tasks", "/dashboard/reports"];
+      }
+    }
+
+    const dedupedRoutes = Array.from(new Set(routes.filter((route) => route.toLowerCase() !== path)));
+    return scheduleIdlePreload(dedupedRoutes, 1800);
   }, [user, location.pathname]);
 
   useEffect(() => {

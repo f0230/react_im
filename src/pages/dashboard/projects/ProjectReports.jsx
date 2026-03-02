@@ -41,23 +41,109 @@ const toNumberOrNull = (value) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
+const pickMetricValue = (source, keys) => {
+  if (!source || typeof source !== 'object') return null;
+  for (const key of keys) {
+    const value = toNumberOrNull(source[key]);
+    if (value !== null) return value;
+  }
+  return null;
+};
+
 const normalizeMetrics = (value) => {
   const source = value && typeof value === 'object' ? value : {};
+  const reach = pickMetricValue(source, ['reach', 'alcance']);
+  const impressions = pickMetricValue(source, ['impressions', 'impresiones']);
+  const clicks = pickMetricValue(source, ['clicks', 'clics']);
+  const spend = pickMetricValue(source, ['spend', 'amount_spent', 'gasto']);
+  const leads = pickMetricValue(source, ['leads']);
+  const linkClicks = pickMetricValue(source, ['link_clicks', 'linkClicks', 'clicks_enlace']);
+  const engagements = pickMetricValue(source, ['engagements', 'interactions', 'interacciones']);
+  const conversions = pickMetricValue(source, ['conversions', 'conversiones']);
+  const followersGained = pickMetricValue(source, ['followers_gained', 'new_followers']);
+  const followersLost = pickMetricValue(source, ['followers_lost', 'lost_followers']);
+  const followersNetRaw = pickMetricValue(source, ['followers_net', 'net_followers']);
+  const ctrRaw = pickMetricValue(source, ['ctr']);
+  const cpcRaw = pickMetricValue(source, ['cpc']);
+  const cpmRaw = pickMetricValue(source, ['cpm']);
+  const cplRaw = pickMetricValue(source, ['cpl']);
+
+  const ctr = ctrRaw ?? (clicks !== null && impressions > 0 ? (clicks / impressions) * 100 : null);
+  const cpc = cpcRaw ?? (spend !== null && clicks > 0 ? spend / clicks : null);
+  const cpm = cpmRaw ?? (spend !== null && impressions > 0 ? (spend * 1000) / impressions : null);
+  const cpl = cplRaw ?? (spend !== null && leads > 0 ? spend / leads : null);
+  const followersNet = followersNetRaw ?? (
+    followersGained !== null && followersLost !== null ? followersGained - followersLost : null
+  );
+
   return {
-    reach: toNumberOrNull(source.reach),
-    impressions: toNumberOrNull(source.impressions),
-    clicks: toNumberOrNull(source.clicks),
-    spend: toNumberOrNull(source.spend),
-    leads: toNumberOrNull(source.leads),
+    reach,
+    impressions,
+    clicks,
+    spend,
+    leads,
+    linkClicks,
+    engagements,
+    conversions,
+    followersGained,
+    followersLost,
+    followersNet,
+    ctr,
+    cpc,
+    cpm,
+    cpl,
   };
+};
+
+const METRIC_CONFIG = [
+  { key: 'reach', label: 'Reach', kind: 'number', core: true },
+  { key: 'impressions', label: 'Impresiones', kind: 'number', core: true },
+  { key: 'clicks', label: 'Clicks', kind: 'number', core: true },
+  { key: 'spend', label: 'Inversion', kind: 'currency', core: true },
+  { key: 'leads', label: 'Leads', kind: 'number', core: true },
+  { key: 'ctr', label: 'CTR', kind: 'percent' },
+  { key: 'cpc', label: 'CPC', kind: 'currency' },
+  { key: 'cpm', label: 'CPM', kind: 'currency' },
+  { key: 'cpl', label: 'CPL', kind: 'currency' },
+  { key: 'linkClicks', label: 'Clicks enlace', kind: 'number' },
+  { key: 'conversions', label: 'Conversiones', kind: 'number' },
+  { key: 'engagements', label: 'Interacciones', kind: 'number' },
+  { key: 'followersNet', label: 'Seguidores netos', kind: 'number' },
+];
+
+const METRIC_CONFIG_BY_KEY = new Map(METRIC_CONFIG.map((item) => [item.key, item]));
+
+const humanizeMetricKey = (key) => (
+  String(key || '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+);
+
+const inferMetricKind = (key) => {
+  const normalized = String(key || '').toLowerCase();
+  if (/(ctr|rate|ratio|porcentaje|percent|pct)\b/.test(normalized)) return 'percent';
+  if (/(spend|cost|cpc|cpm|cpl|gasto|inversion)\b/.test(normalized)) return 'currency';
+  return 'number';
 };
 
 const formatMetricValue = (key, value) => {
   if (value === null || value === undefined) return 'N/D';
-  if (key === 'spend') {
+
+  const metric = METRIC_CONFIG_BY_KEY.get(key) || { kind: inferMetricKind(key) };
+  if (metric?.kind === 'currency') {
     return `$${Number(value).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
+  if (metric?.kind === 'percent') {
+    return `${Number(value).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
+  }
   return Number(value).toLocaleString('es-AR');
+};
+
+const getReadableAnalysis = (report) => {
+  const text = String(report?.operational_comment || report?.ai_context_text || '').trim();
+  return text || 'Sin resumen disponible.';
 };
 
 const reportMonthLabel = (report) => {
@@ -165,7 +251,7 @@ const ProjectReports = () => {
     setReportsLoading(true);
     const { data, error: fetchError } = await supabase
       .from('project_reports')
-      .select('*')
+      .select('id, period_start, period_end, created_at, pdf_url, pdf_name, metrics_jsonb, operational_comment, ai_context_text')
       .eq('project_id', projectId)
       .order('period_start', { ascending: false })
       .order('created_at', { ascending: false });
@@ -259,14 +345,22 @@ const ProjectReports = () => {
 
       const { error: primaryUploadError } = await supabase.storage
         .from('project-reports')
-        .upload(primaryPath, selectedFile, { upsert: false });
+        .upload(primaryPath, selectedFile, {
+          upsert: false,
+          cacheControl: '31536000',
+          contentType: 'application/pdf',
+        });
 
       if (primaryUploadError) {
         usedBucket = 'service-attachments';
         usedPath = fallbackPath;
         const { error: fallbackUploadError } = await supabase.storage
           .from('service-attachments')
-          .upload(fallbackPath, selectedFile, { upsert: false });
+          .upload(fallbackPath, selectedFile, {
+            upsert: false,
+            cacheControl: '31536000',
+            contentType: 'application/pdf',
+          });
 
         if (fallbackUploadError) {
           throw new Error(
@@ -311,7 +405,7 @@ const ProjectReports = () => {
         throw new Error(payload?.error || payload?.detail || 'No se pudo procesar el PDF con OCR.');
       }
 
-      setNotice('Informe procesado con OCR y resumen IA. Se guardó correctamente.');
+      setNotice('Informe procesado con OCR y analisis operativo experto. Se guardó correctamente.');
       closeModal();
       await fetchReports(project.id);
     } catch (submitError) {
@@ -339,7 +433,7 @@ const ProjectReports = () => {
               {project ? getProjectTitle(project) : 'Proyecto no disponible'}
             </h1>
             <p className="text-sm text-neutral-500 mt-2">
-              Subí un informe PDF mensual. El sistema usa OCR y genera resumen con puntos clave.
+              Subí un informe PDF mensual. El sistema usa OCR y devuelve un informe operativo experto con diagnostico completo.
             </p>
           </div>
 
@@ -396,12 +490,19 @@ const ProjectReports = () => {
           <div className="space-y-4">
             {reports.map((report) => {
               const metrics = normalizeMetrics(report.metrics_jsonb);
-              const summary = String(report.operational_comment || report.ai_context_text || '').split('\n')[0] || 'Sin resumen disponible.';
-              const metricList = [
-                { key: 'reach', label: 'Reach', value: metrics.reach },
-                { key: 'impressions', label: 'Impresiones', value: metrics.impressions },
-                { key: 'leads', label: 'Leads', value: metrics.leads },
-              ];
+              const summary = getReadableAnalysis(report);
+              const normalizedMetricList = METRIC_CONFIG
+                .map((item) => ({ ...item, value: metrics[item.key] }))
+                .filter((item) => item.core || item.value !== null);
+              const extraMetricList = Object.entries(report.metrics_jsonb || {})
+                .filter(([key, value]) => !METRIC_CONFIG_BY_KEY.has(key) && toNumberOrNull(value) !== null)
+                .map(([key, value]) => ({
+                  key,
+                  label: humanizeMetricKey(key),
+                  kind: inferMetricKind(key),
+                  value: toNumberOrNull(value),
+                }));
+              const metricList = [...normalizedMetricList, ...extraMetricList];
 
               return (
                 <article key={report.id} className="rounded-2xl border border-neutral-200 p-4 md:p-5">
@@ -414,6 +515,7 @@ const ProjectReports = () => {
                       <iframe
                         title={`preview-${report.id}`}
                         src={`${report.pdf_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                        loading="lazy"
                         className="w-full h-full"
                       />
                         <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white/70 to-transparent" />
@@ -451,11 +553,11 @@ const ProjectReports = () => {
                       </div>
 
                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                        <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Resumen</p>
-                        <p className="text-sm text-neutral-700 mt-1">{summary}</p>
+                        <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Informe operativo experto</p>
+                        <p className="text-sm text-neutral-700 mt-1 whitespace-pre-line leading-relaxed">{summary}</p>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                         {metricList.map((item) => (
                           <div key={item.key} className="rounded-lg border border-neutral-200 bg-white px-2 py-2">
                             <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">{item.label}</p>
