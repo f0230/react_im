@@ -425,33 +425,12 @@ const ProjectReports = () => {
 
   return (
     <div className="font-product text-neutral-900 pb-16 space-y-6">
-      <div className="bg-white rounded-[32px] border border-neutral-100 shadow-sm p-6 md:p-8">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Informes</p>
-            <h1 className="text-2xl md:text-3xl font-black mt-2">
-              {project ? getProjectTitle(project) : 'Proyecto no disponible'}
-            </h1>
-            <p className="text-sm text-neutral-500 mt-2">
-              Subí un informe PDF mensual. El sistema usa OCR y devuelve un informe operativo experto con diagnostico completo.
-            </p>
-          </div>
-
-          {canUploadReports ? (
-            <button
-              type="button"
-              onClick={openModal}
-              disabled={!canOpenModal}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-neutral-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Plus size={16} />
-              Nuevo informe
-            </button>
-          ) : (
-            <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-600">
-              Solo administradores y workers pueden cargar informes.
-            </div>
-          )}
+      <div>
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Informes</p>
+          <h1 className="text-2xl md:text-3xl font-black mt-2">
+            {project ? getProjectTitle(project) : 'Proyecto no disponible'}
+          </h1>
         </div>
       </div>
 
@@ -476,7 +455,20 @@ const ProjectReports = () => {
       )}
 
       <div className="bg-white rounded-[32px] border border-neutral-100 shadow-sm p-6 md:p-8">
-        <h2 className="text-lg font-black mb-5">Informes cargados</h2>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-black">Informes cargados</h2>
+          {canUploadReports && (
+            <button
+              type="button"
+              onClick={openModal}
+              disabled={!canOpenModal}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-black px-4 py-2.5 text-xs md:text-sm font-bold text-white hover:bg-neutral-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Plus size={14} />
+              Nuevo informe
+            </button>
+          )}
+        </div>
 
         {reportsLoading ? (
           <div className="py-12 flex justify-center">
