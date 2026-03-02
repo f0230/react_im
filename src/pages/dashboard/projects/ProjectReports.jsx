@@ -197,40 +197,6 @@ const getReadableAnalysis = (report) => {
   return text || 'Sin resumen disponible.';
 };
 
-const splitSectionTitleAndBody = (text) => {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
-  const withColon = clean.match(/^([^:]{2,80}):\s*(.+)$/);
-  if (withColon) {
-    return { title: withColon[1].trim(), body: withColon[2].trim() };
-  }
-  return { title: clean, body: '' };
-};
-
-const parseAnalysisSections = (text) => {
-  const source = String(text || '').replace(/\r/g, '').trim();
-  if (!source || source === 'Sin resumen disponible.') return [];
-
-  const numberedMatches = [...source.matchAll(/(?:^|\s)(\d{1,2})\.\s*(.*?)(?=(?:\s+\d{1,2}\.\s)|$)/gs)];
-  if (numberedMatches.length > 0) {
-    return numberedMatches
-      .map((match, idx) => {
-        const { title, body } = splitSectionTitleAndBody(match[2]);
-        if (!title) return null;
-        return { id: `${match[1]}-${idx}`, number: match[1], title, body };
-      })
-      .filter(Boolean);
-  }
-
-  return source
-    .split(/\n+/)
-    .map((line) => line.replace(/^[\-*•]\s*/, '').trim())
-    .filter(Boolean)
-    .map((line, idx) => {
-      const { title, body } = splitSectionTitleAndBody(line);
-      return { id: `line-${idx}`, number: `${idx + 1}`, title, body };
-    });
-};
-
 const reportMonthLabel = (report) => {
   const value = report?.period_start || report?.created_at;
   if (!value) return 'Sin fecha';
@@ -758,7 +724,6 @@ const ProjectReports = () => {
             {reports.map((report) => {
               const metrics = normalizeMetrics(report.metrics_jsonb);
               const summary = getReadableAnalysis(report);
-              const summarySections = parseAnalysisSections(summary);
               const isEditing = editingReportId === report.id;
               const normalizedMetricList = METRIC_CONFIG
                 .map((item) => ({ ...item, value: metrics[item.key] }))
@@ -780,18 +745,17 @@ const ProjectReports = () => {
               return (
                 <article key={report.id} className="rounded-2xl border border-neutral-200 p-4 md:p-5">
                   <div className="grid grid-cols-1 md:grid-cols-[minmax(360px,38%)_1fr] gap-4">
-                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 overflow-hidden">
+                    <div className="rounded-xl border border-neutral-200 bg-neutral-50 overflow-hidden h-full flex flex-col">
                       <ReportViewerNavbar
                         title={reportMonthLabel(report)}
                         onExpand={() => openPreview(report)}
-                        downloadUrl={report.pdf_url}
                       />
-                      <div className="relative h-[340px] md:h-[620px] overflow-hidden">
+                      <div className="relative min-h-[340px] md:min-h-[620px] flex-1 overflow-hidden">
                         <iframe
                           title={`preview-${report.id}`}
                           src={`${report.pdf_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
                           loading="lazy"
-                          className="w-full h-full"
+                          className="block h-full w-full"
                         />
                         <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white/70 to-transparent" />
                       </div>
@@ -863,21 +827,8 @@ const ProjectReports = () => {
                               </button>
                             </div>
                           </div>
-                        ) : summarySections.length > 0 ? (
-                          <div className="mt-2 space-y-2.5">
-                            {summarySections.map((section) => (
-                              <div key={section.id} className="rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
-                                <p className="text-base font-black text-neutral-900">
-                                  {section.number}. {section.title}
-                                </p>
-                                {section.body ? (
-                                  <p className="mt-1 text-sm text-neutral-700 leading-relaxed">{section.body}</p>
-                                ) : null}
-                              </div>
-                            ))}
-                          </div>
                         ) : (
-                          <p className="text-sm text-neutral-700 mt-1 whitespace-pre-line leading-relaxed">{summary}</p>
+                          <p className="text-sm text-neutral-700 mt-2 whitespace-pre-line leading-relaxed">{summary}</p>
                         )}
                       </div>
 
@@ -1025,13 +976,12 @@ const ProjectReports = () => {
                   />
 
                   <div
-                    className="h-[82vh] overflow-auto border-t border-neutral-200 bg-neutral-50 [&::-webkit-scrollbar]:hidden"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                    className="h-[82vh] overflow-hidden border-t border-neutral-200 bg-neutral-50"
                   >
                     <iframe
                       title={`preview-large-${previewReport.id}`}
                       src={`${previewReport.pdf_url}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
-                      className="w-full h-full min-h-[1000px]"
+                      className="block h-full w-full"
                     />
                   </div>
                 </motion.div>
