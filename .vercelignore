@@ -8,3 +8,5 @@ pnpm-debug.log*
 *.tgz
 *.tar.gz
 api/server.js
+api/reports-ai-context.js
+api/reports-ocr-summary.js

@@ -18,6 +18,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api/reports-ai-context",
+      "destination": "/api/project-created?action=reports-ai-context"
+    },
+    {
+      "source": "/api/reports-ocr-summary",
+      "destination": "/api/project-created?action=reports-ocr-summary"
+    },
+    {
       "source": "/api/cal/:action",
       "destination": "/api/cal?action=:action"
     },
