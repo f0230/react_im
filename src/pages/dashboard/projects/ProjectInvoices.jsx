@@ -29,10 +29,12 @@ const ProjectInvoices = () => {
   const [invoices, setInvoices] = useState([]);
   const [project, setProject] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState(null);
 
   const isAdmin = profile?.role === 'admin';
   const isClient = profile?.role === 'client';
   const isClientLeader = profile?.is_client_leader;
+  const statusOptions = ['pending', 'paid', 'overdue', 'cancelled'];
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -101,6 +103,60 @@ const ProjectInvoices = () => {
       case 'overdue': return <AlertCircle size={12} />;
       default: return <Clock size={12} />;
     }
+  };
+
+  const getDescriptionLines = (description) => (
+    String(description || '')
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+  );
+
+  const renderDescriptionList = (description) => {
+    const lines = getDescriptionLines(description);
+    if (!lines.length) {
+      return <p className="text-sm font-bold text-neutral-500">-</p>;
+    }
+
+    return (
+      <ul className="space-y-1">
+        {lines.map((line, index) => (
+          <li key={`${line}-${index}`} className="text-sm font-bold text-neutral-900 break-words leading-5 flex items-start gap-2">
+            <span className="text-neutral-400">•</span>
+            <span className="whitespace-pre-wrap break-words">{line}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const getStatusLabel = (status) => t(`dashboard.invoices.table.status.${status}`);
+
+  const handleStatusChange = async (invoiceId, nextStatus) => {
+    if (!isAdmin || !invoiceId || !nextStatus) return;
+
+    const previousInvoice = invoices.find((inv) => inv.id === invoiceId);
+    if (!previousInvoice || previousInvoice.status === nextStatus) return;
+
+    setStatusUpdatingId(invoiceId);
+    setInvoices((prev) => prev.map((inv) => (
+      inv.id === invoiceId ? { ...inv, status: nextStatus } : inv
+    )));
+
+    const { error } = await supabase
+      .from('invoices')
+      .update({ status: nextStatus })
+      .eq('id', invoiceId);
+
+    if (error) {
+      console.error('Error updating invoice status:', error);
+      setInvoices((prev) => prev.map((inv) => (
+        inv.id === invoiceId ? { ...inv, status: previousInvoice.status } : inv
+      )));
+    }
+
+    setStatusUpdatingId(null);
   };
 
   if (loading) return (
@@ -191,8 +247,8 @@ const ProjectInvoices = () => {
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${getStatusColor(inv.status)}`}>
                           <FileText size={18} />
                         </div>
-                        <div>
-                          <p className="text-sm font-bold text-neutral-900 line-clamp-1">{inv.description}</p>
+                        <div className="max-w-[520px]">
+                          {renderDescriptionList(inv.description)}
                           <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-0.5">{inv.invoice_number}</p>
                         </div>
                       </div>
@@ -201,10 +257,28 @@ const ProjectInvoices = () => {
                       <span className="text-md font-black text-neutral-900">${parseFloat(inv.amount).toLocaleString()}</span>
                     </td>
                     <td className="px-8 py-6">
-                      <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(inv.status)}`}>
-                        {getStatusIcon(inv.status)}
-                        {t(`dashboard.invoices.table.status.${inv.status}`)}
-                      </div>
+                      {isAdmin ? (
+                        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${getStatusColor(inv.status)}`}>
+                          {getStatusIcon(inv.status)}
+                          <select
+                            value={inv.status}
+                            disabled={statusUpdatingId === inv.id}
+                            onChange={(e) => handleStatusChange(inv.id, e.target.value)}
+                            className="bg-transparent text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer disabled:cursor-not-allowed"
+                          >
+                            {statusOptions.map((status) => (
+                              <option key={status} value={status} className="text-neutral-900">
+                                {getStatusLabel(status)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${getStatusColor(inv.status)}`}>
+                          {getStatusIcon(inv.status)}
+                          {getStatusLabel(inv.status)}
+                        </div>
+                      )}
                     </td>
                     <td className="px-8 py-6">
                       <span className="text-xs font-bold text-neutral-600">

@@ -16,6 +16,8 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import OptimizedImage from '@/components/OptimizedImage';
+import logo from '@/assets/Group 255.svg';
 
 const getProjectTitle = (project) => (
   project?.title || project?.name || project?.project_name || 'Proyecto sin nombre'
@@ -195,12 +197,57 @@ const getReadableAnalysis = (report) => {
   return text || 'Sin resumen disponible.';
 };
 
+const splitSectionTitleAndBody = (text) => {
+  const clean = String(text || '').replace(/\s+/g, ' ').trim();
+  const withColon = clean.match(/^([^:]{2,80}):\s*(.+)$/);
+  if (withColon) {
+    return { title: withColon[1].trim(), body: withColon[2].trim() };
+  }
+  return { title: clean, body: '' };
+};
+
+const parseAnalysisSections = (text) => {
+  const source = String(text || '').replace(/\r/g, '').trim();
+  if (!source || source === 'Sin resumen disponible.') return [];
+
+  const numberedMatches = [...source.matchAll(/(?:^|\s)(\d{1,2})\.\s*(.*?)(?=(?:\s+\d{1,2}\.\s)|$)/gs)];
+  if (numberedMatches.length > 0) {
+    return numberedMatches
+      .map((match, idx) => {
+        const { title, body } = splitSectionTitleAndBody(match[2]);
+        if (!title) return null;
+        return { id: `${match[1]}-${idx}`, number: match[1], title, body };
+      })
+      .filter(Boolean);
+  }
+
+  return source
+    .split(/\n+/)
+    .map((line) => line.replace(/^[\-*•]\s*/, '').trim())
+    .filter(Boolean)
+    .map((line, idx) => {
+      const { title, body } = splitSectionTitleAndBody(line);
+      return { id: `line-${idx}`, number: `${idx + 1}`, title, body };
+    });
+};
+
 const reportMonthLabel = (report) => {
   const value = report?.period_start || report?.created_at;
   if (!value) return 'Sin fecha';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Sin fecha';
-  return date.toLocaleDateString('es-AR', { year: 'numeric', month: 'long' });
+  const raw = String(value);
+  const yearMonthMatch = raw.match(/^(\d{4})-(\d{2})/);
+  if (yearMonthMatch) {
+    const year = Number(yearMonthMatch[1]);
+    const month = Number(yearMonthMatch[2]);
+    if (Number.isFinite(year) && month >= 1 && month <= 12) {
+      const monthDate = new Date(Date.UTC(year, month - 1, 1));
+      return monthDate.toLocaleDateString('es-AR', { year: 'numeric', month: 'long', timeZone: 'UTC' });
+    }
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'Sin fecha';
+  return parsed.toLocaleDateString('es-AR', { year: 'numeric', month: 'long' });
 };
 
 const currentMonthValue = () => {
@@ -231,6 +278,63 @@ const formatElapsedSeconds = (seconds) => {
   const remainder = safe % 60;
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 };
+
+const ReportViewerNavbar = ({
+  title,
+  onExpand,
+  onClose,
+  downloadUrl,
+}) => (
+  <div className="flex items-center justify-between gap-2 bg-black px-3 py-2.5 md:px-4">
+    <div className="flex min-w-0 items-center gap-2.5">
+      <OptimizedImage
+        src={logo}
+        alt="DTE"
+        width={70}
+        height={24}
+        className="h-3 w-auto shrink-0"
+      />
+      <div className="min-w-0">
+        <p className="text-[9px] uppercase tracking-[0.22em] text-white/45 font-black leading-none">Reportes</p>
+        <p className="truncate text-[11px] md:text-xs font-semibold text-white leading-tight">{title}</p>
+      </div>
+    </div>
+
+    <div className="flex items-center gap-1.5">
+      {downloadUrl && (
+        <a
+          href={downloadUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/20 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-white/10 md:text-xs"
+        >
+          <Download size={12} />
+          Descargar
+        </a>
+      )}
+      {onExpand && (
+        <button
+          type="button"
+          onClick={onExpand}
+          className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/20 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-white/10 md:text-xs"
+        >
+          <Expand size={12} />
+          Ampliar
+        </button>
+      )}
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/5 p-1.5 text-white hover:bg-white/10"
+          aria-label="Cerrar previsualizacion"
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  </div>
+);
 
 const ProjectReports = () => {
   const [searchParams] = useSearchParams();
@@ -654,6 +758,7 @@ const ProjectReports = () => {
             {reports.map((report) => {
               const metrics = normalizeMetrics(report.metrics_jsonb);
               const summary = getReadableAnalysis(report);
+              const summarySections = parseAnalysisSections(summary);
               const isEditing = editingReportId === report.id;
               const normalizedMetricList = METRIC_CONFIG
                 .map((item) => ({ ...item, value: metrics[item.key] }))
@@ -676,26 +781,19 @@ const ProjectReports = () => {
                 <article key={report.id} className="rounded-2xl border border-neutral-200 p-4 md:p-5">
                   <div className="grid grid-cols-1 md:grid-cols-[minmax(360px,38%)_1fr] gap-4">
                     <div className="rounded-xl border border-neutral-200 bg-neutral-50 overflow-hidden">
-                      <div
-                        className="relative h-[340px] md:h-[620px] overflow-hidden"
-                      >
-                      <iframe
-                        title={`preview-${report.id}`}
-                        src={`${report.pdf_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
-                        loading="lazy"
-                        className="w-full h-full"
+                      <ReportViewerNavbar
+                        title={reportMonthLabel(report)}
+                        onExpand={() => openPreview(report)}
+                        downloadUrl={report.pdf_url}
                       />
+                      <div className="relative h-[340px] md:h-[620px] overflow-hidden">
+                        <iframe
+                          title={`preview-${report.id}`}
+                          src={`${report.pdf_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
+                          loading="lazy"
+                          className="w-full h-full"
+                        />
                         <div className="pointer-events-none absolute inset-x-0 top-0 h-8 bg-gradient-to-b from-white/70 to-transparent" />
-                      </div>
-                      <div className="border-t border-neutral-200 p-2">
-                        <button
-                          type="button"
-                          onClick={() => openPreview(report)}
-                          className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50"
-                        >
-                          <Expand size={14} />
-                          Ampliar vista
-                        </button>
                       </div>
                     </div>
 
@@ -764,6 +862,19 @@ const ProjectReports = () => {
                                 {savingReportId === report.id ? 'Guardando...' : 'Guardar'}
                               </button>
                             </div>
+                          </div>
+                        ) : summarySections.length > 0 ? (
+                          <div className="mt-2 space-y-2.5">
+                            {summarySections.map((section) => (
+                              <div key={section.id} className="rounded-lg border border-neutral-200 bg-white px-3 py-2.5">
+                                <p className="text-base font-black text-neutral-900">
+                                  {section.number}. {section.title}
+                                </p>
+                                {section.body ? (
+                                  <p className="mt-1 text-sm text-neutral-700 leading-relaxed">{section.body}</p>
+                                ) : null}
+                              </div>
+                            ))}
                           </div>
                         ) : (
                           <p className="text-sm text-neutral-700 mt-1 whitespace-pre-line leading-relaxed">{summary}</p>
@@ -905,25 +1016,16 @@ const ProjectReports = () => {
                   initial={{ scale: 0.98, opacity: 0, y: 10 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
                   exit={{ scale: 0.98, opacity: 0, y: 10 }}
-                  className="relative w-full max-w-6xl rounded-[24px] bg-white border border-neutral-100 shadow-2xl p-3 md:p-4"
+                  className="relative w-full max-w-6xl overflow-hidden rounded-[24px] bg-white border border-neutral-100 shadow-2xl"
                 >
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Previsualizacion</p>
-                      <h3 className="text-sm md:text-base font-black">{reportMonthLabel(previewReport)}</h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={closePreview}
-                      className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
-                      aria-label="Cerrar previsualizacion"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
+                  <ReportViewerNavbar
+                    title={reportMonthLabel(previewReport)}
+                    onClose={closePreview}
+                    downloadUrl={previewReport.pdf_url}
+                  />
 
                   <div
-                    className="h-[82vh] overflow-auto rounded-xl border border-neutral-200 bg-neutral-50 [&::-webkit-scrollbar]:hidden"
+                    className="h-[82vh] overflow-auto border-t border-neutral-200 bg-neutral-50 [&::-webkit-scrollbar]:hidden"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
                     <iframe

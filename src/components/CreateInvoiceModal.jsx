@@ -106,10 +106,15 @@ const CreateInvoiceModal = ({
         setError(null);
 
         try {
+            if (!formData.project_id) {
+                throw new Error('Seleccioná un proyecto para asignar la factura.');
+            }
+
             const { data, error: insertError } = await supabase
                 .from('invoices')
                 .insert([{
                     ...formData,
+                    description: (formData.description || '').trim(),
                     amount: parseFloat(formData.amount) || 0
                 }])
                 .select()
