@@ -35,6 +35,17 @@ function sanitizeText(value, fallback = '') {
   return trimmed.length > 0 ? trimmed : fallback;
 }
 
+function cleanReportText(value, fallback = '') {
+  const base = sanitizeText(value, fallback);
+  if (!base) return fallback;
+  return base
+    .replace(/\*{1,3}/g, '')
+    .replace(/`{1,3}/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function getTokenFromRequest(req) {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) return null;
@@ -192,7 +203,12 @@ function getProjectTitle(project) {
 
 const REPORT_METRICS = [
   { key: 'reach', label: 'Reach', aliases: ['reach', 'alcance'], core: true },
-  { key: 'impressions', label: 'Impresiones', aliases: ['impressions', 'impresiones'], core: true },
+  {
+    key: 'impressions',
+    label: 'Impresiones',
+    aliases: ['impressions', 'impresiones', 'visualizaciones_totales', 'visualizaciones', 'total_views', 'views'],
+    core: true,
+  },
   { key: 'clicks', label: 'Clicks', aliases: ['clicks', 'clics'], core: true },
   { key: 'spend', label: 'Spend', aliases: ['spend', 'amount_spent', 'gasto'], core: true },
   { key: 'leads', label: 'Leads', aliases: ['leads'], core: true },
@@ -458,6 +474,7 @@ async function callOpenAiReportParser({
           '- risk_flags: frenos de performance o incertidumbres relevantes.',
           '- summary, operational_report y operational_comment deben incluir numeros cuando existan (valores, diferencias o tasas).',
           '- Evita frases genericas: prioriza causalidad, impacto y accion.',
+          '- No uses markdown ni asteriscos para enfatizar: devolve texto plano.',
         ].join('\n'),
       },
       {
@@ -717,14 +734,14 @@ async function handleReportsOcrSummary(req, res) {
     const periodStart = monthRange.periodStart;
     const periodEnd = monthRange.periodEnd;
 
-    const summary = sanitizeText(
+    const summary = cleanReportText(
       parsed.summary || parsed.executive_summary || parsed.operational_report || parsed.operational_comment
     );
     const keyInsights = normalizeStringArray(parsed.key_insights || parsed.keyInsights);
     const winningPaths = normalizeStringArray(parsed.winning_paths || parsed.winningPaths);
     const nextSteps = normalizeStringArray(parsed.next_steps || parsed.nextSteps);
     const riskFlags = normalizeStringArray(parsed.risk_flags || parsed.riskFlags);
-    const operationalReportFromAi = sanitizeText(
+    const operationalReportFromAi = cleanReportText(
       parsed.operational_report || parsed.operationalReport || parsed.operational_comment
     );
 
@@ -750,7 +767,7 @@ async function handleReportsOcrSummary(req, res) {
         riskFlags,
       });
 
-    const aiContextText = sanitizeText(parsed.ai_context_text)
+    const aiContextText = cleanReportText(parsed.ai_context_text)
       || buildAiContextText({
         projectTitle,
         reportMonth,

@@ -25,6 +25,17 @@ function sanitizeText(value, fallback = '') {
   return trimmed.length > 0 ? trimmed : fallback;
 }
 
+function cleanReportText(value, fallback = '') {
+  const base = sanitizeText(value, fallback);
+  if (!base) return fallback;
+  return base
+    .replace(/\*{1,3}/g, '')
+    .replace(/`{1,3}/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function toNullableNumber(value) {
   if (value === null || value === undefined || value === '') return null;
   const normalized = String(value).replace(',', '.');
@@ -115,7 +126,12 @@ function getProjectTitle(project) {
 
 const REPORT_METRICS = [
   { key: 'reach', label: 'Reach', aliases: ['reach', 'alcance'], core: true },
-  { key: 'impressions', label: 'Impresiones', aliases: ['impressions', 'impresiones'], core: true },
+  {
+    key: 'impressions',
+    label: 'Impresiones',
+    aliases: ['impressions', 'impresiones', 'visualizaciones_totales', 'visualizaciones', 'total_views', 'views'],
+    core: true,
+  },
   { key: 'clicks', label: 'Clicks', aliases: ['clicks', 'clics'], core: true },
   { key: 'spend', label: 'Spend', aliases: ['spend', 'amount_spent', 'gasto'], core: true },
   { key: 'leads', label: 'Leads', aliases: ['leads'], core: true },
@@ -357,6 +373,7 @@ async function callOpenAiReportParser({ ocrText, projectTitle, reportMonth }) {
             'operational_report debe cubrir TODO lo relevante que exista en el reporte: objetivos, embudo (alcance, interaccion, clics, leads/conversion), eficiencia (CTR/CPC/CPM/CPL), lectura de audiencia/creatividades, comparativa historica y plan 7/15/30 dias.',
             'operational_report debe incluir encabezados numerados y bullets concretos.',
             'No uses frases genericas: prioriza causalidad, impacto y accion.',
+            'No uses markdown ni asteriscos para enfatizar: devolve texto plano.',
           ].join('\n'),
         },
         {
@@ -478,14 +495,14 @@ export default async function handler(req, res) {
     const periodStart = monthRange.periodStart;
     const periodEnd = monthRange.periodEnd;
 
-    const summary = sanitizeText(
+    const summary = cleanReportText(
       parsed.summary || parsed.executive_summary || parsed.operational_report || parsed.operational_comment
     );
     const keyInsights = normalizeStringArray(parsed.key_insights || parsed.keyInsights);
     const winningPaths = normalizeStringArray(parsed.winning_paths || parsed.winningPaths);
     const nextSteps = normalizeStringArray(parsed.next_steps || parsed.nextSteps);
     const riskFlags = normalizeStringArray(parsed.risk_flags || parsed.riskFlags);
-    const operationalReportFromAi = sanitizeText(
+    const operationalReportFromAi = cleanReportText(
       parsed.operational_report || parsed.operationalReport || parsed.operational_comment
     );
 
@@ -510,7 +527,7 @@ export default async function handler(req, res) {
         nextSteps,
         riskFlags,
       });
-    const aiContextText = sanitizeText(parsed.ai_context_text)
+    const aiContextText = cleanReportText(parsed.ai_context_text)
       || buildAiContextText({
         projectTitle,
         reportMonth,

@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { createPortal } from 'react-dom';
 import {
   UploadCloud,
   Download,
@@ -8,6 +9,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Plus,
+  Pencil,
+  Loader2,
   X,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
@@ -53,7 +56,14 @@ const pickMetricValue = (source, keys) => {
 const normalizeMetrics = (value) => {
   const source = value && typeof value === 'object' ? value : {};
   const reach = pickMetricValue(source, ['reach', 'alcance']);
-  const impressions = pickMetricValue(source, ['impressions', 'impresiones']);
+  const impressions = pickMetricValue(source, [
+    'impressions',
+    'impresiones',
+    'visualizaciones_totales',
+    'visualizaciones',
+    'total_views',
+    'views',
+  ]);
   const clicks = pickMetricValue(source, ['clicks', 'clics']);
   const spend = pickMetricValue(source, ['spend', 'amount_spent', 'gasto']);
   const leads = pickMetricValue(source, ['leads']);
@@ -112,6 +122,40 @@ const METRIC_CONFIG = [
 ];
 
 const METRIC_CONFIG_BY_KEY = new Map(METRIC_CONFIG.map((item) => [item.key, item]));
+const NORMALIZED_METRIC_ALIASES = new Set([
+  'reach',
+  'alcance',
+  'impressions',
+  'impresiones',
+  'visualizaciones_totales',
+  'visualizaciones',
+  'total_views',
+  'views',
+  'clicks',
+  'clics',
+  'spend',
+  'amount_spent',
+  'gasto',
+  'leads',
+  'link_clicks',
+  'linkclicks',
+  'clicks_enlace',
+  'engagements',
+  'interactions',
+  'interacciones',
+  'conversions',
+  'conversiones',
+  'followers_gained',
+  'new_followers',
+  'followers_lost',
+  'lost_followers',
+  'followers_net',
+  'net_followers',
+  'ctr',
+  'cpc',
+  'cpm',
+  'cpl',
+]);
 
 const humanizeMetricKey = (key) => (
   String(key || '')
@@ -142,7 +186,12 @@ const formatMetricValue = (key, value) => {
 };
 
 const getReadableAnalysis = (report) => {
-  const text = String(report?.operational_comment || report?.ai_context_text || '').trim();
+  const text = String(report?.operational_comment || report?.ai_context_text || '')
+    .replace(/\*{1,3}/g, '')
+    .replace(/`{1,3}/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
   return text || 'Sin resumen disponible.';
 };
 
@@ -168,6 +217,21 @@ const safeJson = async (response) => {
   }
 };
 
+const AGENT_THINKING_MESSAGES = [
+  'Leyendo tablas y limpiando ruido de OCR.',
+  'Detectando variaciones de reach, impresiones, clicks y leads.',
+  'Evaluando eficiencia de inversion (CTR, CPC, CPM, CPL).',
+  'Buscando palancas que funcionaron y riesgos operativos.',
+  'Redactando diagnostico y plan de accion 7/15/30 dias.',
+];
+
+const formatElapsedSeconds = (seconds) => {
+  const safe = Math.max(0, Number(seconds) || 0);
+  const minutes = Math.floor(safe / 60);
+  const remainder = safe % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+};
+
 const ProjectReports = () => {
   const [searchParams] = useSearchParams();
   const queryProjectId = searchParams.get('projectId');
@@ -180,10 +244,19 @@ const ProjectReports = () => {
   const [reports, setReports] = useState([]);
   const [reportsLoading, setReportsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [processingStep, setProcessingStep] = useState('');
+  const [processingInsight, setProcessingInsight] = useState('');
+  const [processingStartedAt, setProcessingStartedAt] = useState(0);
+  const [processingElapsed, setProcessingElapsed] = useState(0);
+  const [editingReportId, setEditingReportId] = useState(null);
+  const [editingText, setEditingText] = useState('');
+  const [savingReportId, setSavingReportId] = useState(null);
+  const [editError, setEditError] = useState('');
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [previewReport, setPreviewReport] = useState(null);
+  const thinkingIntervalRef = useRef(null);
 
   const isAdmin = profile?.role === 'admin';
   const isWorker = profile?.role === 'worker';
@@ -277,10 +350,45 @@ const ProjectReports = () => {
     [canUploadReports, project?.id]
   );
 
+  const stopThinkingRotation = useCallback(() => {
+    if (thinkingIntervalRef.current) {
+      clearInterval(thinkingIntervalRef.current);
+      thinkingIntervalRef.current = null;
+    }
+  }, []);
+
+  const startThinkingRotation = useCallback(() => {
+    stopThinkingRotation();
+    let index = 0;
+    setProcessingInsight(AGENT_THINKING_MESSAGES[0]);
+    thinkingIntervalRef.current = setInterval(() => {
+      index = (index + 1) % AGENT_THINKING_MESSAGES.length;
+      setProcessingInsight(AGENT_THINKING_MESSAGES[index]);
+    }, 3200);
+  }, [stopThinkingRotation]);
+
+  useEffect(() => () => {
+    stopThinkingRotation();
+  }, [stopThinkingRotation]);
+
+  useEffect(() => {
+    if (!submitting || !processingStartedAt) return undefined;
+    const elapsedInterval = setInterval(() => {
+      setProcessingElapsed(Math.floor((Date.now() - processingStartedAt) / 1000));
+    }, 1000);
+
+    return () => clearInterval(elapsedInterval);
+  }, [processingStartedAt, submitting]);
+
   const closeModal = () => {
+    stopThinkingRotation();
     setIsModalOpen(false);
     setSelectedFile(null);
     setReportMonth(currentMonthValue());
+    setProcessingStep('');
+    setProcessingInsight('');
+    setProcessingStartedAt(0);
+    setProcessingElapsed(0);
     const input = document.getElementById('report-pdf-input');
     if (input) input.value = '';
   };
@@ -303,6 +411,54 @@ const ProjectReports = () => {
   const handleFileChange = (event) => {
     const file = event.target.files?.[0] || null;
     setSelectedFile(file);
+  };
+
+  const openEditReport = (report) => {
+    setEditError('');
+    setEditingReportId(report.id);
+    setEditingText(getReadableAnalysis(report));
+  };
+
+  const cancelEditReport = () => {
+    setEditingReportId(null);
+    setEditingText('');
+    setEditError('');
+  };
+
+  const saveEditedReport = async (reportId) => {
+    if (!reportId || !editingText.trim()) return;
+    setEditError('');
+    setSavingReportId(reportId);
+
+    const cleaned = editingText
+      .replace(/\*{1,3}/g, '')
+      .replace(/`{1,3}/g, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    const { data, error: updateError } = await supabase
+      .from('project_reports')
+      .update({ operational_comment: cleaned })
+      .eq('id', reportId)
+      .select('id, operational_comment')
+      .single();
+
+    if (updateError || !data) {
+      setEditError(updateError?.message || 'No se pudo actualizar el informe.');
+      setSavingReportId(null);
+      return;
+    }
+
+    setReports((current) => current.map((item) => (
+      item.id === reportId
+        ? { ...item, operational_comment: data.operational_comment }
+        : item
+    )));
+    setSavingReportId(null);
+    setEditingReportId(null);
+    setEditingText('');
+    setNotice('Informe operativo actualizado.');
   };
 
   const handleSubmit = async (event) => {
@@ -333,6 +489,10 @@ const ProjectReports = () => {
     }
 
     setSubmitting(true);
+    setProcessingStartedAt(Date.now());
+    setProcessingElapsed(0);
+    setProcessingStep('Preparando carga del archivo...');
+    setProcessingInsight('Verificando formato y contexto del informe.');
     const safeName = sanitizeFileName(selectedFile.name || 'informe.pdf');
     const uniqueName = `${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}`;
     const projectFolder = toProjectFolderName(project);
@@ -342,6 +502,8 @@ const ProjectReports = () => {
     try {
       let usedBucket = 'project-reports';
       let usedPath = primaryPath;
+      setProcessingStep('Subiendo PDF al almacenamiento...');
+      setProcessingInsight('Asegurando disponibilidad del archivo para OCR.');
 
       const { error: primaryUploadError } = await supabase.storage
         .from('project-reports')
@@ -383,6 +545,8 @@ const ProjectReports = () => {
         throw new Error('Sesión inválida. Volvé a iniciar sesión.');
       }
 
+      setProcessingStep('OCR + analisis del agente en curso...');
+      startThinkingRotation();
       const response = await fetch('/api/reports-ocr-summary', {
         method: 'POST',
         headers: {
@@ -398,6 +562,7 @@ const ProjectReports = () => {
           fileSize: selectedFile.size,
         }),
       });
+      stopThinkingRotation();
 
       const payload = await safeJson(response);
       if (!response.ok) {
@@ -405,12 +570,18 @@ const ProjectReports = () => {
         throw new Error(payload?.error || payload?.detail || 'No se pudo procesar el PDF con OCR.');
       }
 
+      setProcessingStep('Guardando resultado y actualizando informes...');
+      setProcessingInsight('Cerrando proceso y refrescando panel.');
       setNotice('Informe procesado con OCR y analisis operativo experto. Se guardó correctamente.');
       closeModal();
       await fetchReports(project.id);
     } catch (submitError) {
+      stopThinkingRotation();
+      setProcessingStep('Proceso interrumpido.');
+      setProcessingInsight('Revisá el error y volvé a intentar.');
       setError(submitError?.message || 'No se pudo guardar el informe.');
     } finally {
+      stopThinkingRotation();
       setSubmitting(false);
     }
   };
@@ -483,11 +654,16 @@ const ProjectReports = () => {
             {reports.map((report) => {
               const metrics = normalizeMetrics(report.metrics_jsonb);
               const summary = getReadableAnalysis(report);
+              const isEditing = editingReportId === report.id;
               const normalizedMetricList = METRIC_CONFIG
                 .map((item) => ({ ...item, value: metrics[item.key] }))
                 .filter((item) => item.core || item.value !== null);
               const extraMetricList = Object.entries(report.metrics_jsonb || {})
-                .filter(([key, value]) => !METRIC_CONFIG_BY_KEY.has(key) && toNumberOrNull(value) !== null)
+                .filter(([key, value]) => (
+                  !METRIC_CONFIG_BY_KEY.has(key)
+                  && !NORMALIZED_METRIC_ALIASES.has(String(key).toLowerCase())
+                  && toNumberOrNull(value) !== null
+                ))
                 .map(([key, value]) => ({
                   key,
                   label: humanizeMetricKey(key),
@@ -498,15 +674,14 @@ const ProjectReports = () => {
 
               return (
                 <article key={report.id} className="rounded-2xl border border-neutral-200 p-4 md:p-5">
-                  <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-[minmax(360px,38%)_1fr] gap-4">
                     <div className="rounded-xl border border-neutral-200 bg-neutral-50 overflow-hidden">
                       <div
-                        className="relative h-[240px] md:h-[300px] overflow-auto [&::-webkit-scrollbar]:hidden"
-                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                        className="relative h-[340px] md:h-[620px] overflow-hidden"
                       >
                       <iframe
                         title={`preview-${report.id}`}
-                        src={`${report.pdf_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                        src={`${report.pdf_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
                         loading="lazy"
                         className="w-full h-full"
                       />
@@ -545,8 +720,54 @@ const ProjectReports = () => {
                       </div>
 
                       <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                        <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Informe operativo experto</p>
-                        <p className="text-sm text-neutral-700 mt-1 whitespace-pre-line leading-relaxed">{summary}</p>
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Informe operativo experto</p>
+                          {canUploadReports && !isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => openEditReport(report)}
+                              className="inline-flex items-center justify-center rounded-md border border-neutral-200 bg-white p-1.5 text-neutral-600 hover:bg-neutral-100"
+                              aria-label="Editar informe operativo"
+                            >
+                              <Pencil size={13} />
+                            </button>
+                          )}
+                        </div>
+
+                        {isEditing ? (
+                          <div className="mt-2 space-y-2">
+                            <textarea
+                              value={editingText}
+                              onChange={(event) => setEditingText(event.target.value)}
+                              rows={12}
+                              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800 focus:outline-none focus:border-black"
+                            />
+                            {editError && (
+                              <p className="text-xs text-red-600">{editError}</p>
+                            )}
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={cancelEditReport}
+                                disabled={savingReportId === report.id}
+                                className="rounded-lg border border-neutral-300 px-3 py-1.5 text-xs font-bold text-neutral-700 hover:bg-neutral-100"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => saveEditedReport(report.id)}
+                                disabled={savingReportId === report.id || !editingText.trim()}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-black px-3 py-1.5 text-xs font-bold text-white hover:bg-neutral-800 disabled:opacity-60"
+                              >
+                                {savingReportId === report.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                                {savingReportId === report.id ? 'Guardando...' : 'Guardar'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-neutral-700 mt-1 whitespace-pre-line leading-relaxed">{summary}</p>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
@@ -566,130 +787,158 @@ const ProjectReports = () => {
         )}
       </div>
 
-      <AnimatePresence>
-        {isModalOpen && canUploadReports && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 font-product">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={closeModal}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 16 }}
-              className="relative w-full max-w-xl rounded-[32px] bg-white border border-neutral-100 shadow-2xl p-6 md:p-8"
-            >
-              <div className="flex items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-2">
-                  <UploadCloud size={18} className="text-skyblue" />
-                  <h2 className="text-xl font-black">Nuevo informe</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
-                  aria-label="Cerrar"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Mes del informe</label>
-                  <input
-                    type="month"
-                    value={reportMonth}
-                    onChange={(event) => setReportMonth(event.target.value)}
-                    className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-black"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Archivo PDF</label>
-                  <input
-                    id="report-pdf-input"
-                    type="file"
-                    accept="application/pdf"
-                    onChange={handleFileChange}
-                    className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm file:mr-2 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-2 file:py-1 file:text-xs file:font-bold"
-                    required
-                  />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 px-5 py-3 text-sm font-bold text-neutral-700 hover:bg-neutral-50 transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting || !project?.id}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-neutral-800 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <UploadCloud size={16} />
-                    {submitting ? 'Procesando OCR...' : 'Subir y procesar'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {previewReport && (
-          <div className="fixed inset-0 z-[140] flex items-center justify-center p-3 md:p-4 font-product">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={closePreview}
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.98, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.98, opacity: 0, y: 10 }}
-              className="relative w-full max-w-6xl rounded-[24px] bg-white border border-neutral-100 shadow-2xl p-3 md:p-4"
-            >
-              <div className="flex items-center justify-between gap-3 mb-3">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Previsualizacion</p>
-                  <h3 className="text-sm md:text-base font-black">{reportMonthLabel(previewReport)}</h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={closePreview}
-                  className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
-                  aria-label="Cerrar previsualizacion"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              <div
-                className="h-[82vh] overflow-auto rounded-xl border border-neutral-200 bg-neutral-50 [&::-webkit-scrollbar]:hidden"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-              >
-                <iframe
-                  title={`preview-large-${previewReport.id}`}
-                  src={`${previewReport.pdf_url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-                  className="w-full h-full min-h-[1000px]"
+      {typeof document !== 'undefined' && createPortal(
+        <>
+          <AnimatePresence>
+            {isModalOpen && canUploadReports && (
+              <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 font-product">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => {
+                    if (!submitting) closeModal();
+                  }}
+                  className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 />
+
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0, y: 16 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.95, opacity: 0, y: 16 }}
+                  className="relative w-full max-w-xl rounded-[32px] bg-white border border-neutral-100 shadow-2xl p-6 md:p-8"
+                >
+                  <div className="flex items-center justify-between gap-4 mb-6">
+                    <div className="flex items-center gap-2">
+                      <UploadCloud size={18} className="text-skyblue" />
+                      <h2 className="text-xl font-black">Nuevo informe</h2>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      disabled={submitting}
+                      className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
+                      aria-label="Cerrar"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Mes del informe</label>
+                      <input
+                        type="month"
+                        value={reportMonth}
+                        onChange={(event) => setReportMonth(event.target.value)}
+                        className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-black"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Archivo PDF</label>
+                      <input
+                        id="report-pdf-input"
+                        type="file"
+                        accept="application/pdf"
+                        onChange={handleFileChange}
+                        disabled={submitting}
+                        className="mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm file:mr-2 file:rounded-lg file:border-0 file:bg-neutral-100 file:px-2 file:py-1 file:text-xs file:font-bold"
+                        required
+                      />
+                    </div>
+
+                    {submitting && (
+                      <div className="rounded-xl border border-sky-200 bg-sky-50 p-3">
+                        <p className="text-[10px] uppercase tracking-widest text-sky-700 font-black">Procesamiento en vivo</p>
+                        <p className="mt-1 text-sm font-bold text-sky-900">
+                          {processingStep || 'Iniciando procesamiento...'}
+                        </p>
+                        <p className="mt-1 text-xs text-sky-800">
+                          {processingInsight || 'Preparando diagnostico operativo...'}
+                        </p>
+                        <p className="mt-2 text-[11px] text-sky-700">
+                          Tiempo transcurrido: {formatElapsedSeconds(processingElapsed)}
+                        </p>
+                        <div className="mt-2 h-1.5 rounded-full bg-sky-100">
+                          <div className="h-full rounded-full bg-sky-500/70 animate-pulse" />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={closeModal}
+                        disabled={submitting}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 px-5 py-3 text-sm font-bold text-neutral-700 hover:bg-neutral-50 transition-all"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={submitting || !project?.id}
+                        className="inline-flex items-center gap-2 rounded-2xl bg-black px-5 py-3 text-sm font-bold text-white hover:bg-neutral-800 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <UploadCloud size={16} />
+                        {submitting ? 'Procesando...' : 'Subir y procesar'}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
               </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {previewReport && (
+              <div className="fixed inset-0 z-[140] flex items-center justify-center p-3 md:p-4 font-product">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={closePreview}
+                  className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                />
+                <motion.div
+                  initial={{ scale: 0.98, opacity: 0, y: 10 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.98, opacity: 0, y: 10 }}
+                  className="relative w-full max-w-6xl rounded-[24px] bg-white border border-neutral-100 shadow-2xl p-3 md:p-4"
+                >
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Previsualizacion</p>
+                      <h3 className="text-sm md:text-base font-black">{reportMonthLabel(previewReport)}</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closePreview}
+                      className="p-2 rounded-full hover:bg-neutral-100 transition-colors"
+                      aria-label="Cerrar previsualizacion"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div
+                    className="h-[82vh] overflow-auto rounded-xl border border-neutral-200 bg-neutral-50 [&::-webkit-scrollbar]:hidden"
+                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                  >
+                    <iframe
+                      title={`preview-large-${previewReport.id}`}
+                      src={`${previewReport.pdf_url}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
+                      className="w-full h-full min-h-[1000px]"
+                    />
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+        </>,
+        document.body
+      )}
     </div>
   );
 };
