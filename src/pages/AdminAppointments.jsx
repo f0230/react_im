@@ -20,6 +20,20 @@ const AdminAppointments = () => {
     const [modalPosition, setModalPosition] = useState(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+    const normalizeStatus = (status) => {
+        const value = String(status || '').trim().toLowerCase();
+        if (value === 'canceled') return 'cancelled';
+        return value;
+    };
+
+    const isUpcomingActiveAppointment = (apt) => {
+        if (!apt?.scheduled_at) return false;
+        const aptDate = new Date(apt.scheduled_at);
+        if (Number.isNaN(aptDate.getTime())) return false;
+        if (aptDate <= new Date()) return false;
+        return normalizeStatus(apt.status) !== 'cancelled';
+    };
+
     const getAppointmentType = (apt) => {
         const metadata = apt?.cal_metadata?.metadata || {};
         const participantType = metadata.participantType;
@@ -31,21 +45,14 @@ const AdminAppointments = () => {
         return 'team';
     };
 
+    const upcomingAppointments = useMemo(() => (
+        appointments.filter((apt) => isUpcomingActiveAppointment(apt))
+    ), [appointments]);
+
     const listAppointments = useMemo(() => {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        return appointments.filter((apt) => {
-            if (!apt?.scheduled_at) return false;
-            const aptDate = new Date(apt.scheduled_at);
-            const isFutureOrToday = aptDate >= today;
-            if (!isFutureOrToday) return false;
-            if (apt.status === 'cancelled') return false;
-
-            if (listTypeFilter === 'all') return true;
-            return getAppointmentType(apt) === listTypeFilter;
-        });
-    }, [appointments, listTypeFilter]);
+        if (listTypeFilter === 'all') return upcomingAppointments;
+        return upcomingAppointments.filter((apt) => getAppointmentType(apt) === listTypeFilter);
+    }, [upcomingAppointments, listTypeFilter]);
 
     const handleAppointmentClick = (apt, e) => {
         // Capture click coordinates
@@ -101,12 +108,17 @@ const AdminAppointments = () => {
     }, []);
 
     const getStatusColor = (status) => {
-        switch (status) {
+        switch (normalizeStatus(status)) {
             case 'scheduled': return 'bg-green-100 text-green-800 border-green-200';
             case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
             case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
             default: return 'bg-gray-100 text-gray-800 border-gray-200';
         }
+    };
+
+    const getStatusLabel = (status) => {
+        const normalizedStatus = normalizeStatus(status);
+        return t(`admin.appointments.status.${normalizedStatus}`) || normalizedStatus;
     };
 
     return (
@@ -283,7 +295,7 @@ const AdminAppointments = () => {
                                                 </td>
                                                 <td className="p-5">
                                                     <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(apt.status)} capitalize`}>
-                                                        {t(`admin.appointments.status.${apt.status}`)}
+                                                        {getStatusLabel(apt.status)}
                                                     </span>
                                                 </td>
                                                 <td className="p-5">
@@ -314,7 +326,7 @@ const AdminAppointments = () => {
                     ) : (
                         <AdminCalendar
                             key="calendar"
-                            appointments={appointments}
+                            appointments={upcomingAppointments}
                             onSelectAppointment={(apt, e) => handleAppointmentClick(apt, e)}
                         />
                     )}

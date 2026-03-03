@@ -19,10 +19,10 @@ const ALLOWED_ACTIONS = new Set([
 
 const normalizeBookingStatus = (status) => {
     if (!status) return 'scheduled';
-    const value = String(status).toLowerCase();
-    if (value === 'cancelled') return 'cancelled';
+    const value = String(status).trim().toLowerCase();
+    if (value === 'cancelled' || value === 'canceled' || value === 'rejected') return 'cancelled';
     if (value === 'completed' || value === 'past') return 'completed';
-    if (value === 'accepted' || value === 'confirmed' || value === 'upcoming' || value === 'recurring' || value === 'unconfirmed') {
+    if (value === 'accepted' || value === 'pending' || value === 'confirmed' || value === 'upcoming' || value === 'recurring' || value === 'unconfirmed') {
         return 'scheduled';
     }
     return 'scheduled';
@@ -541,9 +541,16 @@ const handleBookings = async (req, res) => {
     }
 
     try {
-        const { status, eventTypeId, afterStart, beforeEnd, source } = req.query || {};
-        const requestedSource = String(source || 'db').toLowerCase();
-        const queryBase = { eventTypeId, afterStart, beforeEnd };
+        const query = req.query || {};
+        const statusFilter = Array.isArray(query.status) ? query.status[0] : query.status;
+        const eventTypeIdFilter = Array.isArray(query.eventTypeId) ? query.eventTypeId[0] : query.eventTypeId;
+        const afterStartFilter = Array.isArray(query.afterStart) ? query.afterStart[0] : query.afterStart;
+        const beforeEndFilter = Array.isArray(query.beforeEnd) ? query.beforeEnd[0] : query.beforeEnd;
+        const sourceFilter = Array.isArray(query.source) ? query.source[0] : query.source;
+        const syncFilter = Array.isArray(query.sync) ? query.sync[0] : query.sync;
+
+        const requestedSource = String(sourceFilter || 'db').toLowerCase();
+        const syncMode = String(syncFilter || '').toLowerCase();
         const supabase = getSupabaseAdmin();
 
         if (requestedSource !== 'cal') {
@@ -560,17 +567,17 @@ const handleBookings = async (req, res) => {
                 `)
                 .order('scheduled_at', { ascending: true });
 
-            if (status) {
-                dbQuery = dbQuery.eq('status', status);
+            if (statusFilter) {
+                dbQuery = dbQuery.eq('status', statusFilter);
             }
-            if (eventTypeId) {
-                dbQuery = dbQuery.eq('event_type_id', String(eventTypeId));
+            if (eventTypeIdFilter) {
+                dbQuery = dbQuery.eq('event_type_id', String(eventTypeIdFilter));
             }
-            if (afterStart) {
-                dbQuery = dbQuery.gte('scheduled_at', afterStart);
+            if (afterStartFilter) {
+                dbQuery = dbQuery.gte('scheduled_at', afterStartFilter);
             }
-            if (beforeEnd) {
-                dbQuery = dbQuery.lte('scheduled_at', beforeEnd);
+            if (beforeEndFilter) {
+                dbQuery = dbQuery.lte('scheduled_at', beforeEndFilter);
             }
 
             const { data: dbAppointments, error: dbError } = await dbQuery;
@@ -586,6 +593,17 @@ const handleBookings = async (req, res) => {
             return res.status(500).json({ error: 'Server configuration error' });
         }
 
+        // For direct Cal.com reads, default to upcoming accepted bookings
+        // to match dashboard "next appointments" semantics.
+        const isDefaultUpcomingQuery = !statusFilter && !afterStartFilter && !beforeEndFilter;
+        const calStatus = statusFilter || (isDefaultUpcomingQuery ? 'accepted' : undefined);
+        const calAfterStart = afterStartFilter || (isDefaultUpcomingQuery ? new Date().toISOString() : undefined);
+        const queryBase = {
+            eventTypeId: eventTypeIdFilter,
+            afterStart: calAfterStart,
+            beforeEnd: beforeEndFilter,
+        };
+
         const safeFetchBookingsByStatus = async (targetStatus) => {
             try {
                 return await fetchAllCalBookings({ ...queryBase, status: targetStatus });
@@ -596,8 +614,8 @@ const handleBookings = async (req, res) => {
         };
 
         let bookings = [];
-        if (status) {
-            bookings = await fetchAllCalBookings({ ...queryBase, status });
+        if (calStatus) {
+            bookings = await fetchAllCalBookings({ ...queryBase, status: calStatus });
         } else {
             const [defaultBookings, cancelledBookings, pastBookings] = await Promise.all([
                 fetchAllCalBookings(queryBase),
@@ -650,9 +668,15 @@ const handleBookings = async (req, res) => {
             // Sync: delete ghost appointments that no longer exist in Cal.com
             const calIds = upsertData.map(r => r.cal_booking_id);
             if (calIds.length > 0) {
-                // We only do this if we fetched without specific status or filters
-                // so we don't accidentally delete everything when just asking for "cancelled"
-                if (!status && !eventTypeId && !afterStart && !beforeEnd) {
+                // Ghost cleanup is explicit to avoid accidental deletes from scoped reads.
+                // Use ?sync=all only when you really want full DB<->Cal reconciliation.
+                const shouldDeleteGhosts = syncMode === 'all'
+                    && !statusFilter
+                    && !eventTypeIdFilter
+                    && !afterStartFilter
+                    && !beforeEndFilter;
+
+                if (shouldDeleteGhosts) {
                     const { error: deleteError } = await supabase
                         .from('appointments')
                         .delete()
