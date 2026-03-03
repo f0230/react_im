@@ -38,79 +38,83 @@ const DashboardHome = () => {
         const run = async () => {
             if (!user?.id) return;
 
-            const getCount = async (countQuery) => {
-                const { count, error } = await countQuery;
-                if (error) return null;
-                return count ?? 0;
-            };
-            const nowIso = new Date().toISOString();
-            const weekEnd = new Date();
-            weekEnd.setDate(weekEnd.getDate() + 7);
-            const weekEndIso = weekEnd.toISOString();
+            try {
+                const getCount = async (countQuery) => {
+                    const { count, error } = await countQuery;
+                    if (error) return null;
+                    return count ?? 0;
+                };
+                const nowIso = new Date().toISOString();
+                const weekEnd = new Date();
+                weekEnd.setDate(weekEnd.getDate() + 7);
+                const weekEndIso = weekEnd.toISOString();
 
-            if (role === 'client') {
-                const [projectCount, upcomingBookings] = await Promise.all([
-                    getCount(
-                        supabase
-                            .from('projects')
-                            .select('id', { count: 'exact', head: true })
-                    ),
-                    fetchCalBookings({
-                        attendeeEmail: user?.email || '',
-                    }),
+                if (role === 'client') {
+                    const [projectCount, upcomingBookings] = await Promise.all([
+                        getCount(
+                            supabase
+                                .from('projects')
+                                .select('id', { count: 'exact', head: true })
+                        ),
+                        fetchCalBookings({
+                            attendeeEmail: user?.email || '',
+                        }),
+                    ]);
+                    const appointmentCount = upcomingBookings.length;
+                    const nextAppointmentAt = upcomingBookings[0]?.scheduled_at || null;
+
+                    setStats({
+                        projectCount: projectCount ?? 0,
+                        appointmentCount: appointmentCount ?? 0,
+                        upcomingWeekAppointments: 0,
+                        clientCount: null,
+                        nextAppointmentAt,
+                    });
+                    return;
+                }
+
+                if (role === 'worker') {
+                    const { data: assignmentRows } = await supabase
+                        .from('project_assignments')
+                        .select('project_id')
+                        .eq('worker_id', user.id);
+
+                    const assignedProjectIds = Array.from(
+                        new Set((assignmentRows || []).map((row) => row.project_id).filter(Boolean))
+                    );
+
+                    setStats({
+                        projectCount: assignedProjectIds.length,
+                        appointmentCount: 0,
+                        upcomingWeekAppointments: 0,
+                        clientCount: null,
+                        nextAppointmentAt: null,
+                    });
+                    return;
+                }
+
+                const [projectCount, upcomingBookings, clientCount] = await Promise.all([
+                    getCount(supabase.from('projects').select('id', { count: 'exact', head: true })),
+                    fetchCalBookings(),
+                    getCount(supabase.from('clients').select('id', { count: 'exact', head: true })),
                 ]);
                 const appointmentCount = upcomingBookings.length;
-                const nextAppointmentAt = upcomingBookings[0]?.scheduled_at || null;
+                const upcomingWeekAppointments = upcomingBookings.filter((booking) => {
+                    const ts = Date.parse(booking?.scheduled_at || '');
+                    if (Number.isNaN(ts)) return false;
+                    return ts >= Date.parse(nowIso) && ts <= Date.parse(weekEndIso);
+                }).length;
 
                 setStats({
                     projectCount: projectCount ?? 0,
                     appointmentCount: appointmentCount ?? 0,
-                    upcomingWeekAppointments: 0,
-                    clientCount: null,
-                    nextAppointmentAt,
-                });
-                return;
-            }
-
-            if (role === 'worker') {
-                const { data: assignmentRows } = await supabase
-                    .from('project_assignments')
-                    .select('project_id')
-                    .eq('worker_id', user.id);
-
-                const assignedProjectIds = Array.from(
-                    new Set((assignmentRows || []).map((row) => row.project_id).filter(Boolean))
-                );
-
-                setStats({
-                    projectCount: assignedProjectIds.length,
-                    appointmentCount: 0,
-                    upcomingWeekAppointments: 0,
-                    clientCount: null,
+                    upcomingWeekAppointments: upcomingWeekAppointments ?? 0,
+                    clientCount,
                     nextAppointmentAt: null,
                 });
-                return;
+            } catch (error) {
+                console.error('Error loading dashboard stats:', error);
             }
-
-            const [projectCount, upcomingBookings, clientCount] = await Promise.all([
-                getCount(supabase.from('projects').select('id', { count: 'exact', head: true })),
-                fetchCalBookings(),
-                getCount(supabase.from('clients').select('id', { count: 'exact', head: true })),
-            ]);
-            const appointmentCount = upcomingBookings.length;
-            const upcomingWeekAppointments = upcomingBookings.filter((booking) => {
-                const ts = Date.parse(booking?.scheduled_at || '');
-                if (Number.isNaN(ts)) return false;
-                return ts >= Date.parse(nowIso) && ts <= Date.parse(weekEndIso);
-            }).length;
-
-            setStats({
-                projectCount: projectCount ?? 0,
-                appointmentCount: appointmentCount ?? 0,
-                upcomingWeekAppointments: upcomingWeekAppointments ?? 0,
-                clientCount,
-                nextAppointmentAt: null,
-            });
         };
 
         run();
