@@ -197,6 +197,41 @@ const getReadableAnalysis = (report) => {
   return text || 'Sin resumen disponible.';
 };
 
+const parseOperationalSummary = (text) => {
+  const normalized = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
+
+  const withSectionBreaks = normalized
+    .replace(/\s+(?=\d+\.\s*[^:\n]{2,80}:)/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  const sectionRegex = /(?:^|\n)(\d+)\.\s*([^:\n]{2,80}):\s*([\s\S]*?)(?=(?:\n\d+\.\s*[^:\n]{2,80}:)|$)/g;
+  const sections = [];
+  let match = sectionRegex.exec(withSectionBreaks);
+  while (match) {
+    sections.push({
+      index: match[1],
+      title: match[2].trim(),
+      content: match[3].replace(/\s+/g, ' ').trim(),
+    });
+    match = sectionRegex.exec(withSectionBreaks);
+  }
+
+  if (sections.length >= 2) {
+    return { sections, paragraphs: [] };
+  }
+
+  const paragraphs = withSectionBreaks
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  return { sections: [], paragraphs };
+};
+
 const reportMonthLabel = (report) => {
   const value = report?.period_start || report?.created_at;
   if (!value) return 'Sin fecha';
@@ -245,60 +280,32 @@ const formatElapsedSeconds = (seconds) => {
   return `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
 };
 
-const ReportViewerNavbar = ({
-  title,
-  onExpand,
-  onClose,
-  downloadUrl,
-}) => (
-  <div className="flex items-center justify-between gap-2 bg-black px-3 py-2.5 md:px-4">
-    <div className="flex min-w-0 items-center gap-2.5">
+const ReportViewerNavbar = ({ title, onExpand }) => (
+  <div className="flex items-center justify-between gap-2 bg-black px-3 py-2 sm:px-4 sm:py-2.5">
+    <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
       <OptimizedImage
         src={logo}
         alt="DTE"
         width={70}
         height={24}
-        className="h-3 w-auto shrink-0"
+        className="h-3.5 w-auto shrink-0 sm:h-4"
       />
       <div className="min-w-0">
-        <p className="text-[9px] uppercase tracking-[0.22em] text-white/45 font-black leading-none">Reportes</p>
-        <p className="truncate text-[11px] md:text-xs font-semibold text-white leading-tight">{title}</p>
+        <p className="text-[8px] uppercase tracking-[0.2em] text-white/45 font-black leading-none sm:text-[9px]">Reportes</p>
+        <p className="truncate text-[11px] font-semibold text-white leading-tight sm:text-xs">{title}</p>
       </div>
     </div>
 
-    <div className="flex items-center gap-1.5">
-      {downloadUrl && (
-        <a
-          href={downloadUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/20 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-white/10 md:text-xs"
-        >
-          <Download size={12} />
-          Descargar
-        </a>
-      )}
-      {onExpand && (
-        <button
-          type="button"
-          onClick={onExpand}
-          className="inline-flex items-center justify-center gap-1 rounded-lg border border-white/20 bg-white/5 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-white/10 md:text-xs"
-        >
-          <Expand size={12} />
-          Ampliar
-        </button>
-      )}
-      {onClose && (
-        <button
-          type="button"
-          onClick={onClose}
-          className="inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/5 p-1.5 text-white hover:bg-white/10"
-          aria-label="Cerrar previsualizacion"
-        >
-          <X size={14} />
-        </button>
-      )}
-    </div>
+    {onExpand && (
+      <button
+        type="button"
+        onClick={onExpand}
+        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/10 text-white transition-colors hover:bg-white/20 sm:h-9 sm:w-9"
+        aria-label="Ampliar reporte"
+      >
+        <Expand size={14} />
+      </button>
+    )}
   </div>
 );
 
@@ -695,9 +702,7 @@ const ProjectReports = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-[32px] border border-neutral-100 shadow-sm p-6 md:p-8">
         <div className="mb-5 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-black">Informes cargados</h2>
           {canUploadReports && (
             <button
               type="button"
@@ -724,6 +729,7 @@ const ProjectReports = () => {
             {reports.map((report) => {
               const metrics = normalizeMetrics(report.metrics_jsonb);
               const summary = getReadableAnalysis(report);
+              const { sections: summarySections, paragraphs: summaryParagraphs } = parseOperationalSummary(summary);
               const isEditing = editingReportId === report.id;
               const normalizedMetricList = METRIC_CONFIG
                 .map((item) => ({ ...item, value: metrics[item.key] }))
@@ -750,7 +756,7 @@ const ProjectReports = () => {
                         title={reportMonthLabel(report)}
                         onExpand={() => openPreview(report)}
                       />
-                      <div className="relative min-h-[340px] md:min-h-[620px] flex-1 overflow-hidden">
+                      <div className="relative min-h-[280px] flex-1 overflow-hidden sm:min-h-[340px] md:min-h-[620px]">
                         <iframe
                           title={`preview-${report.id}`}
                           src={`${report.pdf_url}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
@@ -828,7 +834,26 @@ const ProjectReports = () => {
                             </div>
                           </div>
                         ) : (
-                          <p className="text-sm text-neutral-700 mt-2 whitespace-pre-line leading-relaxed">{summary}</p>
+                          <div className="mt-2 rounded-lg border border-neutral-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
+                            {summarySections.length > 0 ? (
+                              <ol className="space-y-2.5 sm:space-y-3">
+                                {summarySections.map((section) => (
+                                  <li key={`${report.id}-${section.index}-${section.title}`} className="text-[13px] leading-6 text-neutral-700 sm:text-sm sm:leading-7">
+                                    <span className="font-black text-neutral-900">{section.index}. {section.title}:</span>{' '}
+                                    <span>{section.content}</span>
+                                  </li>
+                                ))}
+                              </ol>
+                            ) : (
+                              <div className="space-y-2.5 text-[13px] leading-6 text-neutral-700 sm:text-sm sm:leading-7">
+                                {summaryParagraphs.map((paragraph, index) => (
+                                  <p key={`${report.id}-summary-${index}`} className="whitespace-pre-line">
+                                    {paragraph}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
 
@@ -847,7 +872,6 @@ const ProjectReports = () => {
             })}
           </div>
         )}
-      </div>
 
       {typeof document !== 'undefined' && createPortal(
         <>
@@ -955,7 +979,7 @@ const ProjectReports = () => {
 
           <AnimatePresence>
             {previewReport && (
-              <div className="fixed inset-0 z-[140] flex items-center justify-center p-3 md:p-4 font-product">
+              <div className="fixed inset-0 z-[140] flex items-center justify-center p-2 sm:p-3 md:p-4 font-product">
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -967,16 +991,14 @@ const ProjectReports = () => {
                   initial={{ scale: 0.98, opacity: 0, y: 10 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
                   exit={{ scale: 0.98, opacity: 0, y: 10 }}
-                  className="relative w-full max-w-6xl overflow-hidden rounded-[24px] bg-white border border-neutral-100 shadow-2xl"
+                  className="relative max-h-[96vh] w-full max-w-6xl overflow-hidden rounded-2xl border border-neutral-100 bg-white shadow-2xl sm:rounded-[24px]"
                 >
                   <ReportViewerNavbar
                     title={reportMonthLabel(previewReport)}
-                    onClose={closePreview}
-                    downloadUrl={previewReport.pdf_url}
                   />
 
                   <div
-                    className="h-[82vh] overflow-hidden border-t border-neutral-200 bg-neutral-50"
+                    className="h-[74vh] overflow-hidden border-t border-neutral-200 bg-neutral-50 sm:h-[82vh]"
                   >
                     <iframe
                       title={`preview-large-${previewReport.id}`}
