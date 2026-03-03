@@ -6,6 +6,7 @@ import { createHmac } from 'node:crypto';
 const CAL_API_URL = process.env.CAL_COM_API_URL || 'https://api.cal.com/v2';
 const API_KEY = process.env.CAL_COM_API_KEY || process.env.VITE_CAL_COM_API_KEY;
 const EVENT_TYPE_ID = process.env.CAL_COM_EVENT_TYPE_ID || process.env.VITE_CAL_COM_EVENT_TYPE_ID;
+const CAL_FALLBACK_PHONE = process.env.CAL_COM_FALLBACK_PHONE || '+5491155667788';
 
 const CAL_API_VERSION = '2024-08-13';
 const ALLOWED_ACTIONS = new Set([
@@ -32,6 +33,15 @@ const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value |
 const normalizeEmail = (value) => {
     const trimmed = String(value || '').trim().toLowerCase();
     return isValidEmail(trimmed) ? trimmed : '';
+};
+
+const getCalErrorMessage = (payload) => {
+    if (!payload) return '';
+    const direct = payload?.error?.message || payload?.message;
+    if (typeof direct === 'string' && direct.trim()) return direct;
+    const nested = payload?.error?.details?.message || payload?.error?.details?.error;
+    if (typeof nested === 'string' && nested.trim()) return nested;
+    return '';
 };
 
 const normalizeUuid = (value) => {
@@ -391,9 +401,14 @@ const handleCreateBooking = async (req, res) => {
 
         let calData = await calResponse.json();
 
-        if (!calResponse.ok && calData?.error?.message?.includes('invalid_number')) {
-            console.warn('Cal.com rejected phone number, retrying with dummy phone...');
-            bookingPayload.attendee.phoneNumber = '+5491155667788';
+        const calErrorMessage = getCalErrorMessage(calData).toLowerCase();
+        const needsPhoneRetry = calErrorMessage.includes('invalid_number')
+            || calErrorMessage.includes('missing attendee phone number')
+            || calErrorMessage.includes('required by the event type');
+
+        if (!calResponse.ok && needsPhoneRetry) {
+            console.warn('Cal.com rejected/required attendee phone, retrying with fallback phone...');
+            bookingPayload.attendee.phoneNumber = CAL_FALLBACK_PHONE;
 
             calResponse = await fetch(`${CAL_API_URL}/bookings`, {
                 method: 'POST',
