@@ -177,6 +177,11 @@ const handleAvailability = async (req, res) => {
         }
 
         const data = await response.json();
+
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
         return res.status(200).json(data);
     } catch (error) {
         console.error('Error in cal-availability:', error);
@@ -435,7 +440,9 @@ const handleBookings = async (req, res) => {
                 .upsert(upsertData, { onConflict: 'cal_booking_id' });
 
             if (upsertError) {
-                console.error('Supabase Batch Upsert Error:', upsertError);
+                if (upsertError.code !== '23503') {
+                    console.error('Supabase Batch Upsert Error:', upsertError);
+                }
                 // Fallback to individual upserts if bulk fails (e.g., due to missing user/client/project)
                 for (const row of upsertData) {
                     const { error: singleError } = await supabase
@@ -450,6 +457,8 @@ const handleBookings = async (req, res) => {
                         if (fallbackError) {
                             console.error('Supabase Fallback Upsert Error:', fallbackError);
                         }
+                    } else if (singleError) {
+                        console.error('Supabase Single Upsert Error:', singleError);
                     }
                 }
             }
