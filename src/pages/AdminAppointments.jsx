@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Plus } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
+import { fetchCalBookings } from '@/lib/calBookings';
 import toast from 'react-hot-toast';
 import AdminCalendar from '@/components/AdminCalendar';
 import AppointmentActionModal from '@/components/AppointmentActionModal';
@@ -68,24 +68,8 @@ const AdminAppointments = () => {
     const fetchAppointments = async () => {
         setLoading(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const accessToken = session?.access_token;
-            if (!accessToken) {
-                throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
-            }
-
-            const response = await fetch('/api/cal/bookings?source=db', {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            });
-
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok) {
-                throw new Error(payload?.error || 'Error al cargar las citas');
-            }
-
-            setAppointments(payload?.data || []);
+            const bookings = await fetchCalBookings();
+            setAppointments(bookings);
         } catch (err) {
             console.error('Error fetching appointments:', err);
             setError(err.message);

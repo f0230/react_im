@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { fetchCalBookings } from '@/lib/calBookings';
 
 const AuthContext = createContext({});
 
@@ -138,10 +139,15 @@ export const AuthProvider = ({ children }) => {
                         .select('id', { count: 'exact', head: true })
                         .eq('user_id', currentUser.id);
 
-                    const { count: appointmentCount } = await supabase
-                        .from('appointments')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('user_id', currentUser.id);
+                    let appointmentCount = 0;
+                    try {
+                        const bookings = await fetchCalBookings({
+                            attendeeEmail: currentUser.email || '',
+                        });
+                        appointmentCount = bookings.length;
+                    } catch (bookingError) {
+                        console.warn('Unable to load Cal.com bookings for onboarding:', bookingError?.message || bookingError);
+                    }
 
                     if ((projectCount || 0) === 0 && (appointmentCount || 0) === 0) {
                         setOnboardingStatus('new');

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Calendar, Link as LinkIcon, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { fetchCalBookings } from '@/lib/calBookings';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
@@ -20,14 +20,9 @@ const ClientAppointments = () => {
             if (!user?.id) return;
 
             try {
-                const { data, error: dbError } = await supabase
-                    .from('appointments')
-                    .select('*, projects(name)')
-                    .eq('user_id', user.id)
-                    .eq('status', 'scheduled')
-                    .order('scheduled_at', { ascending: true });
-
-                if (dbError) throw dbError;
+                const data = await fetchCalBookings({
+                    attendeeEmail: user?.email || '',
+                });
                 setAppointments(data || []);
             } catch (err) {
                 console.error('Error fetching appointments:', err);

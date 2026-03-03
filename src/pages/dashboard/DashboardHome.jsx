@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { fetchCalBookings } from '@/lib/calBookings';
 import { useTranslation } from "react-i18next";
 import heroBgMobile from '../../assets/PORTADA_1_MOVIL.webp';
 import heroBgDesktop from '../../assets/PORTADA_1.webp';
@@ -48,36 +49,25 @@ const DashboardHome = () => {
             const weekEndIso = weekEnd.toISOString();
 
             if (role === 'client') {
-                const [projectCount, appointmentCount, nextAppointment] = await Promise.all([
+                const [projectCount, upcomingBookings] = await Promise.all([
                     getCount(
                         supabase
                             .from('projects')
                             .select('id', { count: 'exact', head: true })
                     ),
-                    getCount(
-                        supabase
-                            .from('appointments')
-                            .select('id', { count: 'exact', head: true })
-                            .eq('user_id', user.id)
-                            .eq('status', 'scheduled')
-                    ),
-                    supabase
-                        .from('appointments')
-                        .select('scheduled_at')
-                        .eq('user_id', user.id)
-                        .eq('status', 'scheduled')
-                        .gte('scheduled_at', nowIso)
-                        .order('scheduled_at', { ascending: true })
-                        .limit(1)
-                        .maybeSingle(),
+                    fetchCalBookings({
+                        attendeeEmail: user?.email || '',
+                    }),
                 ]);
+                const appointmentCount = upcomingBookings.length;
+                const nextAppointmentAt = upcomingBookings[0]?.scheduled_at || null;
 
                 setStats({
                     projectCount: projectCount ?? 0,
                     appointmentCount: appointmentCount ?? 0,
                     upcomingWeekAppointments: 0,
                     clientCount: null,
-                    nextAppointmentAt: nextAppointment.data?.scheduled_at || null,
+                    nextAppointmentAt,
                 });
                 return;
             }
@@ -102,24 +92,17 @@ const DashboardHome = () => {
                 return;
             }
 
-            const [projectCount, appointmentCount, upcomingWeekAppointments, clientCount] = await Promise.all([
+            const [projectCount, upcomingBookings, clientCount] = await Promise.all([
                 getCount(supabase.from('projects').select('id', { count: 'exact', head: true })),
-                getCount(
-                    supabase
-                        .from('appointments')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('status', 'scheduled')
-                ),
-                getCount(
-                    supabase
-                        .from('appointments')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('status', 'scheduled')
-                        .gte('scheduled_at', nowIso)
-                        .lte('scheduled_at', weekEndIso)
-                ),
+                fetchCalBookings(),
                 getCount(supabase.from('clients').select('id', { count: 'exact', head: true })),
             ]);
+            const appointmentCount = upcomingBookings.length;
+            const upcomingWeekAppointments = upcomingBookings.filter((booking) => {
+                const ts = Date.parse(booking?.scheduled_at || '');
+                if (Number.isNaN(ts)) return false;
+                return ts >= Date.parse(nowIso) && ts <= Date.parse(weekEndIso);
+            }).length;
 
             setStats({
                 projectCount: projectCount ?? 0,
