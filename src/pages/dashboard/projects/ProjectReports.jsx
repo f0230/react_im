@@ -624,7 +624,7 @@ const ProjectReports = () => {
 
       setProcessingStep('OCR + analisis del agente en curso...');
       startThinkingRotation();
-      const response = await fetch('/api/reports-ocr-summary', {
+      const response = await fetch('/api/reports-ingest', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -23,6 +23,7 @@ app.post('/api/slack-notify', slackNotifyHandler);
 app.post('/api/clawbot-team-chat', clawbotTeamChatHandler);
 app.get('/api/reports-ai-context', reportsAiContextHandler);
 app.post('/api/reports-ocr-summary', reportsOcrSummaryHandler);
+app.post('/api/reports-ingest', reportsOcrSummaryHandler);
 app.all('/api/meta/:action', metaHandler);
 app.all('/api/meta', metaHandler);
 

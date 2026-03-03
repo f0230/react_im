@@ -40,9 +40,9 @@ const formatDate = (value) => {
 };
 
 const glassGradientMapping = {
-    blue: 'linear-gradient(hsl(223, 90%, 50%), hsl(208, 90%, 50%))',
-    indigo: 'linear-gradient(hsl(3, 90%, 50%), hsl(348, 90%, 50%))',
-    green: 'linear-gradient(hsl(123, 90%, 40%), hsl(108, 90%, 40%))',
+    blue: 'linear-gradient(hsl(0, 0%, 90%), hsl(0, 0%, 80%))',
+    indigo: 'linear-gradient(hsl(0, 0%, 85%), hsl(0, 0%, 75%))',
+    green: 'linear-gradient(hsl(0, 0%, 92%), hsl(0, 0%, 82%))',
 };
 
 const GlassActionIcon = ({ icon: Icon, color }) => {
@@ -51,7 +51,7 @@ const GlassActionIcon = ({ icon: Icon, color }) => {
     return (
         <div className="relative h-[4.5em] w-[4.5em] [perspective:24em] [transform-style:preserve-3d]">
             <span
-                className="absolute left-0 top-0 block h-full w-full origin-[100%_100%] rounded-[1.25em] rotate-[9deg] transition-transform duration-300 ease-[cubic-bezier(0.83,0,0.17,1)] group-hover:[transform:rotate(2deg)_translate3d(0em,0em,0em)]"
+                className="absolute left-0 top-0 block h-full w-full origin-[100%_100%] rounded-[1.25em] rotate-[9deg] transition-transform duration-300 ease-[cubic-bezier(0.83,0,0.17,1)] group-hover:[transform:rotate(15deg)_translate3d(-0.2em,-0.2em,0.2em)]"
                 style={{
                     background,
                     boxShadow: '0.5em -0.5em 0.75em hsla(223, 10%, 10%, 0.15)',
@@ -64,7 +64,7 @@ const GlassActionIcon = ({ icon: Icon, color }) => {
                 }}
                 aria-hidden="true"
             >
-                <Icon size={24} className="text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.28)]" />
+                <Icon size={24} className="text-black/50 drop-shadow-[0_2px_6px_rgba(0,0,0,0.3)]" />
             </span>
         </div>
     );
@@ -768,7 +768,7 @@ const Projects = () => {
                                                     navigate(`/dashboard/${suffix}?projectId=${projectId}`);
                                                 }
                                             }}
-                                            className="group relative flex h-[208px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[10px] bg-[#EBEBEB] p-4 text-center md:h-auto md:min-w-[140px] md:flex-1"
+                                            className="group relative flex h-[208px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[10px] bg-white/40 backdrop-blur-md border border-white/60 p-4 text-center md:h-auto md:min-w-[140px] md:flex-1 hover:bg-white/50 hover:border-white/80 transition-all"
                                         >
                                             <div className="mb-4 transition-transform duration-300 group-hover:scale-105">
                                                 <GlassActionIcon icon={icon} color={color} />
