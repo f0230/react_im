@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Briefcase, Plus, Users, X, Pencil, Folder } from 'lucide-react';
+import { BarChart3, Briefcase, FileText, Folder, Pencil, Plus, Users, X } from 'lucide-react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
@@ -8,9 +8,6 @@ import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import CreateProjectModal from '@/components/CreateProjectModal';
 import EditProjectModal from '@/components/EditProjectModal';
-import facImage from '@/assets/Dahsboardx/fac.webp';
-import informImage from '@/assets/Dahsboardx/inform.webp';
-import servicesImage from '@/assets/Dahsboardx/ser.webp';
 
 const getProjectTitle = (project, fallback) => {
     return project?.title || project?.name || project?.project_name || fallback;
@@ -40,6 +37,37 @@ const formatDate = (value) => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
     return date.toLocaleDateString();
+};
+
+const glassGradientMapping = {
+    blue: 'linear-gradient(hsl(223, 90%, 50%), hsl(208, 90%, 50%))',
+    indigo: 'linear-gradient(hsl(3, 90%, 50%), hsl(348, 90%, 50%))',
+    green: 'linear-gradient(hsl(123, 90%, 40%), hsl(108, 90%, 40%))',
+};
+
+const GlassActionIcon = ({ icon: Icon, color }) => {
+    const background = glassGradientMapping[color] || color;
+
+    return (
+        <div className="relative h-[4.5em] w-[4.5em] [perspective:24em] [transform-style:preserve-3d]">
+            <span
+                className="absolute left-0 top-0 block h-full w-full origin-[100%_100%] rounded-[1.25em] rotate-[9deg] transition-transform duration-300 ease-[cubic-bezier(0.83,0,0.17,1)] group-hover:[transform:rotate(2deg)_translate3d(0em,0em,0em)]"
+                style={{
+                    background,
+                    boxShadow: '0.5em -0.5em 0.75em hsla(223, 10%, 10%, 0.15)',
+                }}
+            />
+            <span
+                className="absolute left-0 top-0 flex h-full w-full items-center justify-center rounded-[1.25em] bg-[hsla(0,0%,100%,0.15)] backdrop-blur-[0.75em] transition-transform duration-300 ease-[cubic-bezier(0.83,0,0.17,1)] group-hover:[transform:translate3d(0,0,2em)]"
+                style={{
+                    boxShadow: '0 0 0 0.1em hsla(0, 0%, 100%, 0.3) inset',
+                }}
+                aria-hidden="true"
+            >
+                <Icon size={24} className="text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.28)]" />
+            </span>
+        </div>
+    );
 };
 
 const Projects = () => {
@@ -466,14 +494,16 @@ const Projects = () => {
                 key: 'tasks',
                 label: t('dashboard.projects.detail.tabs.services'),
                 description: t('dashboard.projects.cards.services'),
-                image: servicesImage,
+                icon: Folder,
+                color: 'blue',
                 suffix: 'tasks',
             },
             {
                 key: 'reports',
                 label: t('dashboard.projects.detail.tabs.reports'),
                 description: t('dashboard.projects.cards.reports'),
-                image: informImage,
+                icon: BarChart3,
+                color: 'indigo',
                 suffix: 'reports',
             },
         ];
@@ -484,7 +514,8 @@ const Projects = () => {
                 key: 'invoices',
                 label: t('dashboard.projects.detail.tabs.invoices'),
                 description: t('dashboard.projects.cards.invoices'),
-                image: facImage,
+                icon: FileText,
+                color: 'green',
                 suffix: 'invoices',
             });
         }
@@ -550,7 +581,6 @@ const Projects = () => {
                         const projectKey = projectId ?? index;
                         const title = getProjectTitle(project, t('dashboard.projects.untitled'));
                         const assignedIds = assignments[project?.id] || [];
-                        const assignedCount = assignedIds.length;
                         const colorClass = gradientClasses[index % gradientClasses.length];
                         const projectAvatar = project?.profile_image_url || project?.avatar_url;
                         const projectTeam = assignedIds
@@ -560,10 +590,10 @@ const Projects = () => {
                         return (
                             <div
                                 key={projectKey}
-                                className="w-full rounded-[10px] bg-[#D9D9D9] overflow-hidden grid grid-cols-2 gap-[5px] p-2 md:flex md:flex-row min-h-[220px] md:gap-0 transition-shadow hover:shadow-lg"
+                                className="grid min-h-[220px] w-full grid-cols-2 gap-[5px] overflow-hidden rounded-[10px] border border-white/60 bg-[#D9D9D9] p-2 transition-shadow hover:shadow-lg md:flex md:flex-row md:gap-0"
                             >
-                                <div className="col-span-1 h-[208px] md:h-auto p-6 flex flex-col items-center justify-center text-center md:flex-1 md:items-stretch md:justify-center md:text-left md:p-8 relative md:border-r border-white/20">
-                                    <div className="flex flex-col items-center gap-4 md:flex-row md:gap-6">
+                                <div className="relative col-span-1 flex h-[208px] min-w-0 flex-col items-center justify-center overflow-hidden p-4 text-center md:h-auto md:flex-1 md:items-stretch md:justify-center md:border-r md:border-white/30 md:p-6 md:text-left">
+                                    <div className="flex min-w-0 flex-col items-center gap-4 md:flex-row md:gap-5">
                                         <div
                                             role="button"
                                             onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
@@ -594,11 +624,11 @@ const Projects = () => {
                                             )}
                                         </div>
 
-                                        <div className="flex flex-col gap-3 items-center md:items-start md:gap-4 flex-1">
-                                            <div className="flex items-center gap-2 group/title">
+                                        <div className="flex w-full min-w-0 flex-1 flex-col items-center gap-3 md:items-start md:gap-4">
+                                            <div className="group/title flex w-full min-w-0 items-center justify-center gap-2 md:justify-start">
                                                 <h3
                                                     onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
-                                                    className={`text-xl md:text-3xl font-bold text-neutral-800 leading-tight ${projectId ? 'cursor-pointer hover:text-neutral-600 transition-colors' : ''}`}
+                                                    className={`max-w-full break-words text-xl font-bold leading-tight text-neutral-800 md:text-3xl ${projectId ? 'cursor-pointer transition-colors hover:text-neutral-600' : ''}`}
                                                 >
                                                     {title}
                                                 </h3>
@@ -615,26 +645,23 @@ const Projects = () => {
                                                 )}
                                             </div>
 
-                                            <div className="flex flex-wrap items-center gap-3">
-                                                <div className="flex flex-col items-center md:items-start gap-1">
+                                            <div className="flex w-full flex-wrap items-start justify-center gap-2 md:justify-start">
+                                                <div className="flex min-w-0 flex-col items-center gap-1 md:items-start">
                                                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                                                         {t('dashboard.projects.teamLabel') || 'Equipo DTE'}
                                                     </span>
-                                                    <div className="flex items-center -space-x-2">
-                                                        {projectTeam.slice(0, 4).map((member) => (
-                                                            <div
-                                                                key={member.id}
-                                                                className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-white text-[10px] font-bold text-neutral-700 shadow-sm"
-                                                                title={member.full_name || member.email}
-                                                            >
-                                                                {getInitials(member.full_name || member.email)}
-                                                            </div>
-                                                        ))}
-                                                        {assignedCount > 4 && (
-                                                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-neutral-100 text-[10px] font-bold text-neutral-500 shadow-sm">
-                                                                +{assignedCount - 4}
-                                                            </div>
-                                                        )}
+                                                    <div className="flex w-full max-w-[158px] items-center gap-1 md:max-w-[220px]">
+                                                        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                                                            {projectTeam.map((member) => (
+                                                                <div
+                                                                    key={member.id}
+                                                                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white bg-white text-[8px] font-bold text-neutral-700 shadow-sm"
+                                                                    title={member.full_name || member.email}
+                                                                >
+                                                                    {getInitials(member.full_name || member.email)}
+                                                                </div>
+                                                            ))}
+                                                        </div>
                                                         {isAdmin && (
                                                             <button
                                                                 type="button"
@@ -642,77 +669,76 @@ const Projects = () => {
                                                                     e.stopPropagation();
                                                                     openTeamModal(project);
                                                                 }}
-                                                                className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 hover:bg-[#e4e4e4] hover:text-black transition shadow-sm"
+                                                                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 shadow-sm transition hover:bg-[#e4e4e4] hover:text-black"
                                                             >
-                                                                <Plus size={14} />
+                                                                <Plus size={13} />
                                                             </button>
                                                         )}
                                                     </div>
                                                 </div>
 
                                                 {/* Client & Client Team Section */}
-                                                <div className="flex flex-col items-center md:items-start gap-1 pl-3 md:border-l border-white/30">
+                                                <div className="flex min-w-0 flex-col items-center gap-1 md:border-l md:border-white/30 md:pl-3 md:items-start">
                                                     <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                                                         {t('dashboard.projects.clientLabel') || 'Cliente & Team'}
                                                     </span>
-                                                    <div className="flex items-center -space-x-2">
-                                                        {/* Show Assigned Clients (Entities) */}
-                                                        {(project.project_clients || []).map((pc) => {
-                                                            const c = pc.clients || pc.client;
-                                                            if (!c) return null;
-                                                            return (
-                                                                <div
-                                                                    key={pc.client_id}
-                                                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-blue-50 text-[10px] font-bold text-blue-700 shadow-sm"
-                                                                    title={c.company_name || c.full_name || 'Cliente'}
-                                                                >
-                                                                    {getInitials(c.company_name || c.full_name)}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {/* Always show the Leader (owner) of each assigned client entity */}
-                                                        {(project.project_clients || []).map((pc) => {
-                                                            const c = pc.clients || pc.client;
-                                                            if (!c || !c.user_id) return null;
-                                                            // Avoid duplicate if leader is already in project_client_users
-                                                            if ((project.project_client_users || []).some(pcu => pcu.user_id === c.user_id)) return null;
-
-                                                            // Avoid duplicate if client entity name is same as leader name (individual client)
-                                                            const companyName = c.company_name || c.full_name;
-                                                            if (companyName === c.full_name) return null;
-
-                                                            return (
-                                                                <div
-                                                                    key={`leader-${c.user_id}`}
-                                                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-green-50 text-[10px] font-bold text-green-700 shadow-sm"
-                                                                    title={`${c.full_name || 'Líder'} (Líder)`}
-                                                                >
-                                                                    {getInitials(c.full_name)}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {/* Show Assigned Client Users */}
-                                                        {(project.project_client_users || []).map((pcu) => {
-                                                            const u = pcu.profiles || pcu.profile;
-                                                            if (!u) return null;
-
-                                                            // Avoid duplicate if already shown as a Client Entity (with same name)
-                                                            const isSameAsEntity = (project.project_clients || []).some(pc => {
+                                                    <div className="flex w-full max-w-[158px] items-center gap-1 md:max-w-[220px]">
+                                                        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pb-0.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                                                            {/* Show Assigned Clients (Entities) */}
+                                                            {(project.project_clients || []).map((pc) => {
                                                                 const c = pc.clients || pc.client;
-                                                                const companyName = c?.company_name || c?.full_name;
-                                                                return companyName === u.full_name;
-                                                            });
-                                                            if (isSameAsEntity) return null;
-                                                            return (
-                                                                <div
-                                                                    key={pcu.user_id}
-                                                                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white bg-green-50 text-[10px] font-bold text-green-700 shadow-sm"
-                                                                    title={u.full_name || u.email}
-                                                                >
-                                                                    {getInitials(u.full_name || u.email)}
-                                                                </div>
-                                                            );
-                                                        })}
+                                                                if (!c) return null;
+                                                                return (
+                                                                    <div
+                                                                        key={pc.client_id}
+                                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white bg-blue-50 text-[8px] font-bold text-blue-700 shadow-sm"
+                                                                        title={c.company_name || c.full_name || 'Cliente'}
+                                                                    >
+                                                                        {getInitials(c.company_name || c.full_name)}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {/* Always show the Leader (owner) of each assigned client entity */}
+                                                            {(project.project_clients || []).map((pc) => {
+                                                                const c = pc.clients || pc.client;
+                                                                if (!c || !c.user_id) return null;
+                                                                if ((project.project_client_users || []).some(pcu => pcu.user_id === c.user_id)) return null;
+
+                                                                const companyName = c.company_name || c.full_name;
+                                                                if (companyName === c.full_name) return null;
+
+                                                                return (
+                                                                    <div
+                                                                        key={`leader-${c.user_id}`}
+                                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white bg-green-50 text-[8px] font-bold text-green-700 shadow-sm"
+                                                                        title={`${c.full_name || 'Líder'} (Líder)`}
+                                                                    >
+                                                                        {getInitials(c.full_name)}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                            {/* Show Assigned Client Users */}
+                                                            {(project.project_client_users || []).map((pcu) => {
+                                                                const u = pcu.profiles || pcu.profile;
+                                                                if (!u) return null;
+
+                                                                const isSameAsEntity = (project.project_clients || []).some(pc => {
+                                                                    const c = pc.clients || pc.client;
+                                                                    const companyName = c?.company_name || c?.full_name;
+                                                                    return companyName === u.full_name;
+                                                                });
+                                                                if (isSameAsEntity) return null;
+                                                                return (
+                                                                    <div
+                                                                        key={pcu.user_id}
+                                                                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white bg-green-50 text-[8px] font-bold text-green-700 shadow-sm"
+                                                                        title={u.full_name || u.email}
+                                                                    >
+                                                                        {getInitials(u.full_name || u.email)}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
                                                         {(isAdmin || isClientLeader) && (
                                                             <button
                                                                 type="button"
@@ -720,9 +746,9 @@ const Projects = () => {
                                                                     e.stopPropagation();
                                                                     openClientTeamModal(project);
                                                                 }}
-                                                                className="ml-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 hover:bg-[#e4e4e4] hover:text-black transition shadow-sm"
+                                                                className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f0f0f0] text-neutral-600 shadow-sm transition hover:bg-[#e4e4e4] hover:text-black"
                                                             >
-                                                                <Plus size={14} />
+                                                                <Plus size={13} />
                                                             </button>
                                                         )}
                                                     </div>
@@ -732,8 +758,8 @@ const Projects = () => {
                                     </div>
                                 </div>
 
-                                <div className="contents md:flex md:w-auto md:min-w-[450px] gap-2 ">
-                                    {actionCards.map(({ key, label, description, image, suffix }) => (
+                                <div className="contents md:flex md:w-auto md:min-w-[430px] md:gap-2">
+                                    {actionCards.map(({ key, label, description, icon, color, suffix }) => (
                                         <div
                                             key={key}
                                             onClick={(e) => {
@@ -742,17 +768,13 @@ const Projects = () => {
                                                     navigate(`/dashboard/${suffix}?projectId=${projectId}`);
                                                 }
                                             }}
-                                            className="h-[208px] md:h-auto rounded-[10px] group relative flex flex-col items-center justify-center bg-[#EBEBEB] p-4 md:flex-1 md:min-w-[140px] text-center cursor-pointer"
+                                            className="group relative flex h-[208px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[10px] bg-[#EBEBEB] p-4 text-center md:h-auto md:min-w-[140px] md:flex-1"
                                         >
-                                            <div className="mb-3 transition-transform duration-300 group-hover:scale-105">
-                                                <img
-                                                    src={image}
-                                                    alt={label}
-                                                    className="h-16 w-auto md:h-20 object-contain opacity-80 group-hover:opacity-100 transition-opacity"
-                                                />
+                                            <div className="mb-4 transition-transform duration-300 group-hover:scale-105">
+                                                <GlassActionIcon icon={icon} color={color} />
                                             </div>
                                             <h4 className="text-sm md:text-base font-medium text-neutral-800">{label}</h4>
-                                            <p className="mt-1 hidden md:block text-[10px] text-neutral-500 leading-tight max-w-[120px]">
+                                            <p className="mt-1 max-w-[120px] text-[10px] leading-tight text-neutral-500">
                                                 {description}
                                             </p>
                                         </div>
