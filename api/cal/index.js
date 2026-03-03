@@ -216,17 +216,11 @@ const handleCreateBooking = async (req, res) => {
     } = req.body || {};
 
     const eventTypeId = bodyEventTypeId || EVENT_TYPE_ID;
-    if (!start || !name || !email || !eventTypeId) {
-        return res.status(400).json({
-            error: 'Missing required fields',
-            details: {
-                hasStart: Boolean(start),
-                hasName: Boolean(name),
-                hasEmail: Boolean(email),
-                hasEventTypeId: Boolean(eventTypeId),
-            },
-        });
-    }
+    const normalizedParticipantType = participantType ? String(participantType).toLowerCase() : null;
+    const normalizedParticipantRole = participantRole ? String(participantRole).toLowerCase() : null;
+    const isTeamParticipant = normalizedParticipantType === 'profile'
+        || normalizedParticipantRole === 'admin'
+        || normalizedParticipantRole === 'worker';
 
     try {
         const parsedEventTypeId = Number(eventTypeId);
@@ -234,6 +228,53 @@ const handleCreateBooking = async (req, res) => {
             return res.status(400).json({
                 error: 'Invalid Event Type ID',
                 details: { eventTypeId },
+            });
+        }
+
+        const supabase = getSupabaseAdmin();
+
+        let resolvedName = typeof name === 'string' ? name.trim() : '';
+        let resolvedEmail = typeof email === 'string' ? email.trim() : '';
+
+        if ((!resolvedName || !resolvedEmail) && isTeamParticipant && userId && supabase) {
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('full_name, email')
+                .eq('id', userId)
+                .maybeSingle();
+
+            if (!resolvedName && profileData?.full_name) {
+                resolvedName = profileData.full_name;
+            }
+            if (!resolvedEmail && profileData?.email) {
+                resolvedEmail = profileData.email;
+            }
+
+            if (!resolvedEmail) {
+                const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(userId);
+                if (!authUserError && authUserData?.user?.email) {
+                    resolvedEmail = authUserData.user.email;
+                }
+                if (!resolvedName && authUserData?.user?.user_metadata?.full_name) {
+                    resolvedName = authUserData.user.user_metadata.full_name;
+                }
+            }
+        }
+
+        if (!start || !resolvedName || !resolvedEmail || !eventTypeId) {
+            const missingTeamEmail = isTeamParticipant && !resolvedEmail;
+            return res.status(400).json({
+                error: missingTeamEmail
+                    ? 'Selected team member has no email configured'
+                    : 'Missing required fields',
+                details: {
+                    hasStart: Boolean(start),
+                    hasName: Boolean(resolvedName),
+                    hasEmail: Boolean(resolvedEmail),
+                    hasEventTypeId: Boolean(eventTypeId),
+                    isTeamParticipant,
+                    userId: userId || null,
+                },
             });
         }
 
@@ -252,8 +293,8 @@ const handleCreateBooking = async (req, res) => {
         }
 
         const attendee = {
-            name,
-            email,
+            name: resolvedName,
+            email: resolvedEmail,
             timeZone: timeZone || 'UTC',
         };
         if (normalizedPhone) {
@@ -312,7 +353,6 @@ const handleCreateBooking = async (req, res) => {
             });
         }
 
-        const supabase = getSupabaseAdmin();
         if (!supabase) {
             return res.status(200).json({
                 ok: true,
@@ -339,11 +379,11 @@ const handleCreateBooking = async (req, res) => {
             if (clientByUser) resolvedClientId = clientByUser.id;
         }
 
-        if (shouldResolveClientByIdentity && !resolvedClientId && email) {
+        if (shouldResolveClientByIdentity && !resolvedClientId && resolvedEmail) {
             const { data: clientByEmail } = await supabase
                 .from('clients')
                 .select('id')
-                .eq('email', email)
+                .eq('email', resolvedEmail)
                 .maybeSingle();
             if (clientByEmail) resolvedClientId = clientByEmail.id;
         }
@@ -370,8 +410,8 @@ const handleCreateBooking = async (req, res) => {
                 scheduled_at: start,
                 duration_minutes: booking.duration || 30,
                 status: 'scheduled',
-                client_name: name,
-                client_email: email,
+                client_name: resolvedName,
+                client_email: resolvedEmail,
                 client_phone: phone,
                 notes,
                 meeting_link: booking.meetingUrl || booking.location || null,

@@ -200,7 +200,12 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
 
         setLoading(true);
         try {
-            if (!selectedParticipantData.email) {
+            const canResolveTeamEmailServerSide = (
+                selectedParticipantData.type === PARTICIPANT_TYPE.PROFILE
+                && Boolean(selectedParticipantData.user_id)
+            );
+
+            if (!selectedParticipantData.email && !canResolveTeamEmailServerSide) {
                 toast.error(t("admin.createAppointment.form.errorMissingEmail"));
                 return;
             }
@@ -208,7 +213,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
             const payload = {
                 start: selectedSlot.start,
                 name: selectedParticipantData.name,
-                email: selectedParticipantData.email,
+                email: selectedParticipantData.email || null,
                 notes: notes,
                 projectId: selectedProject || null,
                 userId: selectedParticipantData.user_id || null,
