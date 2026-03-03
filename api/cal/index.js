@@ -106,7 +106,20 @@ const fetchAllCalBookings = async ({ status, eventTypeId, afterStart, beforeEnd,
 
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-            throw new Error(data?.error || `Cal.com error: ${response.status}`);
+            const rawError = data?.error;
+            let message = `Cal.com error: ${response.status}`;
+            if (typeof rawError === 'string' && rawError.trim()) {
+                message = rawError;
+            } else if (rawError && typeof rawError === 'object') {
+                message = rawError.message || rawError.error || rawError.code || message;
+            } else if (typeof data?.message === 'string' && data.message.trim()) {
+                message = data.message;
+            }
+
+            const err = new Error(message);
+            err.status = response.status;
+            err.details = data;
+            throw err;
         }
 
         const bookings = Array.isArray(data?.data) ? data.data : [];
@@ -436,7 +449,7 @@ const handleBookings = async (req, res) => {
         const supabase = getSupabaseAdmin();
 
         if (requestedSource !== 'cal') {
-            return res.status(400).json({ error: 'Only source=cal is supported' });
+            console.warn(`Deprecated bookings source "${requestedSource}" requested; using Cal.com source.`);
         }
 
         if (!API_KEY) {
@@ -461,10 +474,10 @@ const handleBookings = async (req, res) => {
         const normalizedStatusInput = statusFilter ? String(statusFilter).trim().toLowerCase() : null;
         const normalizedStatus = normalizedStatusInput === 'canceled' ? 'cancelled' : normalizedStatusInput;
 
-        // For direct Cal.com reads, default to upcoming accepted bookings
+        // For direct Cal.com reads, default to upcoming bookings
         // to match dashboard "next appointments" semantics.
         const isDefaultUpcomingQuery = !normalizedStatus && !afterStartFilter && !beforeEndFilter;
-        const calStatus = normalizedStatus || (isDefaultUpcomingQuery ? 'accepted' : undefined);
+        const calStatus = normalizedStatus || undefined;
         const calAfterStart = afterStartFilter || (isDefaultUpcomingQuery ? new Date().toISOString() : undefined);
         const queryBase = {
             eventTypeId: eventTypeIdFilter,
@@ -473,10 +486,28 @@ const handleBookings = async (req, res) => {
             attendeeEmail: effectiveAttendeeEmail,
         };
 
-        const bookings = await fetchAllCalBookings({ ...queryBase, status: calStatus });
-        const mapped = bookings
+        let bookings = [];
+        try {
+            bookings = await fetchAllCalBookings({ ...queryBase, status: calStatus });
+        } catch (error) {
+            // Compatibility fallback: some Cal workspaces reject certain status filters.
+            // If this happens, retry once without status and filter in-app.
+            const shouldRetryWithoutStatus = Boolean(calStatus) && Number(error?.status) === 400;
+            if (!shouldRetryWithoutStatus) throw error;
+
+            console.warn(
+                `Cal.com rejected status "${calStatus}". Retrying without status filter.`,
+                error?.details || error?.message || error
+            );
+            bookings = await fetchAllCalBookings({ ...queryBase, status: undefined });
+        }
+        let mapped = bookings
             .map(mapCalBookingToAppointment)
             .filter((row) => row.cal_booking_id);
+
+        if (isDefaultUpcomingQuery) {
+            mapped = mapped.filter((row) => row.status !== 'cancelled');
+        }
 
         const mergedData = await enrichBookingsWithSupabaseRelations({
             supabase,
@@ -488,6 +519,12 @@ const handleBookings = async (req, res) => {
         return res.status(200).json({ ok: true, data: mergedData, source: 'cal' });
     } catch (error) {
         console.error('Internal Error:', error);
+        if (Number(error?.status) >= 400 && Number(error?.status) < 600) {
+            return res.status(Number(error.status)).json({
+                error: error?.message || 'Cal.com request failed',
+                details: error?.details || null,
+            });
+        }
         return res.status(500).json({ error: 'Internal server error' });
     }
 };
