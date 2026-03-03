@@ -34,6 +34,85 @@ const normalizeEmail = (value) => {
     return isValidEmail(trimmed) ? trimmed : '';
 };
 
+const APPOINTMENT_RELATION_COLUMNS = ['user_id', 'client_id', 'project_id'];
+
+const removeColumns = (row, columns) => {
+    const next = { ...row };
+    columns.forEach((column) => {
+        delete next[column];
+    });
+    return next;
+};
+
+const getLikelyInvalidFkColumns = (error) => {
+    const text = `${error?.constraint || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+    const columns = [];
+    if (text.includes('appointments_user_id_fkey') || text.includes('user_id')) columns.push('user_id');
+    if (text.includes('appointments_client_id_fkey') || text.includes('client_id')) columns.push('client_id');
+    if (text.includes('appointments_project_id_fkey') || text.includes('project_id')) columns.push('project_id');
+    return Array.from(new Set(columns));
+};
+
+const persistAppointmentWithFallback = async (supabase, row) => {
+    const attemptInsert = async (payload) => supabase
+        .from('appointments')
+        .insert(payload);
+
+    const { error: initialError } = await attemptInsert(row);
+    if (!initialError) {
+        return { ok: true };
+    }
+    if (initialError.code === '23505') {
+        return { ok: true, warning: 'duplicate' };
+    }
+    if (initialError.code !== '23503') {
+        return { ok: false, error: initialError };
+    }
+
+    const firstFallbackColumns = getLikelyInvalidFkColumns(initialError);
+    const narrowedColumns = firstFallbackColumns.length > 0
+        ? firstFallbackColumns
+        : APPOINTMENT_RELATION_COLUMNS;
+    const narrowedRow = removeColumns(row, narrowedColumns);
+    const { error: narrowedError } = await attemptInsert(narrowedRow);
+
+    if (!narrowedError) {
+        return {
+            ok: true,
+            warning: `dropped_fk:${narrowedColumns.join(',')}`,
+        };
+    }
+    if (narrowedError.code === '23505') {
+        return {
+            ok: true,
+            warning: 'duplicate',
+        };
+    }
+
+    const needsFullFallback = narrowedColumns.length < APPOINTMENT_RELATION_COLUMNS.length
+        && narrowedError.code === '23503';
+    if (!needsFullFallback) {
+        return { ok: false, error: narrowedError };
+    }
+
+    const fullFallbackRow = removeColumns(row, APPOINTMENT_RELATION_COLUMNS);
+    const { error: fullFallbackError } = await attemptInsert(fullFallbackRow);
+    if (!fullFallbackError) {
+        return {
+            ok: true,
+            warning: `dropped_fk:${APPOINTMENT_RELATION_COLUMNS.join(',')}`,
+        };
+    }
+    if (fullFallbackError.code === '23505') {
+        return {
+            ok: true,
+            warning: 'duplicate',
+        };
+    }
+
+    return { ok: false, error: fullFallbackError };
+};
+
 const mapCalBookingToAppointment = (booking) => {
     const attendee = booking?.attendees?.[0] || {};
     const calIdStr = booking?.id != null ? String(booking.id) : String(booking?.uid || '');
@@ -405,34 +484,45 @@ const handleCreateBooking = async (req, res) => {
             if (profileRow?.client_id) resolvedClientId = profileRow.client_id;
         }
 
-        const { error: dbError } = await supabase
-            .from('appointments')
-            .insert({
-                cal_booking_id: booking.id.toString(),
-                project_id: projectId || null,
-                client_id: resolvedClientId,
-                user_id: userId || null,
-                event_type_id: String(eventTypeId),
-                scheduled_at: start,
-                duration_minutes: booking.duration || 30,
-                status: 'scheduled',
-                client_name: resolvedName,
-                client_email: resolvedEmail,
-                client_phone: phone,
-                notes,
-                meeting_link: booking.meetingUrl || booking.location || null,
-                cal_metadata: booking,
-            });
+        const appointmentRow = {
+            cal_booking_id: booking.id.toString(),
+            project_id: projectId || null,
+            client_id: resolvedClientId,
+            user_id: userId || null,
+            event_type_id: String(eventTypeId),
+            scheduled_at: start,
+            duration_minutes: booking.duration || 30,
+            status: 'scheduled',
+            client_name: resolvedName,
+            client_email: resolvedEmail,
+            client_phone: phone,
+            notes,
+            meeting_link: booking.meetingUrl || booking.location || null,
+            cal_metadata: booking,
+        };
 
-        if (dbError) {
-            if (dbError.code === '23505') {
-                console.log('Booking already exists (webhook race condition handled).');
-            } else {
-                console.error('Supabase Insert Error:', dbError);
-            }
+        const persisted = await persistAppointmentWithFallback(supabase, appointmentRow);
+        if (!persisted.ok) {
+            console.error('Supabase Insert Error after fallbacks:', persisted.error);
+            return res.status(500).json({
+                error: 'Booking created in Cal.com but failed to persist in database',
+                details: {
+                    calBookingId: booking.id?.toString?.() || null,
+                },
+            });
         }
 
-        return res.status(200).json({ ok: true, data: booking });
+        if (persisted.warning === 'duplicate') {
+            console.log('Booking already exists (webhook race condition handled).');
+        } else if (persisted.warning?.startsWith('dropped_fk:')) {
+            console.warn(`Booking persisted with relation fallback: ${persisted.warning}`);
+        }
+
+        return res.status(200).json({
+            ok: true,
+            data: booking,
+            ...(persisted.warning ? { warning: persisted.warning } : {}),
+        });
     } catch (error) {
         console.error('Error in cal-create-booking:', error);
         return res.status(500).json({ error: 'Internal server error' });
