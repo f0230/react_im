@@ -231,7 +231,18 @@ const handleCreateBooking = async (req, res) => {
             });
         }
 
-        const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
+        let normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
+        if (normalizedPhone) {
+            const cleanPhone = normalizedPhone.replace(/[\s\-\(\)]/g, '');
+            if (cleanPhone.startsWith('+')) {
+                normalizedPhone = cleanPhone;
+            } else if (/^\d{8,15}$/.test(cleanPhone)) {
+                normalizedPhone = `+${cleanPhone}`;
+            } else {
+                normalizedPhone = '';
+            }
+        }
+
         const attendee = {
             name,
             email,
@@ -257,7 +268,7 @@ const handleCreateBooking = async (req, res) => {
             metadata,
         };
 
-        const calResponse = await fetch(`${CAL_API_URL}/bookings`, {
+        let calResponse = await fetch(`${CAL_API_URL}/bookings`, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${API_KEY}`,
@@ -267,7 +278,24 @@ const handleCreateBooking = async (req, res) => {
             body: JSON.stringify(bookingPayload),
         });
 
-        const calData = await calResponse.json();
+        let calData = await calResponse.json();
+
+        if (!calResponse.ok && calData?.error?.message?.includes('invalid_number')) {
+            console.warn('Cal.com rejected phone number, retrying without it...');
+            delete bookingPayload.attendee.phoneNumber;
+
+            calResponse = await fetch(`${CAL_API_URL}/bookings`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${API_KEY}`,
+                    'Content-Type': 'application/json',
+                    'cal-api-version': CAL_API_VERSION,
+                },
+                body: JSON.stringify(bookingPayload),
+            });
+            calData = await calResponse.json();
+        }
+
         if (!calResponse.ok) {
             console.error('Cal.com Booking Error:', calData);
             return res.status(calResponse.status).json({
