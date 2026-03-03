@@ -18,7 +18,7 @@ const ScheduleCall = () => {
     const { t } = useTranslation();
     const { projectId } = useParams();
     const navigate = useNavigate();
-    const { user, client } = useAuth();
+    const { user, client, profile } = useAuth();
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
@@ -90,6 +90,10 @@ const ScheduleCall = () => {
         e.preventDefault();
         setSubmitting(true);
         try {
+            const participantRole = profile?.role || null;
+            const participantType = participantRole === 'client' ? 'client' : (participantRole ? 'profile' : null);
+            const resolvedClientId = client?.id || profile?.client_id || null;
+
             const response = await fetch('/api/cal/create-booking', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -98,6 +102,10 @@ const ScheduleCall = () => {
                     ...formData,
                     projectId: selectedProjectId || projectId,
                     userId: user?.id,
+                    clientId: resolvedClientId,
+                    participantType,
+                    participantRole,
+                    participantId: user?.id || null,
                     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
                 })
             });

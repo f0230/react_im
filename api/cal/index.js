@@ -348,6 +348,17 @@ const handleCreateBooking = async (req, res) => {
             if (clientByEmail) resolvedClientId = clientByEmail.id;
         }
 
+        // Client team members are linked through profiles.client_id (not clients.user_id).
+        // Resolve this path so dashboard bookings are consistently classified as client appointments.
+        if (shouldResolveClientByIdentity && !resolvedClientId && userId) {
+            const { data: profileRow } = await supabase
+                .from('profiles')
+                .select('client_id')
+                .eq('id', userId)
+                .maybeSingle();
+            if (profileRow?.client_id) resolvedClientId = profileRow.client_id;
+        }
+
         const { error: dbError } = await supabase
             .from('appointments')
             .insert({
