@@ -236,8 +236,10 @@ const handleCreateBooking = async (req, res) => {
             const cleanPhone = normalizedPhone.replace(/[\s\-\(\)]/g, '');
             if (cleanPhone.startsWith('+')) {
                 normalizedPhone = cleanPhone;
+            } else if (/^\d{10}$/.test(cleanPhone)) {
+                normalizedPhone = `+549${cleanPhone}`;
             } else if (/^\d{8,15}$/.test(cleanPhone)) {
-                normalizedPhone = `+${cleanPhone}`;
+                normalizedPhone = `+549${cleanPhone}`;
             } else {
                 normalizedPhone = '';
             }
@@ -281,8 +283,12 @@ const handleCreateBooking = async (req, res) => {
         let calData = await calResponse.json();
 
         if (!calResponse.ok && calData?.error?.message?.includes('invalid_number')) {
-            console.warn('Cal.com rejected phone number, retrying without it...');
-            delete bookingPayload.attendee.phoneNumber;
+            console.warn('Cal.com rejected phone number, retrying with dummy phone...');
+            bookingPayload.attendee.phoneNumber = '+5491155667788';
+            bookingPayload.responses = {
+                ...(bookingPayload.responses || {}),
+                smsReminderNumber: '+5491155667788'
+            };
 
             calResponse = await fetch(`${CAL_API_URL}/bookings`, {
                 method: 'POST',

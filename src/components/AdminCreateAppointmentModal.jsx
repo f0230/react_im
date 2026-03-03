@@ -92,15 +92,15 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                 return true;
             })
             .map((client) => ({
-            value: `${PARTICIPANT_TYPE.CLIENT}:${client.id}`,
-            id: client.id,
-            type: PARTICIPANT_TYPE.CLIENT,
-            role: 'client',
-            name: client.full_name || client.company_name || 'Cliente',
-            email: client.email || '',
-            phone: client.phone || '',
-            user_id: client.user_id || null,
-            client_id: client.id,
+                value: `${PARTICIPANT_TYPE.CLIENT}:${client.id}`,
+                id: client.id,
+                type: PARTICIPANT_TYPE.CLIENT,
+                role: 'client',
+                name: client.full_name || client.company_name || 'Cliente',
+                email: client.email || '',
+                phone: client.phone || '',
+                user_id: client.user_id || null,
+                client_id: client.id,
             }));
 
         const profileOptions = teamMembers.map((member) => ({
@@ -230,7 +230,8 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
 
             if (!response.ok) {
                 const errorPayload = await response.json().catch(() => ({}));
-                throw new Error(errorPayload?.error || errorPayload?.details?.message || 'Failed to create booking');
+                const detailedError = errorPayload?.details?.error?.message || errorPayload?.details?.message;
+                throw new Error(detailedError || errorPayload?.error || 'Failed to create booking');
             }
 
             toast.success(t("admin.createAppointment.form.success"));

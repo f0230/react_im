@@ -101,12 +101,16 @@ const ScheduleCall = () => {
                     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
                 })
             });
-            if (!response.ok) throw new Error('Booking failed');
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                const detailedError = errorPayload?.details?.error?.message || errorPayload?.details?.message || errorPayload?.error || 'Booking failed';
+                throw new Error(detailedError);
+            }
             setBookingPhase('success');
             toast.success(t('calendar.bookingSuccess'));
         } catch (error) {
             console.error('Booking error:', error);
-            toast.error(t('calendar.bookingError'));
+            toast.error(error.message || t('calendar.bookingError'));
         } finally {
             setSubmitting(false);
         }
