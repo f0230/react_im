@@ -67,7 +67,7 @@ const AdminAppointments = () => {
                 throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
             }
 
-            const response = await fetch('/api/cal/bookings', {
+            const response = await fetch('/api/cal/bookings?source=db', {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
                 },

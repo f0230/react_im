@@ -28,6 +28,12 @@ const normalizeBookingStatus = (status) => {
     return 'scheduled';
 };
 
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+const normalizeEmail = (value) => {
+    const trimmed = String(value || '').trim().toLowerCase();
+    return isValidEmail(trimmed) ? trimmed : '';
+};
+
 const mapCalBookingToAppointment = (booking) => {
     const attendee = booking?.attendees?.[0] || {};
     const calIdStr = booking?.id != null ? String(booking.id) : String(booking?.uid || '');
@@ -234,7 +240,7 @@ const handleCreateBooking = async (req, res) => {
         const supabase = getSupabaseAdmin();
 
         let resolvedName = typeof name === 'string' ? name.trim() : '';
-        let resolvedEmail = typeof email === 'string' ? email.trim() : '';
+        let resolvedEmail = normalizeEmail(email);
 
         if ((!resolvedName || !resolvedEmail) && isTeamParticipant && userId && supabase) {
             const { data: profileData } = await supabase
@@ -247,13 +253,13 @@ const handleCreateBooking = async (req, res) => {
                 resolvedName = profileData.full_name;
             }
             if (!resolvedEmail && profileData?.email) {
-                resolvedEmail = profileData.email;
+                resolvedEmail = normalizeEmail(profileData.email);
             }
 
             if (!resolvedEmail) {
                 const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(userId);
                 if (!authUserError && authUserData?.user?.email) {
-                    resolvedEmail = authUserData.user.email;
+                    resolvedEmail = normalizeEmail(authUserData.user.email);
                 }
                 if (!resolvedName && authUserData?.user?.user_metadata?.full_name) {
                     resolvedName = authUserData.user.user_metadata.full_name;
@@ -445,12 +451,50 @@ const handleBookings = async (req, res) => {
     }
 
     try {
+        const { status, eventTypeId, afterStart, beforeEnd, source } = req.query || {};
+        const requestedSource = String(source || 'db').toLowerCase();
+        const queryBase = { eventTypeId, afterStart, beforeEnd };
+        const supabase = getSupabaseAdmin();
+
+        if (requestedSource !== 'cal') {
+            if (!supabase) {
+                return res.status(500).json({ error: 'Database error' });
+            }
+
+            let dbQuery = supabase
+                .from('appointments')
+                .select(`
+                    *,
+                    projects ( name ),
+                    clients ( company_name, full_name, email )
+                `)
+                .order('scheduled_at', { ascending: true });
+
+            if (status) {
+                dbQuery = dbQuery.eq('status', status);
+            }
+            if (eventTypeId) {
+                dbQuery = dbQuery.eq('event_type_id', String(eventTypeId));
+            }
+            if (afterStart) {
+                dbQuery = dbQuery.gte('scheduled_at', afterStart);
+            }
+            if (beforeEnd) {
+                dbQuery = dbQuery.lte('scheduled_at', beforeEnd);
+            }
+
+            const { data: dbAppointments, error: dbError } = await dbQuery;
+            if (dbError) {
+                console.error('Supabase Appointments Fetch Error:', dbError);
+                return res.status(500).json({ error: 'Failed to load appointments from database' });
+            }
+
+            return res.status(200).json({ ok: true, data: dbAppointments || [], source: 'db' });
+        }
+
         if (!API_KEY) {
             return res.status(500).json({ error: 'Server configuration error' });
         }
-
-        const { status, eventTypeId, afterStart, beforeEnd } = req.query || {};
-        const queryBase = { eventTypeId, afterStart, beforeEnd };
 
         const safeFetchBookingsByStatus = async (targetStatus) => {
             try {
@@ -484,7 +528,6 @@ const handleBookings = async (req, res) => {
             .map(mapCalBookingToAppointment)
             .filter((row) => row.cal_booking_id);
 
-        const supabase = getSupabaseAdmin();
         if (supabase && upsertData.length > 0) {
             const { error: upsertError } = await supabase
                 .from('appointments')

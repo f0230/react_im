@@ -25,6 +25,8 @@ const parseParticipantValue = (value) => {
     return { type: type || null, id: id || null };
 };
 
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+
 const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
     const { t } = useTranslation();
     const [step, setStep] = useState(1); // 1: Participant/Project, 2: Date/Time
@@ -109,7 +111,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
             type: PARTICIPANT_TYPE.PROFILE,
             role: member.role,
             name: member.full_name || member.email || 'Sin nombre',
-            email: member.email || '',
+            email: isValidEmail(member.email) ? member.email : '',
             phone: '',
             user_id: member.id,
             client_id: member.client_id || null,
