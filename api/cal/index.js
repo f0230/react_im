@@ -32,7 +32,6 @@ const mapCalBookingToAppointment = (booking) => {
     const attendee = booking?.attendees?.[0] || {};
     const calIdStr = booking?.id != null ? String(booking.id) : String(booking?.uid || '');
     const mapped = {
-        id: calIdStr,
         cal_booking_id: calIdStr,
         scheduled_at: booking?.start || null,
         duration_minutes: booking?.duration || 30,
@@ -287,10 +286,6 @@ const handleCreateBooking = async (req, res) => {
         if (!calResponse.ok && calData?.error?.message?.includes('invalid_number')) {
             console.warn('Cal.com rejected phone number, retrying with dummy phone...');
             bookingPayload.attendee.phoneNumber = '+5491155667788';
-            bookingPayload.responses = {
-                ...(bookingPayload.responses || {}),
-                smsReminderNumber: '+5491155667788'
-            };
 
             calResponse = await fetch(`${CAL_API_URL}/bookings`, {
                 method: 'POST',
@@ -440,7 +435,23 @@ const handleBookings = async (req, res) => {
                 .upsert(upsertData, { onConflict: 'cal_booking_id' });
 
             if (upsertError) {
-                console.error('Supabase Upsert Error:', upsertError);
+                console.error('Supabase Batch Upsert Error:', upsertError);
+                // Fallback to individual upserts if bulk fails (e.g., due to missing user/client/project)
+                for (const row of upsertData) {
+                    const { error: singleError } = await supabase
+                        .from('appointments')
+                        .upsert(row, { onConflict: 'cal_booking_id' });
+
+                    if (singleError && singleError.code === '23503') {
+                        const { user_id, client_id, project_id, ...fallbackRow } = row;
+                        const { error: fallbackError } = await supabase
+                            .from('appointments')
+                            .upsert(fallbackRow, { onConflict: 'cal_booking_id' });
+                        if (fallbackError) {
+                            console.error('Supabase Fallback Upsert Error:', fallbackError);
+                        }
+                    }
+                }
             }
         }
 
