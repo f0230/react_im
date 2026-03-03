@@ -462,6 +462,25 @@ const handleBookings = async (req, res) => {
                     }
                 }
             }
+
+            // Sync: delete ghost appointments that no longer exist in Cal.com
+            const calIds = upsertData.map(r => r.cal_booking_id);
+            if (calIds.length > 0) {
+                // We only do this if we fetched without specific status or filters
+                // so we don't accidentally delete everything when just asking for "cancelled"
+                if (!status && !eventTypeId && !afterStart && !beforeEnd) {
+                    const { error: deleteError } = await supabase
+                        .from('appointments')
+                        .delete()
+                        .not('cal_booking_id', 'in', `(${calIds.join(',')})`);
+
+                    if (deleteError) {
+                        console.error('Supabase Sync Delete Error:', deleteError);
+                    } else {
+                        console.log(`Synced DB: Kept ${calIds.length} bookings, removed any ghosts.`);
+                    }
+                }
+            }
         }
 
         if (!supabase || upsertData.length === 0) {

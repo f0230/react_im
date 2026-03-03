@@ -24,6 +24,7 @@ const ClientAppointments = () => {
                     .from('appointments')
                     .select('*, projects(name)')
                     .eq('user_id', user.id)
+                    .eq('status', 'scheduled')
                     .order('scheduled_at', { ascending: true });
 
                 if (dbError) throw dbError;
@@ -57,7 +58,7 @@ const ClientAppointments = () => {
     return (
         <div className="w-full pb-20 font-product">
             <header className="mb-10">
-          
+
                 <motion.h1
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}

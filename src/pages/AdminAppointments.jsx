@@ -40,6 +40,7 @@ const AdminAppointments = () => {
             const aptDate = new Date(apt.scheduled_at);
             const isFutureOrToday = aptDate >= today;
             if (!isFutureOrToday) return false;
+            if (apt.status === 'cancelled') return false;
 
             if (listTypeFilter === 'all') return true;
             return getAppointmentType(apt) === listTypeFilter;
