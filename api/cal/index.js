@@ -30,8 +30,10 @@ const normalizeBookingStatus = (status) => {
 
 const mapCalBookingToAppointment = (booking) => {
     const attendee = booking?.attendees?.[0] || {};
+    const calIdStr = booking?.id != null ? String(booking.id) : String(booking?.uid || '');
     const mapped = {
-        cal_booking_id: booking?.id != null ? String(booking.id) : String(booking?.uid || ''),
+        id: calIdStr,
+        cal_booking_id: calIdStr,
         scheduled_at: booking?.start || null,
         duration_minutes: booking?.duration || 30,
         status: normalizeBookingStatus(booking?.status),
@@ -442,33 +444,36 @@ const handleBookings = async (req, res) => {
             }
         }
 
-        if (!supabase) {
+        if (!supabase || upsertData.length === 0) {
             return res.status(200).json({ ok: true, data: upsertData, source: 'cal' });
         }
 
         const calIds = upsertData.map((row) => row.cal_booking_id);
-        if (calIds.length === 0) {
-            return res.status(200).json({ ok: true, data: [], source: 'cal' });
-        }
 
-        const { data, error } = await supabase
+        let mergedData = [...upsertData];
+        const { data: dbData, error } = await supabase
             .from('appointments')
             .select(`
-                *,
+                cal_booking_id,
                 projects ( name ),
                 clients ( company_name, full_name, email )
             `)
-            .in('cal_booking_id', calIds)
-            .order('scheduled_at', { ascending: true });
+            .in('cal_booking_id', calIds);
 
-        if (error) {
-            return res.status(500).json({
-                error: 'Failed to fetch bookings',
-                details: error.message,
+        if (!error && dbData) {
+            mergedData = upsertData.map(calItem => {
+                const dbMatch = dbData.find(dbInfo => dbInfo.cal_booking_id === calItem.cal_booking_id);
+                return {
+                    ...calItem,
+                    projects: dbMatch?.projects || null,
+                    clients: dbMatch?.clients || null
+                };
             });
         }
 
-        return res.status(200).json({ ok: true, data, source: 'cal' });
+        mergedData.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
+
+        return res.status(200).json({ ok: true, data: mergedData, source: 'cal' });
     } catch (error) {
         console.error('Internal Error:', error);
         return res.status(500).json({ error: 'Internal server error' });
