@@ -35,7 +35,9 @@ import {
   Calendar,
   AlertCircle,
   DollarSign,
-  ClipboardList
+  ClipboardList,
+  Sparkles,
+  Wand2
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
@@ -73,6 +75,103 @@ function DriveLogo({ size = 14, className = '' }) {
     </svg>
   );
 }
+
+const DEFAULT_AI_PLANNING = {
+  version: 1,
+  phase1: {
+    inputs: {
+      proposito: '',
+      objetivo_medible: '',
+      concepto_central: '',
+      mensaje_principal: '',
+      publico_objetivo: '',
+      contexto_extra: '',
+      ctas: ['', '', ''],
+    },
+    output: null,
+    generatedAt: null,
+    model: '',
+  },
+  phase2: {
+    inputs: {
+      reels_ancla: 2,
+      carruseles_refuerzo: 3,
+      carruseles_contexto: 4,
+      incluir_piezas_rapidas: true,
+      notas_operativas: '',
+    },
+    output: null,
+    generatedAt: null,
+    model: '',
+  },
+};
+
+const cloneDefaultAiPlanning = () => JSON.parse(JSON.stringify(DEFAULT_AI_PLANNING));
+
+const sanitizeLocalText = (value) => {
+  if (typeof value !== 'string') return '';
+  return value.trim();
+};
+
+const normalizeCtaList = (value) => {
+  if (!Array.isArray(value)) return ['', '', ''];
+  const cleaned = value
+    .map((item) => sanitizeLocalText(String(item || '')).slice(0, 120))
+    .slice(0, 4);
+
+  while (cleaned.length < 3) {
+    cleaned.push('');
+  }
+
+  return cleaned;
+};
+
+const normalizeAiPlanning = (value) => {
+  const base = cloneDefaultAiPlanning();
+  const raw = value && typeof value === 'object' ? value : {};
+
+  const phase1 = raw.phase1 && typeof raw.phase1 === 'object' ? raw.phase1 : {};
+  const phase1Inputs = phase1.inputs && typeof phase1.inputs === 'object' ? phase1.inputs : {};
+  base.phase1.inputs = {
+    proposito: sanitizeLocalText(phase1Inputs.proposito || ''),
+    objetivo_medible: sanitizeLocalText(phase1Inputs.objetivo_medible || ''),
+    concepto_central: sanitizeLocalText(phase1Inputs.concepto_central || ''),
+    mensaje_principal: sanitizeLocalText(phase1Inputs.mensaje_principal || ''),
+    publico_objetivo: sanitizeLocalText(phase1Inputs.publico_objetivo || ''),
+    contexto_extra: sanitizeLocalText(phase1Inputs.contexto_extra || ''),
+    ctas: normalizeCtaList(phase1Inputs.ctas),
+  };
+  base.phase1.output = phase1.output && typeof phase1.output === 'object' ? phase1.output : null;
+  base.phase1.generatedAt = phase1.generatedAt || null;
+  base.phase1.model = phase1.model || '';
+
+  const phase2 = raw.phase2 && typeof raw.phase2 === 'object' ? raw.phase2 : {};
+  const phase2Inputs = phase2.inputs && typeof phase2.inputs === 'object' ? phase2.inputs : {};
+  base.phase2.inputs = {
+    reels_ancla: Number.isFinite(Number(phase2Inputs.reels_ancla)) ? Number(phase2Inputs.reels_ancla) : 2,
+    carruseles_refuerzo: Number.isFinite(Number(phase2Inputs.carruseles_refuerzo)) ? Number(phase2Inputs.carruseles_refuerzo) : 3,
+    carruseles_contexto: Number.isFinite(Number(phase2Inputs.carruseles_contexto)) ? Number(phase2Inputs.carruseles_contexto) : 4,
+    incluir_piezas_rapidas:
+      typeof phase2Inputs.incluir_piezas_rapidas === 'boolean'
+        ? phase2Inputs.incluir_piezas_rapidas
+        : (typeof phase2Inputs.incluir_flyers_torneos === 'boolean'
+          ? phase2Inputs.incluir_flyers_torneos
+          : true),
+    notas_operativas: sanitizeLocalText(phase2Inputs.notas_operativas || ''),
+  };
+  base.phase2.output = phase2.output && typeof phase2.output === 'object' ? phase2.output : null;
+  base.phase2.generatedAt = phase2.generatedAt || null;
+  base.phase2.model = phase2.model || '';
+
+  return base;
+};
+
+const PANEL_SPRING = {
+  type: 'spring',
+  stiffness: 230,
+  damping: 28,
+  mass: 0.9,
+};
 
 const ProjectTasks = () => {
   const { t } = useTranslation();
@@ -125,6 +224,13 @@ const ProjectTasks = () => {
   const [editedTitle, setEditedTitle] = useState('');
   const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false);
   const [isActionsOpen, setIsActionsOpen] = useState(false);
+  const [aiPlanning, setAiPlanning] = useState(cloneDefaultAiPlanning);
+  const [isGeneratingPhase1, setIsGeneratingPhase1] = useState(false);
+  const [isGeneratingPhase2, setIsGeneratingPhase2] = useState(false);
+  const [isSavingAiPlanning, setIsSavingAiPlanning] = useState(false);
+  const [plannerError, setPlannerError] = useState('');
+  const [plannerNotice, setPlannerNotice] = useState('');
+  const [isPlannerFocusOpen, setIsPlannerFocusOpen] = useState(false);
 
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -328,16 +434,26 @@ const ProjectTasks = () => {
         deliverables: selectedService.deliverables || '',
         requirements: selectedService.requirements || ''
       });
+      setAiPlanning(normalizeAiPlanning(selectedService.ai_planning));
+      setPlannerError('');
+      setPlannerNotice('');
       setIsEditingDesc(false);
       setIsEditingService(false);
       setIsActionsOpen(false);
       setIsAssigning(false);
       setMobileView('detail');
+      setIsPlannerFocusOpen(false);
       if (selectedService.responsible_id && !teamMembersMap[selectedService.responsible_id]) {
         fetchTeamMemberProfiles([selectedService.responsible_id]);
       }
     }
   }, [selectedService, fetchServiceDetails, fetchTeamMemberProfiles]);
+
+  useEffect(() => {
+    if (!selectedService?.id && isPlannerFocusOpen) {
+      setIsPlannerFocusOpen(false);
+    }
+  }, [selectedService?.id, isPlannerFocusOpen]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -557,6 +673,214 @@ const ProjectTasks = () => {
     if (e.key === 'Escape') { setIsCreateServiceOpen(false); setNewServiceTitle(''); }
   };
 
+  const handleBackToTaskList = () => {
+    setIsPlannerFocusOpen(false);
+    setShowDetail(true);
+    setMobileView('detail');
+  };
+
+  const getApiToken = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  }, []);
+
+  const persistAiPlanning = useCallback(async (nextPlanning, noticeText = '') => {
+    if (!selectedService?.id) return false;
+    setIsSavingAiPlanning(true);
+
+    const updatePayload = {
+      ai_planning: nextPlanning,
+      ai_planning_updated_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabase
+      .from('services')
+      .update(updatePayload)
+      .eq('id', selectedService.id);
+
+    if (error) {
+      console.error('Error saving ai planning:', error.message);
+      setPlannerError(`No se pudo guardar la planificacion IA: ${error.message}`);
+      setIsSavingAiPlanning(false);
+      return false;
+    }
+
+    setSelectedService((prev) => (prev?.id === selectedService.id ? { ...prev, ...updatePayload } : prev));
+    setServices((prev) => prev.map((item) => (item.id === selectedService.id ? { ...item, ...updatePayload } : item)));
+    setPlannerError('');
+    if (noticeText) setPlannerNotice(noticeText);
+    setIsSavingAiPlanning(false);
+    return true;
+  }, [selectedService?.id]);
+
+  const handlePhase1InputChange = (field, value) => {
+    setAiPlanning((prev) => ({
+      ...prev,
+      phase1: {
+        ...prev.phase1,
+        inputs: {
+          ...prev.phase1.inputs,
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const handlePhase1CtaChange = (index, value) => {
+    setAiPlanning((prev) => {
+      const nextCtas = [...(prev.phase1.inputs.ctas || ['', '', ''])];
+      while (nextCtas.length < 3) nextCtas.push('');
+      nextCtas[index] = value;
+      return {
+        ...prev,
+        phase1: {
+          ...prev.phase1,
+          inputs: {
+            ...prev.phase1.inputs,
+            ctas: nextCtas.slice(0, 4),
+          },
+        },
+      };
+    });
+  };
+
+  const handlePhase2InputChange = (field, value) => {
+    setAiPlanning((prev) => ({
+      ...prev,
+      phase2: {
+        ...prev.phase2,
+        inputs: {
+          ...prev.phase2.inputs,
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const requestPlanner = useCallback(async ({ phase, phaseInput, phase1Output }) => {
+    if (!selectedService?.id) {
+      throw new Error('No hay tarea seleccionada.');
+    }
+
+    const token = await getApiToken();
+    if (!token) {
+      throw new Error('No se pudo obtener la sesion para llamar a IA.');
+    }
+
+    const response = await fetch('/api/services-content-planner', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        phase,
+        serviceId: selectedService.id,
+        projectId: selectedProject?.id || selectedService.project_id || null,
+        phaseInput,
+        phase1Output,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload?.error || payload?.detail || 'Error desconocido en planificador IA.');
+    }
+
+    return payload;
+  }, [getApiToken, selectedProject?.id, selectedService?.id, selectedService?.project_id]);
+
+  const handleGeneratePhase1 = async () => {
+    if (!canManage || !selectedService?.id || isGeneratingPhase1) return;
+
+    const inputs = aiPlanning.phase1.inputs || {};
+    const missingRequired = [
+      ['proposito', 'Proposito'],
+      ['objetivo_medible', 'Objetivo medible'],
+      ['concepto_central', 'Concepto central'],
+      ['mensaje_principal', 'Mensaje principal'],
+    ].filter(([key]) => !sanitizeLocalText(inputs[key])).map(([, label]) => label);
+
+    if (missingRequired.length > 0) {
+      setPlannerError(`Completa estos campos antes de generar Fase 1: ${missingRequired.join(', ')}.`);
+      setPlannerNotice('');
+      return;
+    }
+
+    setIsGeneratingPhase1(true);
+    setPlannerError('');
+    setPlannerNotice('');
+
+    try {
+      const payload = await requestPlanner({
+        phase: 'phase1',
+        phaseInput: {
+          ...inputs,
+          ctas: (inputs.ctas || []).map((cta) => sanitizeLocalText(cta)).filter(Boolean),
+        },
+      });
+
+      const nextPlanning = {
+        ...aiPlanning,
+        phase1: {
+          ...aiPlanning.phase1,
+          output: payload.output || null,
+          generatedAt: payload.generatedAt || new Date().toISOString(),
+          model: payload.model || '',
+        },
+      };
+
+      setAiPlanning(nextPlanning);
+      await persistAiPlanning(nextPlanning, 'Fase 1 generada y guardada.');
+    } catch (error) {
+      console.error('Error generating phase1:', error);
+      setPlannerError(error?.message || 'No se pudo generar la Fase 1.');
+    } finally {
+      setIsGeneratingPhase1(false);
+    }
+  };
+
+  const handleGeneratePhase2 = async () => {
+    if (!canManage || !selectedService?.id || isGeneratingPhase2) return;
+
+    const phase1Output = aiPlanning.phase1.output || {};
+    if (!sanitizeLocalText(phase1Output.frase_eje) || !sanitizeLocalText(phase1Output.mensaje_principal)) {
+      setPlannerError('Primero genera la Fase 1 para definir la brujula del mes.');
+      setPlannerNotice('');
+      return;
+    }
+
+    setIsGeneratingPhase2(true);
+    setPlannerError('');
+    setPlannerNotice('');
+
+    try {
+      const payload = await requestPlanner({
+        phase: 'phase2',
+        phaseInput: aiPlanning.phase2.inputs,
+        phase1Output,
+      });
+
+      const nextPlanning = {
+        ...aiPlanning,
+        phase2: {
+          ...aiPlanning.phase2,
+          output: payload.output || null,
+          generatedAt: payload.generatedAt || new Date().toISOString(),
+          model: payload.model || '',
+        },
+      };
+
+      setAiPlanning(nextPlanning);
+      await persistAiPlanning(nextPlanning, 'Fase 2 generada y guardada.');
+    } catch (error) {
+      console.error('Error generating phase2:', error);
+      setPlannerError(error?.message || 'No se pudo generar la Fase 2.');
+    } finally {
+      setIsGeneratingPhase2(false);
+    }
+  };
+
   const projectTeam = useMemo(() => {
     const ids = selectedProject?.project_assignments?.map(pa => pa.worker_id) || [];
     return ids.map(id => teamMembersMap[id]).filter(Boolean);
@@ -627,11 +951,17 @@ const ProjectTasks = () => {
   }
 
   return (
-    <div className="font-product min-h-screen md:min-h-[calc(100vh-140px)] max-w-[1500px] mx-auto w-full px-2 md:px-8 flex flex-col justify-center py-2 md:py-8 overflow-hidden">
-      <div className="flex flex-col md:flex-row gap-4 lg:gap-6 h-[calc(100vh-80px)] md:h-[650px] lg:h-[750px] overflow-hidden w-full relative">
+    <div className="font-product min-h-screen md:min-h-[calc(100vh-140px)] w-full px-0 flex flex-col justify-start py-0 overflow-hidden">
+      <div className={`flex flex-col md:flex-row ${isPlannerFocusOpen ? 'gap-0' : 'gap-2 md:gap-3 lg:gap-4'} h-[calc(100dvh-70px)] md:h-[calc(100dvh-96px)] overflow-hidden w-full relative`}>
 
         {/* LEFT COLUMN - SERVICE LIST */}
-        <div className={`w-full md:w-[320px] lg:w-[360px] flex flex-col bg-white rounded-[24px] md:rounded-[32px] border border-neutral-100 shadow-sm overflow-hidden h-full shrink-0 transition-all ${mobileView !== 'list' ? 'hidden md:flex' : 'flex'}`}>
+        <motion.div
+          layout
+          initial={{ opacity: 0, x: -32 }}
+          animate={isPlannerFocusOpen ? { opacity: 0, x: -96, scale: 0.98 } : { opacity: 1, x: 0, scale: 1 }}
+          transition={PANEL_SPRING}
+          className={`w-full ${isPlannerFocusOpen ? 'md:w-0 lg:w-0 md:min-w-0 md:pointer-events-none md:border-transparent md:shadow-none' : 'md:w-[320px] lg:w-[360px]'} flex flex-col bg-white rounded-[24px] md:rounded-[32px] border border-neutral-100 shadow-sm overflow-hidden h-full shrink-0 transition-all duration-300 ${isPlannerFocusOpen ? 'hidden md:flex' : (mobileView !== 'list' ? 'hidden md:flex' : 'flex')}`}
+        >
           <div className="p-6 bg-neutral-100/50 border-b border-neutral-100 flex flex-col items-center text-center relative">
             {/* Back button */}
             <button
@@ -815,7 +1145,7 @@ const ProjectTasks = () => {
               )}
             </AnimatePresence>
 
-            <div className="flex-1 overflow-y-auto px-5 md:px-6 py-4 space-y-2 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto px-4 md:px-5 py-3 space-y-2 no-scrollbar">
               {serviceLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 size={20} className="animate-spin text-neutral-300" />
@@ -891,20 +1221,29 @@ const ProjectTasks = () => {
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* RIGHT COLUMN - DETAIL & COMMENTS */}
-        <div className={`flex-1 flex flex-col bg-[#EBEBEB] rounded-[24px] md:rounded-[32px] overflow-hidden transition-all h-full ${mobileView === 'list' ? 'hidden md:flex' : 'flex'}`}>
+        <motion.div
+          layout
+          initial={{ opacity: 0, x: 44 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={PANEL_SPRING}
+          className={`flex-1 flex flex-col bg-[#EBEBEB] rounded-[24px] md:rounded-[32px] overflow-hidden transition-all h-full ${isPlannerFocusOpen ? 'flex' : (mobileView === 'list' ? 'hidden md:flex' : 'flex')}`}
+        >
           {selectedService ? (
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
+              key={`${selectedService.id}-${isPlannerFocusOpen ? 'focus' : 'default'}`}
+              initial={{ opacity: 0, x: isPlannerFocusOpen ? 110 : 34 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.2 }}
-              className="flex flex-col lg:flex-row h-full overflow-hidden relative"
+              exit={{ opacity: 0, x: isPlannerFocusOpen ? -34 : -20 }}
+              transition={PANEL_SPRING}
+              className={`flex flex-col h-full overflow-hidden relative ${isPlannerFocusOpen ? '' : 'lg:flex-row'}`}
             >
 
               {/* Mobile View Toggles (Detail/Comments) */}
-              <div className="flex md:hidden bg-white border-b border-neutral-100 p-1 mx-4 mt-4 rounded-xl shadow-sm z-10">
+              {!isPlannerFocusOpen && (
+                <div className="flex md:hidden bg-white border-b border-neutral-100 p-1 mx-4 mt-4 rounded-xl shadow-sm z-10">
                 <button
                   onClick={() => setMobileView('detail')}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${mobileView === 'detail' ? 'bg-black text-white shadow-md' : 'text-neutral-400'}`}
@@ -918,9 +1257,11 @@ const ProjectTasks = () => {
                   Chat {comments.length > 0 && `(${comments.length})`}
                 </button>
               </div>
+              )}
 
               {/* Detail Info Panel */}
-              <div className={`flex-1 flex flex-col border-r border-neutral-200/40 p-5 md:p-6 lg:p-8 space-y-6 overflow-y-auto scrollbar-hide ${mobileView === 'comments' ? 'hidden lg:flex' : 'flex'}`}>
+              <div className={`flex-1 flex flex-col ${isPlannerFocusOpen ? 'p-2 md:p-3 lg:p-4' : 'p-5 md:p-6 lg:p-8'} space-y-4 md:space-y-6 overflow-y-auto no-scrollbar ${isPlannerFocusOpen ? '' : 'border-r border-neutral-200/40'} ${(!isPlannerFocusOpen && mobileView === 'comments') ? 'hidden lg:flex' : 'flex'}`}>
+                {!isPlannerFocusOpen && (
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     {/* Back Button for mobile */}
@@ -1038,7 +1379,10 @@ const ProjectTasks = () => {
                     ) : null}
                   </div>
                 </div>
+                )}
 
+                {!isPlannerFocusOpen && (
+                <>
                 {/* Compact Info Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 border-y border-neutral-100/60">
                   <div className="flex flex-col gap-1.5">
@@ -1198,8 +1542,302 @@ const ProjectTasks = () => {
                     )}
                   </div>
                 </div>
+                </>
+                )}
+
+                {/* AI Planner Access */}
+                {!isPlannerFocusOpen && (
+                  <div className="flex items-center justify-end">
+                    <button
+                      onClick={() => setIsPlannerFocusOpen(true)}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-black text-white rounded-full text-[11px] font-black uppercase tracking-wide hover:bg-neutral-800 transition-all shadow-md"
+                    >
+                      <Sparkles size={13} />
+                      Abrir Fases
+                    </button>
+                  </div>
+                )}
+
+                {/* AI Planner */}
+                <AnimatePresence mode="wait" initial={false}>
+                {isPlannerFocusOpen && (
+                <motion.div
+                  key="planner-focus-panel"
+                  initial={{ opacity: 0, x: 80 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 80 }}
+                  transition={PANEL_SPRING}
+                  className="space-y-3 w-full"
+                >
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-black">Modo Fases</p>
+                    <p className="text-sm font-bold text-neutral-800 truncate">{selectedService.title}</p>
+                  </div>
+                  <button
+                    onClick={handleBackToTaskList}
+                    className="px-3 py-2 bg-black text-white rounded-xl text-[11px] font-black uppercase tracking-wide hover:bg-neutral-800 transition-all shrink-0"
+                  >
+                    Volver a vista completa
+                  </button>
+                </div>
+                <div className="rounded-2xl border border-neutral-200 bg-white/60 p-4 md:p-5 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center">
+                        <Sparkles size={15} />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-neutral-800">Planificador IA por Fases</h3>
+                        <p className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
+                          Fase 1 estrategia + Fase 2 sistema de contenidos
+                        </p>
+                      </div>
+                    </div>
+                    {(isSavingAiPlanning || isGeneratingPhase1 || isGeneratingPhase2) && (
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-neutral-500">
+                        <Loader2 size={12} className="animate-spin" />
+                        Procesando...
+                      </div>
+                    )}
+                  </div>
+
+                  {plannerError && (
+                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600 font-medium">
+                      {plannerError}
+                    </div>
+                  )}
+                  {!plannerError && plannerNotice && (
+                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 font-medium">
+                      {plannerNotice}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs uppercase tracking-widest text-neutral-500 font-black">Fase 1 · Reunion principal</h4>
+                        <span className="text-[10px] text-neutral-400 font-bold">Agente estratega</span>
+                      </div>
+
+                      <textarea
+                        value={aiPlanning.phase1.inputs.proposito}
+                        onChange={(e) => handlePhase1InputChange('proposito', e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2.5 text-xs text-neutral-700 outline-none focus:border-black min-h-[64px]"
+                        placeholder="Proposito: que buscamos posicionar este mes..."
+                        disabled={!canManage}
+                      />
+                      <input
+                        value={aiPlanning.phase1.inputs.objetivo_medible}
+                        onChange={(e) => handlePhase1InputChange('objetivo_medible', e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2.5 text-xs text-neutral-700 outline-none focus:border-black"
+                        placeholder="Objetivo medible (KPI): ej. nuevos jugadores activos por mes"
+                        disabled={!canManage}
+                      />
+                      <input
+                        value={aiPlanning.phase1.inputs.concepto_central}
+                        onChange={(e) => handlePhase1InputChange('concepto_central', e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2.5 text-xs text-neutral-700 outline-none focus:border-black"
+                        placeholder="Concepto central del mes: ej. Soluciona tu proceso hoy"
+                        disabled={!canManage}
+                      />
+                      <textarea
+                        value={aiPlanning.phase1.inputs.mensaje_principal}
+                        onChange={(e) => handlePhase1InputChange('mensaje_principal', e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2.5 text-xs text-neutral-700 outline-none focus:border-black min-h-[54px]"
+                        placeholder="Mensaje principal: promesa/beneficio en lenguaje simple..."
+                        disabled={!canManage}
+                      />
+                      <input
+                        value={aiPlanning.phase1.inputs.publico_objetivo}
+                        onChange={(e) => handlePhase1InputChange('publico_objetivo', e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2.5 text-xs text-neutral-700 outline-none focus:border-black"
+                        placeholder="Publico objetivo (opcional)"
+                        disabled={!canManage}
+                      />
+                      <textarea
+                        value={aiPlanning.phase1.inputs.contexto_extra}
+                        onChange={(e) => handlePhase1InputChange('contexto_extra', e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2.5 text-xs text-neutral-700 outline-none focus:border-black min-h-[52px]"
+                        placeholder="Contexto extra de campana (opcional)"
+                        disabled={!canManage}
+                      />
+
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-neutral-400">CTAs sugeridos</p>
+                        {[0, 1, 2].map((index) => (
+                          <input
+                            key={index}
+                            value={aiPlanning.phase1.inputs.ctas?.[index] || ''}
+                            onChange={(e) => handlePhase1CtaChange(index, e.target.value)}
+                            className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2.5 text-xs text-neutral-700 outline-none focus:border-black"
+                            placeholder={`CTA ${index + 1}: ej. Escribinos por mensaje y te guiamos`}
+                            disabled={!canManage}
+                          />
+                        ))}
+                      </div>
+
+                      {canManage && (
+                        <button
+                          onClick={handleGeneratePhase1}
+                          disabled={isGeneratingPhase1 || isSavingAiPlanning}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white rounded-xl text-xs font-black uppercase tracking-wide shadow-md hover:bg-neutral-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isGeneratingPhase1 ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                          Generar Fase 1
+                        </button>
+                      )}
+
+                      {aiPlanning.phase1.output && (
+                        <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3 space-y-2">
+                          <p className="text-[10px] uppercase tracking-widest text-emerald-700 font-black">Entregable Fase 1</p>
+                          <p className="text-xs text-neutral-700"><span className="font-black text-neutral-800">Frase eje:</span> {aiPlanning.phase1.output.frase_eje}</p>
+                          <p className="text-xs text-neutral-700"><span className="font-black text-neutral-800">Mensaje:</span> {aiPlanning.phase1.output.mensaje_principal}</p>
+                          <p className="text-xs text-neutral-700"><span className="font-black text-neutral-800">KPI:</span> {aiPlanning.phase1.output.kpi}</p>
+                          {(aiPlanning.phase1.output.ctas || []).length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {(aiPlanning.phase1.output.ctas || []).map((cta, idx) => (
+                                <span key={`${cta}-${idx}`} className="px-2 py-1 rounded-full bg-white text-[10px] font-bold text-neutral-700 border border-emerald-100">
+                                  {cta}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-neutral-200 bg-white p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs uppercase tracking-widest text-neutral-500 font-black">Fase 2 · Sistema de contenidos</h4>
+                        <span className="text-[10px] text-neutral-400 font-bold">Agente ejecucion</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide">
+                          Reels ancla
+                          <select
+                            value={aiPlanning.phase2.inputs.reels_ancla}
+                            onChange={(e) => handlePhase2InputChange('reels_ancla', Number(e.target.value))}
+                            className="mt-1 w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2 text-xs text-neutral-700 outline-none focus:border-black"
+                            disabled={!canManage}
+                          >
+                            {[1, 2, 3, 4, 5, 6].map((value) => (
+                              <option key={value} value={value}>{value}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide">
+                          Carru refuerzo
+                          <select
+                            value={aiPlanning.phase2.inputs.carruseles_refuerzo}
+                            onChange={(e) => handlePhase2InputChange('carruseles_refuerzo', Number(e.target.value))}
+                            className="mt-1 w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2 text-xs text-neutral-700 outline-none focus:border-black"
+                            disabled={!canManage}
+                          >
+                            {[1, 2, 3, 4, 5, 6, 7, 8].map((value) => (
+                              <option key={value} value={value}>{value}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="text-[10px] font-bold text-neutral-500 uppercase tracking-wide">
+                          Carru contexto
+                          <select
+                            value={aiPlanning.phase2.inputs.carruseles_contexto}
+                            onChange={(e) => handlePhase2InputChange('carruseles_contexto', Number(e.target.value))}
+                            className="mt-1 w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2 text-xs text-neutral-700 outline-none focus:border-black"
+                            disabled={!canManage}
+                          >
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((value) => (
+                              <option key={value} value={value}>{value}</option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+
+                      <label className="flex items-center gap-2 text-xs text-neutral-600 font-medium">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(aiPlanning.phase2.inputs.incluir_piezas_rapidas)}
+                          onChange={(e) => handlePhase2InputChange('incluir_piezas_rapidas', e.target.checked)}
+                          disabled={!canManage}
+                        />
+                        Incluir piezas rapidas segun oportunidades del proyecto
+                      </label>
+
+                      <textarea
+                        value={aiPlanning.phase2.inputs.notas_operativas}
+                        onChange={(e) => handlePhase2InputChange('notas_operativas', e.target.value)}
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl p-2.5 text-xs text-neutral-700 outline-none focus:border-black min-h-[64px]"
+                        placeholder="Notas operativas para ejecucion (opcional)"
+                        disabled={!canManage}
+                      />
+
+                      {canManage && (
+                        <button
+                          onClick={handleGeneratePhase2}
+                          disabled={isGeneratingPhase2 || isSavingAiPlanning}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-black text-white rounded-xl text-xs font-black uppercase tracking-wide shadow-md hover:bg-neutral-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isGeneratingPhase2 ? <Loader2 size={13} className="animate-spin" /> : <Wand2 size={13} />}
+                          Generar Fase 2
+                        </button>
+                      )}
+
+                      {aiPlanning.phase2.output && (
+                        <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-3 space-y-3">
+                          <p className="text-[10px] uppercase tracking-widest text-sky-700 font-black">Entregable Fase 2</p>
+                          <p className="text-xs text-neutral-700">{aiPlanning.phase2.output.objetivo_sistema}</p>
+
+                          {[
+                            ['Ancla', aiPlanning.phase2.output.ancla],
+                            ['Refuerzo', aiPlanning.phase2.output.refuerzo],
+                            ['Contexto', aiPlanning.phase2.output.contexto],
+                          ].map(([label, pieces]) => (
+                            <div key={label} className="space-y-1">
+                              <p className="text-[10px] font-black uppercase tracking-wide text-neutral-500">{label}</p>
+                              {(pieces || []).length === 0 ? (
+                                <p className="text-[11px] text-neutral-500">Sin piezas sugeridas.</p>
+                              ) : (
+                                <div className="space-y-1.5">
+                                  {(pieces || []).map((piece, idx) => (
+                                    <div key={`${label}-${idx}`} className="rounded-lg border border-white bg-white/90 px-2.5 py-2">
+                                      <p className="text-xs font-bold text-neutral-700">{piece.titulo}</p>
+                                      <p className="text-[11px] text-neutral-500">{piece.objetivo}</p>
+                                      <p className="text-[11px] text-neutral-600 mt-0.5"><span className="font-semibold">Hook:</span> {piece.hook}</p>
+                                      <p className="text-[11px] text-neutral-600"><span className="font-semibold">CTA:</span> {piece.cta}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+
+                          {(aiPlanning.phase2.output.piezas_rapidas || aiPlanning.phase2.output.flyers_torneos || []).length > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-[10px] font-black uppercase tracking-wide text-neutral-500">Piezas rapidas</p>
+                              <div className="space-y-1.5">
+                                {(aiPlanning.phase2.output.piezas_rapidas || aiPlanning.phase2.output.flyers_torneos || []).map((flyer, idx) => (
+                                  <div key={`flyer-${idx}`} className="rounded-lg border border-white bg-white/90 px-2.5 py-2 text-[11px] text-neutral-600">
+                                    <p><span className="font-semibold">Detonante:</span> {flyer.detonante}</p>
+                                    <p><span className="font-semibold">Mensaje:</span> {flyer.mensaje}</p>
+                                    <p><span className="font-semibold">CTA:</span> {flyer.cta}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                </motion.div>
+                )}
+                </AnimatePresence>
 
                 {/* Files Section */}
+                {!isPlannerFocusOpen && (
                 <div>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-bold text-neutral-800">
@@ -1264,10 +1902,20 @@ const ProjectTasks = () => {
                     </div>
                   )}
                 </div>
+                )}
               </div>
 
               {/* Comments Right View */}
-              <div className={`w-full lg:w-[360px] xl:w-[400px] bg-white/40 flex flex-col h-full border-l lg:border-none ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+              <AnimatePresence initial={false}>
+              {!isPlannerFocusOpen && (
+              <motion.div
+                key="project-comments-panel"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 50 }}
+                transition={PANEL_SPRING}
+                className={`w-full lg:w-[360px] xl:w-[400px] bg-white/40 flex flex-col h-full border-l lg:border-none ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}
+              >
                 <div className="p-5 md:p-6 lg:p-8 pb-4 flex items-center justify-between">
                   <h3 className="text-[11px] font-black uppercase tracking-widest text-neutral-400 flex items-center gap-2">
                     <MessageSquare size={14} className="text-skyblue" />
@@ -1291,7 +1939,7 @@ const ProjectTasks = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-6 space-y-4 scrollbar-hide py-4" ref={scrollRef}>
+                <div className="flex-1 overflow-y-auto px-5 space-y-4 no-scrollbar py-4" ref={scrollRef}>
                   {comments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-center opacity-40 py-8">
                       <MessageSquare size={32} className="mb-3" />
@@ -1326,7 +1974,9 @@ const ProjectTasks = () => {
                     </AnimatePresence>
                   </form>
                 </div>
-              </div>
+              </motion.div>
+              )}
+              </AnimatePresence>
             </motion.div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-neutral-400 p-8 text-center bg-white/40">
@@ -1335,7 +1985,7 @@ const ProjectTasks = () => {
               <p className="text-xs mt-3 max-w-xs leading-relaxed opacity-60 font-medium">Visualiza detalles, archivos y mantén una conversación fluida con el equipo.</p>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
     </div>
   );
