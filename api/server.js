@@ -10,6 +10,7 @@ import metaHandler from './meta.js';
 import reportsAiContextHandler from './reports-ai-context.js';
 import reportsOcrSummaryHandler from './reports-ocr-summary.js';
 import servicesContentPlannerHandler from './services-content-planner.js';
+import whatsappHandler from './whatsapp.js';
 
 
 dotenv.config();
@@ -28,6 +29,19 @@ app.post('/api/reports-ingest', reportsOcrSummaryHandler);
 app.post('/api/services-content-planner', servicesContentPlannerHandler);
 app.all('/api/meta/:action', metaHandler);
 app.all('/api/meta', metaHandler);
+app.all('/api/whatsapp', whatsappHandler);
+
+// Backward-compatible local routes for old clients.
+function routeWhatsappAction(action) {
+    return (req, res) => {
+        req.query = { ...(req.query || {}), action };
+        return whatsappHandler(req, res);
+    };
+}
+
+app.post('/api/whatsapp-send', routeWhatsappAction('send'));
+app.all('/api/whatsapp-webhook', routeWhatsappAction('webhook'));
+app.post('/api/whatsapp-ai-toggle', routeWhatsappAction('ai-toggle'));
 
 
 

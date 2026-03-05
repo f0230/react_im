@@ -9,7 +9,7 @@ Usa este tool SOLO cuando el cliente pida explicitamente detener o reanudar el b
 Actualiza `whatsapp_threads.ai_enabled` y notifica a n8n.
 
 - Name: `whatsapp_ai_toggle`
-- Endpoint: `POST /api/whatsapp-ai-toggle`
+- Endpoint: `POST /api/whatsapp?action=ai-toggle`
 - Description: "Disable or enable the WhatsApp AI bot for a specific thread ONLY when the user explicitly requests it. Do not change the bot state proactively. Required: wa_id. Optional: action ('disable'|'enable') or ai_enabled (boolean), client_id, thread_id, reason."
 
 ### Ver disponibilidad (Appoiment)

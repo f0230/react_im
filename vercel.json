@@ -38,6 +38,18 @@
       "destination": "/api/meta?action=:action"
     },
     {
+      "source": "/api/whatsapp-send",
+      "destination": "/api/whatsapp?action=send"
+    },
+    {
+      "source": "/api/whatsapp-webhook",
+      "destination": "/api/whatsapp?action=webhook"
+    },
+    {
+      "source": "/api/whatsapp-ai-toggle",
+      "destination": "/api/whatsapp?action=ai-toggle"
+    },
+    {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }

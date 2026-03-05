@@ -14,7 +14,7 @@
      - whatsapp_business_management
 5. Webhook:
    - Object: whatsapp_business_account
-   - Callback URL: `https://<your-domain>/api/whatsapp-webhook`
+   - Callback URL: `https://<your-domain>/api/whatsapp?action=webhook`
    - Verify Token: any fixed string (save it as env var)
    - Subscribe to field: messages
 
@@ -36,15 +36,20 @@ Then run `supabase/whatsapp-ai-toggle.sql` to add the `ai_enabled` toggle
 with default `true` (bot ON).
 
 ## 4) Endpoints
-- GET `/api/whatsapp-webhook`
+- GET `/api/whatsapp?action=webhook`
   - Used by Meta to verify the webhook.
-- POST `/api/whatsapp-webhook`
+- POST `/api/whatsapp?action=webhook`
   - Receives inbound messages and statuses.
   - Stores them in `whatsapp_messages` and updates `whatsapp_threads` (if Supabase env vars exist).
-- POST `/api/whatsapp-send`
+- POST `/api/whatsapp?action=send`
   - Sends outbound messages.
-- POST `/api/whatsapp-ai-toggle`
+- POST `/api/whatsapp?action=ai-toggle`
   - Toggles AI bot per WhatsApp thread and optionally notifies n8n.
+- Legacy compatibility:
+  - `/api/whatsapp-send`
+  - `/api/whatsapp-webhook`
+  - `/api/whatsapp-ai-toggle`
+  (all rewrite to `/api/whatsapp`)
 
 ## 5) AI tool description (agent)
 Use this tool ONLY when the user explicitly asks to stop or resume the bot.
@@ -52,11 +57,11 @@ It updates `whatsapp_threads.ai_enabled` and notifies n8n for orchestration.
 
 Name: `whatsapp_ai_toggle`
 Description: "Disable or enable the WhatsApp AI bot for a specific thread ONLY when the user explicitly requests it. Do not change the bot state proactively. Required: wa_id. Optional: action ('disable'|'enable') or ai_enabled (boolean), client_id, thread_id, reason."
-Endpoint: `POST /api/whatsapp-ai-toggle`
+Endpoint: `POST /api/whatsapp?action=ai-toggle`
 
 ### Example: send a text message
 ```
-curl -X POST https://<your-domain>/api/whatsapp-send \
+curl -X POST "https://<your-domain>/api/whatsapp?action=send" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "5989XXXXXXXX",
@@ -66,7 +71,7 @@ curl -X POST https://<your-domain>/api/whatsapp-send \
 
 ### Example: send a template
 ```
-curl -X POST https://<your-domain>/api/whatsapp-send \
+curl -X POST "https://<your-domain>/api/whatsapp?action=send" \
   -H "Content-Type: application/json" \
   -d '{
     "to": "5989XXXXXXXX",
