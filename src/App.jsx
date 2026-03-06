@@ -1,5 +1,5 @@
 // App.jsx
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
@@ -7,7 +7,6 @@ import { BRAND_LOADER_CYCLE_MS } from "@/components/ui/loadingFallback.constants
 import { lazyRoute, routeKeys, scheduleIdlePreload } from "@/router/routePrefetch";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
-import PortalLayout from "@/layouts/PortalLayout";
 import useCycleLockedVisibility from "@/hooks/useCycleLockedVisibility";
 
 const Home = lazyRoute(routeKeys.home);
@@ -39,6 +38,7 @@ const MessagingHubRedirect = lazyRoute(routeKeys.messagingHubRedirect);
 const Settings = lazyRoute(routeKeys.settings);
 const ScheduleCall = lazyRoute(routeKeys.scheduleCall);
 const AdminAppointments = lazyRoute(routeKeys.adminAppointments);
+const PortalLayout = lazy(() => import('@/layouts/PortalLayout'));
 
 const AppContent = () => {
   const { isNavbarOpen } = useUI();

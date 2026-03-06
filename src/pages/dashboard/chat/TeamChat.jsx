@@ -3,9 +3,9 @@ import { ArrowLeft, Hash, Image, MessageSquare, Mic, Plus, RefreshCw, Search, Se
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import { useUnreadCounts } from '@/context/UnreadCountsContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
 import useThrottledCallback from '@/hooks/useThrottledCallback';
-import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
 import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
 import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';

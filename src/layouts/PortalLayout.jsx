@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import DashboardNavbar from './DashboardNavbar';
 import { useAuth } from '../context/AuthContext';
 import LoadingFallback from '../components/ui/LoadingFallback';
 import { BRAND_LOADER_CYCLE_MS } from '../components/ui/loadingFallback.constants';
-import CreateProjectModal from '../components/CreateProjectModal';
 import { AlertCircle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
 import useCycleLockedVisibility from '../hooks/useCycleLockedVisibility';
+import { UnreadCountsProvider } from '@/context/UnreadCountsContext';
 
 const PortalLayout = () => {
     const {
@@ -22,10 +21,8 @@ const PortalLayout = () => {
         isProfileIncomplete,
     } = useAuth();
 
-    const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
-    const role = profile?.role;
 
     const isAuthReady = typeof authReady === 'boolean' ? authReady : !loading;
     const showAuthLoader = useCycleLockedVisibility(!isAuthReady, BRAND_LOADER_CYCLE_MS);
@@ -136,19 +133,13 @@ const PortalLayout = () => {
 
     return (
         <div className="min-h-screen bg-[#f2f2f2] font-product">
-            <DashboardNavbar />
+            <UnreadCountsProvider>
+                <DashboardNavbar />
 
-            <main className="relative max-w-[1440px] px-4 md:px-10 mx-auto pt-[45px] animate-fade-in">
-                <Outlet />
-            </main>
-
-            <CreateProjectModal
-                isOpen={showCreateProjectModal}
-                onClose={() => setShowCreateProjectModal(false)}
-                onCreated={() => setShowCreateProjectModal(false)}
-                isFirstProject={true}
-                role={role}
-            />
+                <main className="relative max-w-[1440px] px-4 md:px-10 mx-auto pt-[45px] animate-fade-in">
+                    <Outlet />
+                </main>
+            </UnreadCountsProvider>
         </div>
     );
 };

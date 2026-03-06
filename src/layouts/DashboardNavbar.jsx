@@ -3,7 +3,7 @@ import OptimizedImage from '../components/OptimizedImage'; // Adjust path if nee
 import logo from '../assets/Group 255.svg'; // Check path
 import { useAuth } from '../context/AuthContext';
 import { Menu } from 'lucide-react';
-import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useUnreadCounts } from '@/context/UnreadCountsContext';
 import MessageIcon from '@/components/notifications/MessageIcon';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import MessagePanel from '@/components/notifications/MessagePanel';

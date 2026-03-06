@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { useUnreadCounts } from '@/context/UnreadCountsContext';
 import { getMessagingTabs } from '@/config/messagingTabs';
 
 const MessagingTabs = () => {

@@ -1,7 +1,5 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import Picker from '@emoji-mart/react';
-import data from '@emoji-mart/data';
 
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '🎉', '😮', '😢'];
 
@@ -21,6 +19,8 @@ const composeHandlers = (theirHandler, ourHandler) => (event) => {
 const ReactionPickerPopover = ({ onSelect, children, triggerRef, enableLongPress = true, openOnClick = true }) => {
     const [open, setOpen] = useState(false);
     const [showPicker, setShowPicker] = useState(false);
+    const [pickerModule, setPickerModule] = useState(null);
+    const [isPickerLoading, setIsPickerLoading] = useState(false);
     const quick = useMemo(() => QUICK_REACTIONS, []);
     const child = React.Children.only(children);
     const timerRef = useRef(null);
@@ -50,6 +50,35 @@ const ReactionPickerPopover = ({ onSelect, children, triggerRef, enableLongPress
             clearTimer();
         }, 450);
     };
+
+    useEffect(() => {
+        if (!showPicker || pickerModule || isPickerLoading) return;
+
+        let cancelled = false;
+        setIsPickerLoading(true);
+
+        Promise.all([import('@emoji-mart/react'), import('@emoji-mart/data')])
+            .then(([picker, data]) => {
+                if (cancelled) return;
+                setPickerModule({
+                    Picker: picker.default || picker,
+                    data: data.default || data,
+                });
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setPickerModule(null);
+            })
+            .finally(() => {
+                if (!cancelled) setIsPickerLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [showPicker, pickerModule, isPickerLoading]);
+
+    const EmojiPicker = pickerModule?.Picker;
 
     return (
         <Popover.Root
@@ -124,19 +153,25 @@ const ReactionPickerPopover = ({ onSelect, children, triggerRef, enableLongPress
 
                     {showPicker && (
                         <div className="mt-2">
-                            <Picker
-                                data={data}
-                                onEmojiSelect={(emoji) => {
-                                    onSelect(emoji.native);
-                                    setOpen(false);
-                                    setShowPicker(false);
-                                }}
-                                theme="light"
-                                previewPosition="none"
-                                searchPosition="none"
-                                navPosition="bottom"
-                                perLine={7}
-                            />
+                            {EmojiPicker && pickerModule?.data ? (
+                                <EmojiPicker
+                                    data={pickerModule.data}
+                                    onEmojiSelect={(emoji) => {
+                                        onSelect(emoji.native);
+                                        setOpen(false);
+                                        setShowPicker(false);
+                                    }}
+                                    theme="light"
+                                    previewPosition="none"
+                                    searchPosition="none"
+                                    navPosition="bottom"
+                                    perLine={7}
+                                />
+                            ) : (
+                                <div className="flex h-24 items-center justify-center text-xs text-neutral-500">
+                                    {isPickerLoading ? 'Cargando emojis...' : 'No se pudo cargar el selector'}
+                                </div>
+                            )}
                         </div>
                     )}
                 </Popover.Content>
