@@ -43,6 +43,7 @@ export const routeKeys = Object.freeze({
     adminAppointments: 'adminAppointments',
     clientAppointments: 'clientAppointments',
     settings: 'settings',
+    studio: 'studio',
 });
 
 const routeImporters = {
@@ -75,6 +76,7 @@ const routeImporters = {
     [routeKeys.adminAppointments]: once(() => import('@/pages/AdminAppointments')),
     [routeKeys.clientAppointments]: once(() => import('@/pages/dashboard/projects/ClientAppointments')),
     [routeKeys.settings]: once(() => import('@/pages/dashboard/settings/Settings')),
+    [routeKeys.studio]: once(() => import('@/pages/Studio')),
 };
 
 const pathKeyMap = new Map([
@@ -107,6 +109,7 @@ const pathKeyMap = new Map([
     ['/dashboard/my-appointments', routeKeys.clientAppointments],
     ['/dashboard/settings', routeKeys.settings],
     ['/dashboard/profile', routeKeys.settings],
+    ['/dashboard/studio', routeKeys.studio],
 ]);
 
 const normalizePath = (to) => {

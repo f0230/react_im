@@ -19,15 +19,15 @@
   "rewrites": [
     {
       "source": "/api/reports-ingest",
-      "destination": "/api/project-created?action=reports-ingest"
+      "destination": "/api/reports?action=reports-ingest"
     },
     {
       "source": "/api/reports-ai-context",
-      "destination": "/api/project-created?action=reports-ai-context"
+      "destination": "/api/reports?action=reports-ai-context"
     },
     {
       "source": "/api/reports-ocr-summary",
-      "destination": "/api/project-created?action=reports-ingest"
+      "destination": "/api/reports?action=reports-ingest"
     },
     {
       "source": "/api/cal/:action",

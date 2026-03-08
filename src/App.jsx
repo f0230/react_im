@@ -38,6 +38,7 @@ const MessagingHubRedirect = lazyRoute(routeKeys.messagingHubRedirect);
 const Settings = lazyRoute(routeKeys.settings);
 const ScheduleCall = lazyRoute(routeKeys.scheduleCall);
 const AdminAppointments = lazyRoute(routeKeys.adminAppointments);
+const Studio = lazyRoute(routeKeys.studio);
 const PortalLayout = lazy(() => import('@/layouts/PortalLayout'));
 
 const AppContent = () => {
@@ -181,6 +182,7 @@ const AppContent = () => {
             <Route path="my-appointments" element={<ClientAppointments />} />
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Settings />} />
+            <Route path="studio" element={<Studio />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

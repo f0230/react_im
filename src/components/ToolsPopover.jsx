@@ -12,6 +12,13 @@ const DEFAULT_TOOLS = [
         url: 'https://aistudio.google.com/apps/drive/17FfeYIGkOd36xqDwEw5DIKxmWE3ikzUV?showPreview=true&showAssistant=true&fullscreenApplet=true',
         icon: 'Sparkles', // Storing icon name for persistence
         color: 'bg-gradient-to-br from-blue-500 to-purple-600'
+    },
+    {
+        id: 'studio-ia',
+        name: 'Studio IA',
+        url: '/dashboard/studio',
+        icon: 'Sparkles',
+        color: 'bg-gradient-to-br from-[#e3ff31] to-[#47D065] text-black'
     }
 ];
 

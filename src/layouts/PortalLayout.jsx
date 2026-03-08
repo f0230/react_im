@@ -57,6 +57,7 @@ const PortalLayout = () => {
                 (p) => p.startsWith('/dashboard/my-appointments'),
                 (p) => p.startsWith('/dashboard/client-chat'),
                 (p) => p.startsWith('/dashboard/messages'),
+                (p) => p.startsWith('/dashboard/studio'),
             ],
             worker: [
                 (p) => p === '/dashboard',
@@ -70,6 +71,7 @@ const PortalLayout = () => {
                 (p) => p.startsWith('/dashboard/messages'),
                 (p) => p.startsWith('/dashboard/settings'),
                 (p) => p.startsWith('/dashboard/profile'),
+                (p) => p.startsWith('/dashboard/studio'),
             ],
             admin: [
                 () => true,

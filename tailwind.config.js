@@ -18,13 +18,14 @@ export default {
         'teal-light': '#dbfdff',
         'teal-medium': '#6ea0a0',
         'teal-dark': '#3a7c7c',
-        
+
         'greyburger': '#d9d9d9',
         'skyblue': '#0071E3',
         'green': '#47D065',
         'crem': '#ACACAC',
         'skysoft': '#AEE4F8',
-
+        'banana': '#e3ff31',
+        'banana-dark': '#c5e01b',
       },
       keyframes: {
         'slide-up': {
@@ -37,20 +38,20 @@ export default {
         },
         // --- AÑADIDO: Keyframes para Ken Burns ---
         kenburns: {
-            '0%': { 
-              transform: 'scale(1) translate(0, 0)', 
-              filter: 'blur(0px)' // Opcional: Inicia nítido
-            }, 
-            '100%': { 
-              transform: 'scale(1.1) translate(-10px, 5px)', // Ajusta escala y movimiento
-              filter: 'blur(1px)' // Opcional: Ligero desenfoque al final
-            }, 
+          '0%': {
+            transform: 'scale(1) translate(0, 0)',
+            filter: 'blur(0px)' // Opcional: Inicia nítido
+          },
+          '100%': {
+            transform: 'scale(1.1) translate(-10px, 5px)', // Ajusta escala y movimiento
+            filter: 'blur(1px)' // Opcional: Ligero desenfoque al final
+          },
         },
       },
       animation: {
         'slide-up': 'slide-up 1s ease-out',
         'fade-in': 'fade-in 1s ease-out',
-                  'spin-slow': 'spin 20s linear infinite',
+        'spin-slow': 'spin 20s linear infinite',
         // --- AÑADIDO: Definición de la animación Ken Burns ---
         // 'kenburns 20s ease-in-out infinite alternate' significa:
         // - Usa los keyframes 'kenburns'
@@ -64,7 +65,7 @@ export default {
   },
   plugins: [],
 
-  
+
 }
 
 

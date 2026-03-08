@@ -1,0 +1,5 @@
+{
+  "name": "Banana Image Studio",
+  "description": "Professional image generation studio using Gemini Nano Banana models with support for Pro features, batch generation, and reference images.",
+  "requestFramePermissions": []
+}
