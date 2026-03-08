@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, AlertCircle, Download, Copy, RefreshCw } from 'lucide-react';
+import { Loader2, AlertCircle, Download, Copy, RefreshCw, X } from 'lucide-react';
 import { cn, copyImageToClipboard, downloadImage } from '@/lib/utils';
 
-export default function ImageGrid({ tasks, onSelect, onUseAsReference }) {
+export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss }) {
     if (tasks.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-[60vh] text-white/20">
@@ -38,10 +38,18 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference }) {
                                     <span className="text-xs font-medium text-white/40 uppercase tracking-widest">Generando</span>
                                 </div>
                             ) : task.status === 'failed' ? (
-                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-500/10 p-4 text-center">
-                                    <AlertCircle className="w-8 h-8 text-red-500 mb-2" />
-                                    <span className="text-xs font-medium text-red-500/60 uppercase tracking-widest mb-1">Falló</span>
-                                    <p className="text-[10px] text-red-400/80 line-clamp-2">{task.error}</p>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-red-950/60 p-4 text-center">
+                                    <AlertCircle className="w-8 h-8 text-red-400 mb-2" />
+                                    <span className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Falló</span>
+                                    <p className="text-[10px] text-red-300/70 line-clamp-3">{task.error}</p>
+                                    {onDismiss && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
+                                            className="mt-3 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 text-[11px] font-medium transition-colors"
+                                        >
+                                            <X size={12} /> Cerrar
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <>

@@ -60,9 +60,10 @@ export default function ControlPanel({
 
     const currentModel = MODELS.find((m) => m.id === model);
     const availableAspects =
-        model === "nano-banana-pro" || model === "nano-banana-2"
-            ? PRO_ASPECT_RATIOS
+        currentModel?.usesAspectRatio
+            ? PRO_ASPECT_RATIOS  // nano-banana-2 supports extended ratios
             : ASPECT_RATIOS;
+    const showResolution = !!currentModel?.hasResolution; // Only nano-banana-2
 
     return (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 z-50">
@@ -213,34 +214,37 @@ export default function ControlPanel({
                             )}
                         </div>
 
-                        <div className="relative">
-                            <div
-                                onClick={() => setShowSizeMenu(!showSizeMenu)}
-                                className="control-item"
-                            >
-                                <Monitor size={14} className="text-white/40" />
-                                <span className="text-sm">{imageSize}</span>
-                            </div>
-                            {showSizeMenu && (
-                                <div className="absolute bottom-full mb-2 left-0 w-32 glass-panel p-1 z-10">
-                                    {IMAGE_SIZES.map((s) => (
-                                        <div
-                                            key={s.value}
-                                            onClick={() => {
-                                                setImageSize(s.value);
-                                                setShowSizeMenu(false);
-                                            }}
-                                            className={cn(
-                                                "px-3 py-2 rounded-lg text-sm cursor-pointer hover:bg-white/5",
-                                                imageSize === s.value && "bg-white/10 text-banana"
-                                            )}
-                                        >
-                                            {s.label}
-                                        </div>
-                                    ))}
+                        {/* Resolution selector: only visible for models that support it (nano-banana-2) */}
+                        {showResolution && (
+                            <div className="relative">
+                                <div
+                                    onClick={() => setShowSizeMenu(!showSizeMenu)}
+                                    className="control-item"
+                                >
+                                    <Monitor size={14} className="text-white/40" />
+                                    <span className="text-sm">{imageSize}</span>
                                 </div>
-                            )}
-                        </div>
+                                {showSizeMenu && (
+                                    <div className="absolute bottom-full mb-2 left-0 w-32 glass-panel p-1 z-10">
+                                        {IMAGE_SIZES.map((s) => (
+                                            <div
+                                                key={s.value}
+                                                onClick={() => {
+                                                    setImageSize(s.value);
+                                                    setShowSizeMenu(false);
+                                                }}
+                                                className={cn(
+                                                    "px-3 py-2 rounded-lg text-sm cursor-pointer hover:bg-white/5",
+                                                    imageSize === s.value && "bg-white/10 text-banana"
+                                                )}
+                                            >
+                                                {s.label}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="flex-1" />
 

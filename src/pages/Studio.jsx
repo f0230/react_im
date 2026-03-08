@@ -115,6 +115,10 @@ export default function Studio() {
         }
     }, []);
 
+    const handleDismissTask = useCallback((taskId) => {
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+    }, []);
+
     const handleRequestKey = async () => {
         await requestApiKey();
         setHasApiKey(true);
@@ -162,6 +166,7 @@ export default function Studio() {
                     tasks={tasks}
                     onSelect={setSelectedTask}
                     onUseAsReference={setReferenceImage}
+                    onDismiss={handleDismissTask}
                 />
             </main>
 

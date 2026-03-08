@@ -50,6 +50,34 @@
       "destination": "/api/whatsapp?action=ai-toggle"
     },
     {
+      "source": "/api/figma-auth/login",
+      "destination": "/api/figma?action=auth-login"
+    },
+    {
+      "source": "/api/figma-auth/callback",
+      "destination": "/api/figma?action=auth-callback"
+    },
+    {
+      "source": "/api/figma-webhook",
+      "destination": "/api/figma?action=webhook"
+    },
+    {
+      "source": "/api/figma/comments",
+      "destination": "/api/figma?action=comments"
+    },
+    {
+      "source": "/api/client-welcome-email",
+      "destination": "/api/notifications?action=welcome-email"
+    },
+    {
+      "source": "/api/project-created",
+      "destination": "/api/notifications?action=project-created"
+    },
+    {
+      "source": "/api/slack-notify",
+      "destination": "/api/notifications?action=slack-notify"
+    },
+    {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }

@@ -2,20 +2,29 @@ export const MODELS = [
     {
         id: "nano-banana-2",
         name: "Nano Banana 2",
-        fullName: "nano-banana-2",
-        description: "Next-gen Google Nano Banana 2 on KIE AI",
+        fullName: "nano-banana-2",         // No google/ prefix per API spec
+        description: "Next-gen, alta calidad con control de resolución",
+        hasResolution: true,               // Supports resolution: 1K/2K/4K
+        hasGoogleSearch: true,             // Supports google_search grounding
+        usesAspectRatio: true,             // Uses aspect_ratio + resolution (not image_size)
     },
     {
         id: "nano-banana",
         name: "Nano Banana",
-        fullName: "gemini-2.5-flash-image",
-        description: "Fast and efficient image generation",
+        fullName: "google/nano-banana",
+        description: "Rápido y eficiente",
+        hasResolution: false,
+        hasGoogleSearch: false,
+        usesAspectRatio: false,            // Uses image_size field
     },
     {
         id: "nano-banana-pro",
         name: "Nano Banana Pro",
-        fullName: "gemini-3-pro-image-preview",
-        description: "High-quality generation with advanced controls",
+        fullName: "google/nano-banana-pro",
+        description: "Alta calidad con controles avanzados",
+        hasResolution: false,
+        hasGoogleSearch: false,
+        usesAspectRatio: false,            // Uses image_size field
     },
 ];
 

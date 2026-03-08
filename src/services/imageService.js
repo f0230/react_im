@@ -1,4 +1,5 @@
 import { MODELS } from "../utils/studioTypes";
+import { supabase } from "../lib/supabaseClient";
 
 const BASE_URL = "https://api.kie.ai";
 
@@ -28,6 +29,24 @@ export async function generateImage(task) {
     }
 
     // 2. Submit Generation Task
+    // Build input based on model capabilities (each model has different fields)
+    const inputPayload = {
+        prompt: task.prompt,
+        output_format: "png",
+    };
+
+    if (modelConfig.usesAspectRatio) {
+        // nano-banana-2: uses separate aspect_ratio + resolution fields
+        inputPayload.aspect_ratio = task.aspectRatio || "auto";
+        inputPayload.resolution = task.imageSize || "1K";
+        if (imageUrls.length > 0) inputPayload.image_input = imageUrls;
+        if (modelConfig.hasGoogleSearch) inputPayload.google_search = false;
+    } else {
+        // google/nano-banana, google/nano-banana-pro: uses unified image_size
+        inputPayload.image_size = task.aspectRatio || "1:1";
+        if (imageUrls.length > 0) inputPayload.image_input = imageUrls;
+    }
+
     const createResponse = await fetch(`${BASE_URL}/api/v1/jobs/createTask`, {
         method: "POST",
         headers: {
@@ -36,13 +55,7 @@ export async function generateImage(task) {
         },
         body: JSON.stringify({
             model: modelConfig.fullName,
-            input: {
-                prompt: task.prompt,
-                image_input: imageUrls,
-                aspect_ratio: task.aspectRatio,
-                resolution: task.imageSize,
-                output_format: "png",
-            },
+            input: inputPayload,
         }),
     });
 
@@ -66,28 +79,48 @@ export async function generateImage(task) {
 }
 
 async function uploadToSupabase(imageUrl, taskId) {
+    // 1. Try server-side proxy (Vercel production) — avoids CORS entirely
     try {
-        console.log("[studio-proxy] Enviando imagen al servidor para guardar en Supabase...");
-
-        const response = await fetch('/api/studio-proxy', {
+        const probeRes = await fetch('/api/studio-proxy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ imageUrl, taskId }),
         });
 
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error || `HTTP ${response.status}`);
+        if (probeRes.ok) {
+            const { publicUrl } = await probeRes.json();
+            if (publicUrl) {
+                console.log('[studio] ✅ Imagen guardada vía proxy:', publicUrl);
+                return publicUrl;
+            }
         }
+        const errBody = await probeRes.text().catch(() => '');
+        console.warn('[studio] Proxy no disponible, usando fallback directo.', probeRes.status, errBody.slice(0, 120));
+    } catch (proxyErr) {
+        console.warn('[studio] Proxy falló, usando fallback directo:', proxyErr.message);
+    }
 
-        const { publicUrl } = await response.json();
-        if (!publicUrl) throw new Error('No publicUrl returned from proxy');
+    // 2. Fallback: direct upload via Supabase client (works in local dev)
+    try {
+        console.log('[studio] Intentando upload directo a Supabase...');
+        const response = await fetch(imageUrl);
+        if (!response.ok) throw new Error(`Image download failed: HTTP ${response.status}`);
+        const blob = await response.blob();
+        const safeId = (taskId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '');
+        const fileName = `banana-${safeId}-${Date.now()}.png`;
 
-        console.log("[studio-proxy] ✅ Imagen guardada en Supabase:", publicUrl);
-        return publicUrl;
-    } catch (error) {
-        console.error("[studio-proxy] Falló al guardar, usando URL temporal:", error);
-        return imageUrl;
+        const { error: uploadError } = await supabase.storage
+            .from('banana-ai')
+            .upload(fileName, blob, { contentType: 'image/png', upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from('banana-ai').getPublicUrl(fileName);
+        console.log('[studio] ✅ Imagen guardada directamente en Supabase:', urlData.publicUrl);
+        return urlData.publicUrl;
+    } catch (directErr) {
+        console.error('[studio] Ambos métodos fallaron. Usando URL temporal:', directErr.message);
+        return imageUrl; // Final fallback: use temporary KIE URL
     }
 }
 
