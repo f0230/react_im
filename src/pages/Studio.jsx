@@ -1,130 +1,272 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-    History,
-    Users,
-    Settings,
-    Bell,
-    Search,
-    LayoutGrid,
-    Key
-} from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Key, LayoutGrid } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import ControlPanel from '@/components/studio/ControlPanel';
 import ImageGrid from '@/components/studio/ImageGrid';
 import ImageViewer from '@/components/studio/ImageViewer';
-import { generateImage, checkApiKey, requestApiKey } from '@/services/imageService';
-import confetti from 'canvas-confetti';
+import {
+    checkApiKey,
+    requestApiKey,
+    resumeImageGeneration,
+    startImageGeneration,
+} from '@/services/imageService';
+import {
+    claimStudioTask,
+    createStudioTask,
+    deleteStudioTask,
+    listStudioTasks,
+    updateStudioTask,
+} from '@/services/studioService';
+import { useAuth } from '@/context/AuthContext';
 
 export default function Studio() {
-    const [tasks, setTasks] = useState(() => {
-        const saved = localStorage.getItem('banana-tasks');
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                // Cleanup: remove tasks older than 3 days
-                const threeDaysAgo = Date.now() - (3 * 24 * 60 * 60 * 1000);
-                return parsed.filter((t) => t.createdAt > threeDaysAgo);
-            } catch (e) {
-                return [];
-            }
-        }
-        return [];
-    });
+    const { user } = useAuth();
+    const [tasks, setTasks] = useState([]);
     const [selectedTask, setSelectedTask] = useState(null);
     const [referenceImage, setReferenceImage] = useState(null);
     const [hasApiKey, setHasApiKey] = useState(true);
     const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
+    const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+    const resumeTasksRef = useRef(new Set());
 
-    useEffect(() => {
-        const init = async () => {
-            const ok = await checkApiKey();
-            setHasApiKey(ok);
-            setIsCheckingApiKey(false);
-
-            // Resume polling for any tasks that were left in 'generating' state
-            const generatingTasks = tasks.filter(t => t.status === 'generating');
-            generatingTasks.forEach(task => {
-                resumeTaskPolling(task);
-            });
-        };
-        init();
+    const syncSelectedTask = useCallback((nextTasks) => {
+        setSelectedTask((current) => {
+            if (!current) return null;
+            return nextTasks.find((task) => task.id === current.id) || null;
+        });
     }, []);
 
-    const resumeTaskPolling = async (task) => {
-        try {
-            const { imageUrl, taskId: kieId } = await generateImage(task);
-            setTasks(prev => prev.map(t =>
-                t.id === task.id ? { ...t, status: 'completed', imageUrl, id: kieId || t.id } : t
-            ));
-        } catch (error) {
-            setTasks(prev => prev.map(t =>
-                t.id === task.id ? { ...t, status: 'failed', error: error.message } : t
-            ));
-        }
-    };
+    const replaceTasks = useCallback((nextTasks) => {
+        setTasks(nextTasks);
+        syncSelectedTask(nextTasks);
+    }, [syncSelectedTask]);
 
-    // Save tasks to localStorage
-    useEffect(() => {
-        localStorage.setItem('banana-tasks', JSON.stringify(tasks));
-    }, [tasks]);
+    const upsertTask = useCallback((nextTask) => {
+        setTasks((current) => {
+            const exists = current.some((task) => task.id === nextTask.id);
+            const nextTasks = exists
+                ? current.map((task) => (task.id === nextTask.id ? nextTask : task))
+                : [nextTask, ...current];
 
-    const handleGenerate = useCallback(async (prompt, config) => {
-        const taskId = Math.random().toString(36).substring(7);
-        const newTask = {
-            id: taskId,
-            prompt,
-            model: config.model,
-            aspectRatio: config.aspectRatio,
-            imageSize: config.imageSize,
-            status: 'generating',
-            createdAt: Date.now(),
-            referenceImage: config.referenceImage
-        };
+            syncSelectedTask(nextTasks);
+            return nextTasks;
+        });
+    }, [syncSelectedTask]);
 
-        setTasks(prev => [newTask, ...prev]);
+    const removeTask = useCallback((taskId) => {
+        setTasks((current) => {
+            const nextTasks = current.filter((task) => task.id !== taskId);
+            syncSelectedTask(nextTasks);
+            return nextTasks;
+        });
+    }, [syncSelectedTask]);
+
+    const resumeTaskPolling = useCallback(async (task) => {
+        if (!task?.id || !task.kieTaskId) return;
 
         try {
-            const { imageUrl, taskId: kieId } = await generateImage(newTask);
-            setTasks(prev => {
-                const updated = prev.map(t =>
-                    t.id === taskId ? { ...t, status: 'completed', imageUrl, id: kieId || t.id } : t
-                );
-                // Auto-select if it's the one we just generated
-                const finishedTask = updated.find(t => t.id === (kieId || taskId));
-                if (finishedTask) setSelectedTask(finishedTask);
-                return updated;
+            const claimed = await claimStudioTask(task.id);
+            if (!claimed) return;
+
+            upsertTask({
+                ...task,
+                processingBy: user?.id || null,
+                processingStartedAt: new Date().toISOString(),
             });
 
-            // Success effect
+            const storagePath = await resumeImageGeneration({ kieTaskId: task.kieTaskId });
+            const completedTask = await updateStudioTask(task.id, {
+                status: 'completed',
+                storagePath,
+                error: null,
+                processingBy: null,
+                processingStartedAt: null,
+            });
+
+            upsertTask(completedTask);
+        } catch (error) {
+            console.error('[studio] Error reanudando tarea:', error);
+
+            try {
+                const failedTask = await updateStudioTask(task.id, {
+                    status: 'failed',
+                    error: error.message || 'Unknown error',
+                    processingBy: null,
+                    processingStartedAt: null,
+                });
+                upsertTask(failedTask);
+            } catch (updateError) {
+                console.error('[studio] No se pudo marcar la tarea como fallida:', updateError);
+            }
+        } finally {
+            resumeTasksRef.current.delete(task.id);
+        }
+    }, [upsertTask, user?.id]);
+
+    const loadTasks = useCallback(async ({ silent = false, resumePending = false } = {}) => {
+        if (!user?.id) return;
+
+        if (!silent) setIsLoadingTasks(true);
+
+        try {
+            const nextTasks = await listStudioTasks();
+            replaceTasks(nextTasks);
+
+            if (resumePending) {
+                nextTasks
+                    .filter((task) => task.status === 'generating' && task.kieTaskId)
+                    .forEach((task) => {
+                        if (resumeTasksRef.current.has(task.id)) return;
+                        resumeTasksRef.current.add(task.id);
+                        void resumeTaskPolling(task);
+                    });
+            }
+        } catch (error) {
+            console.error('[studio] Error cargando historial:', error);
+        } finally {
+            if (!silent) setIsLoadingTasks(false);
+        }
+    }, [replaceTasks, resumeTaskPolling, user?.id]);
+
+    useEffect(() => {
+        let mounted = true;
+
+        const init = async () => {
+            if (!user?.id) return;
+
+            try {
+                const ok = await checkApiKey();
+                if (!mounted) return;
+
+                setHasApiKey(ok);
+                setIsCheckingApiKey(false);
+
+                await loadTasks({ resumePending: ok });
+            } catch (error) {
+                console.error('[studio] Error inicializando:', error);
+                if (mounted) {
+                    setHasApiKey(false);
+                    setIsCheckingApiKey(false);
+                    setIsLoadingTasks(false);
+                }
+            }
+        };
+
+        void init();
+
+        return () => {
+            mounted = false;
+        };
+    }, [loadTasks, user?.id]);
+
+    useEffect(() => {
+        if (!user?.id) return undefined;
+
+        const intervalId = window.setInterval(() => {
+            void loadTasks({ silent: true, resumePending: hasApiKey });
+        }, 15000);
+
+        return () => window.clearInterval(intervalId);
+    }, [hasApiKey, loadTasks, user?.id]);
+
+    const handleGenerate = useCallback(async (prompt, config) => {
+        if (!user?.id) return;
+
+        const processingStartedAt = new Date().toISOString();
+        let createdTask = null;
+        let kieTaskId = null;
+
+        try {
+            createdTask = await createStudioTask({
+                prompt,
+                model: config.model,
+                aspectRatio: config.aspectRatio,
+                imageSize: config.imageSize,
+                status: 'generating',
+                createdBy: user.id,
+                processingBy: user.id,
+                processingStartedAt,
+            });
+
+            upsertTask(createdTask);
+
+            kieTaskId = await startImageGeneration({
+                prompt,
+                model: config.model,
+                aspectRatio: config.aspectRatio,
+                imageSize: config.imageSize,
+                referenceImage: config.referenceImage,
+            });
+
+            const queuedTask = await updateStudioTask(createdTask.id, { kieTaskId });
+            upsertTask(queuedTask);
+
+            const storagePath = await resumeImageGeneration({ kieTaskId });
+            const completedTask = await updateStudioTask(createdTask.id, {
+                status: 'completed',
+                storagePath,
+                error: null,
+                kieTaskId,
+                processingBy: null,
+                processingStartedAt: null,
+            });
+
+            upsertTask(completedTask);
+            setSelectedTask(completedTask);
+
             confetti({
                 particleCount: 100,
                 spread: 70,
                 origin: { y: 0.6 },
-                colors: ['#e3ff31', '#ffffff']
+                colors: ['#e3ff31', '#ffffff'],
             });
         } catch (error) {
-            console.error('Generation failed:', error);
+            console.error('[studio] Generation failed:', error);
 
-            // Handle API key error
             if (error.message?.includes('Requested entity was not found')) {
                 setHasApiKey(false);
             }
 
-            setTasks(prev => prev.map(t =>
-                t.id === taskId ? { ...t, status: 'failed', error: error.message || 'Unknown error' } : t
-            ));
+            if (createdTask?.id) {
+                try {
+                    const failedTask = await updateStudioTask(createdTask.id, {
+                        status: 'failed',
+                        error: error.message || 'Unknown error',
+                        kieTaskId,
+                        processingBy: null,
+                        processingStartedAt: null,
+                    });
+                    upsertTask(failedTask);
+                } catch (updateError) {
+                    console.error('[studio] No se pudo guardar el error en Supabase:', updateError);
+                }
+            }
         }
-    }, []);
+    }, [upsertTask, user?.id]);
 
-    const handleDismissTask = useCallback((taskId) => {
-        setTasks(prev => prev.filter(t => t.id !== taskId));
-    }, []);
+    const handleDismissTask = useCallback(async (taskId) => {
+        const task = tasks.find((item) => item.id === taskId);
+        if (!task) return;
 
-    const handleRequestKey = async () => {
+        try {
+            await deleteStudioTask(task);
+            removeTask(taskId);
+        } catch (error) {
+            console.error('[studio] No se pudo eliminar la tarea:', error);
+        }
+    }, [removeTask, tasks]);
+
+    const handleRequestKey = useCallback(async () => {
         await requestApiKey();
-        setHasApiKey(true);
-    };
+        const ok = await checkApiKey();
+        setHasApiKey(ok);
 
-    if (isCheckingApiKey) {
+        if (ok) {
+            await loadTasks({ silent: true, resumePending: true });
+        }
+    }, [loadTasks]);
+
+    if (isCheckingApiKey || isLoadingTasks) {
         return (
             <div className="flex h-[calc(100dvh-45px)] items-center justify-center bg-[#0a0a0a] text-white">
                 <div className="animate-pulse text-banana font-mono">INICIALIZANDO STUDIO...</div>
@@ -134,16 +276,15 @@ export default function Studio() {
 
     return (
         <div className="relative flex h-[calc(100dvh-45px)] min-h-[calc(100dvh-45px)] flex-col overflow-hidden bg-[#0a0a0a] text-white">
-            {/* Main Content */}
             <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {!hasApiKey && (
-                    <div className="m-8 p-8 glass-panel border-banana/20 flex flex-col items-center text-center max-w-2xl mx-auto">
+                    <div className="m-8 max-w-2xl mx-auto p-8 glass-panel border-banana/20 flex flex-col items-center text-center">
                         <div className="w-16 h-16 rounded-full bg-banana/10 flex items-center justify-center mb-6">
                             <Key className="text-banana" size={32} />
                         </div>
                         <h2 className="text-2xl font-bold mb-2 text-white">Acceso Pro Requerido</h2>
                         <p className="text-white/60 mb-8 leading-relaxed">
-                            Para usar los modelos Nano Banana Pro y generación de alta resolución, necesitas configurar e ingresar tu API Key.
+                            Puedes ver el historial compartido, pero para generar o reanudar imágenes necesitas configurar una API Key válida.
                         </p>
                         <button
                             onClick={handleRequestKey}
@@ -170,15 +311,15 @@ export default function Studio() {
                 />
             </main>
 
-            {/* Controls */}
             <ControlPanel
                 onGenerate={handleGenerate}
-                isGenerating={tasks.some(t => t.status === 'generating')}
+                isGenerating={tasks.some((task) => task.status === 'generating' && task.processingBy === user?.id)}
                 referenceImage={referenceImage}
                 setReferenceImage={setReferenceImage}
+                canGenerate={hasApiKey}
+                onRequestKey={handleRequestKey}
             />
 
-            {/* Overlays */}
             <ImageViewer
                 task={selectedTask}
                 tasks={tasks}

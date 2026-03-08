@@ -23,6 +23,8 @@ export default function ControlPanel({
     isGenerating,
     referenceImage,
     setReferenceImage,
+    canGenerate = true,
+    onRequestKey,
 }) {
     const [prompt, setPrompt] = useState("");
     const [model, setModel] = useState("nano-banana-2");
@@ -47,7 +49,7 @@ export default function ControlPanel({
 
     const handleSubmit = (e) => {
         e?.preventDefault();
-        if (!prompt.trim()) return;
+        if (!prompt.trim() || !canGenerate) return;
 
         onGenerate(prompt, {
             model,
@@ -88,8 +90,9 @@ export default function ControlPanel({
                         <textarea
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
-                            placeholder="Describe lo que quieres crear..."
+                            placeholder={canGenerate ? "Describe lo que quieres crear..." : "Configura una API Key para generar imágenes..."}
                             className="flex-1 bg-transparent border-none focus:ring-0 text-lg resize-none py-1 placeholder:text-white/20 min-h-[40px] max-h-[120px]"
+                            disabled={!canGenerate}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter" && !e.shiftKey) {
                                     e.preventDefault();
@@ -99,10 +102,12 @@ export default function ControlPanel({
                         />
 
                         <button
-                            disabled={!prompt.trim() || isGenerating}
+                            type={canGenerate ? "submit" : "button"}
+                            onClick={!canGenerate ? onRequestKey : undefined}
+                            disabled={canGenerate ? (!prompt.trim() || isGenerating) : false}
                             className="banana-button h-12"
                         >
-                            <span>Generar</span>
+                            <span>{canGenerate ? "Generar" : "Activar API Key"}</span>
                             <Sparkles size={18} />
                         </button>
                     </div>

@@ -9,6 +9,8 @@ export default function ImageViewer({ task, tasks, onClose, onSelect, onUseAsRef
     const currentIndex = tasks.findIndex(t => t.id === task.id);
     const nextTask = currentIndex > 0 ? tasks[currentIndex - 1] : null;
     const prevTask = currentIndex < tasks.length - 1 ? tasks[currentIndex + 1] : null;
+    const promptLabel = task.prompt || 'Imagen compartida sin prompt guardado';
+    const modelLabel = getModelLabel(task.model);
 
     return (
         <AnimatePresence>
@@ -39,7 +41,7 @@ export default function ImageViewer({ task, tasks, onClose, onSelect, onUseAsRef
                     <div className="flex-1 relative flex items-center justify-center min-h-0 bg-[#050505] rounded-3xl border border-white/5 overflow-hidden group/img">
                         <img
                             src={task.imageUrl}
-                            alt={task.prompt}
+                            alt={promptLabel}
                             className="max-w-full max-h-full object-contain drop-shadow-2xl"
                             referrerPolicy="no-referrer"
                         />
@@ -70,7 +72,7 @@ export default function ImageViewer({ task, tasks, onClose, onSelect, onUseAsRef
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
                                 <span className="px-2 py-0.5 rounded bg-banana/10 text-banana text-[10px] font-bold uppercase tracking-widest border border-banana/20">
-                                    {task.model === 'nano-banana-pro' ? 'Pro Model' : 'Standard'}
+                                    {modelLabel}
                                 </span>
                                 <span className="text-[10px] text-white/40 font-mono uppercase tracking-widest">
                                     ID: {task.id}
@@ -85,18 +87,18 @@ export default function ImageViewer({ task, tasks, onClose, onSelect, onUseAsRef
                                     <Type size={12} /> Prompt
                                 </label>
                                 <p className="text-sm leading-relaxed text-white/90 font-medium italic">
-                                    "{task.prompt}"
+                                    "{promptLabel}"
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-6 pt-4 border-t border-white/5">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Aspect Ratio</label>
-                                    <p className="text-sm font-semibold text-banana">{task.aspectRatio}</p>
+                                    <p className="text-sm font-semibold text-banana">{task.aspectRatio || 'N/A'}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Resolution</label>
-                                    <p className="text-sm font-semibold text-banana">{task.imageSize}</p>
+                                    <p className="text-sm font-semibold text-banana">{task.imageSize || 'N/A'}</p>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Created At</label>
@@ -149,4 +151,11 @@ export default function ImageViewer({ task, tasks, onClose, onSelect, onUseAsRef
             </motion.div>
         </AnimatePresence>
     );
+}
+
+function getModelLabel(model) {
+    if (model === 'nano-banana-pro') return 'Pro Model';
+    if (model === 'nano-banana-2') return 'Banana 2';
+    if (model === 'nano-banana') return 'Standard';
+    return 'Archivo';
 }
