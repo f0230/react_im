@@ -5,7 +5,6 @@ import {
     Maximize2,
     Monitor,
     Type,
-    ImageIcon,
     Sparkles,
     X,
     Layers,
@@ -25,6 +24,7 @@ export default function ControlPanel({
     setReferenceImage,
     canGenerate = true,
     onRequestKey,
+    batchState = { total: 0, completed: 0 },
 }) {
     const [prompt, setPrompt] = useState("");
     const [model, setModel] = useState("nano-banana-2");
@@ -35,21 +35,42 @@ export default function ControlPanel({
     const [showSizeMenu, setShowSizeMenu] = useState(false);
 
     const fileInputRef = useRef(null);
+    const promptCount = getPromptBatch(prompt).length;
+    const isBatchRunning = batchState.total > 0;
+    const currentBatchStep = isBatchRunning
+        ? Math.min(batchState.completed + 1, batchState.total)
+        : 0;
+
+    const handleFileSelection = async (file) => {
+        if (!file) return;
+
+        try {
+            const dataUrl = await readFileAsDataUrl(file);
+            setReferenceImage(dataUrl);
+        } catch (error) {
+            console.error("[studio] No se pudo leer la imagen:", error);
+        }
+    };
 
     const handleFileChange = (e) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setReferenceImage(reader.result);
-            };
-            reader.readAsDataURL(file);
-        }
+        void handleFileSelection(e.target.files?.[0]);
+    };
+
+    const handlePaste = (e) => {
+        const items = Array.from(e.clipboardData?.items || []);
+        const imageItem = items.find((item) => item.type.startsWith("image/"));
+        if (!imageItem) return;
+
+        const file = imageItem.getAsFile();
+        if (!file) return;
+
+        e.preventDefault();
+        void handleFileSelection(file);
     };
 
     const handleSubmit = (e) => {
         e?.preventDefault();
-        if (!prompt.trim() || !canGenerate) return;
+        if (!prompt.trim() || !canGenerate || isGenerating || isBatchRunning) return;
 
         onGenerate(prompt, {
             model,
@@ -90,11 +111,12 @@ export default function ControlPanel({
                         <textarea
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
-                            placeholder={canGenerate ? "Describe lo que quieres crear..." : "Configura una API Key para generar imágenes..."}
+                            placeholder={canGenerate ? "Una línea = un prompt. También puedes pegar una imagen con Ctrl/Cmd + V." : "Configura una API Key para generar imágenes..."}
                             className="flex-1 bg-transparent border-none focus:ring-0 text-lg resize-none py-1 placeholder:text-white/20 min-h-[40px] max-h-[120px]"
                             disabled={!canGenerate}
+                            onPaste={handlePaste}
                             onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
+                                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                                     e.preventDefault();
                                     handleSubmit();
                                 }
@@ -104,13 +126,20 @@ export default function ControlPanel({
                         <button
                             type={canGenerate ? "submit" : "button"}
                             onClick={!canGenerate ? onRequestKey : undefined}
-                            disabled={canGenerate ? (!prompt.trim() || isGenerating) : false}
+                            disabled={canGenerate ? (!prompt.trim() || isGenerating || isBatchRunning) : false}
                             className="banana-button h-12"
                         >
-                            <span>{canGenerate ? "Generar" : "Activar API Key"}</span>
+                            <span>{getButtonLabel({ canGenerate, isGenerating, isBatchRunning, currentBatchStep, totalBatchSteps: batchState.total, promptCount })}</span>
                             <Sparkles size={18} />
                         </button>
                     </div>
+
+                    {canGenerate && (
+                        <div className="px-2 text-xs text-white/35 flex items-center justify-between gap-4">
+                            <span>Una línea genera una imagen. Usa `Ctrl/Cmd + Enter` para enviar.</span>
+                            <span>{promptCount > 1 ? `${promptCount} prompts en cola` : 'Ctrl/Cmd + V pega una referencia'}</span>
+                        </div>
+                    )}
 
                     {referenceImage && (
                         <div className="flex items-center gap-2 px-2">
@@ -266,4 +295,28 @@ export default function ControlPanel({
             </div>
         </div>
     );
+}
+
+function getPromptBatch(prompt) {
+    return String(prompt || "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+}
+
+function getButtonLabel({ canGenerate, isGenerating, isBatchRunning, currentBatchStep, totalBatchSteps, promptCount }) {
+    if (!canGenerate) return "Activar API Key";
+    if (isBatchRunning || (isGenerating && totalBatchSteps > 1)) return `Generando ${currentBatchStep}/${totalBatchSteps}`;
+    if (isGenerating) return "Generando";
+    if (promptCount > 1) return `Generar ${promptCount}`;
+    return "Generar";
+}
+
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error("No se pudo leer el archivo"));
+        reader.readAsDataURL(file);
+    });
 }

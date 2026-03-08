@@ -27,7 +27,8 @@ export default function Studio() {
     const [hasApiKey, setHasApiKey] = useState(true);
     const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
     const [isLoadingTasks, setIsLoadingTasks] = useState(true);
-    const resumeTasksRef = useRef(new Set());
+    const [batchState, setBatchState] = useState({ total: 0, completed: 0 });
+    const activeTaskIdsRef = useRef(new Set());
 
     const syncSelectedTask = useCallback((nextTasks) => {
         setSelectedTask((current) => {
@@ -63,6 +64,9 @@ export default function Studio() {
 
     const resumeTaskPolling = useCallback(async (task) => {
         if (!task?.id || !task.kieTaskId) return;
+        if (activeTaskIdsRef.current.has(task.id)) return;
+
+        activeTaskIdsRef.current.add(task.id);
 
         try {
             const claimed = await claimStudioTask(task.id);
@@ -99,7 +103,91 @@ export default function Studio() {
                 console.error('[studio] No se pudo marcar la tarea como fallida:', updateError);
             }
         } finally {
-            resumeTasksRef.current.delete(task.id);
+            activeTaskIdsRef.current.delete(task.id);
+        }
+    }, [upsertTask, user?.id]);
+
+    const processPrompt = useCallback(async (prompt, config) => {
+        if (!user?.id) return null;
+
+        const processingStartedAt = new Date().toISOString();
+        let createdTask = null;
+        let kieTaskId = null;
+
+        try {
+            createdTask = await createStudioTask({
+                prompt,
+                model: config.model,
+                aspectRatio: config.aspectRatio,
+                imageSize: config.imageSize,
+                status: 'generating',
+                createdBy: user.id,
+                processingBy: user.id,
+                processingStartedAt,
+            });
+
+            activeTaskIdsRef.current.add(createdTask.id);
+            upsertTask(createdTask);
+
+            kieTaskId = await startImageGeneration({
+                prompt,
+                model: config.model,
+                aspectRatio: config.aspectRatio,
+                imageSize: config.imageSize,
+                referenceImage: config.referenceImage,
+            });
+
+            const queuedTask = await updateStudioTask(createdTask.id, { kieTaskId });
+            upsertTask(queuedTask);
+
+            const storagePath = await resumeImageGeneration({ kieTaskId });
+            const completedTask = await updateStudioTask(createdTask.id, {
+                status: 'completed',
+                storagePath,
+                error: null,
+                kieTaskId,
+                processingBy: null,
+                processingStartedAt: null,
+            });
+
+            upsertTask(completedTask);
+            setSelectedTask(completedTask);
+
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#e3ff31', '#ffffff'],
+            });
+
+            return completedTask;
+        } catch (error) {
+            console.error('[studio] Generation failed:', error);
+
+            if (error.message?.includes('Requested entity was not found')) {
+                setHasApiKey(false);
+            }
+
+            if (createdTask?.id) {
+                try {
+                    const failedTask = await updateStudioTask(createdTask.id, {
+                        status: 'failed',
+                        error: error.message || 'Unknown error',
+                        kieTaskId,
+                        processingBy: null,
+                        processingStartedAt: null,
+                    });
+                    upsertTask(failedTask);
+                } catch (updateError) {
+                    console.error('[studio] No se pudo guardar el error en Supabase:', updateError);
+                }
+            }
+
+            return null;
+        } finally {
+            if (createdTask?.id) {
+                activeTaskIdsRef.current.delete(createdTask.id);
+            }
         }
     }, [upsertTask, user?.id]);
 
@@ -116,8 +204,7 @@ export default function Studio() {
                 nextTasks
                     .filter((task) => task.status === 'generating' && task.kieTaskId)
                     .forEach((task) => {
-                        if (resumeTasksRef.current.has(task.id)) return;
-                        resumeTasksRef.current.add(task.id);
+                        if (activeTaskIdsRef.current.has(task.id)) return;
                         void resumeTaskPolling(task);
                     });
             }
@@ -169,80 +256,22 @@ export default function Studio() {
         return () => window.clearInterval(intervalId);
     }, [hasApiKey, loadTasks, user?.id]);
 
-    const handleGenerate = useCallback(async (prompt, config) => {
+    const handleGenerate = useCallback(async (promptInput, config) => {
         if (!user?.id) return;
 
-        const processingStartedAt = new Date().toISOString();
-        let createdTask = null;
-        let kieTaskId = null;
+        const prompts = parsePromptBatch(promptInput);
+        if (!prompts.length) return;
 
+        setBatchState({ total: prompts.length, completed: 0 });
         try {
-            createdTask = await createStudioTask({
-                prompt,
-                model: config.model,
-                aspectRatio: config.aspectRatio,
-                imageSize: config.imageSize,
-                status: 'generating',
-                createdBy: user.id,
-                processingBy: user.id,
-                processingStartedAt,
-            });
-
-            upsertTask(createdTask);
-
-            kieTaskId = await startImageGeneration({
-                prompt,
-                model: config.model,
-                aspectRatio: config.aspectRatio,
-                imageSize: config.imageSize,
-                referenceImage: config.referenceImage,
-            });
-
-            const queuedTask = await updateStudioTask(createdTask.id, { kieTaskId });
-            upsertTask(queuedTask);
-
-            const storagePath = await resumeImageGeneration({ kieTaskId });
-            const completedTask = await updateStudioTask(createdTask.id, {
-                status: 'completed',
-                storagePath,
-                error: null,
-                kieTaskId,
-                processingBy: null,
-                processingStartedAt: null,
-            });
-
-            upsertTask(completedTask);
-            setSelectedTask(completedTask);
-
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#e3ff31', '#ffffff'],
-            });
-        } catch (error) {
-            console.error('[studio] Generation failed:', error);
-
-            if (error.message?.includes('Requested entity was not found')) {
-                setHasApiKey(false);
+            for (let index = 0; index < prompts.length; index += 1) {
+                await processPrompt(prompts[index], config);
+                setBatchState({ total: prompts.length, completed: index + 1 });
             }
-
-            if (createdTask?.id) {
-                try {
-                    const failedTask = await updateStudioTask(createdTask.id, {
-                        status: 'failed',
-                        error: error.message || 'Unknown error',
-                        kieTaskId,
-                        processingBy: null,
-                        processingStartedAt: null,
-                    });
-                    upsertTask(failedTask);
-                } catch (updateError) {
-                    console.error('[studio] No se pudo guardar el error en Supabase:', updateError);
-                }
-            }
+        } finally {
+            setBatchState({ total: 0, completed: 0 });
         }
-    }, [upsertTask, user?.id]);
+    }, [processPrompt, user?.id]);
 
     const handleDismissTask = useCallback(async (taskId) => {
         const task = tasks.find((item) => item.id === taskId);
@@ -265,6 +294,10 @@ export default function Studio() {
             await loadTasks({ silent: true, resumePending: true });
         }
     }, [loadTasks]);
+
+    const isGenerating = batchState.total > 0 || tasks.some((task) => (
+        task.status === 'generating' && task.processingBy === user?.id
+    ));
 
     if (isCheckingApiKey || isLoadingTasks) {
         return (
@@ -313,11 +346,12 @@ export default function Studio() {
 
             <ControlPanel
                 onGenerate={handleGenerate}
-                isGenerating={tasks.some((task) => task.status === 'generating' && task.processingBy === user?.id)}
+                isGenerating={isGenerating}
                 referenceImage={referenceImage}
                 setReferenceImage={setReferenceImage}
                 canGenerate={hasApiKey}
                 onRequestKey={handleRequestKey}
+                batchState={batchState}
             />
 
             <ImageViewer
@@ -329,4 +363,11 @@ export default function Studio() {
             />
         </div>
     );
+}
+
+function parsePromptBatch(promptInput) {
+    return String(promptInput || '')
+        .split(/\r?\n/)
+        .map((prompt) => prompt.trim())
+        .filter(Boolean);
 }
