@@ -79,25 +79,31 @@ export async function generateImage(task) {
 }
 
 async function uploadToSupabase(imageUrl, taskId) {
-    // 1. Try server-side proxy (Vercel production) — avoids CORS entirely
-    try {
-        const probeRes = await fetch('/api/studio-proxy', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ imageUrl, taskId }),
-        });
+    const isLocalDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
-        if (probeRes.ok) {
-            const { publicUrl } = await probeRes.json();
-            if (publicUrl) {
-                console.log('[studio] ✅ Imagen guardada vía proxy:', publicUrl);
-                return publicUrl;
+    // 1. In PRODUCTION: use server-side proxy (no CORS, full control)
+    if (!isLocalDev) {
+        try {
+            const probeRes = await fetch('/api/studio-proxy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageUrl, taskId }),
+            });
+
+            if (probeRes.ok) {
+                const { publicUrl } = await probeRes.json();
+                if (publicUrl) {
+                    console.log('[studio] ✅ Imagen guardada vía proxy:', publicUrl);
+                    return publicUrl;
+                }
             }
+            const errBody = await probeRes.text().catch(() => '');
+            console.warn('[studio] Proxy falló:', probeRes.status, errBody.slice(0, 120));
+        } catch (proxyErr) {
+            console.warn('[studio] Proxy error:', proxyErr.message);
         }
-        const errBody = await probeRes.text().catch(() => '');
-        console.warn('[studio] Proxy no disponible, usando fallback directo.', probeRes.status, errBody.slice(0, 120));
-    } catch (proxyErr) {
-        console.warn('[studio] Proxy falló, usando fallback directo:', proxyErr.message);
+    } else {
+        console.log('[studio] Local dev detectado — usando upload directo a Supabase (evitando proxy)');
     }
 
     // 2. Fallback: direct upload via Supabase client (works in local dev)

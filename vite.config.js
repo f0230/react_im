@@ -52,9 +52,8 @@ export default defineConfig({
   },
 
   server: {
-    proxy: {
-      '/api': 'http://localhost:3001',
-    },
+    // Note: /api routes are Vercel serverless functions.
+    // In local dev, imageService.js uploads directly to Supabase (no proxy needed).
   },
   build: {
     target: 'esnext',

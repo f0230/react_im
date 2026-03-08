@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, AlertCircle, Download, Copy, RefreshCw, X } from 'lucide-react';
+import { Loader2, AlertCircle, Download, Copy, RefreshCw, X, ImageOff } from 'lucide-react';
 import { cn, copyImageToClipboard, downloadImage } from '@/lib/utils';
 
 export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss }) {
@@ -52,41 +52,12 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
                                     )}
                                 </div>
                             ) : (
-                                <>
-                                    <img
-                                        src={task.imageUrl}
-                                        alt={task.prompt}
-                                        className="w-full h-full object-cover cursor-pointer"
-                                        onClick={() => onSelect(task)}
-                                        referrerPolicy="no-referrer"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 p-4 flex flex-col justify-end">
-                                        <p className="text-xs text-white/90 line-clamp-3 mb-4 font-medium leading-relaxed drop-shadow-lg">{task.prompt}</p>
-                                        <div className="flex items-center gap-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); task.imageUrl && downloadImage(task.imageUrl, `banana-${task.id}.png`); }}
-                                                className="p-2.5 rounded-xl bg-white/10 hover:bg-banana hover:text-black transition-all"
-                                                title="Download"
-                                            >
-                                                <Download size={16} />
-                                            </button>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); task.imageUrl && copyImageToClipboard(task.imageUrl); }}
-                                                className="p-2.5 rounded-xl bg-white/10 hover:bg-banana hover:text-black transition-all"
-                                                title="Copy to clipboard"
-                                            >
-                                                <Copy size={16} />
-                                            </button>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); task.imageUrl && onUseAsReference(task.imageUrl); }}
-                                                className="p-2.5 rounded-xl bg-white/10 hover:bg-banana hover:text-black transition-all"
-                                                title="Use as reference"
-                                            >
-                                                <RefreshCw size={16} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </>
+                                <ImageCard
+                                    task={task}
+                                    onSelect={onSelect}
+                                    onUseAsReference={onUseAsReference}
+                                    onDismiss={onDismiss}
+                                />
                             )}
 
                             <div className="absolute top-3 left-3 px-2 py-1 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[10px] font-bold text-white/80 uppercase tracking-wider">
@@ -117,5 +88,66 @@ function SparklesIcon({ className }) {
             <path d="M3 5h4" />
             <path d="M17 19h4" />
         </svg>
+    );
+}
+
+function ImageCard({ task, onSelect, onUseAsReference, onDismiss }) {
+    const [imgError, setImgError] = useState(false);
+
+    if (imgError) {
+        return (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/3 p-4 text-center gap-2">
+                <ImageOff className="w-8 h-8 text-white/20 mb-1" />
+                <span className="text-[11px] text-white/30 font-medium">URL expirada</span>
+                <p className="text-[10px] text-white/20 line-clamp-2">{task.prompt}</p>
+                {onDismiss && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
+                        className="mt-2 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/50 text-[11px] transition-colors"
+                    >
+                        <X size={11} /> Cerrar
+                    </button>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <img
+                src={task.imageUrl}
+                alt={task.prompt}
+                className="w-full h-full object-cover cursor-pointer"
+                onClick={() => onSelect(task)}
+                referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 p-4 flex flex-col justify-end">
+                <p className="text-xs text-white/90 line-clamp-3 mb-4 font-medium leading-relaxed drop-shadow-lg">{task.prompt}</p>
+                <div className="flex items-center gap-2 translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+                    <button
+                        onClick={(e) => { e.stopPropagation(); task.imageUrl && downloadImage(task.imageUrl, `banana-${task.id}.png`); }}
+                        className="p-2.5 rounded-xl bg-white/10 hover:bg-banana hover:text-black transition-all"
+                        title="Descargar"
+                    >
+                        <Download size={16} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); task.imageUrl && copyImageToClipboard(task.imageUrl); }}
+                        className="p-2.5 rounded-xl bg-white/10 hover:bg-banana hover:text-black transition-all"
+                        title="Copiar al portapapeles"
+                    >
+                        <Copy size={16} />
+                    </button>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); task.imageUrl && onUseAsReference(task.imageUrl); }}
+                        className="p-2.5 rounded-xl bg-white/10 hover:bg-banana hover:text-black transition-all"
+                        title="Usar como referencia"
+                    >
+                        <RefreshCw size={16} />
+                    </button>
+                </div>
+            </div>
+        </>
     );
 }
