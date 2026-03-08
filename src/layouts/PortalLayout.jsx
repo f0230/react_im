@@ -23,6 +23,7 @@ const PortalLayout = () => {
 
     const location = useLocation();
     const navigate = useNavigate();
+    const isStudioRoute = location.pathname.startsWith('/dashboard/studio');
 
     const isAuthReady = typeof authReady === 'boolean' ? authReady : !loading;
     const showAuthLoader = useCycleLockedVisibility(!isAuthReady, BRAND_LOADER_CYCLE_MS);
@@ -57,7 +58,6 @@ const PortalLayout = () => {
                 (p) => p.startsWith('/dashboard/my-appointments'),
                 (p) => p.startsWith('/dashboard/client-chat'),
                 (p) => p.startsWith('/dashboard/messages'),
-                (p) => p.startsWith('/dashboard/studio'),
             ],
             worker: [
                 (p) => p === '/dashboard',
@@ -134,11 +134,17 @@ const PortalLayout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#f2f2f2] font-product">
+        <div className={`min-h-screen font-product ${isStudioRoute ? 'bg-black' : 'bg-[#f2f2f2]'}`}>
             <UnreadCountsProvider>
                 <DashboardNavbar />
 
-                <main className="relative max-w-[1440px] px-4 md:px-10 mx-auto pt-[45px] animate-fade-in">
+                <main
+                    className={`relative pt-[45px] animate-fade-in ${
+                        isStudioRoute
+                            ? 'w-full max-w-none px-0'
+                            : 'max-w-[1440px] px-4 md:px-10 mx-auto'
+                    }`}
+                >
                     <Outlet />
                 </main>
             </UnreadCountsProvider>

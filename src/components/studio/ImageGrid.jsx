@@ -6,7 +6,7 @@ import { cn, copyImageToClipboard, downloadImage } from '@/lib/utils';
 export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss }) {
     if (tasks.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-white/20">
+            <div className="flex min-h-full flex-col items-center justify-center px-6 py-16 text-white/20">
                 <SparklesIcon className="w-16 h-16 mb-4 opacity-10" />
                 <p className="text-lg font-medium text-[#c5e01b]">Tus creaciones aparecerán aquí</p>
                 <p className="text-sm">Comienza escribiendo un prompt abajo</p>
@@ -15,7 +15,7 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
     }
 
     return (
-        <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-4 p-8 pb-48 space-y-4">
+        <div className="min-h-full columns-1 gap-4 p-4 pb-48 pt-6 space-y-4 sm:columns-2 md:p-8 md:pt-8 md:columns-3 lg:columns-4 xl:columns-5">
             <AnimatePresence mode="popLayout">
                 {tasks.map((task) => {
                     const ratio = task.aspectRatio === 'auto' ? (task.status === 'completed' ? 'auto' : '1/1') : task.aspectRatio.replace(':', '/');

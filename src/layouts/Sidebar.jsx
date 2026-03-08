@@ -24,12 +24,12 @@ const Sidebar = () => {
             { icon: MessageSquare, label: 'Mensajes', path: '/dashboard/messages' },
             { icon: FileText, label: 'Facturas', path: '/dashboard/invoices' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
-            { icon: Sparkles, label: 'Studio IA', path: '/dashboard/studio' },
         ],
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
+            { icon: Sparkles, label: 'Studio IA', path: '/dashboard/studio' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },

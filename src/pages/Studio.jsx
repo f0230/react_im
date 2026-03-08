@@ -126,16 +126,16 @@ export default function Studio() {
 
     if (isCheckingApiKey) {
         return (
-            <div className="min-h-full flex items-center justify-center bg-[#0a0a0a] rounded-xl">
+            <div className="flex h-[calc(100dvh-45px)] items-center justify-center bg-[#0a0a0a] text-white">
                 <div className="animate-pulse text-banana font-mono">INICIALIZANDO STUDIO...</div>
             </div>
         );
     }
 
     return (
-        <div className="relative min-h-[calc(100vh-100px)] flex flex-col bg-[#0a0a0a] text-white rounded-3xl overflow-hidden shadow-2xl">
+        <div className="relative flex h-[calc(100dvh-45px)] min-h-[calc(100dvh-45px)] flex-col overflow-hidden bg-[#0a0a0a] text-white">
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto">
+            <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {!hasApiKey && (
                     <div className="m-8 p-8 glass-panel border-banana/20 flex flex-col items-center text-center max-w-2xl mx-auto">
                         <div className="w-16 h-16 rounded-full bg-banana/10 flex items-center justify-center mb-6">
