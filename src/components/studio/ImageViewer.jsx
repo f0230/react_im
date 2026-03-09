@@ -44,6 +44,9 @@ export default function ImageViewer({ task, tasks, onClose, onSelect, onUseAsRef
                             alt={promptLabel}
                             className="max-w-full max-h-full object-contain drop-shadow-2xl"
                             referrerPolicy="no-referrer"
+                            loading="eager"
+                            fetchPriority="high"
+                            decoding="async"
                         />
 
                         {/* Navigation Arrows */}

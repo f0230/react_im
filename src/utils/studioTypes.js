@@ -7,6 +7,11 @@ export const MODELS = [
         hasResolution: true,               // Supports resolution: 1K/2K/4K
         hasGoogleSearch: true,             // Supports google_search grounding
         usesAspectRatio: true,             // Uses aspect_ratio + resolution (not image_size)
+        creditsByResolution: {
+            "1K": 8,
+            "2K": 12,
+            "4K": 18,
+        },
     },
     {
         id: "nano-banana",
@@ -16,15 +21,21 @@ export const MODELS = [
         hasResolution: false,
         hasGoogleSearch: false,
         usesAspectRatio: false,            // Uses image_size field
+        credits: 4,
     },
     {
         id: "nano-banana-pro",
         name: "Nano Banana Pro",
-        fullName: "google/nano-banana-pro",
-        description: "Alta calidad con controles avanzados",
-        hasResolution: false,
+        fullName: "nano-banana-pro",
+        description: "Alta calidad con control de resolucion",
+        hasResolution: true,
         hasGoogleSearch: false,
-        usesAspectRatio: false,            // Uses image_size field
+        usesAspectRatio: true,             // Uses aspect_ratio + resolution (not image_size)
+        creditsByResolution: {
+            "1K": 18,
+            "2K": 18,
+            "4K": 24,
+        },
     },
 ];
 
@@ -55,3 +66,16 @@ export const IMAGE_SIZES = [
     { label: "2K", value: "2K" },
     { label: "4K", value: "4K" },
 ];
+
+export const MAX_REFERENCE_IMAGES = 14;
+
+export function getStudioCredits(modelId, imageSize = "1K") {
+    const model = MODELS.find((item) => item.id === modelId);
+    if (!model) return 0;
+
+    if (model.creditsByResolution) {
+        return model.creditsByResolution[imageSize] ?? model.creditsByResolution["1K"] ?? 0;
+    }
+
+    return model.credits ?? 0;
+}

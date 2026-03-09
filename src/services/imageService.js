@@ -1,8 +1,10 @@
-import { MODELS } from "../utils/studioTypes";
+import { MAX_REFERENCE_IMAGES, MODELS } from "../utils/studioTypes";
 import { supabase } from "../lib/supabaseClient";
 
 const BASE_URL = "https://api.kie.ai";
-const STUDIO_SIGNED_URL_TTL = 60 * 60 * 24;
+export const STUDIO_SIGNED_URL_TTL = 60 * 60 * 24;
+const SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
+const studioSignedUrlCache = new Map();
 
 export async function generateImage(task) {
     const kieTaskId = task.kieTaskId || await startImageGeneration(task);
@@ -18,11 +20,10 @@ export async function startImageGeneration(task) {
 
     const apiKey = getApiKey();
 
-    let imageUrls = [];
-    if (task.referenceImage) {
-        const uploadedUrl = await uploadReferenceImage(task.referenceImage, apiKey);
-        imageUrls = [uploadedUrl];
-    }
+    const referenceImages = normalizeReferenceImages(task.referenceImages ?? task.referenceImage);
+    const imageUrls = referenceImages.length > 0
+        ? await Promise.all(referenceImages.map((image) => uploadReferenceImage(image, apiKey)))
+        : [];
 
     const inputPayload = {
         prompt: task.prompt,
@@ -80,12 +81,29 @@ export async function resumeImageGeneration({ kieTaskId }) {
 export async function createStudioSignedUrl(path, expiresIn = STUDIO_SIGNED_URL_TTL) {
     if (!path) return null;
 
+    const cacheKey = `${expiresIn}:${path}`;
+    const cached = studioSignedUrlCache.get(cacheKey);
+
+    if (cached && cached.expiresAt > Date.now() + SIGNED_URL_REFRESH_BUFFER_MS) {
+        return cached.url;
+    }
+
     const { data, error } = await supabase.storage
         .from("banana-ai")
         .createSignedUrl(path, expiresIn);
 
     if (error) throw error;
-    return data?.signedUrl || null;
+
+    const signedUrl = data?.signedUrl || null;
+
+    if (signedUrl) {
+        studioSignedUrlCache.set(cacheKey, {
+            url: signedUrl,
+            expiresAt: Date.now() + expiresIn * 1000,
+        });
+    }
+
+    return signedUrl;
 }
 
 function getApiKey() {
@@ -167,6 +185,16 @@ async function uploadReferenceImage(base64, apiKey) {
     }
 
     return fileUrl;
+}
+
+function normalizeReferenceImages(input) {
+    const images = Array.isArray(input)
+        ? input
+        : input
+            ? [input]
+            : [];
+
+    return images.filter(Boolean).slice(0, MAX_REFERENCE_IMAGES);
 }
 
 async function pollTaskStatus(taskId, apiKey) {

@@ -15,16 +15,21 @@ import {
     ASPECT_RATIOS,
     PRO_ASPECT_RATIOS,
     IMAGE_SIZES,
+    getStudioCredits,
+    MAX_REFERENCE_IMAGES,
 } from "@/utils/studioTypes";
 
 export default function ControlPanel({
     onGenerate,
     isGenerating,
-    referenceImage,
-    setReferenceImage,
+    referenceImages = [],
+    onAddReferenceImages,
+    onRemoveReferenceImage,
+    onClearReferenceImages,
+    maxReferenceImages = MAX_REFERENCE_IMAGES,
     canGenerate = true,
     onRequestKey,
-    batchState = { total: 0, completed: 0 },
+    batchState = { queued: 0, active: 0 },
 }) {
     const [prompt, setPrompt] = useState("");
     const [model, setModel] = useState("nano-banana-2");
@@ -36,47 +41,48 @@ export default function ControlPanel({
 
     const fileInputRef = useRef(null);
     const promptCount = getPromptBatch(prompt).length;
-    const isBatchRunning = batchState.total > 0;
-    const currentBatchStep = isBatchRunning
-        ? Math.min(batchState.completed + 1, batchState.total)
-        : 0;
+    const queuedCount = batchState.queued || 0;
+    const isQueueActive = queuedCount > 0 || batchState.active > 0;
+    const remainingReferenceSlots = Math.max(maxReferenceImages - referenceImages.length, 0);
 
-    const handleFileSelection = async (file) => {
-        if (!file) return;
+    const handleFileSelection = async (files) => {
+        const selectedFiles = Array.from(files || []).slice(0, remainingReferenceSlots);
+        if (!selectedFiles.length) return;
 
         try {
-            const dataUrl = await readFileAsDataUrl(file);
-            setReferenceImage(dataUrl);
+            const dataUrls = await readFilesAsDataUrls(selectedFiles);
+            onAddReferenceImages?.(dataUrls);
         } catch (error) {
             console.error("[studio] No se pudo leer la imagen:", error);
         }
     };
 
     const handleFileChange = (e) => {
-        void handleFileSelection(e.target.files?.[0]);
+        void handleFileSelection(e.target.files);
+        e.target.value = "";
     };
 
     const handlePaste = (e) => {
-        const items = Array.from(e.clipboardData?.items || []);
-        const imageItem = items.find((item) => item.type.startsWith("image/"));
-        if (!imageItem) return;
-
-        const file = imageItem.getAsFile();
-        if (!file) return;
+        const files = Array.from(e.clipboardData?.items || [])
+            .filter((item) => item.type.startsWith("image/"))
+            .map((item) => item.getAsFile())
+            .filter(Boolean)
+            .slice(0, remainingReferenceSlots);
+        if (!files.length) return;
 
         e.preventDefault();
-        void handleFileSelection(file);
+        void handleFileSelection(files);
     };
 
     const handleSubmit = (e) => {
         e?.preventDefault();
-        if (!prompt.trim() || !canGenerate || isGenerating || isBatchRunning) return;
+        if (!prompt.trim() || !canGenerate) return;
 
         onGenerate(prompt, {
             model,
             aspectRatio,
             imageSize,
-            referenceImage: referenceImage || undefined,
+            referenceImages,
         });
         setPrompt("");
     };
@@ -84,9 +90,11 @@ export default function ControlPanel({
     const currentModel = MODELS.find((m) => m.id === model);
     const availableAspects =
         currentModel?.usesAspectRatio
-            ? PRO_ASPECT_RATIOS  // nano-banana-2 supports extended ratios
+            ? PRO_ASPECT_RATIOS
             : ASPECT_RATIOS;
-    const showResolution = !!currentModel?.hasResolution; // Only nano-banana-2
+    const showResolution = !!currentModel?.hasResolution;
+    const creditsPerPrompt = getStudioCredits(model, imageSize);
+    const totalCredits = creditsPerPrompt * Math.max(promptCount, 1);
 
     return (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 z-50">
@@ -96,7 +104,8 @@ export default function ControlPanel({
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="mt-1 p-2 rounded-lg hover:bg-white/5 transition-colors text-white/60 hover:text-white border border-white/5"
+                            disabled={remainingReferenceSlots === 0}
+                            className="mt-1 p-2 rounded-lg hover:bg-white/5 transition-colors text-white/60 hover:text-white border border-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             <Plus size={20} />
                         </button>
@@ -105,13 +114,14 @@ export default function ControlPanel({
                             ref={fileInputRef}
                             className="hidden"
                             accept="image/*"
+                            multiple
                             onChange={handleFileChange}
                         />
 
                         <textarea
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
-                            placeholder={canGenerate ? "Una línea = un prompt. También puedes pegar una imagen con Ctrl/Cmd + V." : "Configura una API Key para generar imágenes..."}
+                            placeholder={canGenerate ? "Una línea = un prompt." : "Configura una API Key para generar imágenes..."}
                             className="flex-1 bg-transparent border-none focus:ring-0 text-lg resize-none py-1 placeholder:text-white/20 min-h-[40px] max-h-[120px]"
                             disabled={!canGenerate}
                             onPaste={handlePaste}
@@ -126,38 +136,61 @@ export default function ControlPanel({
                         <button
                             type={canGenerate ? "submit" : "button"}
                             onClick={!canGenerate ? onRequestKey : undefined}
-                            disabled={canGenerate ? (!prompt.trim() || isGenerating || isBatchRunning) : false}
+                            disabled={canGenerate ? !prompt.trim() : false}
                             className="banana-button h-12"
                         >
-                            <span>{getButtonLabel({ canGenerate, isGenerating, isBatchRunning, currentBatchStep, totalBatchSteps: batchState.total, promptCount })}</span>
+                            <span>{getButtonLabel({ canGenerate, isGenerating, isQueueActive, queuedCount, promptCount, totalCredits })}</span>
                             <Sparkles size={18} />
                         </button>
                     </div>
 
                     {canGenerate && (
                         <div className="px-2 text-xs text-white/35 flex items-center justify-between gap-4">
-                            <span>Una línea genera una imagen. Usa `Ctrl/Cmd + Enter` para enviar.</span>
-                            <span>{promptCount > 1 ? `${promptCount} prompts en cola` : 'Ctrl/Cmd + V pega una referencia'}</span>
+                            <span>
+                                {promptCount > 1
+                                    ? `${promptCount} prompts para agregar`
+                                    : isQueueActive && queuedCount > 0
+                                        ? `${queuedCount} en cola`
+                                        : isQueueActive
+                                            ? 'Generando ahora'
+                                            : ''}
+                            </span>
                         </div>
                     )}
 
-                    {referenceImage && (
-                        <div className="flex items-center gap-2 px-2">
-                            <div className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/20">
-                                <img
-                                    src={referenceImage}
-                                    alt="Reference"
-                                    className="w-full h-full object-cover"
-                                />
+                    {referenceImages.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2 px-2">
+                            {referenceImages.map((image, index) => (
+                                <div
+                                    key={`${image}-${index}`}
+                                    className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/20"
+                                >
+                                    <img
+                                        src={image}
+                                        alt={`Reference ${index + 1}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => onRemoveReferenceImage?.(index)}
+                                        className="absolute top-0 right-0 p-0.5 bg-black/60 text-white hover:bg-black"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                            ))}
+                            <span className="text-xs text-white/40">
+                                {referenceImages.length}/{maxReferenceImages} referencias
+                            </span>
+                            {referenceImages.length > 1 && (
                                 <button
                                     type="button"
-                                    onClick={() => setReferenceImage(null)}
-                                    className="absolute top-0 right-0 p-0.5 bg-black/60 text-white hover:bg-black"
+                                    onClick={onClearReferenceImages}
+                                    className="text-xs text-white/45 hover:text-white transition-colors"
                                 >
-                                    <X size={12} />
+                                    Limpiar
                                 </button>
-                            </div>
-                            <span className="text-xs text-white/40">Usando como referencia</span>
+                            )}
                         </div>
                     )}
 
@@ -248,7 +281,7 @@ export default function ControlPanel({
                             )}
                         </div>
 
-                        {/* Resolution selector: only visible for models that support it (nano-banana-2) */}
+                        {/* Resolution selector for models that support Kie AI resolution control */}
                         {showResolution && (
                             <div className="relative">
                                 <div
@@ -304,19 +337,27 @@ function getPromptBatch(prompt) {
         .filter(Boolean);
 }
 
-function getButtonLabel({ canGenerate, isGenerating, isBatchRunning, currentBatchStep, totalBatchSteps, promptCount }) {
+function getButtonLabel({ canGenerate, isGenerating, isQueueActive, queuedCount, promptCount, totalCredits }) {
+    const creditSuffix = totalCredits > 0 ? ` · ${formatCredits(totalCredits)} cr` : "";
+
     if (!canGenerate) return "Activar API Key";
-    if (isBatchRunning || (isGenerating && totalBatchSteps > 1)) return `Generando ${currentBatchStep}/${totalBatchSteps}`;
-    if (isGenerating) return "Generando";
-    if (promptCount > 1) return `Generar ${promptCount}`;
-    return "Generar";
+    if (promptCount > 1) return `Encolar ${promptCount}${creditSuffix}`;
+    if (isQueueActive || isGenerating) return `${queuedCount > 0 ? `Agregar (${queuedCount})` : "Agregar"}${creditSuffix}`;
+    return `Generar${creditSuffix}`;
 }
 
-function readFileAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error || new Error("No se pudo leer el archivo"));
-        reader.readAsDataURL(file);
-    });
+function formatCredits(value) {
+    if (!Number.isFinite(value)) return "0";
+    return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function readFilesAsDataUrls(files) {
+    return Promise.all(
+        files.map((file) => new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error || new Error("No se pudo leer el archivo"));
+            reader.readAsDataURL(file);
+        }))
+    );
 }

@@ -18,17 +18,27 @@ import {
     updateStudioTask,
 } from '@/services/studioService';
 import { useAuth } from '@/context/AuthContext';
+import { MAX_REFERENCE_IMAGES } from '@/utils/studioTypes';
 
 export default function Studio() {
     const { user } = useAuth();
     const [tasks, setTasks] = useState([]);
     const [selectedTask, setSelectedTask] = useState(null);
-    const [referenceImage, setReferenceImage] = useState(null);
+    const [referenceImages, setReferenceImages] = useState([]);
     const [hasApiKey, setHasApiKey] = useState(true);
     const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
     const [isLoadingTasks, setIsLoadingTasks] = useState(true);
-    const [batchState, setBatchState] = useState({ total: 0, completed: 0 });
+    const [batchState, setBatchState] = useState({ queued: 0, active: 0 });
     const activeTaskIdsRef = useRef(new Set());
+    const promptQueueRef = useRef([]);
+    const isProcessingQueueRef = useRef(false);
+
+    const syncBatchState = useCallback(() => {
+        setBatchState({
+            queued: promptQueueRef.current.length,
+            active: isProcessingQueueRef.current ? 1 : 0,
+        });
+    }, []);
 
     const syncSelectedTask = useCallback((nextTasks) => {
         setSelectedTask((current) => {
@@ -134,7 +144,7 @@ export default function Studio() {
                 model: config.model,
                 aspectRatio: config.aspectRatio,
                 imageSize: config.imageSize,
-                referenceImage: config.referenceImage,
+                referenceImages: config.referenceImages,
             });
 
             const queuedTask = await updateStudioTask(createdTask.id, { kieTaskId });
@@ -190,6 +200,31 @@ export default function Studio() {
             }
         }
     }, [upsertTask, user?.id]);
+
+    const processQueuedPrompts = useCallback(async () => {
+        if (!user?.id) return;
+        if (isProcessingQueueRef.current) return;
+        if (!promptQueueRef.current.length) {
+            syncBatchState();
+            return;
+        }
+
+        isProcessingQueueRef.current = true;
+        syncBatchState();
+
+        try {
+            while (promptQueueRef.current.length > 0) {
+                const nextItem = promptQueueRef.current.shift();
+                syncBatchState();
+
+                if (!nextItem) continue;
+                await processPrompt(nextItem.prompt, nextItem.config);
+            }
+        } finally {
+            isProcessingQueueRef.current = false;
+            syncBatchState();
+        }
+    }, [processPrompt, syncBatchState, user?.id]);
 
     const loadTasks = useCallback(async ({ silent = false, resumePending = false } = {}) => {
         if (!user?.id) return;
@@ -256,22 +291,38 @@ export default function Studio() {
         return () => window.clearInterval(intervalId);
     }, [hasApiKey, loadTasks, user?.id]);
 
-    const handleGenerate = useCallback(async (promptInput, config) => {
+    const handleGenerate = useCallback((promptInput, config) => {
         if (!user?.id) return;
 
         const prompts = parsePromptBatch(promptInput);
         if (!prompts.length) return;
 
-        setBatchState({ total: prompts.length, completed: 0 });
-        try {
-            for (let index = 0; index < prompts.length; index += 1) {
-                await processPrompt(prompts[index], config);
-                setBatchState({ total: prompts.length, completed: index + 1 });
-            }
-        } finally {
-            setBatchState({ total: 0, completed: 0 });
-        }
-    }, [processPrompt, user?.id]);
+        promptQueueRef.current.push(
+            ...prompts.map((prompt) => ({
+                prompt,
+                config: {
+                    ...config,
+                    referenceImages: Array.isArray(config.referenceImages)
+                        ? [...config.referenceImages]
+                        : [],
+                },
+            }))
+        );
+        syncBatchState();
+        void processQueuedPrompts();
+    }, [processQueuedPrompts, syncBatchState, user?.id]);
+
+    const handleAddReferenceImages = useCallback((nextImages) => {
+        setReferenceImages((current) => mergeReferenceImages(current, nextImages));
+    }, []);
+
+    const handleRemoveReferenceImage = useCallback((indexToRemove) => {
+        setReferenceImages((current) => current.filter((_, index) => index !== indexToRemove));
+    }, []);
+
+    const handleClearReferenceImages = useCallback(() => {
+        setReferenceImages([]);
+    }, []);
 
     const handleDismissTask = useCallback(async (taskId) => {
         const task = tasks.find((item) => item.id === taskId);
@@ -295,7 +346,7 @@ export default function Studio() {
         }
     }, [loadTasks]);
 
-    const isGenerating = batchState.total > 0 || tasks.some((task) => (
+    const isGenerating = batchState.active > 0 || tasks.some((task) => (
         task.status === 'generating' && task.processingBy === user?.id
     ));
 
@@ -339,7 +390,7 @@ export default function Studio() {
                 <ImageGrid
                     tasks={tasks}
                     onSelect={setSelectedTask}
-                    onUseAsReference={setReferenceImage}
+                    onUseAsReference={handleAddReferenceImages}
                     onDismiss={handleDismissTask}
                 />
             </main>
@@ -347,8 +398,11 @@ export default function Studio() {
             <ControlPanel
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
-                referenceImage={referenceImage}
-                setReferenceImage={setReferenceImage}
+                referenceImages={referenceImages}
+                onAddReferenceImages={handleAddReferenceImages}
+                onRemoveReferenceImage={handleRemoveReferenceImage}
+                onClearReferenceImages={handleClearReferenceImages}
+                maxReferenceImages={MAX_REFERENCE_IMAGES}
                 canGenerate={hasApiKey}
                 onRequestKey={handleRequestKey}
                 batchState={batchState}
@@ -359,7 +413,7 @@ export default function Studio() {
                 tasks={tasks}
                 onClose={() => setSelectedTask(null)}
                 onSelect={setSelectedTask}
-                onUseAsReference={setReferenceImage}
+                onUseAsReference={handleAddReferenceImages}
             />
         </div>
     );
@@ -370,4 +424,23 @@ function parsePromptBatch(promptInput) {
         .split(/\r?\n/)
         .map((prompt) => prompt.trim())
         .filter(Boolean);
+}
+
+function mergeReferenceImages(currentImages, nextImages) {
+    const current = Array.isArray(currentImages) ? currentImages : [];
+    const incoming = Array.isArray(nextImages)
+        ? nextImages
+        : nextImages
+            ? [nextImages]
+            : [];
+
+    const merged = [...current];
+
+    for (const image of incoming) {
+        if (!image || merged.includes(image)) continue;
+        if (merged.length >= MAX_REFERENCE_IMAGES) break;
+        merged.push(image);
+    }
+
+    return merged;
 }

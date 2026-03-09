@@ -17,7 +17,7 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
     return (
         <div className="min-h-full columns-1 gap-4 p-4 pb-48 pt-6 space-y-4 sm:columns-2 md:p-8 md:pt-8 md:columns-3 lg:columns-4 xl:columns-5">
             <AnimatePresence mode="popLayout">
-                {tasks.map((task) => {
+                {tasks.map((task, index) => {
                     const ratioValue = task.aspectRatio || 'auto';
                     const ratio = ratioValue === 'auto' ? (task.status === 'completed' ? 'auto' : '1/1') : ratioValue.replace(':', '/');
 
@@ -55,6 +55,7 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
                             ) : (
                                 <ImageCard
                                     task={task}
+                                    shouldPrioritize={index < 6}
                                     onSelect={onSelect}
                                     onUseAsReference={onUseAsReference}
                                     onDismiss={onDismiss}
@@ -92,7 +93,7 @@ function SparklesIcon({ className }) {
     );
 }
 
-function ImageCard({ task, onSelect, onUseAsReference, onDismiss }) {
+function ImageCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismiss }) {
     const [imgError, setImgError] = useState(false);
     const promptLabel = task.prompt || 'Imagen compartida sin prompt guardado';
 
@@ -126,6 +127,9 @@ function ImageCard({ task, onSelect, onUseAsReference, onDismiss }) {
                 className={cn("w-full h-full object-cover", task.imageUrl && "cursor-pointer")}
                 onClick={() => task.imageUrl && onSelect(task)}
                 referrerPolicy="no-referrer"
+                loading={shouldPrioritize ? 'eager' : 'lazy'}
+                fetchPriority={shouldPrioritize ? 'high' : 'auto'}
+                decoding="async"
                 onError={() => setImgError(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 p-4 flex flex-col justify-end">
