@@ -237,11 +237,16 @@ const mapCalBookingToAppointment = (booking) => {
     const projectId = normalizeUuid(getMetadataValue(metadata, ['projectId', 'project_id']));
     const userId = normalizeUuid(getMetadataValue(metadata, ['userId', 'user_id', 'participantId', 'participant_id']));
     const clientId = normalizeUuid(getMetadataValue(metadata, ['clientId', 'client_id']));
+    const bookingTimeZone = normalizeShortText(
+        attendee?.timeZone || getMetadataValue(metadata, ['bookingTimeZone', 'booking_time_zone']),
+        64
+    );
 
     const mapped = {
         id: calIdStr,
         cal_booking_id: calIdStr,
         scheduled_at: booking?.start || null,
+        booking_time_zone: bookingTimeZone,
         duration_minutes: booking?.duration || 30,
         status: normalizeBookingStatus(booking?.status),
         client_name: attendee?.name || 'Unknown',
@@ -558,6 +563,7 @@ const handleCreateBooking = async (req, res) => {
             projectId: serializeMetadataValue(projectId, 64),
             userId: serializeMetadataValue(userId, 64),
             clientId: serializeMetadataValue(clientId, 64),
+            bookingTimeZone: serializeMetadataValue(timeZone || 'UTC', 64),
             participantType: serializeMetadataValue(participantType, 40),
             participantRole: serializeMetadataValue(participantRole, 40),
             participantId: serializeMetadataValue(participantId, 64),

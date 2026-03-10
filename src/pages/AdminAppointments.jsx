@@ -8,6 +8,7 @@ import AdminCalendar from '@/components/AdminCalendar';
 import AppointmentActionModal from '@/components/AppointmentActionModal';
 import AdminCreateAppointmentModal from '@/components/AdminCreateAppointmentModal';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import { formatScheduleDate, formatScheduleTime, SCHEDULE_TIME_ZONE } from '@/utils/scheduleTime';
 
 const AdminAppointments = () => {
     const { t } = useTranslation();
@@ -335,10 +336,10 @@ const AdminAppointments = () => {
                                                     <td className="p-5">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-gray-900">
-                                                                {new Date(apt.scheduled_at).toLocaleDateString()}
+                                                                {formatScheduleDate(apt.scheduled_at, { timeZone: apt.booking_time_zone || SCHEDULE_TIME_ZONE })}
                                                             </span>
                                                             <span className="text-sm text-gray-500">
-                                                                {new Date(apt.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                {formatScheduleTime(apt.scheduled_at, { timeZone: apt.booking_time_zone || SCHEDULE_TIME_ZONE })}
                                                             </span>
                                                         </div>
                                                     </td>

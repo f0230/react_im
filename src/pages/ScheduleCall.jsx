@@ -11,6 +11,7 @@ import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import Navbar from '@/components/Navbar';
 import { isValidPhone } from '@/utils/phone-validation';
+import { formatScheduleDate, formatScheduleTime, SCHEDULE_TIME_ZONE, SCHEDULE_TIME_ZONE_LABEL } from '@/utils/scheduleTime';
 
 import "react-datepicker/dist/react-datepicker.css";
 import '@/index.css';
@@ -303,7 +304,7 @@ const ScheduleCall = () => {
                     participantType,
                     participantRole,
                     participantId: user?.id || null,
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    timeZone: SCHEDULE_TIME_ZONE,
                     tracking,
                 })
             });
@@ -389,7 +390,7 @@ const ScheduleCall = () => {
                             <div className="space-y-3 sm:space-y-4">
                                 <div className="flex items-center gap-3">
                                     <Clock className="text-[#0DD122]" />
-                                    <span>30 min</span>
+                                    <span>30 min · {SCHEDULE_TIME_ZONE_LABEL}</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0DD122] text-xs font-bold text-black">
@@ -446,7 +447,7 @@ const ScheduleCall = () => {
                                                                 className="group flex w-full items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-all hover:border-[#0DD122] hover:bg-[#0DD122]/5 sm:text-base"
                                                             >
                                                                 <span>
-                                                                    {new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                                    {formatScheduleTime(slot.start)}
                                                                 </span>
                                                                 <span className="text-[#0DD122] opacity-0 transition-opacity group-hover:opacity-100">
                                                                     {t('calendar.book')}
@@ -476,9 +477,11 @@ const ScheduleCall = () => {
                                     </div>
 
                                     <div className="mb-6 rounded-xl bg-gray-50 p-4">
-                                        <p className="text-sm text-gray-500">Selected Time</p>
+                                        <p className="text-sm text-gray-500">Selected Time · {SCHEDULE_TIME_ZONE_LABEL}</p>
                                         <p className="mt-1 font-bold">
-                                            {selectedDate?.toLocaleDateString()} at {new Date(selectedSlot?.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            {selectedSlot?.start
+                                                ? `${formatScheduleDate(selectedSlot.start)} a las ${formatScheduleTime(selectedSlot.start)}`
+                                                : ''}
                                         </p>
                                     </div>
 

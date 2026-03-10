@@ -7,6 +7,7 @@ import { fetchCalBookings } from '@/lib/calBookings';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { formatScheduleTime, getScheduleDayParts, SCHEDULE_TIME_ZONE } from '@/utils/scheduleTime';
 
 const ClientAppointments = () => {
     const { t } = useTranslation();
@@ -101,53 +102,57 @@ const ClientAppointments = () => {
                 </motion.div>
             ) : (
                 <div className="grid gap-6">
-                    {appointments.map((apt, i) => (
-                        <motion.div
-                            key={apt.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            className="group bg-white p-8 rounded-[32px] border border-neutral-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-6"
-                        >
-                            <div className="flex items-center gap-6">
-                                <div className="w-16 h-16 bg-neutral-50 rounded-2xl flex flex-col items-center justify-center border border-neutral-100 group-hover:border-skyblue/30 transition-colors">
-                                    <span className="text-[10px] font-black uppercase text-neutral-400">
-                                        {new Date(apt.scheduled_at).toLocaleDateString('es-ES', { month: 'short' })}
-                                    </span>
-                                    <span className="text-2xl font-black text-black">
-                                        {new Date(apt.scheduled_at).getDate()}
-                                    </span>
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <h3 className="font-black text-xl text-neutral-900">
-                                            {new Date(apt.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </h3>
-                                        <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${getStatusColor(apt.status)}`}>
-                                            {apt.status === 'scheduled' ? 'Programada' : apt.status}
+                    {appointments.map((apt, i) => {
+                        const dayParts = getScheduleDayParts(apt.scheduled_at, apt.booking_time_zone || SCHEDULE_TIME_ZONE);
+
+                        return (
+                            <motion.div
+                                key={apt.id}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                className="group bg-white p-8 rounded-[32px] border border-neutral-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col md:flex-row md:items-center justify-between gap-6"
+                            >
+                                <div className="flex items-center gap-6">
+                                    <div className="w-16 h-16 bg-neutral-50 rounded-2xl flex flex-col items-center justify-center border border-neutral-100 group-hover:border-skyblue/30 transition-colors">
+                                        <span className="text-[10px] font-black uppercase text-neutral-400">
+                                            {dayParts?.monthShort || '--'}
+                                        </span>
+                                        <span className="text-2xl font-black text-black">
+                                            {dayParts?.dayOfMonth || '--'}
                                         </span>
                                     </div>
-                                    <p className="text-neutral-500 text-sm flex items-center gap-2">
-                                        {apt.projects?.title || apt.projects?.name || 'Consulta General'}
-                                    </p>
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <h3 className="font-black text-xl text-neutral-900">
+                                                {formatScheduleTime(apt.scheduled_at, { timeZone: apt.booking_time_zone || SCHEDULE_TIME_ZONE })}
+                                            </h3>
+                                            <span className={`px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${getStatusColor(apt.status)}`}>
+                                                {apt.status === 'scheduled' ? 'Programada' : apt.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-neutral-500 text-sm flex items-center gap-2">
+                                            {apt.projects?.title || apt.projects?.name || 'Consulta General'}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div className="flex items-center gap-4">
-                                {apt.meeting_link && (
-                                    <a
-                                        href={apt.meeting_link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-full text-sm font-bold shadow-md hover:scale-105 transition-all"
-                                    >
-                                        <LinkIcon size={16} />
-                                        Unirse a la llamada
-                                    </a>
-                                )}
-                            </div>
-                        </motion.div>
-                    ))}
+                                <div className="flex items-center gap-4">
+                                    {apt.meeting_link && (
+                                        <a
+                                            href={apt.meeting_link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-full text-sm font-bold shadow-md hover:scale-105 transition-all"
+                                        >
+                                            <LinkIcon size={16} />
+                                            Unirse a la llamada
+                                        </a>
+                                    )}
+                                </div>
+                            </motion.div>
+                        );
+                    })}
 
                     <div className="mt-8 text-center">
                         <Link

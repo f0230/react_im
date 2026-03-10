@@ -11,6 +11,7 @@ import './AdminCalendar.css'; // Import scoped styles
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
 import { useTranslation } from "react-i18next";
+import { getScheduleDisplayDate, SCHEDULE_TIME_ZONE } from '@/utils/scheduleTime';
 
 // Setup localizer
 const locales = {
@@ -93,8 +94,11 @@ const AdminCalendar = ({ appointments, onSelectAppointment }) => {
         return appointments.map(apt => ({
             id: apt.id,
             title: `${apt.client_name || apt.client_email || 'Participant'} - ${apt.projects?.name || 'Consultation'}`,
-            start: new Date(apt.scheduled_at),
-            end: new Date(new Date(apt.scheduled_at).getTime() + (apt.duration_minutes || 30) * 60000),
+            start: getScheduleDisplayDate(apt.scheduled_at, apt.booking_time_zone || SCHEDULE_TIME_ZONE),
+            end: getScheduleDisplayDate(
+                new Date(new Date(apt.scheduled_at).getTime() + (apt.duration_minutes || 30) * 60000),
+                apt.booking_time_zone || SCHEDULE_TIME_ZONE
+            ),
             resource: apt,
         }));
     }, [appointments]);

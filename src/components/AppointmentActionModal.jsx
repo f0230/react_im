@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import DatePicker from 'react-datepicker';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import { supabase } from '@/lib/supabaseClient';
+import { formatScheduleTime, SCHEDULE_TIME_ZONE_LABEL } from '@/utils/scheduleTime';
 import "react-datepicker/dist/react-datepicker.css";
 
 const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, position }) => {
@@ -305,7 +306,7 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                                 <div className="flex-1 p-4 flex flex-col h-full bg-white relative">
                                     <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
                                         <Clock size={16} className="text-gray-400" />
-                                        Selecciona Hora
+                                        Selecciona Hora · {SCHEDULE_TIME_ZONE_LABEL}
                                     </h3>
 
                                     <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2 max-h-[300px]">
@@ -324,7 +325,7 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                                                         }`}
                                                 >
                                                     <span className="font-medium text-sm">
-                                                        {new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {formatScheduleTime(slot.start)}
                                                     </span>
                                                     {selectedSlot?.start === slot.start && <Check size={14} />}
                                                 </button>

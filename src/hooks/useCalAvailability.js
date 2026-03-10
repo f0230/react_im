@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-const getDayRange = (date) => {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
-
-    return { startOfDay, endOfDay };
-};
+import { getScheduleQueryRange, SCHEDULE_TIME_ZONE } from '@/utils/scheduleTime';
 
 const normalizeSlots = (data) => {
     const slotsObj = data?.data?.slots || {};
@@ -45,10 +36,13 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
             resetAvailability();
 
             try {
-                const { startOfDay, endOfDay } = getDayRange(selectedDate);
-                const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const range = getScheduleQueryRange(selectedDate, SCHEDULE_TIME_ZONE);
+                if (!range) {
+                    throw new Error('Invalid selected date');
+                }
+
                 const response = await fetch(
-                    `/api/cal/availability?start=${startOfDay.toISOString()}&end=${endOfDay.toISOString()}&timeZone=${timeZone}`
+                    `/api/cal/availability?start=${range.startIso}&end=${range.endIso}&timeZone=${SCHEDULE_TIME_ZONE}`
                 );
 
                 if (!response.ok) throw new Error('Failed to fetch slots');

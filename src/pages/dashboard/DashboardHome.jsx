@@ -20,6 +20,7 @@ import heroBgMobile from '../../assets/PORTADA_1_MOVIL.webp';
 import heroBgDesktop from '../../assets/PORTADA_1.webp';
 import dteLogo from '../../assets/LOGODTE.svg';
 import dteWhite from '../../assets/dte-white.svg';
+import { formatScheduleDate, SCHEDULE_TIME_ZONE } from '@/utils/scheduleTime';
 
 const getSchedulePromptPendingKey = (userId) => `schedulePromptPending:${userId}`;
 const getSchedulePromptDismissedKey = (userId) => `schedulePromptDismissed:${userId}`;
@@ -31,6 +32,7 @@ const DashboardHome = () => {
     const role = profile?.role || 'client';
     const [stats, setStats] = useState({
         nextAppointmentAt: null,
+        nextAppointmentTimeZone: null,
     });
     const [showSchedulePrompt, setShowSchedulePrompt] = useState(false);
 
@@ -62,6 +64,7 @@ const DashboardHome = () => {
                     ]);
                     const appointmentCount = upcomingBookings.length;
                     const nextAppointmentAt = upcomingBookings[0]?.scheduled_at || null;
+                    const nextAppointmentTimeZone = upcomingBookings[0]?.booking_time_zone || SCHEDULE_TIME_ZONE;
 
                     setStats({
                         projectCount: projectCount ?? 0,
@@ -69,6 +72,7 @@ const DashboardHome = () => {
                         upcomingWeekAppointments: 0,
                         clientCount: null,
                         nextAppointmentAt,
+                        nextAppointmentTimeZone,
                     });
                     return;
                 }
@@ -89,6 +93,7 @@ const DashboardHome = () => {
                         upcomingWeekAppointments: 0,
                         clientCount: null,
                         nextAppointmentAt: null,
+                        nextAppointmentTimeZone: null,
                     });
                     return;
                 }
@@ -111,6 +116,7 @@ const DashboardHome = () => {
                     upcomingWeekAppointments: upcomingWeekAppointments ?? 0,
                     clientCount,
                     nextAppointmentAt: null,
+                    nextAppointmentTimeZone: null,
                 });
             } catch (error) {
                 console.error('Error loading dashboard stats:', error);
@@ -169,7 +175,7 @@ const DashboardHome = () => {
                     {
                         label: t("dashboardHome.client.cards.next"),
                         value: stats.nextAppointmentAt
-                            ? new Date(stats.nextAppointmentAt).toLocaleDateString(navigator.language || 'es-ES')
+                            ? formatScheduleDate(stats.nextAppointmentAt, { locale: navigator.language || 'es-ES', timeZone: stats.nextAppointmentTimeZone || SCHEDULE_TIME_ZONE })
                             : t("dashboardHome.client.cards.noAppointment"),
                         icon: Zap,
                         color: 'text-amber-500',

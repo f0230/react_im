@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
+import { formatScheduleTime, SCHEDULE_TIME_ZONE, SCHEDULE_TIME_ZONE_LABEL } from '@/utils/scheduleTime';
 
 const PARTICIPANT_TYPE = {
     CLIENT: 'client',
@@ -223,7 +224,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                 participantType: selectedParticipantData.type,
                 participantRole: selectedParticipantData.role,
                 participantId: selectedParticipantData.id,
-                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                timeZone: SCHEDULE_TIME_ZONE
             };
             if (selectedParticipantData.phone) {
                 payload.phone = selectedParticipantData.phone;
@@ -430,7 +431,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                     <div className="flex-1 flex flex-col">
                                         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                             <Clock size={16} />
-                                            {t("admin.createAppointment.form.slotsTitle")}
+                                            {t("admin.createAppointment.form.slotsTitle")} · {SCHEDULE_TIME_ZONE_LABEL}
                                         </h3>
 
                                         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2 max-h-[350px]">
@@ -449,7 +450,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                                                             }`}
                                                     >
                                                         <span className="font-medium text-sm">
-                                                            {new Date(slot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            {formatScheduleTime(slot.start)}
                                                         </span>
                                                         {selectedSlot?.start === slot.start && <Check size={14} />}
                                                     </button>
