@@ -5,6 +5,7 @@ import { Users, Search, RefreshCw, Mail, Phone } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import { formatPhoneForDisplay } from '@/utils/phone-format';
 
 const STATUS_META = {
     lead: { label: 'Lead', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
@@ -180,7 +181,7 @@ const Clients = () => {
                                             {client.phone && (
                                                 <span className="inline-flex items-center gap-1">
                                                     <Phone size={12} />
-                                                    {client.phone}
+                                                    {formatPhoneForDisplay(client.phone)}
                                                 </span>
                                             )}
                                             {!client.email && !client.phone && (

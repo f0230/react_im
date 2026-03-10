@@ -7,6 +7,7 @@ import ClientDetail from '@/pages/dashboard/crm/ClientDetail';
 import useViewportHeight from '@/hooks/useViewportHeight';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
 import { formatTime, formatTimestamp, getInitial, normalizePhone } from '@/utils/messagingFormatters';
+import { formatPhoneForDisplay } from '@/utils/phone-format';
 
 
 const Inbox = () => {
@@ -538,7 +539,7 @@ const Inbox = () => {
                             <div className="text-sm text-neutral-400 px-2">No hay conversaciones.</div>
                         )}
                         {filteredThreads.map((thread) => {
-                            const displayName = thread.client_name || thread.client_phone || thread.wa_id || 'Cliente';
+                            const displayName = thread.client_name || formatPhoneForDisplay(thread.client_phone) || formatPhoneForDisplay(thread.wa_id) || 'Cliente';
                             const isActive = thread.wa_id === selectedThreadId;
                             return (
                                 <button
@@ -599,7 +600,7 @@ const Inbox = () => {
                                         >
                                             <div className="relative">
                                                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-50 to-sky-50 text-emerald-700 flex items-center justify-center font-semibold shadow-sm ring-1 ring-emerald-100">
-                                                    {getInitial(selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id)}
+                                                    {getInitial(selectedThread.client_name || formatPhoneForDisplay(selectedThread.client_phone) || formatPhoneForDisplay(selectedThread.wa_id))}
                                                 </div>
                                                 <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-white shadow-sm flex items-center justify-center">
                                                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -607,11 +608,11 @@ const Inbox = () => {
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="text-base font-semibold text-neutral-900 truncate group-hover:text-black">
-                                                    {selectedThread.client_name || selectedThread.client_phone || selectedThread.wa_id}
+                                                    {selectedThread.client_name || formatPhoneForDisplay(selectedThread.client_phone) || formatPhoneForDisplay(selectedThread.wa_id)}
                                                 </p>
                                                 <div className="flex items-center gap-2 text-xs text-neutral-500 truncate">
                                                     <Phone size={12} />
-                                                    {selectedThread.wa_id}
+                                                    {formatPhoneForDisplay(selectedThread.wa_id)}
                                                     <span className="text-[10px] text-neutral-400">• Ver perfil</span>
                                                 </div>
                                             </div>

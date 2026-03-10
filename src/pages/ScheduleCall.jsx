@@ -11,6 +11,7 @@ import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import Navbar from '@/components/Navbar';
 import { isValidPhone } from '@/utils/phone-validation';
+import { stripLeadingPlus } from '@/utils/phone-format';
 import { formatScheduleDate, formatScheduleTime, SCHEDULE_TIME_ZONE, SCHEDULE_TIME_ZONE_LABEL } from '@/utils/scheduleTime';
 
 import "react-datepicker/dist/react-datepicker.css";
@@ -230,14 +231,15 @@ const ScheduleCall = () => {
                 ...prev,
                 name: client?.full_name || client?.company_name || user?.user_metadata?.full_name || '',
                 email: client?.email || user?.email || '',
-                phone: client?.phone || user?.phone || ''
+                phone: stripLeadingPlus(client?.phone || user?.phone || '')
             }));
             fetchProjectsInternal();
         }
     }, [client, user, fetchProjectsInternal]);
 
     const handleFieldChange = useCallback((field, value) => {
-        setFormData((prev) => ({ ...prev, [field]: value }));
+        const nextValue = field === 'phone' ? stripLeadingPlus(value) : value;
+        setFormData((prev) => ({ ...prev, [field]: nextValue }));
         setFieldErrors((prev) => {
             if (!prev[field]) return prev;
             const next = { ...prev };

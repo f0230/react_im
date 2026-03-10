@@ -4,6 +4,7 @@ import { ArrowLeft, Mail, Phone, Plus, Copy, Check, Trash2, Link as LinkIcon } f
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import { formatPhoneForDisplay } from '@/utils/phone-format';
 
 const STATUS_META = {
     lead: { label: 'Lead', className: 'bg-amber-50 text-amber-700 border border-amber-200' },
@@ -268,7 +269,7 @@ const ClientDetail = ({ clientIdOverride = null, hideBackLink = false }) => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Phone size={14} />
-                                    {client?.phone || 'Sin telefono'}
+                                    {formatPhoneForDisplay(client?.phone) || 'Sin telefono'}
                                 </div>
                                 {normalizedPhone ? (
                                     <Link

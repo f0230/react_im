@@ -10,6 +10,7 @@ import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
 import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
 import { fetchReactionsForMessages, toggleReaction } from '@/services/chatReactions';
 import { formatShortDateTime, formatTime, formatTimestamp, getInitial, getUserColor } from '@/utils/messagingFormatters';
+import { formatPhoneForDisplay } from '@/utils/phone-format';
 
 const isMissingRelationError = (error) => {
     if (!error) return false;
@@ -19,7 +20,7 @@ const isMissingRelationError = (error) => {
 
 const getThreadDisplayName = (thread) => {
     if (!thread) return 'Cliente';
-    return thread.full_name || thread.company_name || thread.email || thread.phone || 'Cliente';
+    return thread.full_name || thread.company_name || thread.email || formatPhoneForDisplay(thread.phone) || 'Cliente';
 };
 
 const ClientChat = () => {
@@ -492,7 +493,7 @@ const ClientChat = () => {
                                                     {getThreadDisplayName(thread)}
                                                 </p>
                                                 <p className={`text-xs truncate ${isActive ? 'text-white/70' : 'text-neutral-500'}`}>
-                                                    {thread.email || thread.phone || 'Sin contacto'}
+                                                    {thread.email || formatPhoneForDisplay(thread.phone) || 'Sin contacto'}
                                                 </p>
                                             </div>
                                         </div>
@@ -526,7 +527,7 @@ const ClientChat = () => {
                                                 {getThreadDisplayName(selectedThread)}
                                             </p>
                                             <p className="text-xs text-neutral-500 truncate">
-                                                {selectedThread.email || selectedThread.phone || 'Canal directo'}
+                                                {selectedThread.email || formatPhoneForDisplay(selectedThread.phone) || 'Canal directo'}
                                             </p>
                                         </div>
                                     </div>
