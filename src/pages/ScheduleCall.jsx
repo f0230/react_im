@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import DatePicker from 'react-datepicker';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,10 +14,84 @@ import Navbar from '@/components/Navbar';
 import "react-datepicker/dist/react-datepicker.css";
 import '@/index.css';
 
+const TRACKING_QUERY_KEYS = [
+    'utm_source',
+    'utm_medium',
+    'utm_campaign',
+    'utm_content',
+    'utm_term',
+    'source',
+    'medium',
+    'campaign',
+    'content',
+    'term',
+    'bot',
+    'entry_point',
+    'entrypoint',
+    'wa_id',
+    'thread_id',
+    'conversation_id',
+    'message_id',
+    'click_id',
+    'fbclid',
+    'fbc',
+    'fbp',
+    'gclid',
+];
+
+const normalizeText = (value) => {
+    const text = String(value || '').trim();
+    return text || null;
+};
+
+const compactObject = (value) => Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => {
+        if (entry == null) return false;
+        if (typeof entry === 'string') return entry.trim().length > 0;
+        if (typeof entry === 'object') return Object.keys(entry).length > 0;
+        return true;
+    })
+);
+
+const buildTrackingPayload = ({ pathname, search }) => {
+    const params = new URLSearchParams(search || '');
+    const rawParams = {};
+
+    TRACKING_QUERY_KEYS.forEach((key) => {
+        const value = normalizeText(params.get(key));
+        if (value) rawParams[key] = value;
+    });
+
+    const tracking = compactObject({
+        entryPoint: normalizeText(params.get('entry_point')) || normalizeText(params.get('entrypoint')),
+        bot: normalizeText(params.get('bot')),
+        source: normalizeText(params.get('utm_source')) || normalizeText(params.get('source')),
+        medium: normalizeText(params.get('utm_medium')) || normalizeText(params.get('medium')),
+        campaign: normalizeText(params.get('utm_campaign')) || normalizeText(params.get('campaign')),
+        content: normalizeText(params.get('utm_content')) || normalizeText(params.get('content')),
+        term: normalizeText(params.get('utm_term')) || normalizeText(params.get('term')),
+        waId: normalizeText(params.get('wa_id')),
+        threadId: normalizeText(params.get('thread_id')),
+        conversationId: normalizeText(params.get('conversation_id')),
+        messageId: normalizeText(params.get('message_id')),
+        clickId: normalizeText(params.get('click_id')),
+        fbclid: normalizeText(params.get('fbclid')),
+        fbc: normalizeText(params.get('fbc')),
+        fbp: normalizeText(params.get('fbp')),
+        gclid: normalizeText(params.get('gclid')),
+        landingPath: normalizeText(`${pathname || '/schedule-call'}${search || ''}`),
+        referrer: typeof document !== 'undefined' ? normalizeText(document.referrer) : null,
+        rawParams,
+    });
+
+    return Object.keys(tracking).length > 0 ? tracking : null;
+};
+
 const ScheduleCall = () => {
     const { t } = useTranslation();
     const { projectId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, client, profile } = useAuth();
 
     const [selectedDate, setSelectedDate] = useState(new Date());
@@ -33,6 +107,11 @@ const ScheduleCall = () => {
         phone: '',
         notes: ''
     });
+
+    const tracking = useMemo(
+        () => buildTrackingPayload({ pathname: location.pathname, search: location.search }),
+        [location.pathname, location.search]
+    );
 
     const fetchProjectsInternal = useCallback(async () => {
         if (!user?.id) return;
@@ -106,7 +185,8 @@ const ScheduleCall = () => {
                     participantType,
                     participantRole,
                     participantId: user?.id || null,
-                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                    tracking,
                 })
             });
             if (!response.ok) {

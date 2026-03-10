@@ -6,7 +6,6 @@ import { createHmac } from 'node:crypto';
 const CAL_API_URL = process.env.CAL_COM_API_URL || 'https://api.cal.com/v2';
 const API_KEY = process.env.CAL_COM_API_KEY || process.env.VITE_CAL_COM_API_KEY;
 const EVENT_TYPE_ID = process.env.CAL_COM_EVENT_TYPE_ID || process.env.VITE_CAL_COM_EVENT_TYPE_ID;
-const CAL_FALLBACK_PHONE = process.env.CAL_COM_FALLBACK_PHONE || '+5491155667788';
 
 const CAL_API_VERSION = '2024-08-13';
 const ALLOWED_ACTIONS = new Set([
@@ -33,6 +32,126 @@ const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value |
 const normalizeEmail = (value) => {
     const trimmed = String(value || '').trim().toLowerCase();
     return isValidEmail(trimmed) ? trimmed : '';
+};
+const normalizeShortText = (value, maxLength = 255) => {
+    const text = String(value || '').trim();
+    if (!text) return null;
+    return text.slice(0, maxLength);
+};
+const DEFAULT_PHONE_COUNTRY_CODE = String(
+    process.env.DEFAULT_PHONE_COUNTRY_CODE
+    || process.env.SCHEDULE_DEFAULT_PHONE_COUNTRY_CODE
+    || '+598'
+).replace(/\D/g, '') || '598';
+const RECOGNIZED_CALLING_CODES = [
+    '598',
+    '54',
+    '55',
+    '591',
+    '56',
+    '57',
+    '593',
+    '51',
+    '52',
+    '506',
+    '507',
+    '595',
+    '34',
+    '1',
+].sort((a, b) => b.length - a.length);
+
+const compactObject = (value) => Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => {
+        if (entry == null) return false;
+        if (typeof entry === 'string') return entry.trim().length > 0;
+        if (typeof entry === 'object') return Object.keys(entry).length > 0;
+        return true;
+    })
+);
+
+const normalizeTrackingPayload = (tracking) => {
+    if (!tracking || typeof tracking !== 'object' || Array.isArray(tracking)) return null;
+
+    const rawParamsInput = tracking.rawParams && typeof tracking.rawParams === 'object' && !Array.isArray(tracking.rawParams)
+        ? tracking.rawParams
+        : {};
+
+    const rawParams = compactObject(
+        Object.fromEntries(
+            Object.entries(rawParamsInput)
+                .slice(0, 25)
+                .map(([key, value]) => [normalizeShortText(key, 80), normalizeShortText(value, 500)])
+                .filter(([key, value]) => key && value)
+        )
+    );
+
+    const normalized = compactObject({
+        entryPoint: normalizeShortText(tracking.entryPoint, 120),
+        bot: normalizeShortText(tracking.bot, 120),
+        source: normalizeShortText(tracking.source, 120),
+        medium: normalizeShortText(tracking.medium, 120),
+        campaign: normalizeShortText(tracking.campaign, 255),
+        content: normalizeShortText(tracking.content, 255),
+        term: normalizeShortText(tracking.term, 255),
+        waId: normalizeShortText(tracking.waId, 64),
+        threadId: normalizeShortText(tracking.threadId, 120),
+        conversationId: normalizeShortText(tracking.conversationId, 120),
+        messageId: normalizeShortText(tracking.messageId, 120),
+        clickId: normalizeShortText(tracking.clickId, 120),
+        fbclid: normalizeShortText(tracking.fbclid, 255),
+        fbc: normalizeShortText(tracking.fbc, 255),
+        fbp: normalizeShortText(tracking.fbp, 255),
+        gclid: normalizeShortText(tracking.gclid, 255),
+        landingPath: normalizeShortText(tracking.landingPath, 500),
+        referrer: normalizeShortText(tracking.referrer, 500),
+        rawParams,
+    });
+
+    if (Object.keys(normalized).length === 0) return null;
+
+    return {
+        ...normalized,
+        capturedAt: new Date().toISOString(),
+    };
+};
+
+const normalizePhoneForCal = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return { phone: null, error: null };
+
+    if (raw.startsWith('+')) {
+        const digits = raw.replace(/\D/g, '');
+        if (digits.length < 8 || digits.length > 15) {
+            return { phone: null, error: 'Invalid phone number' };
+        }
+        return { phone: `+${digits}`, error: null };
+    }
+
+    let digits = raw.replace(/\D/g, '');
+    if (!digits) return { phone: null, error: null };
+
+    if (digits.startsWith('00')) {
+        digits = digits.slice(2);
+    }
+
+    const matchedCallingCode = RECOGNIZED_CALLING_CODES.find((code) => digits.startsWith(code));
+    if (matchedCallingCode) {
+        const nationalNumber = digits.slice(matchedCallingCode.length);
+        if (nationalNumber.length >= 6 && nationalNumber.length <= 12) {
+            return { phone: `+${digits}`, error: null };
+        }
+    }
+
+    if (digits.length > 10) {
+        return { phone: `+${digits}`, error: null };
+    }
+
+    const localDigits = digits.replace(/^0+/, '');
+    if (localDigits.length < 7 || localDigits.length > 10) {
+        return { phone: null, error: 'Invalid phone number' };
+    }
+
+    return { phone: `+${DEFAULT_PHONE_COUNTRY_CODE}${localDigits}`, error: null };
 };
 
 const getCalErrorMessage = (payload) => {
@@ -285,6 +404,7 @@ const handleCreateBooking = async (req, res) => {
         participantId,
         timeZone,
         eventTypeId: bodyEventTypeId,
+        tracking,
     } = req.body || {};
 
     const eventTypeId = bodyEventTypeId || EVENT_TYPE_ID;
@@ -350,18 +470,17 @@ const handleCreateBooking = async (req, res) => {
             });
         }
 
-        let normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
-        if (normalizedPhone) {
-            const cleanPhone = normalizedPhone.replace(/[\s\-\(\)]/g, '');
-            if (cleanPhone.startsWith('+')) {
-                normalizedPhone = cleanPhone;
-            } else if (/^\d{10}$/.test(cleanPhone)) {
-                normalizedPhone = `+549${cleanPhone}`;
-            } else if (/^\d{8,15}$/.test(cleanPhone)) {
-                normalizedPhone = `+549${cleanPhone}`;
-            } else {
-                normalizedPhone = '';
-            }
+        const { phone: normalizedPhone, error: phoneError } = normalizePhoneForCal(phone);
+        if (phone && phoneError) {
+            return res.status(400).json({
+                error: 'Invalid phone / WhatsApp number',
+                details: { phone },
+            });
+        }
+        if (!normalizedPhone && !isTeamParticipant) {
+            return res.status(400).json({
+                error: 'A valid phone / WhatsApp number is required',
+            });
         }
 
         const attendee = {
@@ -381,6 +500,8 @@ const handleCreateBooking = async (req, res) => {
         if (participantRole) metadata.participantRole = participantRole;
         if (participantId) metadata.participantId = participantId;
         if (notes) metadata.notes = notes;
+        const normalizedTracking = normalizeTrackingPayload(tracking);
+        if (normalizedTracking) metadata.tracking = normalizedTracking;
 
         const bookingPayload = {
             eventTypeId: parsedEventTypeId,
@@ -401,31 +522,16 @@ const handleCreateBooking = async (req, res) => {
 
         let calData = await calResponse.json();
 
-        const calErrorMessage = getCalErrorMessage(calData).toLowerCase();
-        const needsPhoneRetry = calErrorMessage.includes('invalid_number')
-            || calErrorMessage.includes('missing attendee phone number')
-            || calErrorMessage.includes('required by the event type');
-
-        if (!calResponse.ok && needsPhoneRetry) {
-            console.warn('Cal.com rejected/required attendee phone, retrying with fallback phone...');
-            bookingPayload.attendee.phoneNumber = CAL_FALLBACK_PHONE;
-
-            calResponse = await fetch(`${CAL_API_URL}/bookings`, {
-                method: 'POST',
-                headers: {
-                    Authorization: `Bearer ${API_KEY}`,
-                    'Content-Type': 'application/json',
-                    'cal-api-version': CAL_API_VERSION,
-                },
-                body: JSON.stringify(bookingPayload),
-            });
-            calData = await calResponse.json();
-        }
-
         if (!calResponse.ok) {
+            const calErrorMessage = getCalErrorMessage(calData).toLowerCase();
+            const hasPhoneError = calErrorMessage.includes('invalid_number')
+                || calErrorMessage.includes('missing attendee phone number')
+                || calErrorMessage.includes('required by the event type');
             console.error('Cal.com Booking Error:', calData);
             return res.status(calResponse.status).json({
-                error: 'Failed to create booking in Cal.com',
+                error: hasPhoneError
+                    ? 'Cal.com rejected the participant phone number'
+                    : 'Failed to create booking in Cal.com',
                 details: calData,
             });
         }

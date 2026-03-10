@@ -45,6 +45,44 @@ const AdminAppointments = () => {
         return 'team';
     };
 
+    const formatTrackingLabel = (value, uppercase = false) => {
+        const text = String(value || '').trim().replace(/[_-]+/g, ' ');
+        if (!text) return '';
+        return uppercase ? text.toUpperCase() : text;
+    };
+
+    const getTrackingSummary = (apt) => {
+        const tracking = apt?.cal_metadata?.metadata?.tracking || {};
+        const main = [];
+
+        if (tracking.bot) {
+            main.push(formatTrackingLabel(tracking.bot, true));
+        }
+
+        if (tracking.source && tracking.source !== tracking.bot) {
+            main.push(formatTrackingLabel(tracking.source));
+        } else if (!tracking.bot && tracking.source) {
+            main.push(formatTrackingLabel(tracking.source));
+        }
+
+        if (!main.length && tracking.entryPoint) {
+            main.push(formatTrackingLabel(tracking.entryPoint));
+        }
+
+        if (!main.length) return null;
+
+        const secondary = [
+            formatTrackingLabel(tracking.medium),
+            formatTrackingLabel(tracking.campaign),
+            tracking.waId ? `WA ${tracking.waId}` : null,
+        ].filter(Boolean).join(' · ');
+
+        return {
+            main: main.join(' / '),
+            secondary,
+        };
+    };
+
     const upcomingAppointments = useMemo(() => (
         appointments.filter((apt) => isUpcomingActiveAppointment(apt))
     ), [appointments]);
@@ -225,79 +263,96 @@ const AdminAppointments = () => {
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.type") || 'Tipo'}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.participant")}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.project")}</th>
+                                            <th className="p-5 font-semibold text-gray-600 text-sm">Origen</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.status")}</th>
                                             <th className="p-5 font-semibold text-gray-600 text-sm">{t("admin.appointments.table.actions")}</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {listAppointments.map((apt) => (
-                                            <tr
-                                                key={apt.id}
-                                                onClick={(e) => handleAppointmentClick(apt, e)}
-                                                className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors last:border-0 cursor-pointer"
-                                            >
-                                                <td className="p-5">
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-gray-900">
-                                                            {new Date(apt.scheduled_at).toLocaleDateString()}
-                                                        </span>
-                                                        <span className="text-sm text-gray-500">
-                                                            {new Date(apt.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="p-5">
-                                                    {getAppointmentType(apt) === 'client' ? (
-                                                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
-                                                            {t("admin.appointments.type.client") || 'Cliente'}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-xs font-bold text-violet-700 bg-violet-50 px-3 py-1 rounded-full border border-violet-100">
-                                                            {t("admin.appointments.type.team") || 'Equipo'}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="p-5">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-[#E8E8E8] flex items-center justify-center text-xs font-bold">
-                                                            {(apt.client_name || apt.client_email || '?').charAt(0)}
-                                                        </div>
+                                        {listAppointments.map((apt) => {
+                                            const trackingSummary = getTrackingSummary(apt);
+
+                                            return (
+                                                <tr
+                                                    key={apt.id}
+                                                    onClick={(e) => handleAppointmentClick(apt, e)}
+                                                    className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors last:border-0 cursor-pointer"
+                                                >
+                                                    <td className="p-5">
                                                         <div className="flex flex-col">
-                                                            <span className="font-medium text-gray-900">{apt.client_name || '-'}</span>
-                                                            <span className="text-xs text-gray-500">{apt.client_email || '-'}</span>
+                                                            <span className="font-bold text-gray-900">
+                                                                {new Date(apt.scheduled_at).toLocaleDateString()}
+                                                            </span>
+                                                            <span className="text-sm text-gray-500">
+                                                                {new Date(apt.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="p-5">
-                                                    {apt.projects ? (
-                                                        <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
-                                                            {apt.projects.name || 'Project'}
+                                                    </td>
+                                                    <td className="p-5">
+                                                        {getAppointmentType(apt) === 'client' ? (
+                                                            <span className="text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1 rounded-full border border-blue-100">
+                                                                {t("admin.appointments.type.client") || 'Cliente'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-xs font-bold text-violet-700 bg-violet-50 px-3 py-1 rounded-full border border-violet-100">
+                                                                {t("admin.appointments.type.team") || 'Equipo'}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-5">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-[#E8E8E8] flex items-center justify-center text-xs font-bold">
+                                                                {(apt.client_name || apt.client_email || '?').charAt(0)}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium text-gray-900">{apt.client_name || '-'}</span>
+                                                                <span className="text-xs text-gray-500">{apt.client_email || '-'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-5">
+                                                        {apt.projects ? (
+                                                            <span className="text-sm font-medium text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                                                                {apt.projects.name || 'Project'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-sm text-gray-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-5">
+                                                        {trackingSummary ? (
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-medium text-gray-900">{trackingSummary.main}</span>
+                                                                {trackingSummary.secondary && (
+                                                                    <span className="text-xs text-gray-500">{trackingSummary.secondary}</span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-sm text-gray-400">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-5">
+                                                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(apt.status)} capitalize`}>
+                                                            {getStatusLabel(apt.status)}
                                                         </span>
-                                                    ) : (
-                                                        <span className="text-sm text-gray-400">-</span>
-                                                    )}
-                                                </td>
-                                                <td className="p-5">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(apt.status)} capitalize`}>
-                                                        {getStatusLabel(apt.status)}
-                                                    </span>
-                                                </td>
-                                                <td className="p-5">
-                                                    {apt.meeting_link && (
-                                                        <a
-                                                            href={apt.meeting_link}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black hover:underline"
-                                                        >
-                                                            <LinkIcon size={14} />
-                                                            {t("admin.appointments.table.join")}
-                                                        </a>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
+                                                    </td>
+                                                    <td className="p-5">
+                                                        {apt.meeting_link && (
+                                                            <a
+                                                                href={apt.meeting_link}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black hover:underline"
+                                                            >
+                                                                <LinkIcon size={14} />
+                                                                {t("admin.appointments.table.join")}
+                                                            </a>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                                 {listAppointments.length === 0 && (
