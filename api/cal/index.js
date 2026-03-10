@@ -155,12 +155,32 @@ const normalizePhoneForCal = (value) => {
 };
 
 const getCalErrorMessage = (payload) => {
+    if (typeof payload === 'string') {
+        return payload.trim();
+    }
     if (!payload) return '';
     const direct = payload?.error?.message || payload?.message;
     if (typeof direct === 'string' && direct.trim()) return direct;
     const nested = payload?.error?.details?.message || payload?.error?.details?.error;
     if (typeof nested === 'string' && nested.trim()) return nested;
     return '';
+};
+
+const parseCalResponse = async (response) => {
+    const rawText = await response.text();
+    if (!rawText) return null;
+
+    try {
+        return JSON.parse(rawText);
+    } catch {
+        return rawText;
+    }
+};
+
+const normalizeUtcDateTime = (value) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toISOString();
 };
 
 const normalizeUuid = (value) => {
@@ -416,10 +436,17 @@ const handleCreateBooking = async (req, res) => {
 
     try {
         const parsedEventTypeId = Number(eventTypeId);
+        const normalizedStart = normalizeUtcDateTime(start);
         if (!Number.isFinite(parsedEventTypeId)) {
             return res.status(400).json({
                 error: 'Invalid Event Type ID',
                 details: { eventTypeId },
+            });
+        }
+        if (!normalizedStart) {
+            return res.status(400).json({
+                error: 'Invalid booking start time',
+                details: { start },
             });
         }
 
@@ -505,7 +532,7 @@ const handleCreateBooking = async (req, res) => {
 
         const bookingPayload = {
             eventTypeId: parsedEventTypeId,
-            start,
+            start: normalizedStart,
             attendee,
             metadata,
         };
@@ -520,7 +547,7 @@ const handleCreateBooking = async (req, res) => {
             body: JSON.stringify(bookingPayload),
         });
 
-        let calData = await calResponse.json();
+        let calData = await parseCalResponse(calResponse);
 
         if (!calResponse.ok) {
             const calErrorMessage = getCalErrorMessage(calData).toLowerCase();
@@ -531,8 +558,8 @@ const handleCreateBooking = async (req, res) => {
             return res.status(calResponse.status).json({
                 error: hasPhoneError
                     ? 'Cal.com rejected the participant phone number'
-                    : 'Failed to create booking in Cal.com',
-                details: calData,
+                    : getCalErrorMessage(calData) || 'Failed to create booking in Cal.com',
+                details: typeof calData === 'string' ? { raw: calData } : calData,
             });
         }
 
@@ -743,7 +770,12 @@ const handleReschedule = async (req, res) => {
     }
 
     try {
-        console.log(`[Reschedule] Rescheduling booking: ${bookingUid} to ${start}`);
+        const normalizedStart = normalizeUtcDateTime(start);
+        if (!normalizedStart) {
+            return res.status(400).json({ error: 'Invalid reschedule start time', details: { start } });
+        }
+
+        console.log(`[Reschedule] Rescheduling booking: ${bookingUid} to ${normalizedStart}`);
 
         const calResponse = await fetch(`${CAL_API_URL}/bookings/${bookingUid}/reschedule`, {
             method: 'POST',
@@ -753,17 +785,17 @@ const handleReschedule = async (req, res) => {
                 'cal-api-version': CAL_API_VERSION,
             },
             body: JSON.stringify({
-                start,
+                start: normalizedStart,
                 reschedulingReason: reason || 'Rescheduled by Admin',
             }),
         });
 
-        const calData = await calResponse.json();
+        const calData = await parseCalResponse(calResponse);
         if (!calResponse.ok) {
             console.error('Cal.com Reschedule Error:', calData);
             return res.status(calResponse.status).json({
-                error: 'Failed to reschedule in Cal.com',
-                details: calData,
+                error: getCalErrorMessage(calData) || 'Failed to reschedule in Cal.com',
+                details: typeof calData === 'string' ? { raw: calData } : calData,
             });
         }
 

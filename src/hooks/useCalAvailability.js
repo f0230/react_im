@@ -16,7 +16,7 @@ const normalizeSlots = (data) => {
         .flat()
         .map((slot) => ({
             ...slot,
-            start: slot.time
+            start: slot.start || slot.time
         }));
 };
 
