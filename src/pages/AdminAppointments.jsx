@@ -51,8 +51,62 @@ const AdminAppointments = () => {
         return uppercase ? text.toUpperCase() : text;
     };
 
+    const parseTrackingMetadata = (metadata) => {
+        const legacyTracking = metadata?.tracking;
+
+        if (legacyTracking && typeof legacyTracking === 'object' && !Array.isArray(legacyTracking)) {
+            return legacyTracking;
+        }
+
+        if (typeof legacyTracking === 'string') {
+            try {
+                const parsed = JSON.parse(legacyTracking);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    return parsed;
+                }
+            } catch {
+                // Ignore legacy malformed values and fall back to flattened metadata.
+            }
+        }
+
+        let rawParams = {};
+        if (typeof metadata?.trackingRawParamsJson === 'string' && metadata.trackingRawParamsJson.trim()) {
+            try {
+                const parsedRawParams = JSON.parse(metadata.trackingRawParamsJson);
+                if (parsedRawParams && typeof parsedRawParams === 'object' && !Array.isArray(parsedRawParams)) {
+                    rawParams = parsedRawParams;
+                }
+            } catch {
+                rawParams = {};
+            }
+        }
+
+        return {
+            entryPoint: metadata?.trackingEntryPoint || null,
+            bot: metadata?.trackingBot || null,
+            source: metadata?.trackingSource || null,
+            medium: metadata?.trackingMedium || null,
+            campaign: metadata?.trackingCampaign || null,
+            content: metadata?.trackingContent || null,
+            term: metadata?.trackingTerm || null,
+            waId: metadata?.trackingWaId || null,
+            threadId: metadata?.trackingThreadId || null,
+            conversationId: metadata?.trackingConversationId || null,
+            messageId: metadata?.trackingMessageId || null,
+            clickId: metadata?.trackingClickId || null,
+            fbclid: metadata?.trackingFbclid || null,
+            fbc: metadata?.trackingFbc || null,
+            fbp: metadata?.trackingFbp || null,
+            gclid: metadata?.trackingGclid || null,
+            landingPath: metadata?.trackingLandingPath || null,
+            referrer: metadata?.trackingReferrer || null,
+            capturedAt: metadata?.trackingCapturedAt || null,
+            rawParams,
+        };
+    };
+
     const getTrackingSummary = (apt) => {
-        const tracking = apt?.cal_metadata?.metadata?.tracking || {};
+        const tracking = parseTrackingMetadata(apt?.cal_metadata?.metadata || {});
         const main = [];
 
         if (tracking.bot) {

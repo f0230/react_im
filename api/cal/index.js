@@ -115,6 +115,41 @@ const normalizeTrackingPayload = (tracking) => {
     };
 };
 
+const serializeMetadataValue = (value, maxLength = 500) => {
+    if (value == null) return null;
+    const text = typeof value === 'string' ? value.trim() : JSON.stringify(value);
+    if (!text) return null;
+    return text.slice(0, maxLength);
+};
+
+const buildTrackingMetadata = (tracking) => {
+    const normalized = normalizeTrackingPayload(tracking);
+    if (!normalized) return {};
+
+    return compactObject({
+        trackingEntryPoint: serializeMetadataValue(normalized.entryPoint, 120),
+        trackingBot: serializeMetadataValue(normalized.bot, 120),
+        trackingSource: serializeMetadataValue(normalized.source, 120),
+        trackingMedium: serializeMetadataValue(normalized.medium, 120),
+        trackingCampaign: serializeMetadataValue(normalized.campaign, 255),
+        trackingContent: serializeMetadataValue(normalized.content, 255),
+        trackingTerm: serializeMetadataValue(normalized.term, 255),
+        trackingWaId: serializeMetadataValue(normalized.waId, 64),
+        trackingThreadId: serializeMetadataValue(normalized.threadId, 120),
+        trackingConversationId: serializeMetadataValue(normalized.conversationId, 120),
+        trackingMessageId: serializeMetadataValue(normalized.messageId, 120),
+        trackingClickId: serializeMetadataValue(normalized.clickId, 120),
+        trackingFbclid: serializeMetadataValue(normalized.fbclid, 255),
+        trackingFbc: serializeMetadataValue(normalized.fbc, 255),
+        trackingFbp: serializeMetadataValue(normalized.fbp, 255),
+        trackingGclid: serializeMetadataValue(normalized.gclid, 255),
+        trackingLandingPath: serializeMetadataValue(normalized.landingPath, 500),
+        trackingReferrer: serializeMetadataValue(normalized.referrer, 500),
+        trackingCapturedAt: serializeMetadataValue(normalized.capturedAt, 40),
+        trackingRawParamsJson: serializeMetadataValue(normalized.rawParams, 500),
+    });
+};
+
 const normalizePhoneForCal = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return { phone: null, error: null };
@@ -519,16 +554,16 @@ const handleCreateBooking = async (req, res) => {
             attendee.phoneNumber = normalizedPhone;
         }
 
-        const metadata = {};
-        if (projectId) metadata.projectId = projectId;
-        if (userId) metadata.userId = userId;
-        if (clientId) metadata.clientId = clientId;
-        if (participantType) metadata.participantType = participantType;
-        if (participantRole) metadata.participantRole = participantRole;
-        if (participantId) metadata.participantId = participantId;
-        if (notes) metadata.notes = notes;
-        const normalizedTracking = normalizeTrackingPayload(tracking);
-        if (normalizedTracking) metadata.tracking = normalizedTracking;
+        const metadata = compactObject({
+            projectId: serializeMetadataValue(projectId, 64),
+            userId: serializeMetadataValue(userId, 64),
+            clientId: serializeMetadataValue(clientId, 64),
+            participantType: serializeMetadataValue(participantType, 40),
+            participantRole: serializeMetadataValue(participantRole, 40),
+            participantId: serializeMetadataValue(participantId, 64),
+            notes: serializeMetadataValue(notes, 500),
+            ...buildTrackingMetadata(tracking),
+        });
 
         const bookingPayload = {
             eventTypeId: parsedEventTypeId,
