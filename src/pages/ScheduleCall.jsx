@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import Navbar from '@/components/Navbar';
+import { isValidPhone } from '@/utils/phone-validation';
 
 import "react-datepicker/dist/react-datepicker.css";
 import '@/index.css';
@@ -87,12 +88,19 @@ const buildTrackingPayload = ({ pathname, search }) => {
     return Object.keys(tracking).length > 0 ? tracking : null;
 };
 
+const getProjectLabel = (project) => project?.title || project?.name || project?.project_name || 'Project';
+
 const ScheduleCall = () => {
     const { t } = useTranslation();
     const { projectId } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
     const { user, client, profile } = useAuth();
+    const role = profile?.role || null;
+    const isAdmin = role === 'admin';
+    const isWorker = role === 'worker';
+    const isClient = role === 'client';
+    const requiresPhone = !isAdmin && !isWorker;
 
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
@@ -100,6 +108,7 @@ const ScheduleCall = () => {
 
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState(projectId || '');
+    const [fieldErrors, setFieldErrors] = useState({});
 
     const [formData, setFormData] = useState({
         name: '',
@@ -113,29 +122,95 @@ const ScheduleCall = () => {
         [location.pathname, location.search]
     );
 
-    const fetchProjectsInternal = useCallback(async () => {
-        if (!user?.id) return;
-        try {
-            const { data, error } = await supabase
-                .from('projects')
-                .select('id, name')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
+    useEffect(() => {
+        setSelectedProjectId(projectId || '');
+    }, [projectId]);
 
-            if (!error && data) {
-                const formattedProjects = data.map(p => ({
-                    id: p.id,
-                    name: p.title || p.name || p.project_name || 'Project'
-                }));
-                setProjects(formattedProjects);
-                if (formattedProjects.length === 1 && !selectedProjectId) {
-                    setSelectedProjectId(formattedProjects[0].id);
+    const fetchProjectsInternal = useCallback(async () => {
+        if (!user?.id) {
+            setProjects([]);
+            return;
+        }
+
+        try {
+            const selectStr = 'id, name, title, project_name, user_id, project_client_users(user_id)';
+            let response;
+
+            if (isAdmin) {
+                response = await supabase
+                    .from('projects')
+                    .select(selectStr)
+                    .order('created_at', { ascending: false });
+            } else if (isWorker) {
+                const { data: assignmentsData, error: assignmentsError } = await supabase
+                    .from('project_assignments')
+                    .select('project_id')
+                    .eq('worker_id', user.id);
+
+                if (assignmentsError) {
+                    throw assignmentsError;
                 }
+
+                const projectIds = assignmentsData?.map((assignment) => assignment.project_id).filter(Boolean) || [];
+                if (projectIds.length === 0) {
+                    response = { data: [], error: null };
+                } else {
+                    response = await supabase
+                        .from('projects')
+                        .select(selectStr)
+                        .in('id', projectIds)
+                        .order('created_at', { ascending: false });
+                }
+            } else if (isClient) {
+                response = await supabase
+                    .from('projects')
+                    .select(selectStr)
+                    .order('created_at', { ascending: false });
+            } else {
+                response = await supabase
+                    .from('projects')
+                    .select(selectStr)
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false });
             }
+
+            if (response.error) {
+                throw response.error;
+            }
+
+            let fetchedProjects = response.data || [];
+            const isClientOwner = isClient && client?.user_id === user.id;
+            const isClientLeader = isClient && (profile?.is_client_leader || isClientOwner);
+
+            if (isClient && !isClientLeader) {
+                fetchedProjects = fetchedProjects.filter((project) => {
+                    const explicitlyAssigned = (project?.project_client_users || []).some(
+                        (assignment) => assignment?.user_id === user.id
+                    );
+                    const isCreator = project?.user_id === user.id;
+                    return explicitlyAssigned || isCreator;
+                });
+            }
+
+            const formattedProjects = fetchedProjects.map((project) => ({
+                id: project.id,
+                name: getProjectLabel(project),
+            }));
+
+            setProjects(formattedProjects);
+            setSelectedProjectId((currentValue) => {
+                const currentSelection = currentValue || projectId || '';
+                const hasCurrentSelection = formattedProjects.some((project) => project.id === currentSelection);
+
+                if (hasCurrentSelection) return currentSelection;
+                if (formattedProjects.length === 1) return formattedProjects[0].id;
+                return projectId || '';
+            });
         } catch (err) {
             console.error('Error fetching projects:', err);
+            setProjects([]);
         }
-    }, [user?.id, selectedProjectId]);
+    }, [client?.user_id, isAdmin, isClient, isWorker, profile?.is_client_leader, projectId, user?.id]);
 
     const {
         slots,
@@ -160,16 +235,58 @@ const ScheduleCall = () => {
         }
     }, [client, user, fetchProjectsInternal]);
 
+    const handleFieldChange = useCallback((field, value) => {
+        setFormData((prev) => ({ ...prev, [field]: value }));
+        setFieldErrors((prev) => {
+            if (!prev[field]) return prev;
+            const next = { ...prev };
+            delete next[field];
+            return next;
+        });
+    }, []);
+
     const handleSlotSelect = (slot) => {
         setSelectedSlot(slot);
+        setFieldErrors((prev) => {
+            if (!prev.slot) return prev;
+            const next = { ...prev };
+            delete next.slot;
+            return next;
+        });
         setBookingPhase('form');
     };
 
     const handleFormSubmit = async (e) => {
         e.preventDefault();
+        const nextErrors = {};
+        const trimmedPhone = formData.phone.trim();
+
+        if (!selectedSlot?.start) {
+            nextErrors.slot = t('calendar.selectSlotFirst');
+        }
+
+        if (requiresPhone) {
+            if (!trimmedPhone) {
+                nextErrors.phone = t('calendar.phoneRequired');
+            } else if (!isValidPhone(trimmedPhone)) {
+                nextErrors.phone = t('calendar.invalidPhone');
+            }
+        }
+
+        if (Object.keys(nextErrors).length > 0) {
+            setFieldErrors(nextErrors);
+            const firstError = nextErrors.slot || nextErrors.phone || t('calendar.bookingError');
+            toast.error(firstError);
+            if (nextErrors.slot) {
+                setBookingPhase('slots');
+            }
+            return;
+        }
+
         setSubmitting(true);
         try {
-            const participantRole = profile?.role || null;
+            setFieldErrors({});
+            const participantRole = role;
             const participantType = participantRole === 'client' ? 'client' : (participantRole ? 'profile' : null);
             const resolvedClientId = client?.id || profile?.client_id || null;
 
@@ -179,6 +296,7 @@ const ScheduleCall = () => {
                 body: JSON.stringify({
                     start: selectedSlot.start,
                     ...formData,
+                    phone: trimmedPhone,
                     projectId: selectedProjectId || projectId,
                     userId: user?.id,
                     clientId: resolvedClientId,
@@ -192,6 +310,9 @@ const ScheduleCall = () => {
             if (!response.ok) {
                 const errorPayload = await response.json().catch(() => ({}));
                 const detailedError = errorPayload?.details?.error?.message || errorPayload?.details?.message || errorPayload?.error || 'Booking failed';
+                if (/phone|whatsapp/i.test(detailedError)) {
+                    setFieldErrors((prev) => ({ ...prev, phone: detailedError }));
+                }
                 throw new Error(detailedError);
             }
             setBookingPhase('success');
@@ -230,7 +351,7 @@ const ScheduleCall = () => {
                         <h2 className="mt-6 text-2xl font-bold">{t('calendar.successTitle')}</h2>
                         <p className="mt-2 text-gray-600">{t('calendar.successMessage')}</p>
                         <button
-                            onClick={() => navigate('/dashboard')}
+                            onClick={() => navigate(user ? '/dashboard' : '/')}
                             className="mt-6 w-full rounded-xl bg-black py-3 font-bold text-white transition-opacity hover:opacity-90"
                         >
                             {t('calendar.goToDashboard')}
@@ -306,6 +427,11 @@ const ScheduleCall = () => {
                                             </div>
                                         </div>
                                         <div className="flex-1">
+                                            {fieldErrors.slot && (
+                                                <p className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
+                                                    {fieldErrors.slot}
+                                                </p>
+                                            )}
                                             <div className="custom-scrollbar max-h-[290px] overflow-y-auto pr-1 sm:max-h-[360px] sm:pr-2 xl:max-h-[430px]">
                                                 {loadingSlots ? (
                                                     <div className="flex h-full min-h-[150px] items-center justify-center">
@@ -379,7 +505,7 @@ const ScheduleCall = () => {
                                                 type="text"
                                                 required
                                                 value={formData.name}
-                                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                                onChange={e => handleFieldChange('name', e.target.value)}
                                                 className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122]"
                                             />
                                         </div>
@@ -389,7 +515,7 @@ const ScheduleCall = () => {
                                                 type="email"
                                                 required
                                                 value={formData.email}
-                                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                                onChange={e => handleFieldChange('email', e.target.value)}
                                                 className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122]"
                                             />
                                         </div>
@@ -397,17 +523,23 @@ const ScheduleCall = () => {
                                             <label className="mb-1 block text-sm font-medium text-gray-700">{t('form.phone')}</label>
                                             <input
                                                 type="tel"
+                                                required={requiresPhone}
                                                 value={formData.phone}
-                                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122]"
+                                                onChange={e => handleFieldChange('phone', e.target.value)}
+                                                className={`w-full rounded-xl bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122] ${fieldErrors.phone ? 'border border-red-400' : 'border border-gray-300'}`}
                                             />
+                                            {fieldErrors.phone ? (
+                                                <p className="mt-2 text-sm text-red-600">{fieldErrors.phone}</p>
+                                            ) : requiresPhone ? (
+                                                <p className="mt-2 text-sm text-gray-500">{t('calendar.phoneHelp')}</p>
+                                            ) : null}
                                         </div>
                                         <div>
                                             <label className="mb-1 block text-sm font-medium text-gray-700">{t('form.notes')}</label>
                                             <textarea
                                                 rows="3"
                                                 value={formData.notes}
-                                                onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                                                onChange={e => handleFieldChange('notes', e.target.value)}
                                                 className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122]"
                                             />
                                         </div>

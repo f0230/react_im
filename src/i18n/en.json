@@ -559,6 +559,7 @@
     "title": "Schedule your call",
     "description": "Choose a time to meet and discuss your project.",
     "selectDateTime": "Select date and time",
+    "selectSlotFirst": "Select a time slot before continuing.",
     "book": "Book",
     "noSlots": "No slots available for this day.",
     "back": "Back to calendar",
@@ -568,6 +569,9 @@
     "successMessage": "We have sent the details to your email.",
     "goToDashboard": "Go to Dashboard",
     "errorFetchingSlots": "Error loading available slots.",
+    "phoneRequired": "Enter a phone or WhatsApp number to confirm the appointment.",
+    "invalidPhone": "Enter a valid phone or WhatsApp number.",
+    "phoneHelp": "Use an area code or international prefix when needed.",
     "bookingSuccess": "Appointment scheduled successfully!",
     "bookingError": "Error scheduling appointment. Please try again."
   },
