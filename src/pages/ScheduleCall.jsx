@@ -420,6 +420,26 @@ const ScheduleCall = () => {
         t('calendar.heroMorph4'),
     ].filter(Boolean);
 
+    const dateStripVariants = {
+        hidden: {},
+        visible: {
+            transition: {
+                staggerChildren: 0.05,
+                delayChildren: 0.04,
+            },
+        },
+    };
+
+    const dateItemVariants = {
+        hidden: { opacity: 0, y: 14, scale: 0.96 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] },
+        },
+    };
+
     const renderScheduleHero = () => (
         <div className="relative overflow-hidden bg-[#09090b] px-5 py-10 text-white sm:px-8 sm:py-14 lg:px-10 lg:py-16">
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -570,30 +590,29 @@ const ScheduleCall = () => {
                                      
 
                                             {loadingBookingRules ? (
-                                                <>
-                                                    <div className="mb-4 flex gap-3 overflow-hidden">
-                                                        {Array.from({ length: 5 }).map((_, index) => (
-                                                            <div
-                                                                key={index}
-                                                                className="h-[108px] min-w-[92px] animate-pulse rounded-[26px] border border-white/60 bg-white/35 backdrop-blur-xl"
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {Array.from({ length: 3 }).map((_, index) => (
-                                                            <div
-                                                                key={index}
-                                                                className="h-[54px] animate-pulse rounded-[18px] border border-white/60 bg-white/35 backdrop-blur-xl"
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </>
+                                                <div className="mb-2 flex gap-3 overflow-hidden">
+                                                    {Array.from({ length: 6 }).map((_, index) => (
+                                                        <motion.div
+                                                            key={index}
+                                                            className="h-[108px] min-w-[92px] rounded-[26px] border border-white/60 bg-white/35 backdrop-blur-xl"
+                                                            initial={{ opacity: 0, y: 8 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            transition={{ duration: 0.28, delay: index * 0.04 }}
+                                                        />
+                                                    ))}
+                                                </div>
                                             ) : selectableDates.length > 0 ? (
                                                 <>
                                                     <div className="dte-date-strip mb-4">
                                                         <div className="dte-date-strip__edge dte-date-strip__edge--left" />
                                                         <div className="dte-date-strip__edge dte-date-strip__edge--right" />
-                                                        <div ref={dateStripRef} className="dte-date-strip__scroller">
+                                                        <motion.div
+                                                            ref={dateStripRef}
+                                                            className="dte-date-strip__scroller"
+                                                            variants={dateStripVariants}
+                                                            initial="hidden"
+                                                            animate="visible"
+                                                        >
                                                             {selectableDates.map((date, index) => {
                                                                 const isSelected = hasChosenDate && isSameCalendarDay(date, selectedDate);
                                                                 const isToday = isSameCalendarDay(date, todayDate);
@@ -614,9 +633,7 @@ const ScheduleCall = () => {
                                                                             year: 'numeric',
                                                                             timeZone: SCHEDULE_TIME_ZONE,
                                                                         })}
-                                                                        initial={{ opacity: 0, y: 12 }}
-                                                                        animate={{ opacity: 1, y: 0 }}
-                                                                        transition={{ duration: 0.35, delay: index * 0.03 }}
+                                                                        variants={dateItemVariants}
                                                                         whileHover={{ y: -4, scale: 1.01 }}
                                                                         whileTap={{ scale: 0.98 }}
                                                                     >
@@ -643,82 +660,74 @@ const ScheduleCall = () => {
                                                                     </motion.button>
                                                                 );
                                                             })}
-                                                        </div>
+                                                        </motion.div>
                                                     </div>
 
-                                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/35 pt-4">
-                                                        <div>
-                                                         
-                                                            {hasChosenDate ? (
-                                                                <>
-                                                            
-                                                                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                                                                        {SCHEDULE_TIME_ZONE_LABEL}
+                                                    <AnimatePresence initial={false}>
+                                                        {hasChosenDate && (
+                                                            <motion.div
+                                                                key="slots-panel"
+                                                                initial={{ opacity: 0, y: 12 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                exit={{ opacity: 0, y: 6 }}
+                                                                transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                                                                className="border-t border-white/35 pt-4"
+                                                            >
+                                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                                                    <div>
+                                                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                                                            {t('calendar.availableSlotsLabel')}
+                                                                        </p>
+                                                                        <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                                                                            {SCHEDULE_TIME_ZONE_LABEL}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {fieldErrors.slot && (
+                                                                    <p className="mb-3 rounded-2xl border border-red-200/70 bg-red-50/70 px-3 py-2 text-sm text-red-700 backdrop-blur-xl">
+                                                                        {fieldErrors.slot}
                                                                     </p>
-                                                                </>
-                                                            ) : (
-                                                                <p className="mt-2 text-sm font-medium text-slate-600">
-                                                                    {t('calendar.slotsAfterDaySelection')}
-                                                                </p>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                                                )}
 
-                                                    {fieldErrors.slot && (
-                                                        <p className="mb-3 rounded-2xl border border-red-200/70 bg-red-50/70 px-3 py-2 text-sm text-red-700 backdrop-blur-xl">
-                                                            {fieldErrors.slot}
-                                                        </p>
-                                                    )}
-
-                                                    <div className="dte-slot-list custom-scrollbar flex-1 overflow-y-auto pr-1">
-                                                        {!hasChosenDate ? (
-                                                            <div className="flex h-full min-h-[100px] flex-col items-center justify-center rounded-[24px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
-                                                                <p className="text-sm font-semibold text-slate-700">
-                                                                    {t('calendar.chooseDayPrompt')}
-                                                                </p>
-                                                                <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-                                                                    {t('calendar.slotsAfterDaySelection')}
-                                                                </p>
-                                                            </div>
-                                                        ) : loadingSlots ? (
-                                                            <div className="flex h-full min-h-[92px] items-center justify-center">
-                                                                <Loader2 className="animate-spin text-slate-500" />
-                                                            </div>
-                                                        ) : slots.length > 0 ? (
-                                                            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-                                                                {slots.map((slot, idx) => (
-                                                                    <button
-                                                                        key={idx}
-                                                                        onClick={() => handleSlotSelect(slot)}
-                                                                        className="group flex w-full items-center justify-between rounded-[22px] border border-white/60 bg-white/42 px-4 py-3 text-left text-sm shadow-[0_14px_30px_-22px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-white hover:bg-white/58 sm:text-base"
-                                                                    >
-                                                                        <span className="font-semibold text-slate-900">
-                                                                            {formatScheduleTime(slot.start)}
-                                                                        </span>
-                                                                        <span className="rounded-full border border-slate-200/70 bg-white/70 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-700 transition-colors group-hover:border-white group-hover:bg-white">
-                                                                            {t('calendar.book')}
-                                                                        </span>
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <div className="flex h-full min-h-[100px] flex-col items-center justify-center rounded-[24px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
-                                                                <p className="text-sm font-semibold text-slate-700">
-                                                                    {t('calendar.noSlots')}
-                                                                </p>
-                                                                <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-                                                                    {t('calendar.noSlotsDescription')}
-                                                                </p>
-                                                            </div>
+                                                                <div className="dte-slot-list custom-scrollbar overflow-y-auto pr-1">
+                                                                    {slots.length > 0 ? (
+                                                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                                                                            {slots.map((slot, idx) => (
+                                                                                <motion.button
+                                                                                    key={idx}
+                                                                                    onClick={() => handleSlotSelect(slot)}
+                                                                                    className="group flex w-full items-center justify-between rounded-[22px] border border-white/60 bg-white/42 px-4 py-3 text-left text-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-white hover:bg-white/58 sm:text-base"
+                                                                                    initial={{ opacity: 0, y: 10 }}
+                                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                                    transition={{ duration: 0.22, delay: idx * 0.035 }}
+                                                                                >
+                                                                                    <span className="font-semibold text-slate-900">
+                                                                                        {formatScheduleTime(slot.start)}
+                                                                                    </span>
+                                                                                    <span className="rounded-full border border-slate-200/70 bg-white/70 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-700 transition-colors group-hover:border-white group-hover:bg-white">
+                                                                                        {t('calendar.book')}
+                                                                                    </span>
+                                                                                </motion.button>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="flex min-h-[100px] flex-col items-center justify-center rounded-[24px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
+                                                                            <p className="text-sm font-semibold text-slate-700">
+                                                                                {t('calendar.noSlots')}
+                                                                            </p>
+                                                                            <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
+                                                                                {t('calendar.noSlotsDescription')}
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </motion.div>
                                                         )}
-                                                    </div>
+                                                    </AnimatePresence>
                                                 </>
                                             ) : (
-                                                <div className="flex flex-1 items-center justify-center rounded-[28px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
-                                                    <p className="max-w-md text-sm leading-relaxed text-slate-600">
-                                                        {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
-                                                    </p>
-                                                </div>
+                                                <div className="h-[108px]" />
                                             )}
                                         </div>
                                     </div>

@@ -379,4 +379,9 @@
     .dte-date-strip__day {
         font-size: 2.1rem;
     }
+
+    .dte-slot-list button {
+        padding-top: 0.8rem;
+        padding-bottom: 0.8rem;
+    }
 }
