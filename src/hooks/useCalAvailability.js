@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getScheduleQueryRange, SCHEDULE_TIME_ZONE } from '@/utils/scheduleTime';
+import { formatCalendarDate, getTodayCalendarDate, parseCalendarDate } from '@/utils/calBookingWindow';
 
 const normalizeSlots = (data) => {
     const slotsObj = data?.data?.slots || {};
@@ -11,8 +12,48 @@ const normalizeSlots = (data) => {
         }));
 };
 
+const addCalendarDays = (value, amount) => {
+    const date = parseCalendarDate(value) || value;
+    if (!date) return null;
+
+    const next = new Date(date.getTime());
+    next.setDate(next.getDate() + Number(amount || 0));
+    next.setHours(12, 0, 0, 0);
+    return next;
+};
+
+const buildAvailabilityRange = ({ minDate, maxDate, timeZone = SCHEDULE_TIME_ZONE }) => {
+    const rangeStartDate = parseCalendarDate(minDate) || getTodayCalendarDate(timeZone);
+    if (!rangeStartDate) return null;
+
+    const rangeEndDate = parseCalendarDate(maxDate) || addCalendarDays(rangeStartDate, 6);
+    if (!rangeEndDate) return null;
+
+    const startRange = getScheduleQueryRange(rangeStartDate, timeZone);
+    const endRange = getScheduleQueryRange(rangeEndDate, timeZone);
+    if (!startRange || !endRange) return null;
+
+    return {
+        startIso: startRange.startIso,
+        endIso: endRange.endIso,
+    };
+};
+
+const groupSlotsByCalendarDate = (data, timeZone = SCHEDULE_TIME_ZONE) => {
+    const grouped = {};
+
+    normalizeSlots(data).forEach((slot) => {
+        const dateKey = formatCalendarDate(parseCalendarDate(slot.start, timeZone));
+        if (!dateKey) return;
+        if (!grouped[dateKey]) grouped[dateKey] = [];
+        grouped[dateKey].push(slot);
+    });
+
+    return grouped;
+};
+
 const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
-    const [slots, setSlots] = useState([]);
+    const [slotsByDate, setSlotsByDate] = useState({});
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [bookingRules, setBookingRules] = useState(null);
     const [loadingBookingRules, setLoadingBookingRules] = useState(false);
@@ -24,7 +65,7 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
     }, [onError]);
 
     const resetAvailability = useCallback(() => {
-        setSlots([]);
+        setSlotsByDate({});
         setSelectedSlot(null);
     }, []);
 
@@ -67,7 +108,7 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
     }, []);
 
     useEffect(() => {
-        if (!enabled || !selectedDate) return undefined;
+        if (!enabled || loadingBookingRules) return undefined;
 
         let isCancelled = false;
         const controller = new AbortController();
@@ -77,9 +118,13 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
             resetAvailability();
 
             try {
-                const range = getScheduleQueryRange(selectedDate, SCHEDULE_TIME_ZONE);
+                const range = buildAvailabilityRange({
+                    minDate: bookingRules?.dateLimits?.minDate,
+                    maxDate: bookingRules?.dateLimits?.maxDate,
+                    timeZone: SCHEDULE_TIME_ZONE,
+                });
                 if (!range) {
-                    throw new Error('Invalid selected date');
+                    throw new Error('Invalid availability range');
                 }
 
                 const response = await fetch(
@@ -91,7 +136,7 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
 
                 const data = await response.json();
                 if (!isCancelled) {
-                    setSlots(normalizeSlots(data));
+                    setSlotsByDate(groupSlotsByCalendarDate(data, SCHEDULE_TIME_ZONE));
                 }
             } catch (error) {
                 if (!isCancelled && error?.name !== 'AbortError') {
@@ -111,11 +156,30 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
             isCancelled = true;
             controller.abort();
         };
-    }, [enabled, resetAvailability, selectedDate]);
+    }, [bookingRules?.dateLimits?.maxDate, bookingRules?.dateLimits?.minDate, enabled, loadingBookingRules, resetAvailability]);
+
+    const selectedDateKey = useMemo(
+        () => formatCalendarDate(parseCalendarDate(selectedDate, SCHEDULE_TIME_ZONE)),
+        [selectedDate]
+    );
+
+    const slots = useMemo(
+        () => (selectedDateKey ? slotsByDate[selectedDateKey] || [] : []),
+        [selectedDateKey, slotsByDate]
+    );
+
+    const availableDates = useMemo(
+        () => Object.keys(slotsByDate)
+            .sort((left, right) => left.localeCompare(right))
+            .map((dateKey) => parseCalendarDate(dateKey, SCHEDULE_TIME_ZONE))
+            .filter(Boolean),
+        [slotsByDate]
+    );
 
     return {
         bookingRules,
         loadingBookingRules,
+        availableDates,
         slots,
         loadingSlots,
         selectedSlot,

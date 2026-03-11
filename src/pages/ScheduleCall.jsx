@@ -107,36 +107,6 @@ const clampDateToRange = (value, minDate, maxDate) => {
     return normalizedDate;
 };
 
-const addDays = (value, amount) => {
-    const date = parseCalendarDate(value) || value;
-    if (!date) return null;
-
-    const next = new Date(date.getTime());
-    next.setDate(next.getDate() + Number(amount || 0));
-    next.setHours(12, 0, 0, 0);
-    return next;
-};
-
-const buildSelectableDates = (minDate, maxDate) => {
-    if (!minDate) return [];
-
-    const start = parseCalendarDate(minDate) || minDate;
-    const fallbackEnd = addDays(start, 6);
-    const end = parseCalendarDate(maxDate) || maxDate || fallbackEnd;
-    if (!start || !end || start > end) return [];
-
-    const dates = [];
-    const cursor = new Date(start.getTime());
-
-    while (cursor <= end) {
-        dates.push(new Date(cursor.getTime()));
-        cursor.setDate(cursor.getDate() + 1);
-        cursor.setHours(12, 0, 0, 0);
-    }
-
-    return dates;
-};
-
 const ScheduleCall = () => {
     const { t } = useTranslation();
     const { projectId } = useParams();
@@ -264,6 +234,7 @@ const ScheduleCall = () => {
     const {
         bookingRules,
         loadingBookingRules,
+        availableDates,
         slots,
         loadingSlots,
         selectedSlot,
@@ -289,10 +260,7 @@ const ScheduleCall = () => {
         [bookingRules?.dateLimits?.maxDate]
     );
 
-    const selectableDates = useMemo(
-        () => buildSelectableDates(minSelectableDate, maxSelectableDate),
-        [maxSelectableDate, minSelectableDate]
-    );
+    const selectableDates = availableDates;
 
     const selectedDateKey = useMemo(
         () => formatCalendarDate(selectedDate),
@@ -381,6 +349,16 @@ const ScheduleCall = () => {
             setSelectedDate(nextSelectedDate);
         }
     }, [maxSelectableDate, minSelectableDate, selectedDate]);
+
+    useEffect(() => {
+        if (selectableDates.length === 0) return;
+
+        const hasSelectedDateAvailable = selectableDates.some((date) => isSameCalendarDay(date, selectedDate));
+        if (!hasSelectedDateAvailable) {
+            setSelectedDate(selectableDates[0]);
+            setHasChosenDate(false);
+        }
+    }, [selectableDates, selectedDate]);
 
     useEffect(() => {
         if (!dateStripRef.current || !selectedDateKey) return;
@@ -617,7 +595,7 @@ const ScheduleCall = () => {
                                                         <div className="dte-date-strip__edge dte-date-strip__edge--right" />
                                                         <div ref={dateStripRef} className="dte-date-strip__scroller">
                                                             {selectableDates.map((date, index) => {
-                                                                const isSelected = isSameCalendarDay(date, selectedDate);
+                                                                const isSelected = hasChosenDate && isSameCalendarDay(date, selectedDate);
                                                                 const isToday = isSameCalendarDay(date, todayDate);
                                                                 const dateKey = formatCalendarDate(date);
 
