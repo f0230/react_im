@@ -3,12 +3,13 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import DatePicker from 'react-datepicker';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Check, Loader2, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
+import { MorphingText } from '@/components/ui/morphing-text';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import Navbar from '@/components/Navbar';
 import { getTodayCalendarDate, parseCalendarDate } from '@/utils/calBookingWindow';
@@ -443,6 +444,30 @@ const ScheduleCall = () => {
         </div>
     ), [t]);
 
+    const heroMorphTexts = useMemo(() => ([
+        t('calendar.heroMorph1'),
+        t('calendar.heroMorph2'),
+        t('calendar.heroMorph3'),
+        t('calendar.heroMorph4'),
+    ]), [t]);
+
+    const renderScheduleHero = () => (
+        <div className="relative overflow-hidden bg-[#09090b] px-5 py-10 text-white sm:px-8 sm:py-14 lg:px-10 lg:py-16">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                <div className="absolute -left-14 top-0 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+                <div className="absolute right-0 top-10 h-56 w-56 rounded-full bg-[rgba(0,113,227,0.16)] blur-3xl" />
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
+            </div>
+
+            <div className="relative">
+                <MorphingText
+                    texts={heroMorphTexts}
+                    className="!mx-0 !h-[3.2rem] !max-w-none font-product !text-[2.05rem] uppercase tracking-[-0.08em] text-white sm:!h-[4.5rem] sm:!text-[3.75rem] lg:!h-[6rem] lg:!text-[5.1rem]"
+                />
+            </div>
+        </div>
+    );
+
     const handleFormSubmit = async (e) => {
         e.preventDefault();
         const nextErrors = {};
@@ -557,60 +582,11 @@ const ScheduleCall = () => {
                     initial="hidden"
                     animate="visible"
                     variants={containerVariants}
-                    className="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white font-product shadow-[0_24px_60px_-35px_rgba(0,0,0,0.35)] md:flex-row"
+                    className="mx-auto w-full max-w-6xl overflow-hidden rounded-[32px] bg-white font-product shadow-[0_24px_60px_-35px_rgba(0,0,0,0.35)]"
                 >
-                    <div className="flex flex-col justify-between bg-black px-5 py-6 text-white sm:px-8 sm:py-8 md:w-[34%]">
-                        <div>
-                            <button
-                                onClick={() => navigate(-1)}
-                                className="mb-6 w-fit rounded-full p-2 transition-colors hover:bg-white/10 sm:mb-8"
-                            >
-                                <ArrowLeft size={20} />
-                            </button>
-                            <h1 className="mb-3 text-3xl font-bold leading-tight sm:text-4xl">
-                                {t('calendar.title')}
-                            </h1>
-                            <p className="mb-6 max-w-sm text-sm leading-relaxed text-zinc-300 sm:mb-7 sm:text-base">
-                                {t('calendar.description')}
-                            </p>
-                            <div className="mb-6 rounded-[24px] border border-white/10 bg-white/5 p-5">
-                                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-zinc-400">
-                                    {t('calendar.meetingFocusTitle')}
-                                </p>
-                                <ul className="mt-4 space-y-3 text-sm leading-relaxed text-zinc-200">
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-white/70" />
-                                        <span>{t('calendar.meetingFocusCurrent')}</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-white/70" />
-                                        <span>{t('calendar.meetingFocusBlockers')}</span>
-                                    </li>
-                                    <li className="flex items-start gap-3">
-                                        <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-white/70" />
-                                        <span>{t('calendar.meetingFocusOpportunities')}</span>
-                                    </li>
-                                </ul>
-                                <p className="mt-5 text-sm leading-relaxed text-zinc-400">
-                                    {t('calendar.meetingGoal')}
-                                </p>
-                            </div>
-                            <div className="space-y-3 sm:space-y-4">
-                                <div className="flex items-center gap-3 text-sm text-zinc-200">
-                                    <Clock className="text-white/70" />
-                                    <span>30 min · {SCHEDULE_TIME_ZONE_LABEL}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-zinc-200">
-                                    <div className="flex h-5 w-5 items-center justify-center rounded-full border border-white/15 bg-white/10 text-[0.65rem] font-bold text-white">
-                                        D
-                                    </div>
-                                    <span>Grupo DTE Team</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    {renderScheduleHero()}
 
-                    <div className="px-4 py-5 sm:px-6 sm:py-8 md:w-[66%]">
+                    <div className="px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
                         <AnimatePresence mode="wait">
                             {bookingPhase === 'slots' ? (
                                 <motion.div
@@ -620,22 +596,11 @@ const ScheduleCall = () => {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
-                                    <div className="mb-5 sm:mb-6">
-                                        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
-                                            {t('calendar.selectDateTime')}
-                                        </h2>
-                                    </div>
+                                 
                                     <div className="grid flex-1 gap-5 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)] xl:gap-6">
                                         <div className="flex flex-col gap-4">
                                             <div className="rounded-[28px] border border-zinc-200 bg-[linear-gradient(180deg,_#ffffff_0%,_#f5f5f5_100%)] p-4 shadow-[0_22px_45px_-32px_rgba(15,23,42,0.28)] sm:p-5">
-                                                <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4">
-                                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-zinc-500">
-                                                        {t('calendar.availabilityWindowLabel')}
-                                                    </p>
-                                                    <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                                                        {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
-                                                    </p>
-                                                </div>
+                                              
                                                 <div className="overflow-x-auto">
                                                     <DatePicker
                                                         selected={selectedDate}

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, Briefcase, FileText, Folder, Pencil, Plus, Users, X } from 'lucide-react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { BarChart3, Briefcase, FileText, Folder, Pencil, Plus, Users } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import { MemberSelector } from '@/components/ui/member-selector';
 import CreateProjectModal from '@/components/CreateProjectModal';
 import EditProjectModal from '@/components/EditProjectModal';
 
@@ -31,13 +32,6 @@ const gradientClasses = [
     'from-rose-400 to-red-600',
     'from-teal-400 to-cyan-600',
 ];
-
-const formatDate = (value) => {
-    if (!value) return null;
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
-    return date.toLocaleDateString();
-};
 
 const glassGradientMapping = {
     blue: 'linear-gradient(hsl(0, 0%, 90%), hsl(0, 0%, 80%))',
@@ -75,8 +69,6 @@ const Projects = () => {
     const { user, client, profile } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const queryProjectId = searchParams.get('projectId');
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -107,6 +99,8 @@ const Projects = () => {
 
     const [clientAssignments, setClientAssignments] = useState({});
     const [clientUserAssignments, setClientUserAssignments] = useState({});
+    const [clientAssignmentSaving, setClientAssignmentSaving] = useState(false);
+    const [clientAssignmentError, setClientAssignmentError] = useState(null);
     const [clientModalProject, setClientModalProject] = useState(null);
     const [clientSelection, setClientSelection] = useState([]);
     const [clientUserSelection, setClientUserSelection] = useState([]);
@@ -356,6 +350,7 @@ const Projects = () => {
     const handleAssignmentsChange = async (projectId, nextIds) => {
         if (!projectId) return;
         setAssignmentSaving((prev) => ({ ...prev, [projectId]: true }));
+        setAssignmentError(null);
         const currentIds = assignments[projectId] || [];
         const toAdd = nextIds.filter((id) => !currentIds.includes(id));
         const toRemove = currentIds.filter((id) => !nextIds.includes(id));
@@ -379,9 +374,11 @@ const Projects = () => {
                     );
             }
             setAssignments((prev) => ({ ...prev, [projectId]: nextIds }));
+            return true;
         } catch (err) {
             console.error('Error updating assignments:', err);
             setAssignmentError(t('dashboard.projects.assignError'));
+            return false;
         } finally {
             setAssignmentSaving((prev) => ({ ...prev, [projectId]: false }));
         }
@@ -389,8 +386,14 @@ const Projects = () => {
 
     const openTeamModal = (project) => {
         if (!project?.id) return;
+        setAssignmentError(null);
         setTeamSelection(assignments[project.id] || []);
         setTeamModalProject(project);
+    };
+
+    const dismissTeamModal = () => {
+        setAssignmentError(null);
+        setTeamModalProject(null);
     };
 
     const handleClientAssignmentsChange = async (projectId, nextIds) => {
@@ -418,8 +421,11 @@ const Projects = () => {
                     );
             }
             setClientAssignments((prev) => ({ ...prev, [projectId]: nextIds }));
+            return true;
         } catch (err) {
             console.error('Error updating client assignments:', err);
+            setClientAssignmentError('No pudimos actualizar los clientes de este proyecto.');
+            return false;
         }
     };
 
@@ -448,16 +454,26 @@ const Projects = () => {
                     );
             }
             setClientUserAssignments((prev) => ({ ...prev, [projectId]: nextIds }));
+            return true;
         } catch (err) {
             console.error('Error updating client user assignments:', err);
+            setClientAssignmentError('No pudimos actualizar el team del cliente.');
+            return false;
         }
     };
 
     const openClientTeamModal = (project) => {
         if (!project?.id) return;
+        setClientAssignmentError(null);
         setClientSelection(clientAssignments[project.id] || []);
         setClientUserSelection(clientUserAssignments[project.id] || []);
         setClientModalProject(project);
+    };
+
+    const dismissClientTeamModal = () => {
+        setClientAssignmentError(null);
+        setClientAssignmentSaving(false);
+        setClientModalProject(null);
     };
 
     const closeClientTeamModal = async () => {
@@ -465,9 +481,20 @@ const Projects = () => {
             setClientModalProject(null);
             return;
         }
-        await handleClientAssignmentsChange(clientModalProject.id, clientSelection);
-        await handleClientUserAssignmentsChange(clientModalProject.id, clientUserSelection);
+        setClientAssignmentSaving(true);
+        setClientAssignmentError(null);
+        const didSaveClients = await handleClientAssignmentsChange(clientModalProject.id, clientSelection);
+        if (!didSaveClients) {
+            setClientAssignmentSaving(false);
+            return;
+        }
+        const didSaveUsers = await handleClientUserAssignmentsChange(clientModalProject.id, clientUserSelection);
+        if (!didSaveUsers) {
+            setClientAssignmentSaving(false);
+            return;
+        }
         setClientModalProject(null);
+        setClientAssignmentSaving(false);
         await fetchProjects();
     };
 
@@ -476,7 +503,8 @@ const Projects = () => {
             setTeamModalProject(null);
             return;
         }
-        await handleAssignmentsChange(teamModalProject.id, teamSelection);
+        const didSave = await handleAssignmentsChange(teamModalProject.id, teamSelection);
+        if (!didSave) return;
         setTeamModalProject(null);
         await fetchProjects();
     };
@@ -522,6 +550,49 @@ const Projects = () => {
 
         return baseCards;
     }, [t, isClient, isClientLeader]);
+
+    const clientCompanyMap = useMemo(() => {
+        return new Map(
+            clients.map((company) => [
+                company.id,
+                company.company_name || company.full_name || company.email || 'Cliente',
+            ])
+        );
+    }, [clients]);
+
+    const teamMemberOptions = useMemo(() => {
+        return teamMembers.map((member) => ({
+            id: member.id,
+            name: member.full_name || member.email || 'Miembro DTE',
+            email: member.email || null,
+            subtitle: member.role === 'admin' ? 'Admin DTE' : 'Worker DTE',
+        }));
+    }, [teamMembers]);
+
+    const clientEntityOptions = useMemo(() => {
+        return clients.map((company) => ({
+            id: company.id,
+            name: company.company_name || company.full_name || company.email || 'Cliente',
+            email: company.email || null,
+            subtitle:
+                company.company_name && company.full_name
+                    ? company.full_name
+                    : company.email || 'Cliente principal',
+        }));
+    }, [clients]);
+
+    const clientUserOptions = useMemo(() => {
+        const relevantUsers = isAdmin
+            ? allClientUsers.filter((member) => clientSelection.includes(member.client_id))
+            : allClientUsers.filter((member) => member.id !== userId);
+
+        return relevantUsers.map((member) => ({
+            id: member.id,
+            name: member.full_name || member.email || 'Usuario cliente',
+            email: member.email || null,
+            subtitle: member.client_id ? clientCompanyMap.get(member.client_id) || 'Empresa' : 'Cliente',
+        }));
+    }, [allClientUsers, clientCompanyMap, clientSelection, isAdmin, userId]);
 
     if (loading) return <LoadingFallback type="spinner" />;
 
@@ -815,44 +886,47 @@ const Projects = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={closeTeamModal}
+                            onClick={dismissTeamModal}
                             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         />
                         <motion.div
                             initial={{ scale: 0.96, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.96, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-[460px] bg-white rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-7"
+                            className="relative w-full max-w-[560px] overflow-visible rounded-3xl bg-white p-6 shadow-2xl sm:p-7"
                         >
                             <div className="text-center">
-                                <Users size={40} className="mx-auto text-neutral-600 mb-4" />
+                                <Users size={40} className="mx-auto mb-4 text-neutral-600" />
                                 <h3 className="text-xl font-bold text-neutral-900">
                                     {t('dashboard.projects.teamModal.title')}
                                 </h3>
+                                <p className="mt-1 text-sm text-neutral-500">
+                                    {getProjectTitle(teamModalProject, 'Proyecto')}
+                                </p>
                             </div>
-                            <div className="mt-5 space-y-2 max-h-[40vh] overflow-y-auto pr-1">
-                                {teamMembers.map((member) => {
-                                    const isSelected = teamSelection.includes(member.id);
-                                    return (
-                                        <button
-                                            key={member.id}
-                                            onClick={() => setTeamSelection(prev =>
-                                                isSelected ? prev.filter(id => id !== member.id) : [...prev, member.id]
-                                            )}
-                                            className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${isSelected ? 'border-black bg-black text-white' : 'border-neutral-200 bg-neutral-50'
-                                                }`}
-                                        >
-                                            <span>{member.full_name || member.email}</span>
-                                            <span className="text-[10px] uppercase">{isSelected ? 'Seleccionado' : 'Seleccionar'}</span>
-                                        </button>
-                                    );
-                                })}
+                            <div className="mt-6">
+                                <MemberSelector
+                                    members={teamMemberOptions}
+                                    selected={teamSelection}
+                                    onChange={setTeamSelection}
+                                    maxVisible={6}
+                                    label="Equipo DTE"
+                                    addLabel="Sumar"
+                                    searchPlaceholder="Buscar worker o admin..."
+                                    emptyMessage="No encontramos miembros del equipo."
+                                />
                             </div>
+                            {assignmentError && (
+                                <p className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                                    {assignmentError}
+                                </p>
+                            )}
                             <button
                                 onClick={closeTeamModal}
-                                className="mt-6 w-full rounded-xl bg-black py-3 text-sm font-semibold text-white hover:bg-neutral-800 transition"
+                                disabled={assignmentSaving[teamModalProject.id]}
+                                className="mt-6 w-full rounded-2xl bg-black py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                Guardar cambios
+                                {assignmentSaving[teamModalProject.id] ? 'Guardando...' : 'Guardar cambios'}
                             </button>
                         </motion.div>
                     </div>
@@ -864,104 +938,89 @@ const Projects = () => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={closeClientTeamModal}
+                            onClick={dismissClientTeamModal}
                             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         />
                         <motion.div
                             initial={{ scale: 0.96, opacity: 0, y: 20 }}
                             animate={{ scale: 1, opacity: 1, y: 0 }}
                             exit={{ scale: 0.96, opacity: 0, y: 20 }}
-                            className="relative w-full max-w-[500px] bg-white rounded-3xl shadow-2xl overflow-hidden p-6 sm:p-7"
+                            className="relative w-full max-w-[640px] overflow-visible rounded-3xl bg-white p-6 shadow-2xl sm:p-7"
                         >
                             <div className="text-center">
-                                <Users size={40} className="mx-auto text-blue-600 mb-4" />
+                                <Users size={40} className="mx-auto mb-4 text-blue-600" />
                                 <h3 className="text-xl font-bold text-neutral-900">
                                     Asignar Clientes y Team
                                 </h3>
-                                <p className="text-sm text-neutral-500 mt-1">Configura quiénes tienen acceso desde el lado del cliente</p>
+                                <p className="mt-1 text-sm text-neutral-500">
+                                    {getProjectTitle(clientModalProject, 'Proyecto')}
+                                </p>
                             </div>
 
-                            <div className="mt-6 space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-                                {/* Section 1: Client Entities */}
+                            <div className="mt-6 space-y-6 pr-2">
                                 {isAdmin && (
                                     <div>
-                                        <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Empresas / Clientes Principales</h4>
-                                        <div className="space-y-2">
-                                            {clients.map((c) => {
-                                                const isSelected = clientSelection.includes(c.id);
-                                                return (
-                                                    <button
-                                                        key={c.id}
-                                                        onClick={() => setClientSelection(prev =>
-                                                            isSelected ? prev.filter(id => id !== c.id) : [...prev, c.id]
-                                                        )}
-                                                        className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${isSelected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-neutral-200 bg-neutral-50'
-                                                            }`}
-                                                    >
-                                                        <span className="font-medium text-left">{c.company_name || c.full_name || c.email}</span>
-                                                        <span className="text-[10px] uppercase font-bold">{isSelected ? 'Asignado' : 'Asignar'}</span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
+                                        <MemberSelector
+                                            members={clientEntityOptions}
+                                            selected={clientSelection}
+                                            onChange={setClientSelection}
+                                            maxVisible={6}
+                                            label="Empresas / clientes principales"
+                                            addLabel="Asignar"
+                                            searchPlaceholder="Buscar empresa o cliente..."
+                                            emptyMessage="No encontramos clientes."
+                                        />
                                     </div>
                                 )}
 
-                                {/* Section 2: Client Users (Team Cliente) */}
                                 <div>
-                                    <h4 className="text-xs font-bold text-neutral-400 uppercase tracking-widest mb-3">Team del Cliente (Usuarios específicos)</h4>
-                                    <div className="space-y-2">
-                                        {isAdmin && clientSelection.length === 0 ? (
-                                            <div className="py-8 text-center border-2 border-dashed border-neutral-100 rounded-2xl">
-                                                <p className="text-sm text-neutral-400">Selecciona un cliente principal para ver su equipo</p>
-                                            </div>
-                                        ) : (
-                                            allClientUsers
-                                                .filter(u => (isAdmin ? clientSelection.includes(u.client_id) : u.id !== userId))
-                                                .map((u) => {
-                                                    const isSelected = clientUserSelection.includes(u.id);
-                                                    return (
-                                                        <button
-                                                            key={u.id}
-                                                            onClick={() => setClientUserSelection(prev =>
-                                                                isSelected ? prev.filter(id => id !== u.id) : [...prev, u.id]
-                                                            )}
-                                                            className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition ${isSelected ? 'border-green-600 bg-green-50 text-green-700' : 'border-neutral-200 bg-neutral-50'
-                                                                }`}
-                                                        >
-                                                            <div className="flex flex-col items-start">
-                                                                <span className="font-medium">{u.full_name || u.email}</span>
-                                                                {u.client_id && (
-                                                                    <span className="text-[10px] text-neutral-400">
-                                                                        {clients.find(c => c.id === u.client_id)?.company_name || 'Empresa'}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-[10px] uppercase font-bold">{isSelected ? 'En el Team' : 'Agregar'}</span>
-                                                        </button>
-                                                    );
-                                                })
-                                        )}
-                                        {isAdmin && clientSelection.length > 0 && allClientUsers.filter(u => clientSelection.includes(u.client_id)).length === 0 && (
-                                            <div className="py-8 text-center border-2 border-dashed border-neutral-100 rounded-2xl">
-                                                <p className="text-sm text-neutral-400">Este cliente aún no tiene un equipo asignado</p>
-                                            </div>
-                                        )}
-                                        {isClientLeader && allClientUsers.length === 0 && (
-                                            <div className="py-8 text-center border-2 border-dashed border-neutral-100 rounded-2xl">
-                                                <p className="text-sm text-neutral-400">Aún no tienes equipo. Invita miembros desde Ajustes.</p>
-                                            </div>
-                                        )}
-                                    </div>
+                                    {isAdmin && clientSelection.length === 0 ? (
+                                        <div className="rounded-[28px] border-2 border-dashed border-neutral-200 bg-neutral-50 px-6 py-10 text-center">
+                                            <p className="text-sm text-neutral-500">
+                                                Selecciona una empresa o cliente principal para habilitar su team.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <MemberSelector
+                                            members={clientUserOptions}
+                                            selected={clientUserSelection}
+                                            onChange={setClientUserSelection}
+                                            maxVisible={6}
+                                            label="Team del cliente"
+                                            addLabel="Agregar"
+                                            searchPlaceholder="Buscar integrante del cliente..."
+                                            emptyMessage={
+                                                isClientLeader
+                                                    ? 'Todavia no tienes equipo invitado.'
+                                                    : 'Este cliente todavia no tiene usuarios asociados.'
+                                            }
+                                        />
+                                    )}
+                                    {!isAdmin && isClientLeader && clientUserOptions.length === 0 && (
+                                        <div className="mt-4 rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4 text-sm text-neutral-500">
+                                            Invita miembros desde Ajustes para poder agregarlos a este proyecto.
+                                        </div>
+                                    )}
+                                    {isAdmin && clientSelection.length > 0 && clientUserOptions.length === 0 && (
+                                        <div className="mt-4 rounded-[24px] border border-neutral-200 bg-neutral-50 px-5 py-4 text-sm text-neutral-500">
+                                            Las empresas seleccionadas aun no tienen un team cliente disponible.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             <button
                                 onClick={closeClientTeamModal}
-                                className="mt-8 w-full rounded-2xl bg-black py-4 text-sm font-bold text-white hover:bg-neutral-800 transition active:scale-[0.98]"
+                                disabled={clientAssignmentSaving}
+                                className="mt-8 w-full rounded-2xl bg-black py-4 text-sm font-bold text-white transition hover:bg-neutral-800 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                Guardar Configuración
+                                {clientAssignmentSaving ? 'Guardando...' : 'Guardar Configuración'}
                             </button>
+                            {clientAssignmentError && (
+                                <p className="mt-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                                    {clientAssignmentError}
+                                </p>
+                            )}
                         </motion.div>
                     </div>
                 )}
