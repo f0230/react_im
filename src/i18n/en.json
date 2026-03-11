@@ -581,6 +581,7 @@
     "futureLimitFallback": "Select an available date to see the enabled time slots.",
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
+    "today": "Today",
     "selectSlotFirst": "Select a time slot before continuing.",
     "book": "Book",
     "noSlots": "No slots available for this day.",

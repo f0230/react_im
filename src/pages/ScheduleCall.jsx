@@ -46,6 +46,8 @@ const TRACKING_QUERY_KEYS = [
     'gclid',
 ];
 
+const SHORT_BOOKING_WINDOW_LIMIT = 10;
+
 const normalizeText = (value) => {
     const text = String(value || '').trim();
     return text || null;
@@ -108,6 +110,25 @@ const clampDateToRange = (value, minDate, maxDate) => {
     if (minDate && normalizedDate < minDate) return minDate;
     if (maxDate && normalizedDate > maxDate) return maxDate;
     return normalizedDate;
+};
+
+const buildSelectableDates = (minDate, maxDate) => {
+    if (!minDate || !maxDate) return [];
+
+    const start = parseCalendarDate(minDate) || minDate;
+    const end = parseCalendarDate(maxDate) || maxDate;
+    if (!start || !end || start > end) return [];
+
+    const dates = [];
+    const cursor = new Date(start.getTime());
+
+    while (cursor <= end) {
+        dates.push(new Date(cursor.getTime()));
+        cursor.setDate(cursor.getDate() + 1);
+        cursor.setHours(12, 0, 0, 0);
+    }
+
+    return dates;
 };
 
 const ScheduleCall = () => {
@@ -258,6 +279,16 @@ const ScheduleCall = () => {
     const maxSelectableDate = useMemo(
         () => parseCalendarDate(bookingRules?.dateLimits?.maxDate),
         [bookingRules?.dateLimits?.maxDate]
+    );
+
+    const selectableDates = useMemo(
+        () => buildSelectableDates(minSelectableDate, maxSelectableDate),
+        [maxSelectableDate, minSelectableDate]
+    );
+
+    const shouldUseCompactDateSelector = useMemo(
+        () => !loadingBookingRules && selectableDates.length > 0 && selectableDates.length <= SHORT_BOOKING_WINDOW_LIMIT,
+        [loadingBookingRules, selectableDates.length]
     );
 
     const selectedDateLabel = useMemo(
@@ -596,25 +627,98 @@ const ScheduleCall = () => {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
-                                 
                                     <div className="grid flex-1 gap-5 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)] xl:gap-6">
                                         <div className="flex flex-col gap-4">
                                             <div className="rounded-[28px] border border-zinc-200 bg-[linear-gradient(180deg,_#ffffff_0%,_#f5f5f5_100%)] p-4 shadow-[0_22px_45px_-32px_rgba(15,23,42,0.28)] sm:p-5">
-                                              
-                                                <div className="overflow-x-auto">
-                                                    <DatePicker
-                                                        selected={selectedDate}
-                                                        onChange={handleDateChange}
-                                                        inline
-                                                        locale={es}
-                                                        minDate={minSelectableDate}
-                                                        maxDate={maxSelectableDate || undefined}
-                                                        filterDate={isDateSelectable}
-                                                        dayClassName={getDayClassName}
-                                                        renderCustomHeader={renderCalendarHeader}
-                                                        calendarClassName="dte-datepicker"
-                                                    />
+                                                <div className="mb-4 flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                                            {t('calendar.availabilityWindowLabel')}
+                                                        </p>
+                                                        <p className="mt-2 max-w-[18rem] text-sm leading-relaxed text-slate-600">
+                                                            {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
+                                                        </p>
+                                                    </div>
+                                                    {selectableDates.length > 0 && (
+                                                        <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
+                                                            {selectableDates.length}
+                                                        </div>
+                                                    )}
                                                 </div>
+
+                                                {loadingBookingRules ? (
+                                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-2">
+                                                        {Array.from({ length: 6 }).map((_, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className="h-[112px] animate-pulse rounded-[24px] border border-white/80 bg-white/80"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                ) : shouldUseCompactDateSelector ? (
+                                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-2">
+                                                        {selectableDates.map((date) => {
+                                                            const isSelected = isSameCalendarDay(date, selectedDate);
+                                                            const isToday = isSameCalendarDay(date, todayDate);
+
+                                                            return (
+                                                                <button
+                                                                    key={date.toISOString()}
+                                                                    type="button"
+                                                                    onClick={() => handleDateChange(date)}
+                                                                    className={`dte-date-window__option ${isSelected ? 'dte-date-window__option--selected' : ''} ${isToday ? 'dte-date-window__option--today' : ''}`}
+                                                                    aria-pressed={isSelected}
+                                                                    aria-label={formatScheduleDateTime(date, {
+                                                                        weekday: 'long',
+                                                                        day: 'numeric',
+                                                                        month: 'long',
+                                                                        year: 'numeric',
+                                                                        timeZone: SCHEDULE_TIME_ZONE,
+                                                                    })}
+                                                                >
+                                                                    {isToday && (
+                                                                        <span className="dte-date-window__option-badge">
+                                                                            {t('calendar.today')}
+                                                                        </span>
+                                                                    )}
+                                                                    <span className="dte-date-window__option-weekday">
+                                                                        {formatScheduleDateTime(date, {
+                                                                            weekday: 'short',
+                                                                            timeZone: SCHEDULE_TIME_ZONE,
+                                                                        })}
+                                                                    </span>
+                                                                    <span className="dte-date-window__option-day">
+                                                                        {formatScheduleDateTime(date, {
+                                                                            day: 'numeric',
+                                                                            timeZone: SCHEDULE_TIME_ZONE,
+                                                                        })}
+                                                                    </span>
+                                                                    <span className="dte-date-window__option-month">
+                                                                        {formatScheduleDateTime(date, {
+                                                                            month: 'short',
+                                                                            timeZone: SCHEDULE_TIME_ZONE,
+                                                                        })}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                ) : (
+                                                    <div className="overflow-x-auto">
+                                                        <DatePicker
+                                                            selected={selectedDate}
+                                                            onChange={handleDateChange}
+                                                            inline
+                                                            locale={es}
+                                                            minDate={minSelectableDate}
+                                                            maxDate={maxSelectableDate || undefined}
+                                                            filterDate={isDateSelectable}
+                                                            dayClassName={getDayClassName}
+                                                            renderCustomHeader={renderCalendarHeader}
+                                                            calendarClassName="dte-datepicker"
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="flex min-h-[320px] flex-col rounded-[28px] border border-slate-200 bg-slate-50/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:p-5">

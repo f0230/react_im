@@ -581,6 +581,7 @@
     "futureLimitFallback": "Selecciona una fecha disponible para ver los horarios habilitados.",
     "previousMonth": "Mes anterior",
     "nextMonth": "Mes siguiente",
+    "today": "Hoy",
     "selectSlotFirst": "Selecciona un horario antes de continuar.",
     "book": "Reservar",
     "noSlots": "No hay horarios disponibles para este día.",
