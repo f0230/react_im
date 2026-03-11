@@ -10,6 +10,7 @@ import { UIProvider, useUI } from "@/context/UIContext";
 import useCycleLockedVisibility from "@/hooks/useCycleLockedVisibility";
 
 const Home = lazyRoute(routeKeys.home);
+const Colors = lazyRoute(routeKeys.colors);
 const About = lazyRoute(routeKeys.about);
 const Contact = lazyRoute(routeKeys.contact);
 const Services = lazyRoute(routeKeys.services);
@@ -144,6 +145,7 @@ const AppContent = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
+          <Route path="/colors" element={<Colors />} />
           <Route path="/Nosotros" element={<About />} />
           <Route path="/Contacto" element={<Contact />} />
           <Route path="/servicios" element={<Services />} />
