@@ -16,6 +16,7 @@ const CurvedLoop = lazy(() => import("@/components/CurvedLoop"));
 const WHATSAPP_URL = "https://wa.me/59896280674?text=Hola%2C%20quisiera%20hacer%20una%20consulta";
 const REGISTRATION_URL = "https://www.grupodte.com/registro";
 const SCHEDULE_CALL_URL = "https://www.grupodte.com/schedule-call";
+const BROCHURE_URL = "/brochure-grupo-dte.pdf";
 
 const LazySection = ({ children }) => (
   <Suspense fallback={null}>{children}</Suspense>
@@ -61,6 +62,7 @@ const Home = () => {
 
           <HeroSection
             onRegisterClick={handleRegisterClick}
+            brochureUrl={BROCHURE_URL}
             whatsappUrl={WHATSAPP_URL}
           />
         </div>

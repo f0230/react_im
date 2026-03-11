@@ -5,7 +5,6 @@ import RotatingText from "./ui/RotatingText";
 import AnimatedContent from './ui/AnimatedContent';
 import FadeContent from './ui/FadeContent';
 import OptimizedImage from "@/components/OptimizedImage";
-import { Link } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import { Helmet } from "react-helmet-async";
 
@@ -16,7 +15,7 @@ import bgDesktopImg from "../assets/PORTADA_1.webp";
 import grupodte from "../assets/LOGODTE.svg";
 import xclose from "../assets/x-close.svg";
 
-const HeroSection = ({ onRegisterClick, whatsappUrl }) => {
+const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
   const { t } = useTranslation();
   const [showPopup, setShowPopup] = useState(false);
   const rotatingWords = t("section1.rotatingWords", { returnObjects: true });
@@ -116,11 +115,13 @@ const HeroSection = ({ onRegisterClick, whatsappUrl }) => {
 
 
                   <AnimatedContent distance={60} direction="horizontal" reverse={false} config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={1050} className="inline-block">
-                    <Link to="/servicios">
-                      <button className="w-[210px] md:w-auto px-6 md:px-8 text-[13px] md:text-[17px] h-[40px] md:h-[56px] bg-white text-skyblue border-2 border-skyblue rounded-full font-medium hover:bg-skyblue/5 transition-colors">
-                        {t("section1.ctaServices")}
-                      </button>
-                    </Link>
+                    <a
+                      href={brochureUrl || "/brochure-grupo-dte.pdf"}
+                      download
+                      className="inline-flex w-[210px] md:w-auto px-6 md:px-8 text-[13px] md:text-[17px] h-[40px] md:h-[56px] bg-white text-skyblue border-2 border-skyblue rounded-full font-medium hover:bg-skyblue/5 transition-colors items-center justify-center"
+                    >
+                      {t("section1.ctaServices")}
+                    </a>
 
                   </AnimatedContent>
                 </div>
