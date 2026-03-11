@@ -241,3 +241,158 @@
         font-size: 1.85rem;
     }
 }
+
+.dte-date-strip {
+    position: relative;
+}
+
+.dte-date-strip__scroller {
+    display: flex;
+    gap: 0.9rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0.2rem 0.35rem 0.55rem;
+    scroll-behavior: smooth;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.dte-date-strip__scroller::-webkit-scrollbar {
+    display: none;
+}
+
+.dte-date-strip__edge {
+    position: absolute;
+    top: 0;
+    bottom: 0.55rem;
+    width: 2rem;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.dte-date-strip__edge--left {
+    left: 0;
+    background: linear-gradient(90deg, rgba(242, 244, 247, 0.95) 10%, rgba(242, 244, 247, 0));
+}
+
+.dte-date-strip__edge--right {
+    right: 0;
+    background: linear-gradient(270deg, rgba(242, 244, 247, 0.95) 10%, rgba(242, 244, 247, 0));
+}
+
+.dte-date-strip__item {
+    position: relative;
+    flex: 0 0 auto;
+    width: clamp(5.6rem, 12vw, 6.8rem);
+    min-height: 6.6rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 1.75rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.22));
+    box-shadow: 0 20px 38px -28px rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(22px);
+    padding: 0.9rem 1rem 0.95rem;
+    text-align: left;
+    scroll-snap-align: center;
+    transition: border-color 0.22s ease, background-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.dte-date-strip__item--today:not(.dte-date-strip__item--selected) {
+    border-color: rgba(125, 211, 252, 0.65);
+    box-shadow: 0 20px 40px -30px rgba(14, 165, 233, 0.45);
+}
+
+.dte-date-strip__item--selected {
+    border-color: rgba(15, 23, 42, 0.88);
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(39, 39, 42, 0.92));
+    box-shadow: 0 24px 48px -30px rgba(15, 23, 42, 0.82);
+}
+
+.dte-date-strip__today-pill {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.75rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.58);
+    color: #0f172a;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 0.28rem 0.5rem;
+    text-transform: uppercase;
+}
+
+.dte-date-strip__weekday,
+.dte-date-strip__month {
+    text-transform: capitalize;
+}
+
+.dte-date-strip__weekday {
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+}
+
+.dte-date-strip__day {
+    margin-top: 0.35rem;
+    color: #0f172a;
+    font-size: 2.3rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.dte-date-strip__month {
+    margin-top: 0.3rem;
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.dte-date-strip__item--selected .dte-date-strip__weekday,
+.dte-date-strip__item--selected .dte-date-strip__month {
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.dte-date-strip__item--selected .dte-date-strip__day {
+    color: #ffffff;
+}
+
+.dte-date-strip__item--selected .dte-date-strip__today-pill {
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+}
+
+.dte-slot-list {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.dte-slot-list::-webkit-scrollbar {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .dte-date-strip__edge {
+        width: 1.2rem;
+    }
+
+    .dte-date-strip__scroller {
+        gap: 0.75rem;
+        padding-inline: 0.2rem;
+    }
+
+    .dte-date-strip__item {
+        width: 5.5rem;
+        min-height: 6.1rem;
+        padding: 0.85rem 0.9rem;
+    }
+
+    .dte-date-strip__day {
+        font-size: 2rem;
+    }
+}

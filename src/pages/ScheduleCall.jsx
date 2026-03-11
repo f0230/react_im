@@ -475,12 +475,13 @@ const ScheduleCall = () => {
         </div>
     ), [t]);
 
-    const heroMorphTexts = useMemo(() => ([
+    const heroMorphTexts = [
         t('calendar.heroMorph1'),
         t('calendar.heroMorph2'),
         t('calendar.heroMorph3'),
         t('calendar.heroMorph4'),
-    ]), [t]);
+    ].filter(Boolean);
+
 
     const renderScheduleHero = () => (
         <div className="relative overflow-hidden bg-[#09090b] px-5 py-10 text-white sm:px-8 sm:py-14 lg:px-10 lg:py-16">
@@ -491,7 +492,7 @@ const ScheduleCall = () => {
             </div>
 
             <div className="relative">
-                <MorphingText
+                            <MorphingText
                     texts={heroMorphTexts}
                     className="!mx-0 !h-[3.2rem] !max-w-none font-product !text-[2.05rem] uppercase tracking-[-0.08em] text-white sm:!h-[4.5rem] sm:!text-[3.75rem] lg:!h-[6rem] lg:!text-[5.1rem]"
                 />
