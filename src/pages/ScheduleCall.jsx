@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import DatePicker from 'react-datepicker';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Check, Loader2, ArrowLeft, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Clock, Check, Loader2, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { es } from 'date-fns/locale';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -532,8 +532,8 @@ const ScheduleCall = () => {
                         variants={containerVariants}
                         className="mx-auto w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-xl sm:p-8"
                     >
-                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#0DD122]/10">
-                            <Check className="h-10 w-10 text-[#0DD122]" />
+                        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-black/5">
+                            <Check className="h-10 w-10 text-black" />
                         </div>
                         <h2 className="mt-6 text-2xl font-bold">{t('calendar.successTitle')}</h2>
                         <p className="mt-2 text-gray-600">{t('calendar.successMessage')}</p>
@@ -557,7 +557,7 @@ const ScheduleCall = () => {
                     initial="hidden"
                     animate="visible"
                     variants={containerVariants}
-                    className="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-[0_24px_60px_-35px_rgba(0,0,0,0.35)] md:flex-row"
+                    className="mx-auto flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white font-product shadow-[0_24px_60px_-35px_rgba(0,0,0,0.35)] md:flex-row"
                 >
                     <div className="flex flex-col justify-between bg-black px-5 py-6 text-white sm:px-8 sm:py-8 md:w-[34%]">
                         <div>
@@ -570,16 +570,38 @@ const ScheduleCall = () => {
                             <h1 className="mb-3 text-3xl font-bold leading-tight sm:text-4xl">
                                 {t('calendar.title')}
                             </h1>
-                            <p className="mb-6 max-w-sm text-sm leading-relaxed text-gray-400 sm:mb-7 sm:text-base">
+                            <p className="mb-6 max-w-sm text-sm leading-relaxed text-zinc-300 sm:mb-7 sm:text-base">
                                 {t('calendar.description')}
                             </p>
+                            <div className="mb-6 rounded-[24px] border border-white/10 bg-white/5 p-5">
+                                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-zinc-400">
+                                    {t('calendar.meetingFocusTitle')}
+                                </p>
+                                <ul className="mt-4 space-y-3 text-sm leading-relaxed text-zinc-200">
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-white/70" />
+                                        <span>{t('calendar.meetingFocusCurrent')}</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-white/70" />
+                                        <span>{t('calendar.meetingFocusBlockers')}</span>
+                                    </li>
+                                    <li className="flex items-start gap-3">
+                                        <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-white/70" />
+                                        <span>{t('calendar.meetingFocusOpportunities')}</span>
+                                    </li>
+                                </ul>
+                                <p className="mt-5 text-sm leading-relaxed text-zinc-400">
+                                    {t('calendar.meetingGoal')}
+                                </p>
+                            </div>
                             <div className="space-y-3 sm:space-y-4">
-                                <div className="flex items-center gap-3">
-                                    <Clock className="text-[#0DD122]" />
+                                <div className="flex items-center gap-3 text-sm text-zinc-200">
+                                    <Clock className="text-white/70" />
                                     <span>30 min · {SCHEDULE_TIME_ZONE_LABEL}</span>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0DD122] text-xs font-bold text-black">
+                                <div className="flex items-center gap-3 text-sm text-zinc-200">
+                                    <div className="flex h-5 w-5 items-center justify-center rounded-full border border-white/15 bg-white/10 text-[0.65rem] font-bold text-white">
                                         D
                                     </div>
                                     <span>Grupo DTE Team</span>
@@ -598,29 +620,21 @@ const ScheduleCall = () => {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
-                                    <div className="mb-5 flex flex-col gap-3 sm:mb-6">
+                                    <div className="mb-5 sm:mb-6">
                                         <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
                                             {t('calendar.selectDateTime')}
                                         </h2>
-                                        <p className="max-w-2xl text-sm leading-relaxed text-slate-500">
-                                            {t('calendar.availabilityHint', { timeZone: SCHEDULE_TIME_ZONE_LABEL })}
-                                        </p>
                                     </div>
                                     <div className="grid flex-1 gap-5 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)] xl:gap-6">
                                         <div className="flex flex-col gap-4">
-                                            <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(13,209,34,0.12),_transparent_42%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-4 shadow-[0_22px_45px_-32px_rgba(15,23,42,0.45)] sm:p-5">
-                                                <div className="mb-4 flex items-start gap-3 rounded-2xl border border-white/80 bg-white/75 p-4 backdrop-blur">
-                                                    <div className="mt-0.5 rounded-2xl bg-emerald-500/10 p-2 text-emerald-700">
-                                                        <Sparkles size={18} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-emerald-700">
-                                                            {t('calendar.availabilityWindowLabel')}
-                                                        </p>
-                                                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                                                            {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
-                                                        </p>
-                                                    </div>
+                                            <div className="rounded-[28px] border border-zinc-200 bg-[linear-gradient(180deg,_#ffffff_0%,_#f5f5f5_100%)] p-4 shadow-[0_22px_45px_-32px_rgba(15,23,42,0.28)] sm:p-5">
+                                                <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4">
+                                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-zinc-500">
+                                                        {t('calendar.availabilityWindowLabel')}
+                                                    </p>
+                                                    <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                                                        {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
+                                                    </p>
                                                 </div>
                                                 <div className="overflow-x-auto">
                                                     <DatePicker
@@ -668,12 +682,12 @@ const ScheduleCall = () => {
                                                             <button
                                                                 key={idx}
                                                                 onClick={() => handleSlotSelect(slot)}
-                                                                className="group flex w-full items-center justify-between rounded-2xl border border-transparent bg-white px-4 py-4 text-left text-sm shadow-[0_12px_24px_-20px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 sm:text-base"
+                                                                className="group flex w-full items-center justify-between rounded-2xl border border-transparent bg-white px-4 py-4 text-left text-sm shadow-[0_12px_24px_-20px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-zinc-50 sm:text-base"
                                                             >
                                                                 <span className="font-semibold text-slate-900">
                                                                     {formatScheduleTime(slot.start)}
                                                                 </span>
-                                                                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-emerald-700 transition-colors group-hover:border-emerald-300 group-hover:bg-white">
+                                                                <span className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-zinc-700 transition-colors group-hover:border-zinc-300 group-hover:bg-white">
                                                                     {t('calendar.book')}
                                                                 </span>
                                                             </button>
@@ -726,7 +740,7 @@ const ScheduleCall = () => {
                                                     getOptionValue={(p) => p.id}
                                                     getOptionLabel={(p) => p.name}
                                                     getDisplayLabel={(p) => p.name}
-                                                    buttonClassName="h-[50px] rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:ring-2 focus:ring-[#0DD122]"
+                                                    buttonClassName="h-[50px] rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:ring-2 focus:ring-black/15"
                                                     className="w-full"
                                                 />
                                             </div>
@@ -738,7 +752,7 @@ const ScheduleCall = () => {
                                                 required
                                                 value={formData.name}
                                                 onChange={e => handleFieldChange('name', e.target.value)}
-                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122]"
+                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <div>
@@ -748,7 +762,7 @@ const ScheduleCall = () => {
                                                 required
                                                 value={formData.email}
                                                 onChange={e => handleFieldChange('email', e.target.value)}
-                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122]"
+                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <div>
@@ -758,7 +772,7 @@ const ScheduleCall = () => {
                                                 required={requiresPhone}
                                                 value={formData.phone}
                                                 onChange={e => handleFieldChange('phone', e.target.value)}
-                                                className={`w-full rounded-xl bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122] ${fieldErrors.phone ? 'border border-red-400' : 'border border-gray-300'}`}
+                                                className={`w-full rounded-xl bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black/15 ${fieldErrors.phone ? 'border border-red-400' : 'border border-gray-300'}`}
                                             />
                                             {fieldErrors.phone ? (
                                                 <p className="mt-2 text-sm text-red-600">{fieldErrors.phone}</p>
@@ -772,13 +786,13 @@ const ScheduleCall = () => {
                                                 rows="3"
                                                 value={formData.notes}
                                                 onChange={e => handleFieldChange('notes', e.target.value)}
-                                                className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-[#0DD122]"
+                                                className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <button
                                             type="submit"
                                             disabled={submitting}
-                                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0DD122] py-4 font-bold text-white transition-colors hover:bg-[#0bc01f] disabled:opacity-70"
+                                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-black py-4 font-bold text-white transition-colors hover:bg-zinc-800 disabled:opacity-70"
                                         >
                                             {submitting && <Loader2 className="h-5 w-5 animate-spin" />}
                                             {t('calendar.confirmBooking')}

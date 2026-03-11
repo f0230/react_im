@@ -556,8 +556,13 @@
     }
   },
   "calendar": {
-    "title": "Agenda tu llamada",
-    "description": "Elige un horario para reunirnos y conversar sobre tu proyecto.",
+    "title": "Agenda tu DTE Meet",
+    "description": "Una reunión breve para analizar tu negocio y detectar qué se puede ordenar o mejorar.",
+    "meetingFocusTitle": "En esta charla revisamos",
+    "meetingFocusCurrent": "cómo está funcionando hoy tu negocio",
+    "meetingFocusBlockers": "qué cosas están desordenadas o frenando el crecimiento",
+    "meetingFocusOpportunities": "qué oportunidades hay para mejorar procesos, ventas o automatización",
+    "meetingGoal": "El objetivo es entender tu caso y ver qué sistema o solución podría ayudarte.",
     "selectDateTime": "Selecciona día y hora",
     "availabilityHint": "Todos los horarios se muestran en {{timeZone}}.",
     "availabilityWindowLabel": "Ventana de reserva",

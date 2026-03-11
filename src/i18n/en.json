@@ -556,8 +556,13 @@
     }
   },
   "calendar": {
-    "title": "Schedule your call",
-    "description": "Choose a time to meet and discuss your project.",
+    "title": "Book your DTE Meet",
+    "description": "A short meeting to review your business and detect what can be organized or improved.",
+    "meetingFocusTitle": "In this conversation we review",
+    "meetingFocusCurrent": "how your business is working today",
+    "meetingFocusBlockers": "what is disorganized or slowing down growth",
+    "meetingFocusOpportunities": "which opportunities exist to improve processes, sales, or automation",
+    "meetingGoal": "The goal is to understand your case and see which system or solution could help you.",
     "selectDateTime": "Select date and time",
     "availabilityHint": "All times are shown in {{timeZone}}.",
     "availabilityWindowLabel": "Booking window",
