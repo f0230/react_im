@@ -6,6 +6,9 @@ import logoDTE from '../assets/dte_lohace.webp';
 import { contactInfo } from '@/config/branding';
 import { useTranslation } from 'react-i18next';
 
+const SCHEDULE_CALL_URL = 'https://www.grupodte.com/schedule-call';
+const WHATSAPP_URL = 'https://wa.me/59896280674';
+
 const Footer = () => {
   const { t } = useTranslation();
   const footerRef = useRef();
@@ -49,13 +52,15 @@ const Footer = () => {
           </div>
           <div className="flex flex-col px-2 gap-[10px] md:gap-3 w-full md:w-[350px]">
             <a
-              href={`mailto:${contactInfo.email}`}
+              href={SCHEDULE_CALL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="bg-black text-white text-[18px] md:text-[22px] h-[40px] md:h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition cursor-pointer"
             >
               {t("footer.ctaMeeting")}
             </a>
             <a
-              href="https://wa.me/59896219905"
+              href={WHATSAPP_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="bg-black text-white text-[18px] md:text-[22px] h-[40px] md:h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition"

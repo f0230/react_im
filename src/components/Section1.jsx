@@ -16,13 +16,13 @@ import bgDesktopImg from "../assets/PORTADA_1.webp";
 import grupodte from "../assets/LOGODTE.svg";
 import xclose from "../assets/x-close.svg";
 
-const HeroSection = ({ onContactClick }) => {
+const HeroSection = ({ onRegisterClick, whatsappUrl }) => {
   const { t } = useTranslation();
   const [showPopup, setShowPopup] = useState(false);
   const rotatingWords = t("section1.rotatingWords", { returnObjects: true });
   const safeWords = Array.isArray(rotatingWords) ? rotatingWords : [rotatingWords];
   const whatsappMessage = t("section1.whatsappMessage");
-  const whatsappLink = `https://wa.me/59899123456?text=${encodeURIComponent(whatsappMessage)}`;
+  const whatsappLink = whatsappUrl || `https://wa.me/59896280674?text=${encodeURIComponent(whatsappMessage)}`;
 
   useEffect(() => {
     const popupTimer = setTimeout(() => setShowPopup(true), 3000);
@@ -106,7 +106,7 @@ const HeroSection = ({ onContactClick }) => {
                 <div className="mt-4 md:mt-8 flex flex-col md:flex-row items-center justify-center gap-3 md:gap-5">
                   <AnimatedContent distance={60} direction="horizontal" reverse config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={900} className="inline-block">
                     <button
-                      onClick={onContactClick}
+                      onClick={onRegisterClick}
                       className="w-[210px] md:w-auto px-6 md:px-8 text-[13px] md:text-[17px] h-[40px] md:h-[56px] bg-[#19d327] text-white rounded-full font-medium hover:bg-[#15bf22] transition-colors"
                     >
                       {t("section1.ctaContact")}

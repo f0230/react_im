@@ -5,7 +5,7 @@ import OptimizedImage from "@/components/OptimizedImage";
 import { useTranslation } from "react-i18next";
 import xclose from "../assets/x-close.svg";
 
-const Section5 = ({ onContactClick }) => {
+const Section5 = ({ onScheduleClick }) => {
     const { t } = useTranslation();
     const [showPopup, setShowPopup] = useState(false);
     const [popupDismissed, setPopupDismissed] = useState(false);
@@ -87,7 +87,7 @@ const Section5 = ({ onContactClick }) => {
                         <p className="mt-1">{t("section5.popupSubtitle")}</p>
                         <button
                             type="button"
-                            onClick={() => onContactClick?.()}
+                            onClick={() => onScheduleClick?.()}
                             className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-[#FFD400] py-1.5 text-[11px] font-semibold text-black transition hover:bg-[#f3c800] md:py-2 md:text-[15px]"
                         >
                             {t("section5.popupCta")}
@@ -116,4 +116,3 @@ const Section5 = ({ onContactClick }) => {
 };
 
 export default Section5;
-

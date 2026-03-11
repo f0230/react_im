@@ -13,13 +13,25 @@ const InfiniteCarousel = lazy(() => import("@/components/Slide"));
 const Section7 = lazy(() => import("@/components/Section8"));
 const CurvedLoop = lazy(() => import("@/components/CurvedLoop"));
 
+const WHATSAPP_URL = "https://wa.me/59896280674?text=Hola%2C%20quisiera%20hacer%20una%20consulta";
+const REGISTRATION_URL = "https://www.grupodte.com/registro";
+const SCHEDULE_CALL_URL = "https://www.grupodte.com/schedule-call";
+
 const LazySection = ({ children }) => (
   <Suspense fallback={null}>{children}</Suspense>
 );
 
 const Home = () => {
   const [renderDeferred, setRenderDeferred] = useState(false);
-  const handleContactClick = () => {};
+
+  const openExternalLink = (url) => {
+    if (typeof window === "undefined") return;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleWhatsAppClick = () => openExternalLink(WHATSAPP_URL);
+  const handleRegisterClick = () => openExternalLink(REGISTRATION_URL);
+  const handleScheduleCallClick = () => openExternalLink(SCHEDULE_CALL_URL);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -47,10 +59,13 @@ const Home = () => {
 
         <div className="relative w-full">
 
-          <HeroSection onContactClick={handleContactClick} />
+          <HeroSection
+            onRegisterClick={handleRegisterClick}
+            whatsappUrl={WHATSAPP_URL}
+          />
         </div>
         <div className="relative w-full mt-[10px]">
-          <Section2 onContactClick={handleContactClick} />
+          <Section2 onContactClick={handleWhatsAppClick} />
         </div>
 
 
@@ -58,7 +73,7 @@ const Home = () => {
           <>
             <div className="relative w-full">
               <LazySection>
-                <Section3 onContactClick={handleContactClick} />
+                <Section3 onContactClick={handleWhatsAppClick} />
               </LazySection>
             </div>
             <div className="relative w-full mt-[10px]">
@@ -80,7 +95,7 @@ const Home = () => {
             </div>
             <div className="relative w-full">
               <LazySection>
-                <Section5 onContactClick={handleContactClick} />
+                <Section5 onScheduleClick={handleScheduleCallClick} />
               </LazySection>
             </div>
 
@@ -96,7 +111,7 @@ const Home = () => {
             </div>
             <div className="relative w-full">
               <LazySection>
-                <Section7 onContactClick={handleContactClick} />
+                <Section7 onContactClick={handleWhatsAppClick} />
               </LazySection>
             </div>
           </>
