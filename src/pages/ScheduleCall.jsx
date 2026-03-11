@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import DatePicker from 'react-datepicker';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { es } from 'date-fns/locale';
+import { Check, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
@@ -12,12 +10,11 @@ import MultiUseSelect from '@/components/MultiUseSelect';
 import { MorphingText } from '@/components/ui/morphing-text';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import Navbar from '@/components/Navbar';
-import { getTodayCalendarDate, parseCalendarDate } from '@/utils/calBookingWindow';
+import { formatCalendarDate, getTodayCalendarDate, parseCalendarDate } from '@/utils/calBookingWindow';
 import { isValidPhone } from '@/utils/phone-validation';
 import { stripLeadingPlus } from '@/utils/phone-format';
 import { formatScheduleDate, formatScheduleDateTime, formatScheduleTime, SCHEDULE_TIME_ZONE, SCHEDULE_TIME_ZONE_LABEL } from '@/utils/scheduleTime';
 
-import "react-datepicker/dist/react-datepicker.css";
 import '@/index.css';
 import '@/styles/schedule-call-calendar.css';
 
@@ -45,8 +42,6 @@ const TRACKING_QUERY_KEYS = [
     'fbp',
     'gclid',
 ];
-
-const SHORT_BOOKING_WINDOW_LIMIT = 10;
 
 const normalizeText = (value) => {
     const text = String(value || '').trim();
@@ -112,11 +107,22 @@ const clampDateToRange = (value, minDate, maxDate) => {
     return normalizedDate;
 };
 
+const addDays = (value, amount) => {
+    const date = parseCalendarDate(value) || value;
+    if (!date) return null;
+
+    const next = new Date(date.getTime());
+    next.setDate(next.getDate() + Number(amount || 0));
+    next.setHours(12, 0, 0, 0);
+    return next;
+};
+
 const buildSelectableDates = (minDate, maxDate) => {
-    if (!minDate || !maxDate) return [];
+    if (!minDate) return [];
 
     const start = parseCalendarDate(minDate) || minDate;
-    const end = parseCalendarDate(maxDate) || maxDate;
+    const fallbackEnd = addDays(start, 6);
+    const end = parseCalendarDate(maxDate) || maxDate || fallbackEnd;
     if (!start || !end || start > end) return [];
 
     const dates = [];
@@ -142,6 +148,7 @@ const ScheduleCall = () => {
     const isWorker = role === 'worker';
     const isClient = role === 'client';
     const requiresPhone = !isAdmin && !isWorker;
+    const dateStripRef = useRef(null);
 
     const [selectedDate, setSelectedDate] = useState(() => getTodayCalendarDate(SCHEDULE_TIME_ZONE) || new Date());
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
@@ -286,9 +293,9 @@ const ScheduleCall = () => {
         [maxSelectableDate, minSelectableDate]
     );
 
-    const shouldUseCompactDateSelector = useMemo(
-        () => !loadingBookingRules && selectableDates.length > 0 && selectableDates.length <= SHORT_BOOKING_WINDOW_LIMIT,
-        [loadingBookingRules, selectableDates.length]
+    const selectedDateKey = useMemo(
+        () => formatCalendarDate(selectedDate),
+        [selectedDate]
     );
 
     const selectedDateLabel = useMemo(
@@ -375,6 +382,19 @@ const ScheduleCall = () => {
     }, [maxSelectableDate, minSelectableDate, selectedDate]);
 
     useEffect(() => {
+        if (!dateStripRef.current || !selectedDateKey) return;
+
+        const selectedNode = dateStripRef.current.querySelector(`[data-date-key="${selectedDateKey}"]`);
+        if (!selectedNode) return;
+
+        selectedNode.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center',
+        });
+    }, [selectedDateKey, selectableDates]);
+
+    useEffect(() => {
         if (client || user) {
             setFormData(prev => ({
                 ...prev,
@@ -413,75 +433,12 @@ const ScheduleCall = () => {
         setSelectedDate(clampDateToRange(date, minSelectableDate, maxSelectableDate));
     }, [maxSelectableDate, minSelectableDate]);
 
-    const isDateSelectable = useCallback((date) => {
-        const normalizedDate = parseCalendarDate(date) || date;
-        if (minSelectableDate && normalizedDate < minSelectableDate) return false;
-        if (maxSelectableDate && normalizedDate > maxSelectableDate) return false;
-        return true;
-    }, [maxSelectableDate, minSelectableDate]);
-
-    const getDayClassName = useCallback((date) => {
-        const normalizedDate = parseCalendarDate(date) || date;
-        const classNames = ['dte-datepicker__day-cell'];
-
-        if (isSameCalendarDay(normalizedDate, todayDate)) {
-            classNames.push('dte-datepicker__day-cell--today');
-        }
-
-        if (isSameCalendarDay(normalizedDate, selectedDate)) {
-            classNames.push('dte-datepicker__day-cell--selected');
-        }
-
-        if (!isDateSelectable(normalizedDate)) {
-            classNames.push('dte-datepicker__day-cell--blocked');
-        }
-
-        return classNames.join(' ');
-    }, [isDateSelectable, selectedDate, todayDate]);
-
-    const renderCalendarHeader = useCallback(({
-        date,
-        decreaseMonth,
-        increaseMonth,
-        prevMonthButtonDisabled,
-        nextMonthButtonDisabled,
-    }) => (
-        <div className="dte-datepicker__header-bar">
-            <button
-                type="button"
-                onClick={decreaseMonth}
-                disabled={prevMonthButtonDisabled}
-                className="dte-datepicker__nav-button"
-                aria-label={t('calendar.previousMonth')}
-            >
-                <ChevronLeft size={18} />
-            </button>
-            <div className="dte-datepicker__month-pill">
-                {formatScheduleDateTime(date, {
-                    month: 'long',
-                    year: 'numeric',
-                    timeZone: SCHEDULE_TIME_ZONE,
-                })}
-            </div>
-            <button
-                type="button"
-                onClick={increaseMonth}
-                disabled={nextMonthButtonDisabled}
-                className="dte-datepicker__nav-button"
-                aria-label={t('calendar.nextMonth')}
-            >
-                <ChevronRight size={18} />
-            </button>
-        </div>
-    ), [t]);
-
     const heroMorphTexts = [
         t('calendar.heroMorph1'),
         t('calendar.heroMorph2'),
         t('calendar.heroMorph3'),
         t('calendar.heroMorph4'),
     ].filter(Boolean);
-
 
     const renderScheduleHero = () => (
         <div className="relative overflow-hidden bg-[#09090b] px-5 py-10 text-white sm:px-8 sm:py-14 lg:px-10 lg:py-16">
@@ -628,152 +585,172 @@ const ScheduleCall = () => {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
-                                    <div className="grid flex-1 gap-5 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)] xl:gap-6">
-                                        <div className="flex flex-col gap-4">
-                                            <div className="rounded-[28px] border border-zinc-200 bg-[linear-gradient(180deg,_#ffffff_0%,_#f5f5f5_100%)] p-4 shadow-[0_22px_45px_-32px_rgba(15,23,42,0.28)] sm:p-5">
-                                                <div className="mb-4 flex items-start justify-between gap-3">
-                                                    <div>
-                                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                                                            {t('calendar.availabilityWindowLabel')}
-                                                        </p>
-                                                        <p className="mt-2 max-w-[18rem] text-sm leading-relaxed text-slate-600">
-                                                            {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
-                                                        </p>
-                                                    </div>
-                                                    {selectableDates.length > 0 && (
-                                                        <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
-                                                            {selectableDates.length}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                    <div className="relative overflow-hidden rounded-[32px] border border-white/40 bg-[rgba(255,255,255,0.14)] p-4 shadow-[0_28px_70px_-34px_rgba(15,23,42,0.55)] backdrop-blur-[26px] sm:p-5">
+                                        <div className="pointer-events-none absolute inset-0">
+                                            <div className="absolute -left-10 top-0 h-36 w-36 rounded-full bg-white/30 blur-3xl" />
+                                            <div className="absolute right-0 top-12 h-44 w-44 rounded-full bg-sky-200/45 blur-3xl" />
+                                            <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-zinc-300/30 blur-3xl" />
+                                            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.05)_45%,rgba(15,23,42,0.06))]" />
+                                        </div>
 
-                                                {loadingBookingRules ? (
-                                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-2">
-                                                        {Array.from({ length: 6 }).map((_, index) => (
+                                        <div className="relative flex h-[300px] flex-col">
+                                            <div className="mb-4 flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                                        {t('calendar.availabilityWindowLabel')}
+                                                    </p>
+                                                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
+                                                        {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
+                                                    </p>
+                                                </div>
+                                                {selectableDates.length > 0 && (
+                                                    <div className="rounded-full border border-white/60 bg-white/35 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-[0_10px_25px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl">
+                                                        {selectableDates.length}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {loadingBookingRules ? (
+                                                <>
+                                                    <div className="mb-4 flex gap-3 overflow-hidden">
+                                                        {Array.from({ length: 5 }).map((_, index) => (
                                                             <div
                                                                 key={index}
-                                                                className="h-[112px] animate-pulse rounded-[24px] border border-white/80 bg-white/80"
+                                                                className="h-[108px] min-w-[92px] animate-pulse rounded-[26px] border border-white/60 bg-white/35 backdrop-blur-xl"
                                                             />
                                                         ))}
                                                     </div>
-                                                ) : shouldUseCompactDateSelector ? (
-                                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-2">
-                                                        {selectableDates.map((date) => {
-                                                            const isSelected = isSameCalendarDay(date, selectedDate);
-                                                            const isToday = isSameCalendarDay(date, todayDate);
-
-                                                            return (
-                                                                <button
-                                                                    key={date.toISOString()}
-                                                                    type="button"
-                                                                    onClick={() => handleDateChange(date)}
-                                                                    className={`dte-date-window__option ${isSelected ? 'dte-date-window__option--selected' : ''} ${isToday ? 'dte-date-window__option--today' : ''}`}
-                                                                    aria-pressed={isSelected}
-                                                                    aria-label={formatScheduleDateTime(date, {
-                                                                        weekday: 'long',
-                                                                        day: 'numeric',
-                                                                        month: 'long',
-                                                                        year: 'numeric',
-                                                                        timeZone: SCHEDULE_TIME_ZONE,
-                                                                    })}
-                                                                >
-                                                                    {isToday && (
-                                                                        <span className="dte-date-window__option-badge">
-                                                                            {t('calendar.today')}
-                                                                        </span>
-                                                                    )}
-                                                                    <span className="dte-date-window__option-weekday">
-                                                                        {formatScheduleDateTime(date, {
-                                                                            weekday: 'short',
-                                                                            timeZone: SCHEDULE_TIME_ZONE,
-                                                                        })}
-                                                                    </span>
-                                                                    <span className="dte-date-window__option-day">
-                                                                        {formatScheduleDateTime(date, {
-                                                                            day: 'numeric',
-                                                                            timeZone: SCHEDULE_TIME_ZONE,
-                                                                        })}
-                                                                    </span>
-                                                                    <span className="dte-date-window__option-month">
-                                                                        {formatScheduleDateTime(date, {
-                                                                            month: 'short',
-                                                                            timeZone: SCHEDULE_TIME_ZONE,
-                                                                        })}
-                                                                    </span>
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                ) : (
-                                                    <div className="overflow-x-auto">
-                                                        <DatePicker
-                                                            selected={selectedDate}
-                                                            onChange={handleDateChange}
-                                                            inline
-                                                            locale={es}
-                                                            minDate={minSelectableDate}
-                                                            maxDate={maxSelectableDate || undefined}
-                                                            filterDate={isDateSelectable}
-                                                            dayClassName={getDayClassName}
-                                                            renderCustomHeader={renderCalendarHeader}
-                                                            calendarClassName="dte-datepicker"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="flex min-h-[320px] flex-col rounded-[28px] border border-slate-200 bg-slate-50/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:p-5">
-                                            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                                                <div>
-                                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                                                        {SCHEDULE_TIME_ZONE_LABEL}
-                                                    </p>
-                                                    <h3 className="mt-2 text-xl font-semibold capitalize text-slate-900">
-                                                        {selectedDateLabel}
-                                                    </h3>
-                                                </div>
-                                                <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
-                                                    {slots.length}
-                                                </div>
-                                            </div>
-                                            {fieldErrors.slot && (
-                                                <p className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
-                                                    {fieldErrors.slot}
-                                                </p>
-                                            )}
-                                            <div className="custom-scrollbar flex-1 overflow-y-auto pr-1 sm:pr-2">
-                                                {loadingSlots ? (
-                                                    <div className="flex h-full min-h-[150px] items-center justify-center">
-                                                        <Loader2 className="animate-spin text-gray-400" />
-                                                    </div>
-                                                ) : slots.length > 0 ? (
-                                                    <div className="grid grid-cols-1 gap-2">
-                                                        {slots.map((slot, idx) => (
-                                                            <button
-                                                                key={idx}
-                                                                onClick={() => handleSlotSelect(slot)}
-                                                                className="group flex w-full items-center justify-between rounded-2xl border border-transparent bg-white px-4 py-4 text-left text-sm shadow-[0_12px_24px_-20px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5 hover:border-zinc-300 hover:bg-zinc-50 sm:text-base"
-                                                            >
-                                                                <span className="font-semibold text-slate-900">
-                                                                    {formatScheduleTime(slot.start)}
-                                                                </span>
-                                                                <span className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-zinc-700 transition-colors group-hover:border-zinc-300 group-hover:bg-white">
-                                                                    {t('calendar.book')}
-                                                                </span>
-                                                            </button>
+                                                    <div className="space-y-2">
+                                                        {Array.from({ length: 3 }).map((_, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className="h-[54px] animate-pulse rounded-[18px] border border-white/60 bg-white/35 backdrop-blur-xl"
+                                                            />
                                                         ))}
                                                     </div>
-                                                ) : (
-                                                    <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-white/75 px-6 text-center">
-                                                        <p className="text-sm font-semibold text-slate-700">
-                                                            {t('calendar.noSlots')}
-                                                        </p>
-                                                        <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-                                                            {t('calendar.noSlotsDescription')}
-                                                        </p>
+                                                </>
+                                            ) : selectableDates.length > 0 ? (
+                                                <>
+                                                    <div className="dte-date-strip mb-4">
+                                                        <div className="dte-date-strip__edge dte-date-strip__edge--left" />
+                                                        <div className="dte-date-strip__edge dte-date-strip__edge--right" />
+                                                        <div ref={dateStripRef} className="dte-date-strip__scroller">
+                                                            {selectableDates.map((date, index) => {
+                                                                const isSelected = isSameCalendarDay(date, selectedDate);
+                                                                const isToday = isSameCalendarDay(date, todayDate);
+                                                                const dateKey = formatCalendarDate(date);
+
+                                                                return (
+                                                                    <motion.button
+                                                                        key={dateKey || date.toISOString()}
+                                                                        type="button"
+                                                                        data-date-key={dateKey}
+                                                                        onClick={() => handleDateChange(date)}
+                                                                        className={`dte-date-strip__item ${isSelected ? 'dte-date-strip__item--selected' : ''} ${isToday ? 'dte-date-strip__item--today' : ''}`}
+                                                                        aria-pressed={isSelected}
+                                                                        aria-label={formatScheduleDateTime(date, {
+                                                                            weekday: 'long',
+                                                                            day: 'numeric',
+                                                                            month: 'long',
+                                                                            year: 'numeric',
+                                                                            timeZone: SCHEDULE_TIME_ZONE,
+                                                                        })}
+                                                                        initial={{ opacity: 0, y: 12 }}
+                                                                        animate={{ opacity: 1, y: 0 }}
+                                                                        transition={{ duration: 0.35, delay: index * 0.03 }}
+                                                                        whileHover={{ y: -4, scale: 1.01 }}
+                                                                        whileTap={{ scale: 0.98 }}
+                                                                    >
+                                                                        {isToday && (
+                                                                            <span className="dte-date-strip__today-pill">
+                                                                                {t('calendar.today')}
+                                                                            </span>
+                                                                        )}
+                                                                        <span className="dte-date-strip__weekday">
+                                                                            {formatScheduleDateTime(date, {
+                                                                                weekday: 'short',
+                                                                                timeZone: SCHEDULE_TIME_ZONE,
+                                                                            })}
+                                                                        </span>
+                                                                        <span className="dte-date-strip__day">
+                                                                            {formatScheduleDateTime(date, {
+                                                                                day: 'numeric',
+                                                                                timeZone: SCHEDULE_TIME_ZONE,
+                                                                            })}
+                                                                        </span>
+                                                                        <span className="dte-date-strip__month">
+                                                                            {formatScheduleDateTime(date, {
+                                                                                month: 'short',
+                                                                                timeZone: SCHEDULE_TIME_ZONE,
+                                                                            })}
+                                                                        </span>
+                                                                    </motion.button>
+                                                                );
+                                                            })}
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
+
+                                                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/35 pt-4">
+                                                        <div>
+                                                            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                                                {SCHEDULE_TIME_ZONE_LABEL}
+                                                            </p>
+                                                            <h3 className="mt-2 text-lg font-semibold capitalize text-slate-900 sm:text-xl">
+                                                                {selectedDateLabel}
+                                                            </h3>
+                                                        </div>
+                                                        <div className="rounded-full border border-white/60 bg-white/35 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-[0_10px_25px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl">
+                                                            {slots.length}
+                                                        </div>
+                                                    </div>
+
+                                                    {fieldErrors.slot && (
+                                                        <p className="mb-3 rounded-2xl border border-red-200/70 bg-red-50/70 px-3 py-2 text-sm text-red-700 backdrop-blur-xl">
+                                                            {fieldErrors.slot}
+                                                        </p>
+                                                    )}
+
+                                                    <div className="dte-slot-list custom-scrollbar flex-1 overflow-y-auto pr-1">
+                                                        {loadingSlots ? (
+                                                            <div className="flex h-full min-h-[92px] items-center justify-center">
+                                                                <Loader2 className="animate-spin text-slate-500" />
+                                                            </div>
+                                                        ) : slots.length > 0 ? (
+                                                            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+                                                                {slots.map((slot, idx) => (
+                                                                    <button
+                                                                        key={idx}
+                                                                        onClick={() => handleSlotSelect(slot)}
+                                                                        className="group flex w-full items-center justify-between rounded-[20px] border border-white/60 bg-white/35 px-4 py-3 text-left text-sm shadow-[0_14px_30px_-22px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-white hover:bg-white/50 sm:text-base"
+                                                                    >
+                                                                        <span className="font-semibold text-slate-900">
+                                                                            {formatScheduleTime(slot.start)}
+                                                                        </span>
+                                                                        <span className="rounded-full border border-slate-200/70 bg-white/70 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-700 transition-colors group-hover:border-white group-hover:bg-white">
+                                                                            {t('calendar.book')}
+                                                                        </span>
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="flex h-full min-h-[100px] flex-col items-center justify-center rounded-[24px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
+                                                                <p className="text-sm font-semibold text-slate-700">
+                                                                    {t('calendar.noSlots')}
+                                                                </p>
+                                                                <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
+                                                                    {t('calendar.noSlotsDescription')}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-1 items-center justify-center rounded-[28px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
+                                                    <p className="max-w-md text-sm leading-relaxed text-slate-600">
+                                                        {bookingWindowMessage}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </motion.div>
