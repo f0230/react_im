@@ -151,6 +151,7 @@ const ScheduleCall = () => {
     const dateStripRef = useRef(null);
 
     const [selectedDate, setSelectedDate] = useState(() => getTodayCalendarDate(SCHEDULE_TIME_ZONE) || new Date());
+    const [hasChosenDate, setHasChosenDate] = useState(false);
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
     const [submitting, setSubmitting] = useState(false);
 
@@ -390,7 +391,7 @@ const ScheduleCall = () => {
         selectedNode.scrollIntoView({
             behavior: 'smooth',
             block: 'nearest',
-            inline: 'center',
+            inline: 'nearest',
         });
     }, [selectedDateKey, selectableDates]);
 
@@ -430,6 +431,7 @@ const ScheduleCall = () => {
 
     const handleDateChange = useCallback((date) => {
         if (!date) return;
+        setHasChosenDate(true);
         setSelectedDate(clampDateToRange(date, minSelectableDate, maxSelectableDate));
     }, [maxSelectableDate, minSelectableDate]);
 
@@ -451,7 +453,7 @@ const ScheduleCall = () => {
             <div className="relative">
                             <MorphingText
                     texts={heroMorphTexts}
-                    className="!mx-0 !h-[3.2rem] !max-w-none font-product !text-[2.05rem] uppercase tracking-[-0.08em] text-white sm:!h-[4.5rem] sm:!text-[3.75rem] lg:!h-[6rem] lg:!text-[5.1rem]"
+                    className="!mx-0 !h-[3.2rem] !max-w-none font-product !text-[2.75rem] uppercase tracking-[-0.08em] text-white sm:!h-[4.5rem] sm:!text-[3.75rem] lg:!h-[6rem] lg:!text-[5.1rem]"
                 />
             </div>
         </div>
@@ -585,30 +587,9 @@ const ScheduleCall = () => {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
-                                    <div className="relative overflow-hidden rounded-[32px] border border-white/40 bg-[rgba(255,255,255,0.14)] p-4 shadow-[0_28px_70px_-34px_rgba(15,23,42,0.55)] backdrop-blur-[26px] sm:p-5">
-                                        <div className="pointer-events-none absolute inset-0">
-                                            <div className="absolute -left-10 top-0 h-36 w-36 rounded-full bg-white/30 blur-3xl" />
-                                            <div className="absolute right-0 top-12 h-44 w-44 rounded-full bg-sky-200/45 blur-3xl" />
-                                            <div className="absolute bottom-0 left-1/3 h-32 w-32 rounded-full bg-zinc-300/30 blur-3xl" />
-                                            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.05)_45%,rgba(15,23,42,0.06))]" />
-                                        </div>
-
-                                        <div className="relative flex h-[300px] flex-col">
-                                            <div className="mb-4 flex items-start justify-between gap-3">
-                                                <div>
-                                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                                                        {t('calendar.availabilityWindowLabel')}
-                                                    </p>
-                                                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
-                                                        {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
-                                                    </p>
-                                                </div>
-                                                {selectableDates.length > 0 && (
-                                                    <div className="rounded-full border border-white/60 bg-white/35 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-[0_10px_25px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl">
-                                                        {selectableDates.length}
-                                                    </div>
-                                                )}
-                                            </div>
+                                    <div className="relative p-5 sm:p-6">
+                                        <div className="relative flex min-h-[320px] flex-col sm:h-[320px]">
+                                     
 
                                             {loadingBookingRules ? (
                                                 <>
@@ -661,16 +642,13 @@ const ScheduleCall = () => {
                                                                         whileHover={{ y: -4, scale: 1.01 }}
                                                                         whileTap={{ scale: 0.98 }}
                                                                     >
-                                                                        {isToday && (
-                                                                            <span className="dte-date-strip__today-pill">
-                                                                                {t('calendar.today')}
-                                                                            </span>
-                                                                        )}
                                                                         <span className="dte-date-strip__weekday">
-                                                                            {formatScheduleDateTime(date, {
-                                                                                weekday: 'short',
-                                                                                timeZone: SCHEDULE_TIME_ZONE,
-                                                                            })}
+                                                                            {isToday
+                                                                                ? t('calendar.today')
+                                                                                : formatScheduleDateTime(date, {
+                                                                                    weekday: 'short',
+                                                                                    timeZone: SCHEDULE_TIME_ZONE,
+                                                                                })}
                                                                         </span>
                                                                         <span className="dte-date-strip__day">
                                                                             {formatScheduleDateTime(date, {
@@ -692,15 +670,19 @@ const ScheduleCall = () => {
 
                                                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-t border-white/35 pt-4">
                                                         <div>
-                                                            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                                                                {SCHEDULE_TIME_ZONE_LABEL}
-                                                            </p>
-                                                            <h3 className="mt-2 text-lg font-semibold capitalize text-slate-900 sm:text-xl">
-                                                                {selectedDateLabel}
-                                                            </h3>
-                                                        </div>
-                                                        <div className="rounded-full border border-white/60 bg-white/35 px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-[0_10px_25px_-20px_rgba(15,23,42,0.55)] backdrop-blur-xl">
-                                                            {slots.length}
+                                                         
+                                                            {hasChosenDate ? (
+                                                                <>
+                                                            
+                                                                    <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                                                                        {SCHEDULE_TIME_ZONE_LABEL}
+                                                                    </p>
+                                                                </>
+                                                            ) : (
+                                                                <p className="mt-2 text-sm font-medium text-slate-600">
+                                                                    {t('calendar.slotsAfterDaySelection')}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
 
@@ -711,7 +693,16 @@ const ScheduleCall = () => {
                                                     )}
 
                                                     <div className="dte-slot-list custom-scrollbar flex-1 overflow-y-auto pr-1">
-                                                        {loadingSlots ? (
+                                                        {!hasChosenDate ? (
+                                                            <div className="flex h-full min-h-[100px] flex-col items-center justify-center rounded-[24px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
+                                                                <p className="text-sm font-semibold text-slate-700">
+                                                                    {t('calendar.chooseDayPrompt')}
+                                                                </p>
+                                                                <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
+                                                                    {t('calendar.slotsAfterDaySelection')}
+                                                                </p>
+                                                            </div>
+                                                        ) : loadingSlots ? (
                                                             <div className="flex h-full min-h-[92px] items-center justify-center">
                                                                 <Loader2 className="animate-spin text-slate-500" />
                                                             </div>
@@ -721,7 +712,7 @@ const ScheduleCall = () => {
                                                                     <button
                                                                         key={idx}
                                                                         onClick={() => handleSlotSelect(slot)}
-                                                                        className="group flex w-full items-center justify-between rounded-[20px] border border-white/60 bg-white/35 px-4 py-3 text-left text-sm shadow-[0_14px_30px_-22px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-white hover:bg-white/50 sm:text-base"
+                                                                        className="group flex w-full items-center justify-between rounded-[22px] border border-white/60 bg-white/42 px-4 py-3 text-left text-sm shadow-[0_14px_30px_-22px_rgba(15,23,42,0.5)] backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-white hover:bg-white/58 sm:text-base"
                                                                     >
                                                                         <span className="font-semibold text-slate-900">
                                                                             {formatScheduleTime(slot.start)}
@@ -747,7 +738,7 @@ const ScheduleCall = () => {
                                             ) : (
                                                 <div className="flex flex-1 items-center justify-center rounded-[28px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
                                                     <p className="max-w-md text-sm leading-relaxed text-slate-600">
-                                                        {bookingWindowMessage}
+                                                        {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
                                                     </p>
                                                 </div>
                                             )}
