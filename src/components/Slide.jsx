@@ -36,7 +36,7 @@ const Section6 = () => {
       content: (
         <SlideContent
           title={t('carousel.slides.pymes.title')}
-          textColor="white"
+          textColor="black"
           text={t('carousel.slides.pymes.text')}
         />
       ),
@@ -56,7 +56,7 @@ const Section6 = () => {
       content: (
         <SlideContent
           title={t('carousel.slides.emprendedores.title')}
-          textColor="white"
+          textColor="black"
           text={t('carousel.slides.emprendedores.text')}
         />
       ),
@@ -104,10 +104,12 @@ const Section6 = () => {
               key={index}
               className="w-full md:w-[750px] lg:w-[1000px] xl:w-[1300px] flex-shrink-0"
             >
-              {({ isActive }) => (
+              {({ isActive, isPrev, isNext }) => (
                 <CarouselSlide
                   slide={slide}
                   isActive={isActive}
+                  isPrev={isPrev}
+                  isNext={isNext}
                 />
               )}
             </SwiperSlide>

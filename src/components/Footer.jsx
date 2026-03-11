@@ -27,8 +27,8 @@ const Footer = () => {
       role="contentinfo"
       className="bg-white text-black px-6 md:px-12 py-2 font-product border-t border-neutral-200"
     >
-      <div className="max-w-[1080px] mx-auto flex flex-col md:flex-row justify-between items-center h-[300px] md:h-[500px] px-8">
-        <div className="hidden md:flex flex-col justify-between w-full md:w-1/2 h-full py-8">
+      <div className="max-w-[1080px] mx-auto flex flex-col md:flex-row items-center md:items-start h-auto md:h-[500px] px-8 pt-0">
+        <div className="hidden md:flex flex-col justify-between w-full md:w-1/2 h-full py-8 text-left">
           <div>
             <p className="text-[34px] text-neutral-500">{t("footer.contactTitle")}</p>
             <h2 className="text-[45px] md:text-[60px] leading-none">{t("footer.headline")}</h2>
@@ -43,14 +43,14 @@ const Footer = () => {
             <p>{contactInfo.years}</p>
           </div>
         </div>
-        <div className="flex flex-col md:justify-center justify-between items-center w-[350px] h-full py-8 gap-8">
-          <div className="flex items-center w-[300px] px-2">
+        <div className="flex flex-col justify-center items-center md:items-end w-full md:w-[350px] h-auto md:h-full pt-2 pb-6 md:py-8 gap-4 md:gap-8 text-center md:text-left md:ml-auto">
+          <div className="mt-0 mb-0 flex items-center justify-center md:justify-end w-[300px] px-2">
             <img src={logoDTE} alt="Logo Grupo DTE" />
           </div>
-          <div className="flex flex-col px-4 gap-3 w-[350px]">
+          <div className="flex flex-col px-2 gap-[10px] md:gap-3 w-full md:w-[350px]">
             <a
               href={`mailto:${contactInfo.email}`}
-              className="bg-black text-white text-[22px] h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition cursor-pointer"
+              className="bg-black text-white text-[18px] md:text-[22px] h-[40px] md:h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition cursor-pointer"
             >
               {t("footer.ctaMeeting")}
             </a>
@@ -58,7 +58,7 @@ const Footer = () => {
               href="https://wa.me/59896219905"
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-black text-white text-[22px] h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition"
+              className="bg-black text-white text-[18px] md:text-[22px] h-[40px] md:h-[42px] rounded-full text-center font-product px-6 flex items-center justify-center hover:opacity-80 transition"
             >
               {t("footer.ctaWhatsapp")}
             </a>
@@ -67,7 +67,7 @@ const Footer = () => {
       </div>
 
       {/* Pie de página con metainformación */}
-      <div className="grid grid-cols-3 items-center w-full max-w-[1080px] mx-auto px-4">
+      <div className="grid grid-cols-3 items-center w-full max-w-[1080px] mx-auto px-4 pt-3 md:pt-0">
         {/* Columna izquierda */}
         <div className="text-left">
           <p className="text-[10px] text-neutral-500">

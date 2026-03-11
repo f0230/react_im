@@ -44,8 +44,8 @@
       "futuro"
     ],
     "subtitle": "Desarrollamos soluciones estratégicas",
-    "ctaContact": "Contactanos",
-    "ctaServices": "Servicios",
+    "ctaContact": "Registrarte como cliente",
+    "ctaServices": "Descargar brochure",
     "popupTitleLine1": "Hola!",
     "popupTitleLine2": "Bienvenido",
     "popupSubtitle": "si tiene alguna consulta contáctenos",
@@ -78,9 +78,9 @@
   },
   "section4": {
     "aria": "Sección de espacios y contenidos",
-    "spacesTitle": "ESPACIOS",
+    "spacesTitle": "Espacios",
     "spacesDescription": "Creamos entornos físicos y digitales con identidad propia.",
-    "contentTitle": "CONTENIDOS",
+    "contentTitle": "Contenidos",
     "contentDescription": "Generamos material estratégico que conecta y comunica.",
     "cta": "Ver más",
     "ctaAria": "Ver más sobre servicios",

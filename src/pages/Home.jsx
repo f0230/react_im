@@ -49,7 +49,7 @@ const Home = () => {
 
           <HeroSection onContactClick={handleContactClick} />
         </div>
-        <div className="relative w-full">
+        <div className="relative w-full mt-[10px]">
           <Section2 onContactClick={handleContactClick} />
         </div>
 
@@ -61,7 +61,7 @@ const Home = () => {
                 <Section3 onContactClick={handleContactClick} />
               </LazySection>
             </div>
-            <div className="relative w-full">
+            <div className="relative w-full mt-[10px]">
               <LazySection>
                 <Section4 />
               </LazySection>

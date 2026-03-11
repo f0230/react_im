@@ -5,8 +5,22 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const CarouselSlide = ({ slide, isActive }) => {
+const CarouselSlide = ({ slide, isActive, isPrev, isNext }) => {
   const innerRef = useRef(null);
+
+  const slideStateClass = isActive
+    ? 'scale-100 opacity-100 blur-0'
+    : isPrev
+      ? 'scale-[0.97] opacity-80 blur-[2px] -translate-x-2'
+      : isNext
+        ? 'scale-[0.97] opacity-80 blur-[2px] translate-x-2'
+        : 'scale-95 opacity-65 blur-[4px]';
+
+  const backgroundStateClass = isActive
+    ? 'scale-100 blur-0'
+    : isPrev || isNext
+      ? 'scale-[1.03] blur-[2px]'
+      : 'scale-[1.05] blur-[4px]';
 
   useEffect(() => {
     if (!innerRef.current) return;
@@ -41,19 +55,19 @@ const CarouselSlide = ({ slide, isActive }) => {
 
   return (
     <div
-      className={`relative snap-center w-full h-full overflow-hidden rounded-xl flex items-center justify-center transition-all duration-500 ease-in-out transform ${isActive ? 'scale-100 opacity-100' : 'scale-95 opacity-75'}`}
+      className={`relative snap-center w-full h-full overflow-hidden rounded-xl flex items-center justify-center transform transition-all duration-700 ease-out ${slideStateClass}`}
       aria-hidden={!isActive}
     >
       {/* Fondo */}
       <div
-        className="absolute inset-0 bg-cover bg-center z-0"
+        className={`absolute inset-0 bg-cover bg-center z-0 transition-all duration-700 ease-out ${backgroundStateClass}`}
         style={{ backgroundImage: `url(${slide.background})` }}
       />
 
       {/* Contenido */}
       <div
         ref={innerRef}
-        className="relative z-10 flex justify-center items-center p-4 md:p-8 w-full h-full font-product"
+        className="relative z-10 flex justify-center items-center p-4 md:p-8 w-full h-full font-product transition-all duration-700 ease-out"
       >
         {slide.content}
       </div>

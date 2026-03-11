@@ -1,5 +1,5 @@
 // Section3.jsx optimizado
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import OptimizedImage from "@/components/OptimizedImage";
 import BannerWeb from "../assets/BANNER_CAMPAÑA.webp";
 import BannerMovil from "../assets/BANNER_CAMPAÑA_MOVIL.webp";
@@ -13,100 +13,23 @@ import { useTranslation } from "react-i18next";
 
 const Section3 = ({ onContactClick }) => {
   const { t } = useTranslation();
-  const bannerWebRef = useRef(null);
-  const bannerMobileRef = useRef(null);
-  const firstSectionRef = useRef(null);
-
-  useEffect(() => {
-    let ctx;
-    let cancelled = false;
-
-    const revealFallback = () => {
-      [firstSectionRef, bannerWebRef, bannerMobileRef].forEach((ref) => {
-        if (ref.current) {
-          ref.current.style.opacity = "1";
-          ref.current.style.transform = "none";
-        }
-      });
-    };
-
-    const loadGSAP = async () => {
-      try {
-        const gsapModule = await import("gsap");
-        const scrollTriggerModule = await import("gsap/ScrollTrigger");
-        const gsap = gsapModule.gsap || gsapModule.default || gsapModule;
-        const ScrollTrigger =
-          scrollTriggerModule.ScrollTrigger ||
-          scrollTriggerModule.default ||
-          scrollTriggerModule;
-
-        if (cancelled || !gsap || !ScrollTrigger) {
-          revealFallback();
-          return;
-        }
-
-        gsap.registerPlugin(ScrollTrigger);
-
-        const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-        if (prefersReducedMotion) {
-          revealFallback();
-          return;
-        }
-
-        ctx = gsap.context(() => {
-          const animate = (ref) => {
-            if (ref.current) {
-              gsap.fromTo(
-                ref.current,
-                { opacity: 0.95, y: 50 },
-                {
-                  opacity: 1,
-                  y: 0,
-                  ease: "power2.out",
-                  duration: 1,
-                  scrollTrigger: {
-                    trigger: ref.current,
-                    start: "top 100%",
-                    end: "bottom 70%",
-                    scrub: 1,
-                  },
-                }
-              );
-            }
-          };
-
-          [firstSectionRef, bannerWebRef, bannerMobileRef].forEach(animate);
-        });
-
-        ScrollTrigger.refresh();
-      } catch (error) {
-        revealFallback();
-      }
-    };
-
-    loadGSAP();
-
-    return () => {
-      cancelled = true;
-      if (ctx) ctx.revert();
-    };
-  }, []);
 
   return (
     <section
-      className="font-product relative w-full flex justify-center items-start px-2 z-10 mt-2"
+      className="font-product relative w-full flex justify-center items-start px-2 pt-[10px] z-10"
       aria-label={t("section3.aria.label")}
     >
-      <div className="relative w-full max-w-[1440px] overflow-hidden mt-1 sm:mt-0">
-        <div className="flex flex-col md:flex-row w-full gap-2">
+      <div className="relative w-full max-w-[1440px] overflow-hidden">
+        <div className="flex flex-col md:grid md:grid-cols-2 w-full gap-[10px]">
           {/* Bloque de texto con fondo dinámico */}
-          <div
-            ref={firstSectionRef}
-            className="w-full md:w-1/2 h-[510px] sm:h-[600px] md:h-[625px] bg-cover bg-center bg-no-repeat bg-crem/10 p-6 opacity-0 translate-y-10"
-          >
+          <div className="group relative w-full h-[510px] sm:h-[600px] md:h-[625px] overflow-hidden bg-cover bg-center bg-no-repeat bg-crem/10 p-6">
             <picture className="absolute inset-0 -z-10">
               <source media="(min-width: 768px)" srcSet={BannerWebDTE} />
-              <img src={BannerMovilDTE} alt={t("section3.aria.bgAlt")} className="w-full h-full object-cover" />
+              <img
+                src={BannerMovilDTE}
+                alt={t("section3.aria.bgAlt")}
+                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+              />
             </picture>
 
             <div className="h-full flex flex-col justify-center items-center text-center">
@@ -132,7 +55,7 @@ const Section3 = ({ onContactClick }) => {
           </div>
 
           {/* Imagen + contenido */}
-          <div className="w-full md:w-1/2 h-[510px] sm:h-[600px] md:h-[625px] relative overflow-hidden flex items-center justify-center">
+          <div className="group w-full h-[510px] sm:h-[600px] md:h-[625px] relative overflow-hidden flex items-center justify-center">
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 md:p-10 z-20">
               <h2 className="text-white text-[40px] md:text-[60px] font-normal">{t("section3.rightTitle")}</h2>
               <p className="mb-10 w-[250px] text-[12px] md:text-[17px] text-white leading-none">
@@ -144,22 +67,22 @@ const Section3 = ({ onContactClick }) => {
             </div>
 
             {/* Imagen web */}
-            <div className="absolute inset-0 hidden sm:block z-10 opacity-0 translate-y-10" ref={bannerWebRef}>
+            <div className="absolute inset-0 hidden sm:block z-10">
               <OptimizedImage
                 src={BannerWeb}
                 alt={t("section3.aria.bannerDesktopAlt")}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
                 loading="lazy"
                 decoding="async"
               />
             </div>
 
             {/* Imagen móvil */}
-            <div className="absolute inset-0 sm:hidden z-10 opacity-0 translate-y-10" ref={bannerMobileRef}>
+            <div className="absolute inset-0 sm:hidden z-10">
               <OptimizedImage
                 src={BannerMovil}
                 alt={t("section3.aria.bannerMobileAlt")}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
                 loading="lazy"
                 decoding="async"
               />

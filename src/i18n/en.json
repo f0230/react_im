@@ -44,8 +44,8 @@
       "future"
     ],
     "subtitle": "We develop strategic solutions",
-    "ctaContact": "Contact us",
-    "ctaServices": "Services",
+    "ctaContact": "Register as a client",
+    "ctaServices": "Download brochure",
     "popupTitleLine1": "Hi!",
     "popupTitleLine2": "Welcome",
     "popupSubtitle": "if you have any questions, contact us",
@@ -78,9 +78,9 @@
   },
   "section4": {
     "aria": "Spaces and content section",
-    "spacesTitle": "SPACES",
+    "spacesTitle": "Spaces",
     "spacesDescription": "We create physical and digital environments with their own identity.",
-    "contentTitle": "CONTENT",
+    "contentTitle": "Content",
     "contentDescription": "We generate strategic material that connects and communicates.",
     "cta": "See more",
     "ctaAria": "See more about services",

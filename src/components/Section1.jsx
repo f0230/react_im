@@ -36,7 +36,7 @@ const HeroSection = ({ onContactClick }) => {
         <link rel="preload" as="image" href={bgMobileImg} media="(max-width: 767px)" fetchpriority="high" />
         <link rel="preload" as="image" href={grupodte} fetchpriority="high" />
       </Helmet>
-    <section className="font-product relative w-full flex justify-center items-start px-2 z-10" aria-label={t("section1.aria.hero")}>
+    <section className="font-product relative w-full flex justify-center items-start px-2 pt-[10px] z-10" aria-label={t("section1.aria.hero")}>
       <div className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px] sm:h-[600px] md:h-[700px] lg:h-[700px] overflow-hidden mx-auto">
         <AnimatedContent distance={150} direction="vertical" reverse={false} config={{ tension: 80, friction: 20 }} initialOpacity={0.2} animateOpacity scale={1}>
 
@@ -84,8 +84,8 @@ const HeroSection = ({ onContactClick }) => {
                 </FadeContent>
 
                 <AnimatedContent distance={40} direction="vertical" reverse config={{ tension: 120, friction: 14 }} initialOpacity={0} animateOpacity delay={400}>
-                  <h1 className="mx-auto text-[30px] sm:text-5xl md:text-[45px] lg:text-[60px] leading-none text-center">
-                    {t("section1.titleLine")}<br />
+                  <h1 className="mx-auto text-[26px] sm:text-5xl md:text-[45px] lg:text-[60px] leading-none text-center whitespace-nowrap">
+                    {t("section1.titleLine")}{" "}
                     <span className="font-bold inline-block">
                       <RotatingText
                         texts={safeWords}
@@ -103,9 +103,12 @@ const HeroSection = ({ onContactClick }) => {
                   <p className="text-[12px] md:text-[17px] mt-4">{t("section1.subtitle")}</p>
                 </FadeContent>
 
-                <div className="mt-4 md:mt-8 flex flex-wrap justify-center gap-2 md:gap-4">
+                <div className="mt-4 md:mt-8 flex flex-col md:flex-row items-center justify-center gap-3 md:gap-5">
                   <AnimatedContent distance={60} direction="horizontal" reverse config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={900} className="inline-block">
-                    <button onClick={onContactClick} className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-skyblue text-white rounded-[37px] hover:bg-skyblue/95 transition">
+                    <button
+                      onClick={onContactClick}
+                      className="w-[210px] md:w-auto px-6 md:px-8 text-[13px] md:text-[17px] h-[40px] md:h-[56px] bg-[#19d327] text-white rounded-full font-medium hover:bg-[#15bf22] transition-colors"
+                    >
                       {t("section1.ctaContact")}
                     </button>
                   </AnimatedContent>
@@ -114,9 +117,10 @@ const HeroSection = ({ onContactClick }) => {
 
                   <AnimatedContent distance={60} direction="horizontal" reverse={false} config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={1050} className="inline-block">
                     <Link to="/servicios">
-                      <button className="text-[12px] md:text-[17px] w-[114px] h-[34px] md:w-[165px] md:h-[42px] bg-white text-skyblue rounded-[37px] hover:bg-white/95 transition">
+                      <button className="w-[210px] md:w-auto px-6 md:px-8 text-[13px] md:text-[17px] h-[40px] md:h-[56px] bg-white text-skyblue border-2 border-skyblue rounded-full font-medium hover:bg-skyblue/5 transition-colors">
                         {t("section1.ctaServices")}
-                      </button></Link>
+                      </button>
+                    </Link>
 
                   </AnimatedContent>
                 </div>
