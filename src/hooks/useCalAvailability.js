@@ -14,6 +14,8 @@ const normalizeSlots = (data) => {
 const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
     const [slots, setSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
+    const [bookingRules, setBookingRules] = useState(null);
+    const [loadingBookingRules, setLoadingBookingRules] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState(null);
     const onErrorRef = useRef(onError);
 
@@ -27,9 +29,48 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
     }, []);
 
     useEffect(() => {
+        let isCancelled = false;
+        const controller = new AbortController();
+
+        const fetchBookingRules = async () => {
+            setLoadingBookingRules(true);
+
+            try {
+                const response = await fetch(
+                    `/api/cal/booking-rules?timeZone=${encodeURIComponent(SCHEDULE_TIME_ZONE)}`,
+                    { signal: controller.signal }
+                );
+
+                if (!response.ok) throw new Error('Failed to fetch booking rules');
+
+                const data = await response.json();
+                if (!isCancelled) {
+                    setBookingRules(data?.data || null);
+                }
+            } catch (error) {
+                if (!isCancelled && error?.name !== 'AbortError') {
+                    console.warn('Error fetching booking rules:', error);
+                }
+            } finally {
+                if (!isCancelled) {
+                    setLoadingBookingRules(false);
+                }
+            }
+        };
+
+        fetchBookingRules();
+
+        return () => {
+            isCancelled = true;
+            controller.abort();
+        };
+    }, []);
+
+    useEffect(() => {
         if (!enabled || !selectedDate) return undefined;
 
         let isCancelled = false;
+        const controller = new AbortController();
 
         const fetchAvailability = async () => {
             setLoadingSlots(true);
@@ -42,7 +83,8 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
                 }
 
                 const response = await fetch(
-                    `/api/cal/availability?start=${range.startIso}&end=${range.endIso}&timeZone=${SCHEDULE_TIME_ZONE}`
+                    `/api/cal/availability?start=${range.startIso}&end=${range.endIso}&timeZone=${SCHEDULE_TIME_ZONE}`,
+                    { signal: controller.signal }
                 );
 
                 if (!response.ok) throw new Error('Failed to fetch slots');
@@ -52,7 +94,7 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
                     setSlots(normalizeSlots(data));
                 }
             } catch (error) {
-                if (!isCancelled) {
+                if (!isCancelled && error?.name !== 'AbortError') {
                     console.error('Error fetching slots:', error);
                     onErrorRef.current?.(error);
                 }
@@ -67,10 +109,13 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
 
         return () => {
             isCancelled = true;
+            controller.abort();
         };
     }, [enabled, resetAvailability, selectedDate]);
 
     return {
+        bookingRules,
+        loadingBookingRules,
         slots,
         loadingSlots,
         selectedSlot,

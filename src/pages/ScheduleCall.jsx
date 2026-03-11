@@ -3,19 +3,22 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import DatePicker from 'react-datepicker';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Check, Loader2, ArrowLeft } from 'lucide-react';
+import { Clock, Check, Loader2, ArrowLeft, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { es } from 'date-fns/locale';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import Navbar from '@/components/Navbar';
+import { getTodayCalendarDate, parseCalendarDate } from '@/utils/calBookingWindow';
 import { isValidPhone } from '@/utils/phone-validation';
 import { stripLeadingPlus } from '@/utils/phone-format';
-import { formatScheduleDate, formatScheduleTime, SCHEDULE_TIME_ZONE, SCHEDULE_TIME_ZONE_LABEL } from '@/utils/scheduleTime';
+import { formatScheduleDate, formatScheduleDateTime, formatScheduleTime, SCHEDULE_TIME_ZONE, SCHEDULE_TIME_ZONE_LABEL } from '@/utils/scheduleTime';
 
 import "react-datepicker/dist/react-datepicker.css";
 import '@/index.css';
+import '@/styles/schedule-call-calendar.css';
 
 const TRACKING_QUERY_KEYS = [
     'utm_source',
@@ -91,6 +94,20 @@ const buildTrackingPayload = ({ pathname, search }) => {
 };
 
 const getProjectLabel = (project) => project?.title || project?.name || project?.project_name || 'Project';
+const isSameCalendarDay = (left, right) => {
+    if (!left || !right) return false;
+
+    return left.getFullYear() === right.getFullYear()
+        && left.getMonth() === right.getMonth()
+        && left.getDate() === right.getDate();
+};
+
+const clampDateToRange = (value, minDate, maxDate) => {
+    const normalizedDate = parseCalendarDate(value) || getTodayCalendarDate(SCHEDULE_TIME_ZONE) || new Date();
+    if (minDate && normalizedDate < minDate) return minDate;
+    if (maxDate && normalizedDate > maxDate) return maxDate;
+    return normalizedDate;
+};
 
 const ScheduleCall = () => {
     const { t } = useTranslation();
@@ -104,7 +121,7 @@ const ScheduleCall = () => {
     const isClient = role === 'client';
     const requiresPhone = !isAdmin && !isWorker;
 
-    const [selectedDate, setSelectedDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState(() => getTodayCalendarDate(SCHEDULE_TIME_ZONE) || new Date());
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
     const [submitting, setSubmitting] = useState(false);
 
@@ -215,6 +232,8 @@ const ScheduleCall = () => {
     }, [client?.user_id, isAdmin, isClient, isWorker, profile?.is_client_leader, projectId, user?.id]);
 
     const {
+        bookingRules,
+        loadingBookingRules,
         slots,
         loadingSlots,
         selectedSlot,
@@ -224,6 +243,104 @@ const ScheduleCall = () => {
         enabled: Boolean(selectedDate),
         onError: () => toast.error(t('calendar.errorFetchingSlots'))
     });
+
+    const todayDate = useMemo(
+        () => getTodayCalendarDate(SCHEDULE_TIME_ZONE) || new Date(),
+        []
+    );
+
+    const minSelectableDate = useMemo(
+        () => parseCalendarDate(bookingRules?.dateLimits?.minDate) || todayDate,
+        [bookingRules?.dateLimits?.minDate, todayDate]
+    );
+
+    const maxSelectableDate = useMemo(
+        () => parseCalendarDate(bookingRules?.dateLimits?.maxDate),
+        [bookingRules?.dateLimits?.maxDate]
+    );
+
+    const selectedDateLabel = useMemo(
+        () => formatScheduleDateTime(selectedDate, {
+            day: 'numeric',
+            month: 'long',
+            weekday: 'long',
+            timeZone: SCHEDULE_TIME_ZONE,
+        }),
+        [selectedDate]
+    );
+
+    const minSelectableDateLabel = useMemo(
+        () => minSelectableDate
+            ? formatScheduleDateTime(minSelectableDate, {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                timeZone: SCHEDULE_TIME_ZONE,
+            })
+            : '',
+        [minSelectableDate]
+    );
+
+    const maxSelectableDateLabel = useMemo(
+        () => maxSelectableDate
+            ? formatScheduleDateTime(maxSelectableDate, {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                timeZone: SCHEDULE_TIME_ZONE,
+            })
+            : '',
+        [maxSelectableDate]
+    );
+
+    const bookingWindowMessage = useMemo(() => {
+        const type = bookingRules?.bookingWindow?.type;
+        const value = bookingRules?.bookingWindow?.value;
+
+        if (type === 'businessDays' && value != null && maxSelectableDateLabel) {
+            return t('calendar.futureLimitBusinessDays', {
+                count: value,
+                date: maxSelectableDateLabel,
+            });
+        }
+
+        if ((type === 'calendarDays' || type === 'days') && value != null && maxSelectableDateLabel) {
+            return t('calendar.futureLimitDays', {
+                count: value,
+                date: maxSelectableDateLabel,
+            });
+        }
+
+        if (minSelectableDateLabel && maxSelectableDateLabel && !isSameCalendarDay(minSelectableDate, maxSelectableDate)) {
+            return t('calendar.futureLimitRange', {
+                start: minSelectableDateLabel,
+                end: maxSelectableDateLabel,
+            });
+        }
+
+        if (maxSelectableDateLabel) {
+            return t('calendar.futureLimitUntil', { date: maxSelectableDateLabel });
+        }
+
+        return t('calendar.futureLimitFallback');
+    }, [
+        bookingRules?.bookingWindow?.type,
+        bookingRules?.bookingWindow?.value,
+        maxSelectableDate,
+        maxSelectableDateLabel,
+        minSelectableDate,
+        minSelectableDateLabel,
+        t,
+    ]);
+
+    useEffect(() => {
+        if (!selectedDate) return;
+
+        const nextSelectedDate = clampDateToRange(selectedDate, minSelectableDate, maxSelectableDate);
+        if (!isSameCalendarDay(selectedDate, nextSelectedDate)) {
+            setSelectedDate(nextSelectedDate);
+        }
+    }, [maxSelectableDate, minSelectableDate, selectedDate]);
 
     useEffect(() => {
         if (client || user) {
@@ -258,6 +375,73 @@ const ScheduleCall = () => {
         });
         setBookingPhase('form');
     };
+
+    const handleDateChange = useCallback((date) => {
+        if (!date) return;
+        setSelectedDate(clampDateToRange(date, minSelectableDate, maxSelectableDate));
+    }, [maxSelectableDate, minSelectableDate]);
+
+    const isDateSelectable = useCallback((date) => {
+        const normalizedDate = parseCalendarDate(date) || date;
+        if (minSelectableDate && normalizedDate < minSelectableDate) return false;
+        if (maxSelectableDate && normalizedDate > maxSelectableDate) return false;
+        return true;
+    }, [maxSelectableDate, minSelectableDate]);
+
+    const getDayClassName = useCallback((date) => {
+        const normalizedDate = parseCalendarDate(date) || date;
+        const classNames = ['dte-datepicker__day-cell'];
+
+        if (isSameCalendarDay(normalizedDate, todayDate)) {
+            classNames.push('dte-datepicker__day-cell--today');
+        }
+
+        if (isSameCalendarDay(normalizedDate, selectedDate)) {
+            classNames.push('dte-datepicker__day-cell--selected');
+        }
+
+        if (!isDateSelectable(normalizedDate)) {
+            classNames.push('dte-datepicker__day-cell--blocked');
+        }
+
+        return classNames.join(' ');
+    }, [isDateSelectable, selectedDate, todayDate]);
+
+    const renderCalendarHeader = useCallback(({
+        date,
+        decreaseMonth,
+        increaseMonth,
+        prevMonthButtonDisabled,
+        nextMonthButtonDisabled,
+    }) => (
+        <div className="dte-datepicker__header-bar">
+            <button
+                type="button"
+                onClick={decreaseMonth}
+                disabled={prevMonthButtonDisabled}
+                className="dte-datepicker__nav-button"
+                aria-label={t('calendar.previousMonth')}
+            >
+                <ChevronLeft size={18} />
+            </button>
+            <div className="dte-datepicker__month-pill">
+                {formatScheduleDateTime(date, {
+                    month: 'long',
+                    year: 'numeric',
+                    timeZone: SCHEDULE_TIME_ZONE,
+                })}
+            </div>
+            <button
+                type="button"
+                onClick={increaseMonth}
+                disabled={nextMonthButtonDisabled}
+                className="dte-datepicker__nav-button"
+                aria-label={t('calendar.nextMonth')}
+            >
+                <ChevronRight size={18} />
+            </button>
+        </div>
+    ), [t]);
 
     const handleFormSubmit = async (e) => {
         e.preventDefault();
@@ -414,28 +598,66 @@ const ScheduleCall = () => {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
-                                    <h2 className="mb-5 text-lg font-bold sm:mb-6 sm:text-xl">
-                                        {t('calendar.selectDateTime')}
-                                    </h2>
-                                    <div className="flex flex-1 flex-col gap-6 xl:flex-row xl:gap-7">
-                                        <div className="w-full shrink-0 xl:max-w-[320px]">
-                                            <div className="overflow-x-auto rounded-2xl border border-gray-100 p-2 sm:p-3">
-                                                <DatePicker
-                                                    selected={selectedDate}
-                                                    onChange={(date) => setSelectedDate(date)}
-                                                    inline
-                                                    minDate={new Date()}
-                                                    calendarClassName="!border-0 !font-sans"
-                                                />
+                                    <div className="mb-5 flex flex-col gap-3 sm:mb-6">
+                                        <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
+                                            {t('calendar.selectDateTime')}
+                                        </h2>
+                                        <p className="max-w-2xl text-sm leading-relaxed text-slate-500">
+                                            {t('calendar.availabilityHint', { timeZone: SCHEDULE_TIME_ZONE_LABEL })}
+                                        </p>
+                                    </div>
+                                    <div className="grid flex-1 gap-5 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)] xl:gap-6">
+                                        <div className="flex flex-col gap-4">
+                                            <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(13,209,34,0.12),_transparent_42%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_100%)] p-4 shadow-[0_22px_45px_-32px_rgba(15,23,42,0.45)] sm:p-5">
+                                                <div className="mb-4 flex items-start gap-3 rounded-2xl border border-white/80 bg-white/75 p-4 backdrop-blur">
+                                                    <div className="mt-0.5 rounded-2xl bg-emerald-500/10 p-2 text-emerald-700">
+                                                        <Sparkles size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                                                            {t('calendar.availabilityWindowLabel')}
+                                                        </p>
+                                                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                                                            {loadingBookingRules ? t('calendar.loadingWindow') : bookingWindowMessage}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="overflow-x-auto">
+                                                    <DatePicker
+                                                        selected={selectedDate}
+                                                        onChange={handleDateChange}
+                                                        inline
+                                                        locale={es}
+                                                        minDate={minSelectableDate}
+                                                        maxDate={maxSelectableDate || undefined}
+                                                        filterDate={isDateSelectable}
+                                                        dayClassName={getDayClassName}
+                                                        renderCustomHeader={renderCalendarHeader}
+                                                        calendarClassName="dte-datepicker"
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex-1">
+                                        <div className="flex min-h-[320px] flex-col rounded-[28px] border border-slate-200 bg-slate-50/80 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] sm:p-5">
+                                            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                                        {SCHEDULE_TIME_ZONE_LABEL}
+                                                    </p>
+                                                    <h3 className="mt-2 text-xl font-semibold capitalize text-slate-900">
+                                                        {selectedDateLabel}
+                                                    </h3>
+                                                </div>
+                                                <div className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm">
+                                                    {slots.length}
+                                                </div>
+                                            </div>
                                             {fieldErrors.slot && (
                                                 <p className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">
                                                     {fieldErrors.slot}
                                                 </p>
                                             )}
-                                            <div className="custom-scrollbar max-h-[290px] overflow-y-auto pr-1 sm:max-h-[360px] sm:pr-2 xl:max-h-[430px]">
+                                            <div className="custom-scrollbar flex-1 overflow-y-auto pr-1 sm:pr-2">
                                                 {loadingSlots ? (
                                                     <div className="flex h-full min-h-[150px] items-center justify-center">
                                                         <Loader2 className="animate-spin text-gray-400" />
@@ -446,20 +668,25 @@ const ScheduleCall = () => {
                                                             <button
                                                                 key={idx}
                                                                 onClick={() => handleSlotSelect(slot)}
-                                                                className="group flex w-full items-center justify-between rounded-xl border border-gray-200 px-4 py-3 text-left text-sm font-medium transition-all hover:border-[#0DD122] hover:bg-[#0DD122]/5 sm:text-base"
+                                                                className="group flex w-full items-center justify-between rounded-2xl border border-transparent bg-white px-4 py-4 text-left text-sm shadow-[0_12px_24px_-20px_rgba(15,23,42,0.35)] transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 sm:text-base"
                                                             >
-                                                                <span>
+                                                                <span className="font-semibold text-slate-900">
                                                                     {formatScheduleTime(slot.start)}
                                                                 </span>
-                                                                <span className="text-[#0DD122] opacity-0 transition-opacity group-hover:opacity-100">
+                                                                <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-emerald-700 transition-colors group-hover:border-emerald-300 group-hover:bg-white">
                                                                     {t('calendar.book')}
                                                                 </span>
                                                             </button>
                                                         ))}
                                                     </div>
                                                 ) : (
-                                                    <div className="flex min-h-[150px] items-center justify-center text-sm text-gray-400">
-                                                        {t('calendar.noSlots')}
+                                                    <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-[24px] border border-dashed border-slate-200 bg-white/75 px-6 text-center">
+                                                        <p className="text-sm font-semibold text-slate-700">
+                                                            {t('calendar.noSlots')}
+                                                        </p>
+                                                        <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
+                                                            {t('calendar.noSlotsDescription')}
+                                                        </p>
                                                     </div>
                                                 )}
                                             </div>
@@ -479,7 +706,7 @@ const ScheduleCall = () => {
                                     </div>
 
                                     <div className="mb-6 rounded-xl bg-gray-50 p-4">
-                                        <p className="text-sm text-gray-500">Selected Time · {SCHEDULE_TIME_ZONE_LABEL}</p>
+                                        <p className="text-sm text-gray-500">{t('calendar.selectedTimeLabel')} · {SCHEDULE_TIME_ZONE_LABEL}</p>
                                         <p className="mt-1 font-bold">
                                             {selectedSlot?.start
                                                 ? `${formatScheduleDate(selectedSlot.start)} a las ${formatScheduleTime(selectedSlot.start)}`
@@ -490,12 +717,12 @@ const ScheduleCall = () => {
                                     <form onSubmit={handleFormSubmit} className="space-y-4">
                                         {projects.length > 0 && (
                                             <div>
-                                                <label className="mb-1 block text-sm font-medium text-gray-700">Select Project</label>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">{t('calendar.projectLabel')}</label>
                                                 <MultiUseSelect
                                                     options={projects}
                                                     value={selectedProjectId}
                                                     onChange={setSelectedProjectId}
-                                                    placeholder="Select a project"
+                                                    placeholder={t('calendar.projectPlaceholder')}
                                                     getOptionValue={(p) => p.id}
                                                     getOptionLabel={(p) => p.name}
                                                     getDisplayLabel={(p) => p.name}

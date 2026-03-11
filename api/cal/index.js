@@ -1,6 +1,7 @@
 import { getSupabaseAdmin } from '../../server/utils/supabaseServer.js';
 import { verifyAdmin, verifyAuthenticated } from '../../server/utils/auth.js';
 import { createHmac } from 'node:crypto';
+import { getBookingWindowDateLimits, isDateWithinBookingWindow } from '../../src/utils/calBookingWindow.js';
 
 
 const CAL_API_URL = process.env.CAL_COM_API_URL || 'https://api.cal.com/v2';
@@ -8,14 +9,18 @@ const API_KEY = process.env.CAL_COM_API_KEY || process.env.VITE_CAL_COM_API_KEY;
 const EVENT_TYPE_ID = process.env.CAL_COM_EVENT_TYPE_ID || process.env.VITE_CAL_COM_EVENT_TYPE_ID;
 
 const CAL_API_VERSION = '2024-08-13';
+const CAL_EVENT_TYPES_API_VERSION = '2024-06-14';
 const ALLOWED_ACTIONS = new Set([
     'availability',
+    'booking-rules',
     'create-booking',
     'bookings',
     'webhook',
     'cancel',
     'reschedule',
 ]);
+const EVENT_TYPE_CACHE_TTL_MS = 5 * 60 * 1000;
+const eventTypeCache = new Map();
 
 const normalizeBookingStatus = (status) => {
     if (!status) return 'scheduled';
@@ -210,6 +215,58 @@ const parseCalResponse = async (response) => {
     } catch {
         return rawText;
     }
+};
+
+const fetchCalEventType = async (eventTypeId) => {
+    const cacheKey = String(eventTypeId || '').trim();
+    if (!cacheKey) {
+        throw new Error('Missing Event Type ID');
+    }
+
+    const cachedEntry = eventTypeCache.get(cacheKey);
+    if (cachedEntry && cachedEntry.expiresAt > Date.now()) {
+        return cachedEntry.value;
+    }
+
+    const response = await fetch(`${CAL_API_URL}/event-types/${cacheKey}`, {
+        headers: {
+            Authorization: `Bearer ${API_KEY}`,
+            'cal-api-version': CAL_EVENT_TYPES_API_VERSION,
+        },
+    });
+
+    const payload = await parseCalResponse(response);
+    if (!response.ok) {
+        const error = new Error(getCalErrorMessage(payload) || `Failed to fetch event type ${cacheKey}`);
+        error.status = response.status;
+        error.details = payload;
+        throw error;
+    }
+
+    const eventType = payload?.data || null;
+    eventTypeCache.set(cacheKey, {
+        value: eventType,
+        expiresAt: Date.now() + EVENT_TYPE_CACHE_TTL_MS,
+    });
+
+    return eventType;
+};
+
+const buildBookingRulesPayload = ({ eventType, timeZone = 'UTC' }) => {
+    const dateLimits = getBookingWindowDateLimits({
+        bookingWindow: eventType?.bookingWindow || null,
+        timeZone,
+    });
+
+    return {
+        eventTypeId: eventType?.id != null ? String(eventType.id) : null,
+        title: normalizeShortText(eventType?.title, 255),
+        bookingWindow: eventType?.bookingWindow || null,
+        dateLimits: {
+            minDate: dateLimits.minDateString,
+            maxDate: dateLimits.maxDateString,
+        },
+    };
 };
 
 const normalizeUtcDateTime = (value) => {
@@ -440,6 +497,43 @@ const handleAvailability = async (req, res) => {
     }
 };
 
+const handleBookingRules = async (req, res) => {
+    if (req.method !== 'GET') {
+        res.setHeader('Allow', 'GET');
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const eventTypeId = req.query.eventTypeId || EVENT_TYPE_ID;
+    const timeZone = normalizeShortText(req.query.timeZone, 64) || 'UTC';
+
+    if (!API_KEY) {
+        return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    if (!eventTypeId) {
+        return res.status(400).json({ error: 'Missing Event Type ID' });
+    }
+
+    try {
+        const eventType = await fetchCalEventType(eventTypeId);
+
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        return res.status(200).json({
+            ok: true,
+            data: buildBookingRulesPayload({ eventType, timeZone }),
+        });
+    } catch (error) {
+        console.error('Error in cal-booking-rules:', error);
+        return res.status(error?.status || 500).json({
+            error: error?.message || 'Failed to fetch booking rules',
+            details: error?.details || null,
+        });
+    }
+};
+
 const handleCreateBooking = async (req, res) => {
     if (req.method !== 'POST') {
         res.setHeader('Allow', 'POST');
@@ -468,6 +562,7 @@ const handleCreateBooking = async (req, res) => {
     } = req.body || {};
 
     const eventTypeId = bodyEventTypeId || EVENT_TYPE_ID;
+    const resolvedTimeZone = normalizeShortText(timeZone, 64) || 'UTC';
     const normalizedParticipantType = participantType ? String(participantType).toLowerCase() : null;
     const normalizedParticipantRole = participantRole ? String(participantRole).toLowerCase() : null;
     const isTeamParticipant = normalizedParticipantType === 'profile'
@@ -537,6 +632,27 @@ const handleCreateBooking = async (req, res) => {
             });
         }
 
+        try {
+            const eventType = await fetchCalEventType(parsedEventTypeId);
+            const bookingWindow = eventType?.bookingWindow || null;
+
+            if (
+                bookingWindow
+                && !isDateWithinBookingWindow({
+                    date: normalizedStart,
+                    bookingWindow,
+                    timeZone: resolvedTimeZone,
+                })
+            ) {
+                return res.status(400).json({
+                    error: 'Selected time is outside the allowed booking window',
+                    details: buildBookingRulesPayload({ eventType, timeZone: resolvedTimeZone }),
+                });
+            }
+        } catch (bookingWindowError) {
+            console.warn('Unable to validate booking window before booking creation:', bookingWindowError);
+        }
+
         const { phone: normalizedPhone, error: phoneError } = normalizePhoneForCal(phone);
         if (phone && phoneError) {
             return res.status(400).json({
@@ -553,7 +669,7 @@ const handleCreateBooking = async (req, res) => {
         const attendee = {
             name: resolvedName,
             email: resolvedEmail,
-            timeZone: timeZone || 'UTC',
+            timeZone: resolvedTimeZone,
         };
         if (normalizedPhone) {
             attendee.phoneNumber = normalizedPhone;
@@ -563,7 +679,7 @@ const handleCreateBooking = async (req, res) => {
             projectId: serializeMetadataValue(projectId, 64),
             userId: serializeMetadataValue(userId, 64),
             clientId: serializeMetadataValue(clientId, 64),
-            bookingTimeZone: serializeMetadataValue(timeZone || 'UTC', 64),
+            bookingTimeZone: serializeMetadataValue(resolvedTimeZone, 64),
             participantType: serializeMetadataValue(participantType, 40),
             participantRole: serializeMetadataValue(participantRole, 40),
             participantId: serializeMetadataValue(participantId, 64),
@@ -855,6 +971,7 @@ export default async function handler(req, res) {
     }
 
     if (action === 'availability') return handleAvailability(req, res);
+    if (action === 'booking-rules') return handleBookingRules(req, res);
     if (action === 'create-booking') return handleCreateBooking(req, res);
     if (action === 'bookings') return handleBookings(req, res);
     if (action === 'webhook') return handleWebhook(req, res);
