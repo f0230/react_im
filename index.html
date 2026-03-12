@@ -3,11 +3,36 @@
 
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
     <meta name="google-site-verification" content="...código...">
     <meta name="facebook-domain-verification" content="gbey0wswjh4dxsnent69326864qllh" />
 
     <title>Grupo DTE</title>
+    <meta name="description" content="Grupo DTE: automatización, desarrollo y soluciones para hacer crecer tu empresa. Agendá una reunión y contanos tu caso." />
+
+    <!-- Canonical/OG base (se ajusta por JS porque el sitio es SPA) -->
+    <link rel="canonical" href="https://www.grupodte.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Grupo DTE" />
+    <meta property="og:description" content="Automatización, desarrollo y soluciones para hacer crecer tu empresa." />
+    <meta property="og:url" content="https://www.grupodte.com/" />
+    <meta property="og:site_name" content="Grupo DTE" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Grupo DTE" />
+    <meta name="twitter:description" content="Automatización, desarrollo y soluciones para hacer crecer tu empresa." />
+
+    <script>
+      // Ajusta canonical + og:url al dominio/ruta actual (útil porque el contenido es SPA)
+      (function () {
+        try {
+          var canonical = document.querySelector('link[rel="canonical"]');
+          if (canonical) canonical.href = window.location.origin + window.location.pathname;
+          var ogUrl = document.querySelector('meta[property="og:url"]');
+          if (ogUrl) ogUrl.setAttribute('content', window.location.origin + window.location.pathname);
+        } catch (e) {}
+      })();
+    </script>
   
     <link rel="icon" type="image/svg+xml" href="/src/assets/iconodte.svg" />
     
