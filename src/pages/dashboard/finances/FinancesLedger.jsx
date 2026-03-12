@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
-import { Edit3, Plus, Receipt, Search, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { Link, Navigate } from 'react-router-dom';
+import { ArrowLeft, Edit3, Plus, Receipt, Search, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
@@ -144,12 +144,20 @@ const FinancesLedger = () => {
 
     return (
         <div className="pb-16 font-product text-neutral-900">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <Link
+                to="/dashboard/finances"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 transition hover:text-neutral-900"
+            >
+                <ArrowLeft size={15} />
+                Volver a finanzas
+            </Link>
+
+            <div className="mt-6 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.35em] text-neutral-400">Ledger</p>
-                    <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Ingresos y gastos</h1>
+                    <p className="text-xs uppercase tracking-[0.35em] text-neutral-400">Historial completo</p>
+                    <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Todos los movimientos</h1>
                     <p className="mt-3 max-w-3xl text-lg text-neutral-500">
-                        Los cobros de facturas `paid` se sincronizan solos. Acá registrás gastos y cualquier ingreso extra que no venga desde facturación.
+                        Vista completa de ingresos y gastos. Los cobros de facturas entran solos — los gastos se registran manualmente.
                     </p>
                 </div>
 

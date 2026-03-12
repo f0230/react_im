@@ -1,12 +1,30 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
-import { ArrowRight, CalendarRange, Landmark, PiggyBank, Plus, Receipt, Settings2, Wallet } from 'lucide-react';
+import {
+    AlertTriangle,
+    ArrowRight,
+    CalendarRange,
+    Edit3,
+    Landmark,
+    PiggyBank,
+    Plus,
+    Receipt,
+    Settings2,
+    TrendingDown,
+    TrendingUp,
+    Wallet,
+} from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
 import PeriodCard from '@/components/finances/PeriodCard';
-import { formatFinanceCurrency, getInvoiceDisplayLabel } from '@/utils/finance';
+import TransactionModal from '@/components/finances/TransactionModal';
+import {
+    formatFinanceCurrency,
+    formatFinanceDate,
+    getFinanceCategoryLabel,
+} from '@/utils/finance';
 
 const FinancesOverview = () => {
     const { profile, loading } = useAuth();
@@ -18,11 +36,10 @@ const FinancesOverview = () => {
     const [transactions, setTransactions] = useState([]);
     const [distributions, setDistributions] = useState([]);
     const [invoices, setInvoices] = useState([]);
-    const [createForm, setCreateForm] = useState({
-        name: '',
-        start_date: '',
-        end_date: '',
-    });
+    const [projects, setProjects] = useState([]);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState(null);
+    const [createForm, setCreateForm] = useState({ name: '', start_date: '', end_date: '' });
 
     const isAdmin = profile?.role === 'admin';
 
@@ -36,17 +53,22 @@ const FinancesOverview = () => {
             { data: transactionsData, error: transactionsError },
             { data: distributionsData, error: distributionsError },
             { data: invoicesData, error: invoicesError },
+            { data: projectsData, error: projectsError },
         ] = await Promise.all([
             supabase.from('finance_config').select('*').limit(1).maybeSingle(),
             supabase.from('finance_periods').select('*').order('start_date', { ascending: false }),
-            supabase.from('finance_transactions').select('period_id, type, amount, currency, invoice_id'),
-            supabase.from('finance_distributions').select('amount_earned, amount_paid, amount_pending, currency'),
-            supabase.from('invoices').select('id, invoice_number, description, amount, currency, status, paid_at, updated_at, created_at').order('updated_at', { ascending: false }),
+            supabase
+                .from('finance_transactions')
+                .select('id, type, amount, currency, description, category, transaction_date, period_id, source, project_id, invoice_id, project:projects(id, name)')
+                .order('transaction_date', { ascending: false }),
+            supabase.from('finance_distributions').select('amount_pending, currency'),
+            supabase.from('invoices').select('id, invoice_number, amount, currency, status').eq('status', 'paid'),
+            supabase.from('projects').select('id, name').order('created_at', { ascending: false }),
         ]);
 
-        if (configError || periodsError || transactionsError || distributionsError || invoicesError) {
-            const message = configError?.message || periodsError?.message || transactionsError?.message || distributionsError?.message || invoicesError?.message;
-            console.error('Error fetching finance overview:', { configError, periodsError, transactionsError, distributionsError, invoicesError });
+        if (configError || periodsError || transactionsError || distributionsError || invoicesError || projectsError) {
+            const message = configError?.message || periodsError?.message || transactionsError?.message || distributionsError?.message || invoicesError?.message || projectsError?.message;
+            console.error('Error fetching finance overview:', { configError, periodsError, transactionsError, distributionsError, invoicesError, projectsError });
             setError(message || 'No pudimos cargar el módulo financiero.');
             setFetching(false);
             return;
@@ -57,6 +79,7 @@ const FinancesOverview = () => {
         setTransactions(transactionsData || []);
         setDistributions(distributionsData || []);
         setInvoices(invoicesData || []);
+        setProjects(projectsData || []);
         setFetching(false);
     }, []);
 
@@ -65,101 +88,108 @@ const FinancesOverview = () => {
         void fetchOverview();
     }, [fetchOverview, isAdmin]);
 
+    // ─── KPIs: sum ALL transactions regardless of period assignment ───────────
+    const summary = useMemo(() => {
+        const currency = config?.default_currency || 'USD';
+        const income = transactions
+            .filter((t) => t.type === 'income')
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        const expenses = transactions
+            .filter((t) => t.type === 'expense')
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        const pendingPayouts = distributions.reduce((sum, d) => sum + Number(d.amount_pending || 0), 0);
+        return { income, expenses, net: income - expenses, pendingPayouts, currency };
+    }, [config?.default_currency, distributions, transactions]);
+
+    // ─── Periods: compute live totals per period ──────────────────────────────
     const periodsWithTotals = useMemo(() => {
-        const totalsByPeriod = transactions.reduce((acc, transaction) => {
-            if (!transaction.period_id) return acc;
-            const current = acc[transaction.period_id] || { income: 0, expenses: 0, currency: transaction.currency || 'USD' };
-            if (transaction.type === 'income') current.income += Number(transaction.amount || 0);
-            if (transaction.type === 'expense') current.expenses += Number(transaction.amount || 0);
-            acc[transaction.period_id] = current;
+        const byPeriod = transactions.reduce((acc, t) => {
+            if (!t.period_id) return acc;
+            const cur = acc[t.period_id] || { income: 0, expenses: 0, currency: t.currency || 'USD' };
+            if (t.type === 'income') cur.income += Number(t.amount || 0);
+            if (t.type === 'expense') cur.expenses += Number(t.amount || 0);
+            acc[t.period_id] = cur;
             return acc;
         }, {});
 
-        return periods.map((period) => {
-            const liveTotals = totalsByPeriod[period.id];
-            const totalIncome = liveTotals?.income ?? Number(period.total_income || 0);
-            const totalExpenses = liveTotals?.expenses ?? Number(period.total_expenses || 0);
+        return periods.map((p) => {
+            const live = byPeriod[p.id];
+            // For open periods, use live data. For closed, use stored snapshot.
+            const totalIncome = p.status === 'open' && live ? live.income : Number(p.total_income || 0);
+            const totalExpenses = p.status === 'open' && live ? live.expenses : Number(p.total_expenses || 0);
             return {
-                ...period,
+                ...p,
                 total_income: totalIncome,
                 total_expenses: totalExpenses,
                 net_profit: totalIncome - totalExpenses,
-                currency: liveTotals?.currency || config?.default_currency || 'USD',
+                currency: live?.currency || config?.default_currency || 'USD',
             };
         });
     }, [config?.default_currency, periods, transactions]);
 
-    const summary = useMemo(() => {
-        const currency = config?.default_currency || periodsWithTotals[0]?.currency || 'USD';
-        const totals = periodsWithTotals.reduce((acc, period) => ({
-            income: acc.income + Number(period.total_income || 0),
-            expenses: acc.expenses + Number(period.total_expenses || 0),
-            profit: acc.profit + Number(period.net_profit || 0),
-        }), { income: 0, expenses: 0, profit: 0 });
+    // ─── Expenses list for the inline section ────────────────────────────────
+    const expenseTransactions = useMemo(
+        () => transactions.filter((t) => t.type === 'expense'),
+        [transactions]
+    );
 
-        const pendingPayouts = distributions.reduce((sum, distribution) => sum + Number(distribution.amount_pending || 0), 0);
-        const openPeriods = periodsWithTotals.filter((period) => period.status === 'open').length;
-
-        return { ...totals, pendingPayouts, openPeriods, currency };
-    }, [config?.default_currency, distributions, periodsWithTotals]);
-
-    const paidInvoicesPendingImport = useMemo(() => {
-        const importedIds = new Set(transactions.map((transaction) => transaction.invoice_id).filter(Boolean));
-        return invoices.filter((invoice) => invoice.status === 'paid' && !importedIds.has(invoice.id));
+    // ─── Alert: paid invoices not yet in ledger ───────────────────────────────
+    const unsyncedInvoiceCount = useMemo(() => {
+        const importedIds = new Set(transactions.map((t) => t.invoice_id).filter(Boolean));
+        return invoices.filter((inv) => !importedIds.has(inv.id)).length;
     }, [invoices, transactions]);
 
+    // ─── Create period ────────────────────────────────────────────────────────
     const handleCreatePeriod = async (event) => {
         event.preventDefault();
         if (!createForm.name || !createForm.start_date || !createForm.end_date) return;
-
         setSaving(true);
         setError('');
-
         const { error: insertError } = await supabase
             .from('finance_periods')
-            .insert([{
-                ...createForm,
-                created_by: profile?.id || null,
-            }]);
-
+            .insert([{ ...createForm, created_by: profile?.id || null }]);
         if (insertError) {
-            console.error('Error creating finance period:', insertError);
             setError(insertError.message || 'No pudimos crear el período.');
             setSaving(false);
             return;
         }
-
         setCreateForm({ name: '', start_date: '', end_date: '' });
         setSaving(false);
         await fetchOverview();
     };
 
-    if (loading || (isAdmin && fetching)) {
-        return <LoadingFallback type="spinner" />;
-    }
+    const openEditExpense = (tx) => {
+        setEditingTransaction(tx);
+        setModalOpen(true);
+    };
 
-    if (!loading && !isAdmin) {
-        return <Navigate to="/dashboard" replace />;
-    }
+    const openNewExpense = () => {
+        setEditingTransaction(null);
+        setModalOpen(true);
+    };
+
+    if (loading || (isAdmin && fetching)) return <LoadingFallback type="spinner" />;
+    if (!loading && !isAdmin) return <Navigate to="/dashboard" replace />;
 
     return (
         <div className="pb-16 font-product text-neutral-900">
+
+            {/* ── Header ─────────────────────────────────────────────────────── */}
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
                     <p className="text-xs uppercase tracking-[0.35em] text-neutral-400">Finanzas internas</p>
-                    <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Caja, períodos y dividendos</h1>
-                    <p className="mt-3 max-w-3xl text-lg text-neutral-500">
-                        Centralizá ingresos, gastos y distribución de ganancias en un flujo simple: las facturas cobradas entran solas a finanzas, y vos completás gastos, weights y cierres.
+                    <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">Caja y dividendos</h1>
+                    <p className="mt-3 max-w-2xl text-lg text-neutral-500">
+                        Los cobros de facturas entran solos. Acá registrás gastos, cerrás períodos y repartís ganancias.
                     </p>
                 </div>
-
                 <div className="flex flex-wrap gap-3">
                     <Link
                         to="/dashboard/finances/ledger"
-                        className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300 hover:text-neutral-900"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 transition hover:border-neutral-300"
                     >
-                        <Wallet size={16} />
-                        Ver ledger
+                        <Receipt size={16} />
+                        Ver todos los movimientos
                     </Link>
                     <Link
                         to="/dashboard/finances/settings"
@@ -177,176 +207,216 @@ const FinancesOverview = () => {
                 </div>
             )}
 
-            <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {unsyncedInvoiceCount > 0 && (
+                <div className="mt-6 flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-700">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <span>
+                        Hay {unsyncedInvoiceCount} factura(s) cobrada(s) que todavía no se reflejaron en finanzas automáticamente.
+                        {' '}<Link to="/dashboard/finances/ledger" className="font-semibold underline">Ver movimientos</Link>
+                    </span>
+                </div>
+            )}
+
+            {/* ── KPIs ───────────────────────────────────────────────────────── */}
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <FinanceKpiCard
-                    icon={Wallet}
-                    label="Ingresos acumulados"
+                    icon={TrendingUp}
+                    label="Cobrado de clientes"
                     value={formatFinanceCurrency(summary.income, summary.currency)}
-                    sub="Suma de ingresos registrados en todos los períodos."
+                    sub="Facturas pagadas sincronizadas automáticamente."
                     color="text-emerald-600"
                 />
                 <FinanceKpiCard
-                    icon={Landmark}
-                    label="Gastos acumulados"
+                    icon={TrendingDown}
+                    label="Gastos registrados"
                     value={formatFinanceCurrency(summary.expenses, summary.currency)}
-                    sub="Egresos manuales cargados en el libro contable."
+                    sub="Herramientas, publicidad, pagos a workers, etc."
                     color="text-rose-500"
                 />
                 <FinanceKpiCard
                     icon={PiggyBank}
                     label="Ganancia neta"
-                    value={formatFinanceCurrency(summary.profit, summary.currency)}
-                    sub="Resultado operativo calculado sobre ingresos menos gastos."
-                    color="text-neutral-900"
+                    value={formatFinanceCurrency(summary.net, summary.currency)}
+                    sub="Lo que queda después de restar todos los gastos."
+                    color={summary.net >= 0 ? 'text-neutral-900' : 'text-rose-500'}
                 />
                 <FinanceKpiCard
-                    icon={CalendarRange}
-                    label="Pagos pendientes"
+                    icon={Wallet}
+                    label="Dividendos pendientes"
                     value={formatFinanceCurrency(summary.pendingPayouts, summary.currency)}
-                    sub={`${summary.openPeriods} período(s) abierto(s) actualmente.`}
-                    color="text-amber-600"
-                />
-                <FinanceKpiCard
-                    icon={Receipt}
-                    label="Facturas cobradas sin pasar"
-                    value={paidInvoicesPendingImport.length}
-                    sub="Si este número es mayor a cero, hay cobranzas que no se sincronizaron automáticamente."
-                    color={paidInvoicesPendingImport.length > 0 ? 'text-amber-600' : 'text-neutral-900'}
+                    sub="Ganancias calculadas en cierres que aún no se pagaron."
+                    color={summary.pendingPayouts > 0 ? 'text-amber-600' : 'text-neutral-900'}
                 />
             </div>
 
-            <div className="mt-8 grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+            {/* ── Main grid ──────────────────────────────────────────────────── */}
+            <div className="mt-8 grid gap-6 xl:grid-cols-[1.4fr,0.6fr]">
+
+                {/* ── Gastos ─────────────────────────────────────────────────── */}
                 <section className="rounded-[32px] border border-neutral-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                         <div>
-                            <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Períodos</p>
-                            <h2 className="mt-2 text-2xl font-black">Historial financiero</h2>
+                            <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Egresos</p>
+                            <h2 className="mt-2 text-2xl font-black">Gastos de la empresa</h2>
+                            <p className="mt-2 text-sm text-neutral-500">
+                                Todo lo que salió de caja: herramientas, publicidad, pagos a workers y otros.
+                            </p>
                         </div>
-                        <Link
-                            to="/dashboard/finances/ledger"
-                            className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-600 transition hover:text-neutral-900"
+                        <button
+                            type="button"
+                            onClick={openNewExpense}
+                            className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800"
                         >
-                            Ir al ledger
-                            <ArrowRight size={15} />
-                        </Link>
+                            <Plus size={16} />
+                            Registrar gasto
+                        </button>
                     </div>
 
-                    <div className="mt-6 grid gap-4">
-                        {periodsWithTotals.length === 0 && (
-                            <div className="rounded-3xl border border-dashed border-neutral-200 bg-neutral-50 px-5 py-10 text-center text-neutral-500">
-                                Todavía no hay períodos. Creá el primero para empezar a cerrar resultados.
+                    <div className="mt-6 overflow-x-auto">
+                        <table className="min-w-full divide-y divide-neutral-100">
+                            <thead>
+                                <tr className="text-left text-xs uppercase tracking-[0.25em] text-neutral-400">
+                                    <th className="pb-4 pr-4 font-medium">Fecha</th>
+                                    <th className="pb-4 pr-4 font-medium">Detalle</th>
+                                    <th className="pb-4 pr-4 font-medium">Categoría</th>
+                                    <th className="pb-4 pr-4 font-medium text-right">Monto</th>
+                                    <th className="pb-4 font-medium" />
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-neutral-50">
+                                {expenseTransactions.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="py-10 text-center text-sm text-neutral-500">
+                                            Todavía no hay gastos registrados.
+                                        </td>
+                                    </tr>
+                                )}
+                                {expenseTransactions.slice(0, 10).map((tx) => (
+                                    <tr key={tx.id} className="group align-middle">
+                                        <td className="py-3 pr-4 text-sm text-neutral-500 whitespace-nowrap">
+                                            {formatFinanceDate(tx.transaction_date)}
+                                        </td>
+                                        <td className="py-3 pr-4">
+                                            <p className="font-semibold text-neutral-900">{tx.description || 'Sin descripción'}</p>
+                                            {tx.project && (
+                                                <p className="text-xs text-neutral-400">{tx.project.name}</p>
+                                            )}
+                                        </td>
+                                        <td className="py-3 pr-4 text-sm text-neutral-500">
+                                            {getFinanceCategoryLabel('expense', tx.category)}
+                                        </td>
+                                        <td className="py-3 pr-4 text-right font-semibold text-rose-500 whitespace-nowrap">
+                                            -{formatFinanceCurrency(tx.amount, tx.currency)}
+                                        </td>
+                                        <td className="py-3 text-right">
+                                            <button
+                                                type="button"
+                                                onClick={() => openEditExpense(tx)}
+                                                className="inline-flex items-center gap-1.5 rounded-xl border border-neutral-200 px-2.5 py-1.5 text-xs font-semibold text-neutral-500 opacity-0 transition hover:border-neutral-300 hover:text-neutral-900 group-hover:opacity-100"
+                                            >
+                                                <Edit3 size={12} />
+                                                Editar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+
+                        {expenseTransactions.length > 10 && (
+                            <div className="mt-4 text-center">
+                                <Link
+                                    to="/dashboard/finances/ledger"
+                                    className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-600 hover:text-neutral-900"
+                                >
+                                    Ver los {expenseTransactions.length - 10} gastos restantes
+                                    <ArrowRight size={14} />
+                                </Link>
                             </div>
                         )}
-
-                        {periodsWithTotals.map((period) => (
-                            <PeriodCard key={period.id} period={period} />
-                        ))}
                     </div>
                 </section>
 
-                <section className="rounded-[32px] border border-neutral-200 bg-white p-6 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Nuevo período</p>
-                            <h2 className="mt-2 text-2xl font-black">Crear corte contable</h2>
-                        </div>
-                        <div className="rounded-2xl bg-neutral-100 px-4 py-2 text-sm text-neutral-500">
-                            Reparto actual: {config?.pct_francisco ?? 40}% / {config?.pct_federico ?? 30}% / {config?.pct_workers ?? 15}% / {config?.pct_company ?? 15}%
-                        </div>
-                    </div>
+                {/* ── Sidebar: Períodos + Nuevo período ──────────────────────── */}
+                <div className="space-y-6">
+                    <section className="rounded-[32px] border border-neutral-200 bg-white p-6 shadow-sm">
+                        <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Reparto</p>
+                        <h2 className="mt-2 text-xl font-black">Nuevo período</h2>
+                        <p className="mt-2 text-sm text-neutral-500">
+                            Al cerrarlo, el sistema calcula cuánto le corresponde a cada uno.
+                        </p>
 
-                    <form onSubmit={handleCreatePeriod} className="mt-6 space-y-4">
-                        <label className="block space-y-2 text-sm font-medium text-neutral-700">
-                            Nombre del período
+                        <form onSubmit={handleCreatePeriod} className="mt-4 space-y-3">
                             <input
                                 type="text"
                                 value={createForm.name}
-                                onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))}
-                                className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-neutral-400"
-                                placeholder="Ej. Marzo 2026"
+                                onChange={(e) => setCreateForm((p) => ({ ...p, name: e.target.value }))}
+                                placeholder="Nombre (ej. Marzo 2026)"
+                                className="w-full rounded-2xl border border-neutral-200 px-4 py-3 text-sm outline-none transition focus:border-neutral-400"
                             />
-                        </label>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <label className="block space-y-2 text-sm font-medium text-neutral-700">
-                                Inicio
+                            <div className="grid grid-cols-2 gap-3">
                                 <input
                                     type="date"
                                     value={createForm.start_date}
-                                    onChange={(event) => setCreateForm((prev) => ({ ...prev, start_date: event.target.value }))}
-                                    className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-neutral-400"
+                                    onChange={(e) => setCreateForm((p) => ({ ...p, start_date: e.target.value }))}
+                                    className="w-full rounded-2xl border border-neutral-200 px-3 py-3 text-sm outline-none transition focus:border-neutral-400"
                                 />
-                            </label>
-
-                            <label className="block space-y-2 text-sm font-medium text-neutral-700">
-                                Fin
                                 <input
                                     type="date"
                                     value={createForm.end_date}
-                                    onChange={(event) => setCreateForm((prev) => ({ ...prev, end_date: event.target.value }))}
-                                    className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-neutral-400"
+                                    onChange={(e) => setCreateForm((p) => ({ ...p, end_date: e.target.value }))}
+                                    className="w-full rounded-2xl border border-neutral-200 px-3 py-3 text-sm outline-none transition focus:border-neutral-400"
                                 />
-                            </label>
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={saving}
+                                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
+                            >
+                                <CalendarRange size={15} />
+                                {saving ? 'Creando...' : 'Crear período'}
+                            </button>
+                        </form>
+
+                        <div className="mt-4 rounded-2xl bg-neutral-50 px-4 py-3 text-xs text-neutral-500">
+                            <span className="font-semibold text-neutral-700">Reparto actual: </span>
+                            Francisco {config?.pct_francisco ?? 40}% · Federico {config?.pct_federico ?? 30}% · Workers {config?.pct_workers ?? 15}% · Empresa {config?.pct_company ?? 15}%
+                        </div>
+                    </section>
+
+                    <section className="rounded-[32px] border border-neutral-200 bg-white p-6 shadow-sm">
+                        <div className="flex items-center justify-between gap-2 mb-4">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Cierres</p>
+                                <h2 className="mt-1 text-xl font-black">Períodos</h2>
+                            </div>
+                            <Landmark size={18} className="text-neutral-300" />
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            <Plus size={16} />
-                            {saving ? 'Creando...' : 'Crear período'}
-                        </button>
-                    </form>
-
-                    <div className="mt-6 rounded-3xl bg-neutral-50 p-5">
-                        <p className="text-sm font-semibold text-neutral-900">Flujo recomendado</p>
-                        <ol className="mt-3 space-y-2 text-sm text-neutral-600">
-                            <li>1. Registrás ingresos y gastos en el ledger.</li>
-                            <li>2. Asignás weights a los workers en el período.</li>
-                            <li>3. Cerrás el período y el sistema calcula dividendos.</li>
-                            <li>4. Marcás pagos a medida que realmente se realizan.</li>
-                        </ol>
-                    </div>
-                </section>
+                        <div className="space-y-3">
+                            {periodsWithTotals.length === 0 && (
+                                <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-6 text-center text-sm text-neutral-500">
+                                    Creá el primer período para empezar a cerrar resultados.
+                                </div>
+                            )}
+                            {periodsWithTotals.map((p) => (
+                                <PeriodCard key={p.id} period={p} />
+                            ))}
+                        </div>
+                    </section>
+                </div>
             </div>
 
-            <section className="mt-6 rounded-[32px] border border-neutral-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Integración con facturación</p>
-                        <h2 className="mt-2 text-2xl font-black">Estado de sincronización de facturas</h2>
-                    </div>
-                    <Link
-                        to="/dashboard/finances/ledger"
-                        className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 px-4 py-3 text-sm font-semibold text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-900"
-                    >
-                        Ver ledger
-                        <ArrowRight size={15} />
-                    </Link>
-                </div>
-
-                <div className="mt-6 space-y-3">
-                    {paidInvoicesPendingImport.length === 0 && (
-                        <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-5 text-sm text-neutral-500">
-                            Todas las facturas `paid` ya quedaron reflejadas en finanzas automáticamente.
-                        </div>
-                    )}
-
-                    {paidInvoicesPendingImport.slice(0, 5).map((invoice) => (
-                        <div key={invoice.id} className="grid gap-3 rounded-2xl border border-neutral-200 p-4 md:grid-cols-[1.4fr,140px,160px] md:items-center">
-                            <div>
-                                <p className="font-semibold text-neutral-900">{getInvoiceDisplayLabel(invoice)}</p>
-                                <p className="text-sm text-neutral-500">{invoice.description || 'Sin descripción adicional'}</p>
-                            </div>
-                            <div className="font-semibold text-emerald-600">
-                                {formatFinanceCurrency(invoice.amount, invoice.currency)}
-                            </div>
-                            <div className="text-sm text-neutral-500">Estado: paid</div>
-                        </div>
-                    ))}
-                </div>
-            </section>
+            <TransactionModal
+                open={modalOpen}
+                onClose={() => setModalOpen(false)}
+                onSaved={fetchOverview}
+                periods={periods}
+                projects={projects}
+                invoices={[]}
+                initialValues={editingTransaction}
+                defaultType="expense"
+            />
         </div>
     );
 };
