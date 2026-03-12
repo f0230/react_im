@@ -352,7 +352,7 @@ export default function Studio() {
 
     return (
         <div className="relative flex h-[calc(100dvh-45px)] min-h-[calc(100dvh-45px)] flex-col overflow-hidden bg-[#0a0a0a] text-white" style={{ zoom: 0.8 }}>
-            <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain h-full">
                 {!hasApiKey && (
                     <div className="m-8 max-w-2xl mx-auto p-8 glass-panel border-banana/20 flex flex-col items-center text-center">
                         <div className="w-16 h-16 rounded-full bg-banana/10 flex items-center justify-center mb-6">
