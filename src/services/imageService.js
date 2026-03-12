@@ -1,7 +1,8 @@
 import { MAX_REFERENCE_IMAGES, MODELS } from "../utils/studioTypes";
 import { supabase } from "../lib/supabaseClient";
 
-const BASE_URL = "https://api.kie.ai";
+const KIE_API_BASE_URL = "https://api.kie.ai";
+const KIE_UPLOAD_BASE_URL = "https://kieai.redpandaai.co";
 export const STUDIO_SIGNED_URL_TTL = 60 * 60 * 24;
 const SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
 const studioSignedUrlCache = new Map();
@@ -40,7 +41,7 @@ export async function startImageGeneration(task) {
         if (imageUrls.length > 0) inputPayload.image_input = imageUrls;
     }
 
-    const createResponse = await fetch(`${BASE_URL}/api/v1/jobs/createTask`, {
+    const createResponse = await fetch(`${KIE_API_BASE_URL}/api/v1/jobs/createTask`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -162,29 +163,45 @@ async function uploadReferenceImage(base64, apiKey) {
     const formData = new FormData();
     formData.append("file", blob, "reference.png");
 
-    const uploadResponse = await fetch(`${BASE_URL}/api/file-stream-upload`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
-        body: formData,
-    });
+    const uploadTargets = [
+        `${KIE_UPLOAD_BASE_URL}/api/file-stream-upload`,
+        `${KIE_API_BASE_URL}/api/file-stream-upload`,
+    ];
 
-    const data = await uploadResponse.json();
-    if (data.code !== 200) {
-        throw new Error(data.msg || "Reference image upload failed");
+    let lastError = null;
+
+    for (const target of uploadTargets) {
+        try {
+            const uploadResponse = await fetch(target, {
+                method: "POST",
+                headers: { Authorization: `Bearer ${apiKey}` },
+                body: formData,
+            });
+
+            const data = await parseJsonResponse(uploadResponse);
+
+            if (data.code !== 200) {
+                throw new Error(data.msg || `Reference image upload failed (${uploadResponse.status})`);
+            }
+
+            const fileUrl =
+                data.data?.fileUrl ||
+                data.data?.downloadUrl ||
+                data.fileUrl ||
+                data.downloadUrl ||
+                data.data;
+
+            if (typeof fileUrl !== "string") {
+                throw new Error("Could not find file URL in upload response");
+            }
+
+            return fileUrl;
+        } catch (error) {
+            lastError = error;
+        }
     }
 
-    const fileUrl =
-        data.data?.fileUrl ||
-        data.data?.downloadUrl ||
-        data.fileUrl ||
-        data.downloadUrl ||
-        data.data;
-
-    if (typeof fileUrl !== "string") {
-        throw new Error("Could not find file URL in upload response");
-    }
-
-    return fileUrl;
+    throw lastError || new Error("Reference image upload failed");
 }
 
 function normalizeReferenceImages(input) {
@@ -203,7 +220,7 @@ async function pollTaskStatus(taskId, apiKey) {
 
     for (let i = 0; i < maxRetries; i++) {
         const response = await fetch(
-            `${BASE_URL}/api/v1/jobs/recordInfo?taskId=${taskId}`,
+            `${KIE_API_BASE_URL}/api/v1/jobs/recordInfo?taskId=${taskId}`,
             {
                 headers: { Authorization: `Bearer ${apiKey}` },
             }
@@ -254,6 +271,20 @@ async function pollTaskStatus(taskId, apiKey) {
 
 function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function parseJsonResponse(response) {
+    const text = await response.text();
+
+    if (!text) {
+        return {};
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        throw new Error(`Unexpected upload response (${response.status}): ${text.slice(0, 120)}`);
+    }
 }
 
 export async function checkApiKey() {
