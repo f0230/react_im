@@ -17,7 +17,7 @@ const Services = lazyRoute(routeKeys.services);
 const LandingDespega = lazyRoute(routeKeys.landingDespega);
 const Terminos = lazyRoute(routeKeys.terminos);
 const PoliticaPrivacidad = lazyRoute(routeKeys.politicaPrivacidad);
-const Development = lazyRoute(routeKeys.development);
+// const Development = lazyRoute(routeKeys.development);
 const LandingDTE = lazyRoute(routeKeys.landingDte);
 const AdminLogin = lazyRoute(routeKeys.adminLogin);
 const Registro = lazyRoute(routeKeys.registro);
@@ -64,7 +64,7 @@ const AppContent = () => {
     const isDashboardPath = path.startsWith("/dashboard");
     const isAuthenticated = Boolean(user);
 
-    const publicCandidates = ["/servicios", "/desarrollo", "/dte", "/contacto", "/nosotros"];
+    const publicCandidates = ["/servicios", "/dte", "/contacto", "/nosotros"];
 
     let routes = publicCandidates;
     if (isAuthenticated || isDashboardPath) {
@@ -156,7 +156,7 @@ const AppContent = () => {
           <Route path="/despega" element={<LandingDespega />} />
           <Route path="/tyc" element={<Terminos />} />
           <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
-          <Route path="/desarrollo" element={<Development />} />
+          {/* <Route path="/desarrollo" element={<Development />} /> */}
           <Route path="/dte" element={<LandingDTE />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/registro" element={<Registro />} />

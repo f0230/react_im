@@ -9,6 +9,7 @@ import { User, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
 import { menuItems } from "@/config/nav";
 import LoginModal from "./LoginModal";
 import ToolsPopover from "./ToolsPopover";
+import ToolsOverlay from "./ToolsOverlay";
 import { useUI } from "@/context/UIContext";
 import { useAuth } from "@/context/AuthContext";
 import { PrefetchLink } from "@/components/navigation/PrefetchLink";
@@ -23,6 +24,7 @@ const Navbar = () => {
     const [showNavbar, setShowNavbar] = useState(true);
     const [hasScrolled, setHasScrolled] = useState(false);
     const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+    const [isToolsOverlayOpen, setIsToolsOverlayOpen] = useState(false);
     const navigate = useNavigate();
     const { setIsNavbarOpen, isLoginModalOpen, setIsLoginModalOpen } = useUI();
     const { user, profile, signOut } = useAuth();
@@ -375,99 +377,82 @@ const Navbar = () => {
                 <div
                     ref={menuRef}
                     id="mobile-menu"
-                    className="fixed rounded-[20px] backdrop-blur-md  flex-col p-6 pt-20 z-40 right-0"
+                    className="fixed top-[53px] right-4 rounded-[20px] backdrop-blur-md flex flex-col p-5 z-40 bg-white/5 border border-white/10 min-w-[200px]"
                 >
                     <div
                         ref={glowRef}
-                        className="absolute inset-0 pointer-events-none rounded-2xl"
+                        className="absolute inset-0 pointer-events-none rounded-[20px]"
                     />
-                    <nav className="w-full max-w-md ">
-                        <ul className="flex flex-col items-start space-y-4">
-                            {menuItems?.map((item, i) => (
-                                <li
-                                    key={i}
-                                    className="menu-item text-right opacity-0 transform"
-                                >
+                    <nav className="w-full">
+                        <ul className="flex flex-col gap-3">
+                            {menuItems?.filter(item => item.url !== "/desarrollo").map((item, i) => (
+                                <li key={i} className="menu-item opacity-0 transform">
                                     <button
                                         onClick={() => handleMenuItemClick(item.url)}
-                                        className="text-white text-[13px] leading-tight font-product font-normal tracking-wide block hover:scale-105 transition-transform duration-300"
+                                        className="text-white text-[14px] font-medium tracking-wide hover:opacity-70 transition-opacity duration-200 w-full text-left"
                                     >
                                         {t(item.key)}
                                     </button>
-
                                 </li>
                             ))}
-                            <li className="menu-item opacity-0 transform">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-white text-[11px]">{t("nav.languageLabel")}</span>
-                                    <button
-                                        type="button"
-                                        className={languageButtonClass("es")}
-                                        onClick={() => setLanguage("es")}
-                                        aria-pressed={currentLang === "es"}
-                                    >
-                                        ES
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={languageButtonClass("en")}
-                                        onClick={() => setLanguage("en")}
-                                        aria-pressed={currentLang === "en"}
-                                    >
-                                        EN
-                                    </button>
-                                </div>
+
+                            {/* Idioma */}
+                            <li className="menu-item opacity-0 transform flex items-center gap-2 pt-1">
+                                <span className="text-white/50 text-[11px]">{t("nav.languageLabel")}</span>
+                                <button type="button" className={languageButtonClass("es")} onClick={() => setLanguage("es")} aria-pressed={currentLang === "es"}>ES</button>
+                                <button type="button" className={languageButtonClass("en")} onClick={() => setLanguage("en")} aria-pressed={currentLang === "en"}>EN</button>
                             </li>
-                            {/* Login Button / User Actions Mobile */}
-                            <li className="menu-item opacity-0 transform pt-4 flex flex-col gap-3 w-full items-end">
+
+                            {/* Divider */}
+                            <li className="border-t border-white/10" />
+
+                            {/* Login / User */}
+                            <li className="menu-item opacity-0 transform flex flex-col gap-2">
                                 {user ? (
                                     <>
                                         <button
-                                            onClick={() => {
-                                                setIsMenuOpen(false);
-                                                void preloadRoute('/dashboard');
-                                                navigate('/dashboard');
-                                            }}
-                                            className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px] flex items-center justify-center gap-2"
+                                            onClick={() => { setIsMenuOpen(false); void preloadRoute('/dashboard'); navigate('/dashboard'); }}
+                                            className="bg-white text-black px-4 py-2 rounded-full text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
                                         >
-                                            <LayoutDashboard size={18} />
+                                            <LayoutDashboard size={15} />
                                             Dashboard
                                         </button>
                                         <button
                                             onClick={handleSignOut}
-                                            className="text-red-400 text-sm font-medium hover:text-red-300 transition-colors pr-4 py-2 flex items-center gap-2"
+                                            className="text-red-400 text-sm font-medium flex items-center gap-2 hover:text-red-300 transition-colors px-1"
                                         >
-                                            <LogOut size={16} />
+                                            <LogOut size={14} />
                                             Logout
                                         </button>
                                     </>
                                 ) : (
                                     <button
-                                        onClick={() => {
-                                            setIsMenuOpen(false);
-                                            setIsLoginModalOpen(true);
-                                        }}
-                                        className="bg-white text-black px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover:scale-105 transition-transform w-[200px]"
+                                        onClick={() => { setIsMenuOpen(false); setIsLoginModalOpen(true); }}
+                                        className="bg-white text-black px-4 py-2 rounded-full text-sm font-bold hover:opacity-90 transition-opacity"
                                     >
                                         {t("nav.accessClients")}
                                     </button>
                                 )}
                             </li>
-                            {/* Tools Popover Mobile (Admin/Worker only) */}
+
+                            {/* Tools (Admin/Worker) */}
                             {(profile?.role === 'admin' || profile?.role === 'worker') && (
-                                <li className="menu-item opacity-0 transform w-full flex justify-end">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-white text-[13px] font-product">Tools</span>
-                                        <ToolsPopover />
-                                    </div>
+                                <li className="menu-item opacity-0 transform">
+                                    <button
+                                        onClick={() => { setIsMenuOpen(false); setIsToolsOverlayOpen(true); }}
+                                        className="text-white text-[14px] font-medium tracking-wide hover:opacity-70 transition-opacity duration-200 w-full text-left"
+                                    >
+                                        Tools
+                                    </button>
                                 </li>
                             )}
                         </ul>
                     </nav>
-                </div >
+                </div>
             )}
 
             <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+            <ToolsOverlay isOpen={isToolsOverlayOpen} onClose={() => setIsToolsOverlayOpen(false)} />
         </>
     );
 };

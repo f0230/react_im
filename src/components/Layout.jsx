@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 
 const Footer = lazy(() => import("@/components/Footer"));
 
-const Layout = ({ children }) => {
+const Layout = ({ children, noFooter = false }) => {
     const { t } = useTranslation();
     const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
     const [footerVisible, setFooterVisible] = useState(false);
@@ -55,12 +55,15 @@ const Layout = ({ children }) => {
             <Navbar />
             <main className="flex-grow md:pt-[45px]" role="main">{children}</main>
 
-            <div ref={ref} className="absolute bottom-0 w-full h-10 pointer-events-none" />
-
-            {footerVisible && (
-                <Suspense fallback={<div className="text-center py-10">{t("layout.footerLoading")}</div>}>
-                    <Footer />
-                </Suspense>
+            {!noFooter && (
+                <>
+                    <div ref={ref} className="absolute bottom-0 w-full h-10 pointer-events-none" />
+                    {footerVisible && (
+                        <Suspense fallback={<div className="text-center py-10">{t("layout.footerLoading")}</div>}>
+                            <Footer />
+                        </Suspense>
+                    )}
+                </>
             )}
         </div>
     );

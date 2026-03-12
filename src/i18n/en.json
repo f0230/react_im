@@ -297,6 +297,23 @@
         "title": "Comprehensive Support in Digital Project Development",
         "text": "We guide you from planning to publication and maintenance. We think of every detail: aesthetics, functionality, content, and strategy."
       }
+    },
+    "categories": {
+      "proyectos": "Project Development",
+      "marca": "Brand & Identity",
+      "estrategia": "Strategy & Consulting",
+      "campanas": "Campaigns & Communication",
+      "espacios": "Spaces & Events",
+      "digital": "Digital & Technology"
+    },
+    "ticker": {
+      "row1": "BRANDING • STRATEGY • DESIGN • DIGITAL • CAMPAIGNS • IDENTITY • ",
+      "row2": "SPACES • TECHNOLOGY • DEVELOPMENT • CONSULTING • NAMING • "
+    },
+    "cta": {
+      "title": "Let's talk?",
+      "subtitle": "Let's find together the best solution for your company.",
+      "button": "Contact us"
     }
   },
   "landingDespega": {

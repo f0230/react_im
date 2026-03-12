@@ -297,6 +297,23 @@
         "title": "Acompañamiento integral en el desarrollo de proyectos digitales",
         "text": "Te guiamos desde la planificación hasta la publicación y mantenimiento. Pensamos en cada detalle: estética, funcionalidad, contenido y estrategia."
       }
+    },
+    "categories": {
+      "proyectos": "Desarrollo de Proyectos",
+      "marca": "Marca e Identidad",
+      "estrategia": "Estrategia & Consultoría",
+      "campanas": "Campañas & Comunicación",
+      "espacios": "Espacios & Eventos",
+      "digital": "Digital & Tecnología"
+    },
+    "ticker": {
+      "row1": "BRANDING • ESTRATEGIA • DISEÑO • DIGITAL • CAMPAÑAS • IDENTIDAD • ",
+      "row2": "ESPACIOS • TECNOLOGÍA • DESARROLLO • CONSULTORÍA • NAMING • "
+    },
+    "cta": {
+      "title": "¿Hablamos?",
+      "subtitle": "Encontremos juntos la mejor solución para tu empresa.",
+      "button": "Contactanos"
     }
   },
   "landingDespega": {

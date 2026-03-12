@@ -1,4 +1,3 @@
-```
 import React from 'react';
 import PageWrapper from '../components/layout/PageWrapper';
 import DevelopmentHero from '../components/DevelopmentHero';
@@ -17,9 +16,11 @@ const Development = () => {
           {developmentProjects.map((project, index) => (
             <ProjectCard
               key={index}
-              title={t(project.titleKey)}
-              description={t(project.descriptionKey)}
-              id={project.id}
+              project={{
+                ...project,
+                title: t(project.titleKey),
+                description: t(project.descriptionKey),
+              }}
             />
           ))}
           <MoreContent text={t("development.moreContent")} />
@@ -30,4 +31,3 @@ const Development = () => {
 };
 
 export default Development;
-```

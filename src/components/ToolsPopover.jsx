@@ -28,7 +28,7 @@ const ICONS = {
     LinkIcon
 };
 
-const ToolsPopover = () => {
+const ToolsPopover = ({ inline = false }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [tools, setTools] = useState([]);
     const [isAdding, setIsAdding] = useState(false);
@@ -37,10 +37,10 @@ const ToolsPopover = () => {
 
     // Load tools from Supabase
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen || inline) {
             fetchTools();
         }
-    }, [isOpen]);
+    }, [isOpen, inline]);
 
     const fetchTools = async () => {
         setIsLoading(true);
@@ -86,6 +86,36 @@ const ToolsPopover = () => {
     const getIcon = (iconName) => {
         return ICONS[iconName] || Globe;
     };
+
+    // Modo inline: grid directo sin popover flotante
+    if (inline) {
+        return (
+            <div className="grid grid-cols-4 gap-4 py-1">
+                {tools.map((tool) => {
+                    const IconComp = getIcon(tool.icon);
+                    return (
+                        <a
+                            key={tool.id}
+                            href={tool.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex flex-col items-center gap-1"
+                        >
+                            <div className={cn(
+                                "w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md transition-transform duration-200 group-hover:scale-105 group-active:scale-95",
+                                tool.color || "bg-neutral-700"
+                            )}>
+                                <IconComp size={17} />
+                            </div>
+                            <span className="text-[10px] text-white/60 text-center font-medium truncate w-full group-hover:text-white transition-colors">
+                                {tool.name}
+                            </span>
+                        </a>
+                    );
+                })}
+            </div>
+        );
+    }
 
     return (
         <div className="relative">
@@ -160,7 +190,7 @@ const ToolsPopover = () => {
                         </form>
                     ) : (
                         /* Grid */
-                        <div className="grid grid-cols-4 gap-4 max-h-[400px] overflow-y-auto p-2 custom-scrollbar">
+                        <div className="grid grid-cols-4 gap-5 max-h-[400px] overflow-y-auto px-1 py-2 custom-scrollbar">
                             {tools.map((tool) => {
                                 const IconComp = getIcon(tool.icon);
                                 return (
@@ -169,19 +199,17 @@ const ToolsPopover = () => {
                                         href={tool.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="group flex flex-col items-center gap-2 relative"
+                                        className="group flex flex-col items-center gap-1.5 relative"
                                     >
                                         <div className={cn(
-                                            "w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg transition-transform duration-200 group-hover:scale-105 group-active:scale-95",
+                                            "w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md transition-transform duration-200 group-hover:scale-105 group-active:scale-95",
                                             tool.color || "bg-neutral-700"
                                         )}>
-                                            <IconComp size={24} />
+                                            <IconComp size={17} />
                                         </div>
-                                        <span className="text-[11px] text-white/80 text-center font-medium truncate w-full px-1 group-hover:text-white transition-colors">
+                                        <span className="text-[10px] text-white/70 text-center font-medium truncate w-full px-0.5 group-hover:text-white transition-colors">
                                             {tool.name}
                                         </span>
-
-                                        {/* Delete option could be added here later */}
                                     </a>
                                 );
                             })}
@@ -189,12 +217,12 @@ const ToolsPopover = () => {
                             {/* Add New Trigger */}
                             <button
                                 onClick={() => setIsAdding(true)}
-                                className="group flex flex-col items-center gap-2"
+                                className="group flex flex-col items-center gap-1.5"
                             >
-                                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white/50 bg-white/5 border-2 border-dashed border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-200 group-hover:scale-105 group-active:scale-95">
-                                    <Plus size={24} />
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white/50 bg-white/5 border-2 border-dashed border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-200 group-hover:scale-105 group-active:scale-95">
+                                    <Plus size={17} />
                                 </div>
-                                <span className="text-[11px] text-white/50 text-center font-medium truncate w-full px-1 group-hover:text-white/70 transition-colors">
+                                <span className="text-[10px] text-white/50 text-center font-medium truncate w-full px-0.5 group-hover:text-white/70 transition-colors">
                                     New
                                 </span>
                             </button>

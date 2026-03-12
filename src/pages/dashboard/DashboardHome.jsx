@@ -298,7 +298,7 @@ const DashboardHome = () => {
                     >
                         <Link
                             to={stat.path}
-                            className="block group p-8 bg-white/90 backdrop-blur-sm rounded-[10px] hover:shadow-[0_20px_40px_-30px_rgba(0,0,0,0.55)] hover:-translate-y-1 transition-all duration-300"
+                            className="block group p-8 bg-white/90 backdrop-blur-sm rounded-[10px]"
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <div className={`p-4 rounded-2xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>

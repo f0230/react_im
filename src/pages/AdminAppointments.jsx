@@ -31,7 +31,10 @@ const AdminAppointments = () => {
         if (!apt?.scheduled_at) return false;
         const aptDate = new Date(apt.scheduled_at);
         if (Number.isNaN(aptDate.getTime())) return false;
-        if (aptDate <= new Date()) return false;
+        // Allow all appointments from today onwards, even if the time already passed
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (aptDate < todayStart) return false;
         return normalizeStatus(apt.status) !== 'cancelled';
     };
 

@@ -1,5 +1,3 @@
-import React from 'react';
-
 const ProjectCard = ({ project }) => {
   return (
     <div className="w-full h-full flex flex-col justify-between">
@@ -61,7 +59,7 @@ const ProjectCard = ({ project }) => {
       <div>
         <h3 className="text-xs sm:text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">Tecnologías</h3>
         <div className="flex flex-wrap gap-1.5 sm:gap-2">
-          {project.technologies.map((tech, index) => (
+          {(project.technologies || []).map((tech, index) => (
             <span 
               key={tech} 
               className="inline-flex items-center px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm font-medium text-white rounded-full transition-all duration-200 hover:scale-105"
