@@ -218,14 +218,14 @@ const DashboardHome = () => {
     const mobileRowsClass = dashboardContent.cards.length > 3 ? 'grid-rows-4' : 'grid-rows-3';
 
     return (
-        <div className="space-y-1 font-product pb-16 pt-1">
+        <div className="space-y-[10px] font-product pb-16 pt-[12px]">
             <header className="relative rounded-[10px] md:rounded-[10px] overflow-hidden shadow-[0_20px_60px_-35px_rgba(0,0,0,0.45)]">
                 <div className="absolute inset-0" aria-hidden="true">
                     <picture>
                         <source media="(min-width: 768px)" srcSet={heroBgDesktop} />
                         <img src={heroBgMobile} alt="" className="h-full w-full object-cover" />
                     </picture>
-                    <div className="absolute inset-0 bg-white/35" />
+                    <div className="absolute inset-0 bg-transparent" />
                 </div>
 
                 <div className="relative z-10 px-6 py-10 md:px-10 md:py-14">
@@ -288,7 +288,7 @@ const DashboardHome = () => {
                 </div>
             </header>
 
-            <div className={`grid grid-cols-1 ${mobileRowsClass} md:grid-rows-none ${dashboardContent.cards.length > 3 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-1`}>
+            <div className={`grid grid-cols-1 ${mobileRowsClass} md:grid-rows-none ${dashboardContent.cards.length > 3 ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3'} gap-[10px]`}>
                 {dashboardContent.cards.map((stat, i) => (
                     <motion.div
                         key={`${stat.label}-${i}`}
@@ -298,7 +298,7 @@ const DashboardHome = () => {
                     >
                         <Link
                             to={stat.path}
-                            className="block group p-8 bg-white/90 backdrop-blur-sm rounded-[10px]"
+                            className="block group p-8 bg-white rounded-[10px]"
                         >
                             <div className="flex items-center justify-between mb-6">
                                 <div className={`p-4 rounded-2xl ${stat.bg} ${stat.color} group-hover:scale-110 transition-transform`}>

@@ -6,7 +6,7 @@ import { POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
 import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
 
 const DashboardMenu = ({ isOpen, onClose }) => {
-    const { profile, signOut } = useAuth();
+    const { profile } = useAuth();
     const role = profile?.role || 'client';
     const isClientLeader = profile?.is_client_leader;
 
@@ -21,23 +21,23 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         worker: [
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
+            { icon: MessageSquare, label: 'Mensajeria', path: '/dashboard/messages' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },
             { icon: Users, label: 'CRM Clientes', path: '/dashboard/clients' },
-            { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
+            { icon: MessageSquare, label: 'Mensajeria', path: '/dashboard/messages' },
             { icon: Calendar, label: 'Citas', path: '/dashboard/appointments' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
-            { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
+            { icon: FileText, label: 'Facturacion', path: '/dashboard/invoices' },
             { icon: TrendingUp, label: 'Finanzas', path: '/dashboard/finances' },
-        ]
+        ],
     };
 
     let navLinks = menuItems[role] || menuItems.client;
 
     if (role === 'client' && !isClientLeader) {
-        navLinks = navLinks.filter(item => !['/dashboard/messages', '/dashboard/invoices'].includes(item.path));
+        navLinks = navLinks.filter((item) => !['/dashboard/messages', '/dashboard/invoices'].includes(item.path));
     }
 
     return (
@@ -46,12 +46,14 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             onClose={onClose}
             className={POPOVER_PANEL_CLASS}
         >
-            <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center gap-2 bg-white/5">
-                <LayoutDashboard size={16} className="text-white" />
-                <span className="text-sm font-semibold text-white">Menú</span>
-            </div>
-            <div className="p-2 space-y-1">
+            <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-black/42 via-black/18 to-black/8" />
 
+            <div className="relative z-10 px-4 pt-4 pb-3 border-b border-white/10 flex items-center gap-2 bg-white/5">
+                <LayoutDashboard size={16} className="text-neutral-700" />
+                <span className="text-sm font-semibold text-neutral-700">Menu</span>
+            </div>
+
+            <div className="relative z-10 p-2 space-y-0.5">
                 {navLinks.map((item) => (
                     <PrefetchNavLink
                         key={item.path}
@@ -59,13 +61,13 @@ const DashboardMenu = ({ isOpen, onClose }) => {
                         end={item.path === '/dashboard'}
                         onClick={onClose}
                         className={({ isActive }) => `
-                                flex items-center gap-2.5 px-3 py-2.5 rounded-[15px] transition-all duration-200 group
-                                ${isActive
-                                ? 'bg-white/10 text-white font-bold'
-                                : 'text-gray-400 hover:bg-white/5 hover:text-white'}
-                            `}
+                            flex items-center gap-2.5 px-3 py-2 rounded-[15px] transition-all duration-200 group
+                            ${isActive
+                                ? 'bg-white text-black font-bold'
+                                : 'text-neutral-700 hover:bg-white/5 hover:text-black'}
+                        `}
                     >
-                        <item.icon size={18} className="group-hover:text-skyblue transition-colors" />
+                        <item.icon size={18} className="text-neutral-700 transition-colors group-hover:text-black" />
                         <span className="font-product text-sm">{item.label}</span>
                     </PrefetchNavLink>
                 ))}

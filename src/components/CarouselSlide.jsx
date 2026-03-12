@@ -67,7 +67,7 @@ const CarouselSlide = ({ slide, isActive, isPrev, isNext }) => {
       {/* Contenido */}
       <div
         ref={innerRef}
-        className="relative z-10 flex justify-center items-center p-4 md:p-8 w-full h-full font-product transition-all duration-700 ease-out"
+        className="relative z-10 flex justify-center items-center px-3 py-4 md:p-8 w-full h-full font-product transition-all duration-700 ease-out"
       >
         {slide.content}
       </div>

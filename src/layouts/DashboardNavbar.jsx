@@ -41,6 +41,10 @@ const DashboardNavbar = () => {
         const handleScroll = () => {
             const nextScrolled = window.scrollY > 20;
             setScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled));
+            setIsMenuOpen(false);
+            setIsProfileOpen(false);
+            setIsMessagesOpen(false);
+            setIsNotificationsOpen(false);
         };
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);

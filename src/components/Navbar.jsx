@@ -149,27 +149,34 @@ const Navbar = () => {
 
             ctx = gsap.context(() => {
                 gsap.fromTo(
-                    "#mobile-menu",
+                    ".mobile-menu-backdrop",
                     {
-                        x: "-120%",
-                        y: "-120%",
                         opacity: 0,
-                        scale: 0.75,
-                        rotateZ: -8,
-                        boxShadow: "0px 0px 0px rgba(0,0,0,0)",
-                        transformOrigin: "top left",
-                        filter: "blur(24px)",
                     },
                     {
-                        x: "0%",
-                        y: "0%",
+                        opacity: 1,
+                        duration: 0.28,
+                        ease: "power2.out",
+                    }
+                );
+
+                gsap.fromTo(
+                    "#mobile-menu",
+                    {
+                        opacity: 0,
+                        y: -10,
+                        scale: 0.98,
+                        boxShadow: "0px 0px 0px rgba(0,0,0,0)",
+                        filter: "blur(8px)",
+                    },
+                    {
+                        y: 0,
                         opacity: 1,
                         scale: 1,
-                        rotateZ: 0,
                         boxShadow: "0 50px 120px rgba(0,0,0,0.2)",
                         filter: "blur(0px)",
-                        duration: 1.3,
-                        ease: "power4.out",
+                        duration: 0.32,
+                        ease: "power2.out",
                     }
                 );
 
@@ -177,17 +184,17 @@ const Navbar = () => {
                 gsap.fromTo(
                     items,
                     {
-                        y: 30,
+                        y: 10,
                         opacity: 0,
-                        filter: "blur(6px)",
+                        filter: "blur(4px)",
                     },
                     {
                         y: 0,
                         opacity: 1,
                         filter: "blur(0px)",
-                        stagger: 0.12,
-                        duration: 0.7,
-                        ease: "power3.out",
+                        stagger: 0.04,
+                        duration: 0.22,
+                        ease: "power2.out",
                     }
                 );
 
@@ -214,14 +221,20 @@ const Navbar = () => {
                 onComplete: () => setIsMenuVisible(false),
             });
 
+            tl.to(".mobile-menu-backdrop", {
+                opacity: 0,
+                duration: 0.22,
+                ease: "power2.out",
+            }, 0);
+
             tl.to("#mobile-menu", {
                 opacity: 0,
-                scale: 0.96,
-                y: 20,
-                filter: "blur(4px)",
-                duration: 0.6,
+                scale: 0.985,
+                y: -6,
+                filter: "blur(6px)",
+                duration: 0.22,
                 ease: "power2.out",
-            });
+            }, 0);
         };
 
         if (isMenuOpen && isMenuVisible) runOpen();
@@ -263,7 +276,7 @@ const Navbar = () => {
         <>
             {/* Navbar principal */}
             <div
-                className={`fixed top-0 left-0 w-full bg-black backdrop-blur-md z-50 transition-all duration-300 transform ${hasScrolled ? "shadow-md" : ""
+                className={`fixed top-0 left-0 w-full bg-black z-50 transition-all duration-300 transform ${hasScrolled ? "shadow-md" : ""
                     } ${showNavbar ? "translate-y-0" : "-translate-y-full"}`}
             >
                 <nav
@@ -374,6 +387,8 @@ const Navbar = () => {
 
             {/* Menú móvil */}
             {isMenuVisible && (
+                <>
+                <div className="mobile-menu-backdrop fixed inset-0 top-[45px] z-30 pointer-events-none bg-gradient-to-b from-black/55 via-black/72 to-black/88" />
                 <div
                     ref={menuRef}
                     id="mobile-menu"
@@ -449,6 +464,7 @@ const Navbar = () => {
                         </ul>
                     </nav>
                 </div>
+                </>
             )}
 
             <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
