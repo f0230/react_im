@@ -31,12 +31,12 @@ export default function Studio() {
     const [batchState, setBatchState] = useState({ queued: 0, active: 0 });
     const activeTaskIdsRef = useRef(new Set());
     const promptQueueRef = useRef([]);
-    const isProcessingQueueRef = useRef(false);
+    const activeQueueCountRef = useRef(0);
 
     const syncBatchState = useCallback(() => {
         setBatchState({
             queued: promptQueueRef.current.length,
-            active: isProcessingQueueRef.current ? 1 : 0,
+            active: activeQueueCountRef.current,
         });
     }, []);
 
@@ -201,29 +201,21 @@ export default function Studio() {
         }
     }, [upsertTask, user?.id]);
 
-    const processQueuedPrompts = useCallback(async () => {
+    const processQueuedPrompts = useCallback(() => {
         if (!user?.id) return;
-        if (isProcessingQueueRef.current) return;
-        if (!promptQueueRef.current.length) {
-            syncBatchState();
-            return;
-        }
+        if (!promptQueueRef.current.length) return;
 
-        isProcessingQueueRef.current = true;
+        const items = [...promptQueueRef.current];
+        promptQueueRef.current = [];
+        activeQueueCountRef.current += items.length;
         syncBatchState();
 
-        try {
-            while (promptQueueRef.current.length > 0) {
-                const nextItem = promptQueueRef.current.shift();
+        items.forEach((item) => {
+            processPrompt(item.prompt, item.config).finally(() => {
+                activeQueueCountRef.current -= 1;
                 syncBatchState();
-
-                if (!nextItem) continue;
-                await processPrompt(nextItem.prompt, nextItem.config);
-            }
-        } finally {
-            isProcessingQueueRef.current = false;
-            syncBatchState();
-        }
+            });
+        });
     }, [processPrompt, syncBatchState, user?.id]);
 
     const loadTasks = useCallback(async ({ silent = false, resumePending = false } = {}) => {
