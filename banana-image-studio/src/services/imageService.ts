@@ -65,6 +65,31 @@ export async function generateImage(task: GenerationTask): Promise<{ imageUrl: s
 }
 
 async function uploadReferenceImage(base64: string, apiKey: string): Promise<string> {
+    const isLocalDev = typeof window !== "undefined" && window.location.hostname === "localhost";
+
+    if (!isLocalDev) {
+        try {
+            const proxyResponse = await fetch("/api/kie-upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageDataUrl: base64 }),
+            });
+
+            if (proxyResponse.ok) {
+                const data = await parseJsonResponse(proxyResponse);
+                if (typeof data.fileUrl === "string") {
+                    return data.fileUrl;
+                }
+            }
+
+            const proxyError = await proxyResponse.text().catch(() => "");
+            console.warn("[studio] KIE upload proxy fallo:", proxyResponse.status, proxyError.slice(0, 120));
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Reference image upload failed";
+            console.warn("[studio] KIE upload proxy error:", message);
+        }
+    }
+
     const res = await fetch(base64);
     const blob = await res.blob();
     const formData = new FormData();
@@ -74,35 +99,20 @@ async function uploadReferenceImage(base64: string, apiKey: string): Promise<str
     formData.append("uploadPath", "images/banana-reference");
     formData.append("fileName", fileName);
 
-    const uploadTargets = [
-        `${KIE_UPLOAD_BASE_URL}/api/file-stream-upload`,
-        `${KIE_API_BASE_URL}/api/file-stream-upload`,
-    ];
+    const uploadResponse = await fetch(`${KIE_UPLOAD_BASE_URL}/api/file-stream-upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: formData,
+    });
 
-    let lastError: Error | null = null;
-
-    for (const target of uploadTargets) {
-        try {
-            const uploadResponse = await fetch(target, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${apiKey}` },
-                body: formData,
-            });
-
-            const data = await parseJsonResponse(uploadResponse);
-            if (data.code !== 200) {
-                throw new Error(data.msg || `Reference image upload failed (${uploadResponse.status})`);
-            }
-
-            const fileUrl = data.data?.fileUrl || data.data?.downloadUrl || data.fileUrl || data.downloadUrl || data.data;
-            if (typeof fileUrl !== "string") throw new Error("Could not find file URL in upload response");
-            return fileUrl;
-        } catch (error) {
-            lastError = error instanceof Error ? error : new Error("Reference image upload failed");
-        }
+    const data = await parseJsonResponse(uploadResponse);
+    if (data.code !== 200) {
+        throw new Error(data.msg || `Reference image upload failed (${uploadResponse.status})`);
     }
 
-    throw lastError || new Error("Reference image upload failed");
+    const fileUrl = data.data?.fileUrl || data.data?.downloadUrl || data.fileUrl || data.downloadUrl || data.data;
+    if (typeof fileUrl !== "string") throw new Error("Could not find file URL in upload response");
+    return fileUrl;
 }
 
 async function pollTaskStatus(taskId: string, apiKey: string): Promise<string> {
