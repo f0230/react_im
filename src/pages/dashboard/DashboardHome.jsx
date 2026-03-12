@@ -155,7 +155,7 @@ const DashboardHome = () => {
 
     const goToScheduleCall = () => {
         closeSchedulePrompt();
-        navigate('/schedule-call');
+        navigate('/meet');
     };
 
     const dashboardContent = useMemo(() => {

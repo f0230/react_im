@@ -104,7 +104,7 @@ const pathKeyMap = new Map([
     ['/registro', routeKeys.registro],
     ['/invite', routeKeys.invite],
     ['/complete-profile', routeKeys.completeProfile],
-    ['/schedule-call', routeKeys.scheduleCall],
+    ['/meet', routeKeys.scheduleCall],
     ['/dashboard', routeKeys.dashboardHome],
     ['/dashboard/clients', routeKeys.clients],
     ['/dashboard/tasks', routeKeys.projectTasks],
@@ -153,7 +153,7 @@ const resolveRouteKey = (to) => {
     const directMatch = pathKeyMap.get(path);
     if (directMatch) return directMatch;
 
-    if (path.startsWith('/schedule-call/')) return routeKeys.scheduleCall;
+    if (path.startsWith('/meet/')) return routeKeys.scheduleCall;
     if (path.startsWith('/dashboard/clients/')) return routeKeys.clientDetail;
     if (path.startsWith('/dashboard/finances/periods/')) return routeKeys.financesPeriod;
     if (path.startsWith('/dashboard/finances/ledger')) return routeKeys.financesLedger;

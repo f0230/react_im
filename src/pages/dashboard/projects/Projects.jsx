@@ -302,13 +302,13 @@ const Projects = () => {
                     return [project, ...prev];
                 });
                 if (isOnboarding) {
-                    navigate(`/schedule-call/${project.id}`);
+                    navigate(`/meet/${project.id}`);
                 }
                 return;
             }
             fetchProjects();
             if (isOnboarding) {
-                navigate('/schedule-call');
+                navigate('/meet');
             }
         },
         [fetchProjects, isOnboarding, navigate]
@@ -870,7 +870,7 @@ const Projects = () => {
                 onClose={() => {
                     setIsCreateModalOpen(false);
                     if (isOnboarding) {
-                        navigate('/schedule-call');
+                        navigate('/meet');
                     }
                 }}
                 onCreated={handleProjectCreated}

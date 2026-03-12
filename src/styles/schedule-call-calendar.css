@@ -277,12 +277,12 @@
 
 .dte-date-strip__edge--left {
     left: 0;
-    background: linear-gradient(90deg, #0b0b14 0%, transparent 100%);
+    background: linear-gradient(90deg, #f9fafb 0%, transparent 100%);
 }
 
 .dte-date-strip__edge--right {
     right: 0;
-    background: linear-gradient(270deg, #0b0b14 0%, transparent 100%);
+    background: linear-gradient(270deg, #f9fafb 0%, transparent 100%);
 }
 
 /* Date card */

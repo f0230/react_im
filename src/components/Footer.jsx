@@ -6,7 +6,7 @@ import logoDTE from '../assets/dte_lohace.webp';
 import { contactInfo } from '@/config/branding';
 import { useTranslation } from 'react-i18next';
 
-const SCHEDULE_CALL_URL = 'https://www.grupodte.com/schedule-call';
+const SCHEDULE_CALL_URL = 'https://www.grupodte.com/meet';
 const WHATSAPP_URL = 'https://wa.me/59896280674';
 
 const Footer = () => {

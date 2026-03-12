@@ -94,7 +94,7 @@ const ClientAppointments = () => {
                         Aún no has programado ninguna llamada. Cuando lo hagas, aparecerán aquí con todos los detalles.
                     </p>
                     <Link
-                        to="/schedule-call"
+                        to="/meet"
                         className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white rounded-full font-bold hover:scale-105 transition-all shadow-lg"
                     >
                         Agendar mi primera cita <ArrowRight size={18} />
@@ -156,7 +156,7 @@ const ClientAppointments = () => {
 
                     <div className="mt-8 text-center">
                         <Link
-                            to="/schedule-call"
+                            to="/meet"
                             className="text-skyblue font-bold hover:underline flex items-center justify-center gap-2"
                         >
                             <Calendar size={18} />

@@ -368,7 +368,7 @@ const CreateProjectModal = ({
             } else {
                 onClose();
                 // Redirect to calendar booking
-                navigate(`/schedule-call/${data.id}`);
+                navigate(`/meet/${data.id}`);
             }
             setLoading(false);
 

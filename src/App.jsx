@@ -162,7 +162,7 @@ const AppContent = () => {
           <Route path="/registro" element={<Registro />} />
           <Route path="/invite" element={<Invite />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
-          <Route path="/schedule-call/:projectId?" element={<ScheduleCall />} />
+          <Route path="/meet/:projectId?" element={<ScheduleCall />} />
 
           {/* Private Portal Routes */}
           <Route path="/dashboard" element={<PortalLayout />}>
