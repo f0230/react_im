@@ -22,7 +22,7 @@ export async function startImageGeneration(task) {
 
     const referenceImages = normalizeReferenceImages(task.referenceImages ?? task.referenceImage);
     const imageUrls = referenceImages.length > 0
-        ? await Promise.all(referenceImages.map((image) => uploadReferenceImage(image, apiKey)))
+        ? await Promise.all(referenceImages.map((image) => uploadReferenceImage(image)))
         : [];
 
     const inputPayload = {
@@ -156,35 +156,24 @@ async function uploadToSupabase(imageUrl, taskId) {
     return uploadData?.path || fileName;
 }
 
-async function uploadReferenceImage(base64, apiKey) {
-    const res = await fetch(base64);
-    const blob = await res.blob();
-    const formData = new FormData();
-    formData.append("file", blob, "reference.png");
-
-    const uploadResponse = await fetch(`${BASE_URL}/api/file-stream-upload`, {
+async function uploadReferenceImage(base64) {
+    const proxyResponse = await fetch("/api/kie-upload", {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageDataUrl: base64 }),
     });
 
-    const data = await uploadResponse.json();
-    if (data.code !== 200) {
-        throw new Error(data.msg || "Reference image upload failed");
+    const data = await proxyResponse.json();
+
+    if (!proxyResponse.ok) {
+        throw new Error(data.error || `Reference image upload failed (${proxyResponse.status})`);
     }
 
-    const fileUrl =
-        data.data?.fileUrl ||
-        data.data?.downloadUrl ||
-        data.fileUrl ||
-        data.downloadUrl ||
-        data.data;
-
-    if (typeof fileUrl !== "string") {
-        throw new Error("Could not find file URL in upload response");
+    if (typeof data.fileUrl !== "string") {
+        throw new Error("KIE upload proxy no devolvió fileUrl.");
     }
 
-    return fileUrl;
+    return data.fileUrl;
 }
 
 function normalizeReferenceImages(input) {
