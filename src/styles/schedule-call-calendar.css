@@ -296,9 +296,9 @@
     align-items: center;
     justify-content: center;
     gap: 0.1rem;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 1.5rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(255, 255, 255, 0.85);
     backdrop-filter: blur(12px);
     padding: 0.9rem 0.75rem;
     text-align: center;
@@ -307,19 +307,19 @@
 }
 
 .dte-date-strip__item:hover:not(.dte-date-strip__item--selected) {
-    border-color: rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(15, 23, 42, 0.18);
+    background: rgba(255, 255, 255, 0.98);
 }
 
 .dte-date-strip__item--today:not(.dte-date-strip__item--selected) {
-    border-color: rgba(96, 165, 250, 0.35);
-    box-shadow: 0 0 16px rgba(96, 165, 250, 0.1);
+    border-color: rgba(96, 165, 250, 0.5);
+    box-shadow: 0 0 16px rgba(96, 165, 250, 0.12);
 }
 
 .dte-date-strip__item--selected {
-    border-color: rgba(139, 92, 246, 0.6);
-    background: linear-gradient(145deg, rgba(139, 92, 246, 0.18), rgba(59, 130, 246, 0.14));
-    box-shadow: 0 0 28px rgba(139, 92, 246, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    border-color: rgba(15, 23, 42, 0.8);
+    background: linear-gradient(135deg, #111111 0%, #2b2b2b 100%);
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Typography */
@@ -329,14 +329,14 @@
 }
 
 .dte-date-strip__weekday {
-    color: rgba(255, 255, 255, 0.38);
+    color: #94a3b8;
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.16em;
 }
 
 .dte-date-strip__day {
-    color: rgba(255, 255, 255, 0.88);
+    color: #0f172a;
     font-size: 2.1rem;
     font-weight: 700;
     line-height: 1;
@@ -345,7 +345,7 @@
 
 .dte-date-strip__month {
     margin-top: 0.2rem;
-    color: rgba(255, 255, 255, 0.4);
+    color: #64748b;
     font-size: 0.72rem;
     font-weight: 600;
 }
@@ -353,7 +353,7 @@
 /* Selected overrides */
 .dte-date-strip__item--selected .dte-date-strip__weekday,
 .dte-date-strip__item--selected .dte-date-strip__month {
-    color: rgba(196, 181, 253, 0.75);
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .dte-date-strip__item--selected .dte-date-strip__day {
