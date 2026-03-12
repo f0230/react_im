@@ -15,7 +15,6 @@ import {
     ASPECT_RATIOS,
     PRO_ASPECT_RATIOS,
     IMAGE_SIZES,
-    getStudioCredits,
     MAX_REFERENCE_IMAGES,
     getModelReferenceLimit,
     modelSupportsReferenceImages,
@@ -100,21 +99,19 @@ export default function ControlPanel({
             ? PRO_ASPECT_RATIOS
             : ASPECT_RATIOS;
     const showResolution = !!currentModel?.hasResolution;
-    const creditsPerPrompt = getStudioCredits(model, imageSize);
-    const totalCredits = creditsPerPrompt * Math.max(promptCount, 1);
 
     return (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 z-50">
-            <div className="glass-panel p-4 shadow-2xl ring-1 ring-white/10">
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <div className="flex items-start gap-4">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-50">
+            <div className="glass-panel p-3 shadow-2xl ring-1 ring-white/10">
+                <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={!supportsReferenceImages || remainingReferenceSlots === 0}
-                            className="mt-1 p-2 rounded-lg hover:bg-white/5 transition-colors text-white/60 hover:text-white border border-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="p-1.5 rounded-lg hover:bg-white/5 transition-colors text-white/60 hover:text-white border border-white/5 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                         >
-                            <Plus size={20} />
+                            <Plus size={16} />
                         </button>
                         <input
                             type="file"
@@ -130,7 +127,7 @@ export default function ControlPanel({
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
                             placeholder={canGenerate ? "Una línea = un prompt." : "Configura una API Key para generar imágenes..."}
-                            className="flex-1 bg-transparent border-none focus:ring-0 text-lg resize-none py-1 placeholder:text-white/20 min-h-[40px] max-h-[120px]"
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-sm resize-none placeholder:text-white/20 min-h-[32px] max-h-[96px] leading-tight py-1"
                             disabled={!canGenerate}
                             onPaste={handlePaste}
                             onKeyDown={(e) => {
@@ -145,31 +142,12 @@ export default function ControlPanel({
                             type={canGenerate ? "submit" : "button"}
                             onClick={!canGenerate ? onRequestKey : undefined}
                             disabled={canGenerate ? !prompt.trim() : false}
-                            className="banana-button h-12"
+                            className="banana-button h-9 shrink-0"
                         >
-                            <span>{getButtonLabel({ canGenerate, isGenerating, isQueueActive, queuedCount, promptCount, totalCredits })}</span>
-                            <Sparkles size={18} />
+                            <span>{getButtonLabel({ canGenerate, isGenerating, isQueueActive, queuedCount, promptCount })}</span>
+                            <Sparkles size={16} />
                         </button>
                     </div>
-
-                    {canGenerate && (
-                        <div className="px-2 text-xs text-white/35 flex items-center justify-between gap-4">
-                            <span>
-                                {promptCount > 1
-                                    ? `${promptCount} prompts para agregar`
-                                    : isQueueActive && queuedCount > 0
-                                        ? `${queuedCount} en cola`
-                                        : isQueueActive
-                                            ? 'Generando ahora'
-                                            : ''}
-                            </span>
-                            <span>
-                                {supportsReferenceImages
-                                    ? `Referencias: ${referenceImages.length}/${effectiveMaxReferenceImages}`
-                                    : "Este modelo no acepta imagen de referencia"}
-                            </span>
-                        </div>
-                    )}
 
                     {referenceImages.length > 0 && (
                         <div className="flex flex-wrap items-center gap-2 px-2">
@@ -207,7 +185,7 @@ export default function ControlPanel({
                         </div>
                     )}
 
-                    <div className="flex items-center gap-3 pt-2 border-t border-white/5 relative">
+                    <div className="flex items-center gap-2 pt-1.5 border-t border-white/5 relative">
                         <div className="relative">
                             <div
                                 onClick={() => setShowModelMenu(!showModelMenu)}
@@ -350,18 +328,11 @@ function getPromptBatch(prompt) {
         .filter(Boolean);
 }
 
-function getButtonLabel({ canGenerate, isGenerating, isQueueActive, queuedCount, promptCount, totalCredits }) {
-    const creditSuffix = totalCredits > 0 ? ` · ${formatCredits(totalCredits)} cr` : "";
-
+function getButtonLabel({ canGenerate, isGenerating, isQueueActive, queuedCount, promptCount }) {
     if (!canGenerate) return "Activar API Key";
-    if (promptCount > 1) return `Encolar ${promptCount}${creditSuffix}`;
-    if (isQueueActive || isGenerating) return `${queuedCount > 0 ? `Agregar (${queuedCount})` : "Agregar"}${creditSuffix}`;
-    return `Generar${creditSuffix}`;
-}
-
-function formatCredits(value) {
-    if (!Number.isFinite(value)) return "0";
-    return Number.isInteger(value) ? String(value) : value.toFixed(1);
+    if (promptCount > 1) return `Encolar ${promptCount}`;
+    if (isQueueActive || isGenerating) return queuedCount > 0 ? `Agregar (${queuedCount})` : "Agregar";
+    return "Generar";
 }
 
 function readFilesAsDataUrls(files) {
