@@ -3,6 +3,15 @@
   "installCommand": "npm install --no-audit --no-fund && npm rebuild sharp",
   "headers": [
     {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {
@@ -14,6 +23,19 @@
           "value": "unsafe-none"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "grupodte.com"
+        }
+      ],
+      "destination": "https://www.grupodte.com/$1",
+      "permanent": true
     }
   ],
   "rewrites": [
