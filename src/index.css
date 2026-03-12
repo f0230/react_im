@@ -197,5 +197,5 @@ body {
 }
 
 .image-card img {
-  @apply w-full h-full object-cover transition-transform duration-500 group-hover:scale-105;
+  @apply w-full h-auto block transition-transform duration-500 group-hover:scale-105;
 }

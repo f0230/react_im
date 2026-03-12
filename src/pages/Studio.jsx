@@ -342,6 +342,45 @@ export default function Studio() {
         task.status === 'generating' && task.processingBy === user?.id
     ));
 
+    const sortedTasks = [...tasks].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+    const scrollRef = useRef(null);
+    const isAtBottomRef = useRef(true);
+    const prevTaskCountRef = useRef(tasks.length);
+
+    const handleScroll = useCallback(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    }, []);
+
+    // Stick to bottom while images load (ResizeObserver fires on each image that renders)
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el || isLoadingTasks) return;
+
+        el.scrollTop = el.scrollHeight;
+        isAtBottomRef.current = true;
+
+        const observer = new ResizeObserver(() => {
+            if (isAtBottomRef.current) {
+                el.scrollTop = el.scrollHeight;
+            }
+        });
+
+        Array.from(el.children).forEach((child) => observer.observe(child));
+        return () => observer.disconnect();
+    }, [isLoadingTasks]);
+
+    // Scroll to bottom when a new task is added
+    useEffect(() => {
+        if (tasks.length > prevTaskCountRef.current && scrollRef.current) {
+            isAtBottomRef.current = true;
+            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+        }
+        prevTaskCountRef.current = tasks.length;
+    }, [tasks.length]);
+
     if (isCheckingApiKey || isLoadingTasks) {
         return (
             <div className="flex h-[calc(100dvh-45px)] items-center justify-center bg-[#0a0a0a] text-white">
@@ -352,7 +391,7 @@ export default function Studio() {
 
     return (
         <div className="relative flex flex-col overflow-hidden bg-[#0a0a0a] text-white" style={{ zoom: 0.8, height: 'calc((100dvh - 45px) / 0.8)', minHeight: 'calc((100dvh - 45px) / 0.8)' }}>
-            <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain h-full">
+            <main ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto overscroll-contain h-full">
                 {!hasApiKey && (
                     <div className="m-8 max-w-2xl mx-auto p-8 glass-panel border-banana/20 flex flex-col items-center text-center">
                         <div className="w-16 h-16 rounded-full bg-banana/10 flex items-center justify-center mb-6">
@@ -380,7 +419,7 @@ export default function Studio() {
                 )}
 
                 <ImageGrid
-                    tasks={tasks}
+                    tasks={sortedTasks}
                     onSelect={setSelectedTask}
                     onUseAsReference={handleAddReferenceImages}
                     onDismiss={handleDismissTask}
@@ -402,7 +441,7 @@ export default function Studio() {
 
             <ImageViewer
                 task={selectedTask}
-                tasks={tasks}
+                tasks={sortedTasks}
                 onClose={() => setSelectedTask(null)}
                 onSelect={setSelectedTask}
                 onUseAsReference={handleAddReferenceImages}

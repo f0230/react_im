@@ -7,8 +7,8 @@ export default function ImageViewer({ task, tasks, onClose, onSelect, onUseAsRef
     if (!task) return null;
 
     const currentIndex = tasks.findIndex(t => t.id === task.id);
-    const nextTask = currentIndex > 0 ? tasks[currentIndex - 1] : null;
-    const prevTask = currentIndex < tasks.length - 1 ? tasks[currentIndex + 1] : null;
+    const prevTask = currentIndex > 0 ? tasks[currentIndex - 1] : null;
+    const nextTask = currentIndex < tasks.length - 1 ? tasks[currentIndex + 1] : null;
     const promptLabel = task.prompt || 'Imagen compartida sin prompt guardado';
     const modelLabel = getModelLabel(task.model);
 

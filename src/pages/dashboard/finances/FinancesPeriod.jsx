@@ -395,29 +395,64 @@ const FinancesPeriod = () => {
                         Cuando el período está abierto, esta lista queda vacía. Al cerrar, se calculan automáticamente los montos para admins, workers y empresa.
                     </p>
 
-                    <div className="mt-6 space-y-4">
-                        {distributions.length === 0 && (
-                            <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-5 text-sm text-neutral-500">
-                                Todavía no hay distribuciones generadas.
+                    {distributions.length === 0 && (
+                        <div className="mt-6 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-5 text-sm text-neutral-500">
+                            Todavía no hay distribuciones generadas.
+                        </div>
+                    )}
+
+                    {distributions.length > 0 && (() => {
+                        const getLabel = (distribution) => distribution.recipient_type === 'company'
+                            ? 'Fondo empresa'
+                            : profileMap[distribution.profile_id]?.full_name || profileMap[distribution.profile_id]?.email || 'Perfil sin asignar';
+
+                        const admins = distributions.filter((d) => d.recipient_type === 'admin');
+                        const workers = distributions.filter((d) => d.recipient_type === 'worker');
+                        const company = distributions.filter((d) => d.recipient_type === 'company');
+
+                        const DistributionGroup = ({ title, subtitle, items, accent }) => items.length === 0 ? null : (
+                            <div className="mt-6">
+                                <div className={`mb-3 flex items-center gap-2 border-b pb-2 ${accent}`}>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.3em]">{title}</p>
+                                    {subtitle && <p className="text-xs text-neutral-400">— {subtitle}</p>}
+                                </div>
+                                <div className="space-y-3">
+                                    {items.map((distribution) => (
+                                        <DistributionRow
+                                            key={distribution.id}
+                                            distribution={distribution}
+                                            label={getLabel(distribution)}
+                                            disabled={period?.status !== 'closed'}
+                                            onSavePayment={handleSaveDistributionPayment}
+                                        />
+                                    ))}
+                                </div>
                             </div>
-                        )}
+                        );
 
-                        {distributions.map((distribution) => {
-                            const label = distribution.recipient_type === 'company'
-                                ? 'Fondo empresa'
-                                : profileMap[distribution.profile_id]?.full_name || profileMap[distribution.profile_id]?.email || 'Perfil sin asignar';
-
-                            return (
-                                <DistributionRow
-                                    key={distribution.id}
-                                    distribution={distribution}
-                                    label={label}
-                                    disabled={period?.status !== 'closed'}
-                                    onSavePayment={handleSaveDistributionPayment}
+                        return (
+                            <>
+                                <DistributionGroup
+                                    title="Admins"
+                                    subtitle="reparto personal"
+                                    items={admins}
+                                    accent="border-skyblue/30 text-skyblue"
                                 />
-                            );
-                        })}
-                    </div>
+                                <DistributionGroup
+                                    title="Equipo"
+                                    subtitle="plata reservada para workers"
+                                    items={workers}
+                                    accent="border-violet-200 text-violet-500"
+                                />
+                                <DistributionGroup
+                                    title="DTE"
+                                    subtitle="fondo empresa"
+                                    items={company}
+                                    accent="border-amber-200 text-amber-600"
+                                />
+                            </>
+                        );
+                    })()}
                 </section>
             </div>
         </div>
