@@ -28,7 +28,7 @@ export async function generateImage(task: GenerationTask): Promise<{ imageUrl: s
 
     // 1. Upload reference image if present
     let imageUrls: string[] = [];
-    if (task.referenceImage) {
+    if (supportsReferenceImages(task.model) && task.referenceImage) {
         const uploadedUrl = await uploadReferenceImage(task.referenceImage, apiKey);
         imageUrls = [uploadedUrl];
     }
@@ -203,4 +203,8 @@ function getFileExtensionFromType(contentType: string): string {
     if (contentType === "image/webp") return "webp";
     if (contentType === "image/gif") return "gif";
     return "png";
+}
+
+function supportsReferenceImages(modelId: string): boolean {
+    return modelId === "nano-banana-2" || modelId === "nano-banana-pro";
 }

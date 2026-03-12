@@ -17,6 +17,8 @@ import {
     IMAGE_SIZES,
     getStudioCredits,
     MAX_REFERENCE_IMAGES,
+    getModelReferenceLimit,
+    modelSupportsReferenceImages,
 } from "@/utils/studioTypes";
 
 export default function ControlPanel({
@@ -40,10 +42,16 @@ export default function ControlPanel({
     const [showSizeMenu, setShowSizeMenu] = useState(false);
 
     const fileInputRef = useRef(null);
+    const currentModel = MODELS.find((m) => m.id === model);
+    const effectiveMaxReferenceImages = Math.min(
+        maxReferenceImages,
+        getModelReferenceLimit(model)
+    );
+    const supportsReferenceImages = modelSupportsReferenceImages(model);
     const promptCount = getPromptBatch(prompt).length;
     const queuedCount = batchState.queued || 0;
     const isQueueActive = queuedCount > 0 || batchState.active > 0;
-    const remainingReferenceSlots = Math.max(maxReferenceImages - referenceImages.length, 0);
+    const remainingReferenceSlots = Math.max(effectiveMaxReferenceImages - referenceImages.length, 0);
 
     const handleFileSelection = async (files) => {
         const selectedFiles = Array.from(files || []).slice(0, remainingReferenceSlots);
@@ -87,7 +95,6 @@ export default function ControlPanel({
         setPrompt("");
     };
 
-    const currentModel = MODELS.find((m) => m.id === model);
     const availableAspects =
         currentModel?.usesAspectRatio
             ? PRO_ASPECT_RATIOS
@@ -104,7 +111,7 @@ export default function ControlPanel({
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            disabled={remainingReferenceSlots === 0}
+                            disabled={!supportsReferenceImages || remainingReferenceSlots === 0}
                             className="mt-1 p-2 rounded-lg hover:bg-white/5 transition-colors text-white/60 hover:text-white border border-white/5 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             <Plus size={20} />
@@ -115,6 +122,7 @@ export default function ControlPanel({
                             className="hidden"
                             accept="image/*"
                             multiple
+                            disabled={!supportsReferenceImages}
                             onChange={handleFileChange}
                         />
 
@@ -155,6 +163,11 @@ export default function ControlPanel({
                                             ? 'Generando ahora'
                                             : ''}
                             </span>
+                            <span>
+                                {supportsReferenceImages
+                                    ? `Referencias: ${referenceImages.length}/${effectiveMaxReferenceImages}`
+                                    : "Este modelo no acepta imagen de referencia"}
+                            </span>
                         </div>
                     )}
 
@@ -180,7 +193,7 @@ export default function ControlPanel({
                                 </div>
                             ))}
                             <span className="text-xs text-white/40">
-                                {referenceImages.length}/{maxReferenceImages} referencias
+                                {referenceImages.length}/{effectiveMaxReferenceImages} referencias
                             </span>
                             {referenceImages.length > 1 && (
                                 <button

@@ -1,4 +1,9 @@
-import { MAX_REFERENCE_IMAGES, MODELS } from "../utils/studioTypes";
+import {
+    MAX_REFERENCE_IMAGES,
+    MODELS,
+    getModelReferenceLimit,
+    modelSupportsReferenceImages,
+} from "../utils/studioTypes";
 import { supabase } from "../lib/supabaseClient";
 
 const KIE_API_BASE_URL = "https://api.kie.ai";
@@ -21,7 +26,10 @@ export async function startImageGeneration(task) {
 
     const apiKey = getApiKey();
 
-    const referenceImages = normalizeReferenceImages(task.referenceImages ?? task.referenceImage);
+    const referenceImages = normalizeReferenceImages(
+        task.referenceImages ?? task.referenceImage,
+        task.model
+    );
     const imageUrls = referenceImages.length > 0
         ? await Promise.all(referenceImages.map((image) => uploadReferenceImage(image, apiKey)))
         : [];
@@ -217,14 +225,19 @@ async function uploadReferenceImage(base64, apiKey) {
     return fileUrl;
 }
 
-function normalizeReferenceImages(input) {
+function normalizeReferenceImages(input, modelId) {
+    if (!modelSupportsReferenceImages(modelId)) {
+        return [];
+    }
+
     const images = Array.isArray(input)
         ? input
         : input
             ? [input]
             : [];
 
-    return images.filter(Boolean).slice(0, MAX_REFERENCE_IMAGES);
+    const limit = getModelReferenceLimit(modelId) || MAX_REFERENCE_IMAGES;
+    return images.filter(Boolean).slice(0, limit);
 }
 
 async function pollTaskStatus(taskId, apiKey) {

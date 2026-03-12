@@ -4,6 +4,8 @@ export const MODELS = [
         name: "Nano Banana 2",
         fullName: "nano-banana-2",         // No google/ prefix per API spec
         description: "Next-gen, alta calidad con control de resolución",
+        supportsReferenceImages: true,
+        maxReferenceImages: 14,
         hasResolution: true,               // Supports resolution: 1K/2K/4K
         hasGoogleSearch: true,             // Supports google_search grounding
         usesAspectRatio: true,             // Uses aspect_ratio + resolution (not image_size)
@@ -18,6 +20,8 @@ export const MODELS = [
         name: "Nano Banana",
         fullName: "google/nano-banana",
         description: "Rápido y eficiente",
+        supportsReferenceImages: false,
+        maxReferenceImages: 0,
         hasResolution: false,
         hasGoogleSearch: false,
         usesAspectRatio: false,            // Uses image_size field
@@ -28,6 +32,8 @@ export const MODELS = [
         name: "Nano Banana Pro",
         fullName: "nano-banana-pro",
         description: "Alta calidad con control de resolucion",
+        supportsReferenceImages: true,
+        maxReferenceImages: 8,
         hasResolution: true,
         hasGoogleSearch: false,
         usesAspectRatio: true,             // Uses aspect_ratio + resolution (not image_size)
@@ -68,6 +74,16 @@ export const IMAGE_SIZES = [
 ];
 
 export const MAX_REFERENCE_IMAGES = 14;
+
+export function getModelReferenceLimit(modelId) {
+    const model = MODELS.find((item) => item.id === modelId);
+    return model?.maxReferenceImages ?? MAX_REFERENCE_IMAGES;
+}
+
+export function modelSupportsReferenceImages(modelId) {
+    const model = MODELS.find((item) => item.id === modelId);
+    return Boolean(model?.supportsReferenceImages);
+}
 
 export function getStudioCredits(modelId, imageSize = "1K") {
     const model = MODELS.find((item) => item.id === modelId);
