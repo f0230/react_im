@@ -171,16 +171,17 @@ async function uploadReferenceImage(base64) {
         body: JSON.stringify({ imageDataUrl: base64 }),
     });
 
-    if (proxyResponse.ok) {
-        const data = await parseJsonResponse(proxyResponse);
-        if (typeof data.fileUrl === "string") {
-            return data.fileUrl;
-        }
-        throw new Error("KIE upload proxy respondió OK pero sin fileUrl en la respuesta.");
+    const data = await proxyResponse.json();
+
+    if (!proxyResponse.ok) {
+        throw new Error(data.error || `Reference image upload failed (${proxyResponse.status})`);
     }
 
-    const proxyError = await proxyResponse.text().catch(() => "");
-    throw new Error(`Reference image upload failed (${proxyResponse.status}): ${proxyError.slice(0, 200)}`);
+    if (typeof data.fileUrl !== "string") {
+        throw new Error("KIE upload proxy no devolvió fileUrl.");
+    }
+
+    return data.fileUrl;
 }
 
 function normalizeReferenceImages(input, modelId) {
@@ -255,20 +256,6 @@ async function pollTaskStatus(taskId, apiKey) {
 
 function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function parseJsonResponse(response) {
-    const text = await response.text();
-
-    if (!text) {
-        return {};
-    }
-
-    try {
-        return JSON.parse(text);
-    } catch (error) {
-        throw new Error(`Unexpected upload response (${response.status}): ${text.slice(0, 120)}`);
-    }
 }
 
 function getFileExtensionFromType(contentType) {

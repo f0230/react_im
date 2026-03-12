@@ -585,16 +585,15 @@ const ScheduleCall = () => {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
-                                    <div className="relative p-5 sm:p-6">
+                                    <div className="relative rounded-3xl bg-[#0b0b14] p-5 ring-1 ring-white/[0.06] sm:p-6">
                                         <div className="relative flex min-h-[320px] flex-col sm:h-[320px]">
-                                     
 
                                             {loadingBookingRules ? (
-                                                <div className="mb-2 flex gap-3 overflow-hidden">
+                                                <div className="mb-2 flex gap-2.5 overflow-hidden">
                                                     {Array.from({ length: 6 }).map((_, index) => (
                                                         <motion.div
                                                             key={index}
-                                                            className="h-[108px] min-w-[92px] rounded-[26px] border border-white/60 bg-white/35 backdrop-blur-xl"
+                                                            className="h-[108px] min-w-[86px] rounded-3xl border border-white/[0.06] bg-white/[0.03]"
                                                             initial={{ opacity: 0, y: 8 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             transition={{ duration: 0.28, delay: index * 0.04 }}
@@ -634,8 +633,8 @@ const ScheduleCall = () => {
                                                                             timeZone: SCHEDULE_TIME_ZONE,
                                                                         })}
                                                                         variants={dateItemVariants}
-                                                                        whileHover={{ y: -4, scale: 1.01 }}
-                                                                        whileTap={{ scale: 0.98 }}
+                                                                        whileHover={{ y: -3, scale: 1.02 }}
+                                                                        whileTap={{ scale: 0.97 }}
                                                                     >
                                                                         <span className="dte-date-strip__weekday">
                                                                             {isToday
@@ -671,21 +670,21 @@ const ScheduleCall = () => {
                                                                 animate={{ opacity: 1, y: 0 }}
                                                                 exit={{ opacity: 0, y: 6 }}
                                                                 transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                                                                className="border-t border-white/35 pt-4"
+                                                                className="border-t border-white/[0.08] pt-4"
                                                             >
                                                                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                                                                     <div>
-                                                                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                                                                        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-white/35">
                                                                             {t('calendar.availableSlotsLabel')}
                                                                         </p>
-                                                                        <p className="mt-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                                                                        <p className="mt-0.5 text-[0.62rem] font-medium uppercase tracking-[0.2em] text-white/25">
                                                                             {SCHEDULE_TIME_ZONE_LABEL}
                                                                         </p>
                                                                     </div>
                                                                 </div>
 
                                                                 {fieldErrors.slot && (
-                                                                    <p className="mb-3 rounded-2xl border border-red-200/70 bg-red-50/70 px-3 py-2 text-sm text-red-700 backdrop-blur-xl">
+                                                                    <p className="mb-3 rounded-2xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-400">
                                                                         {fieldErrors.slot}
                                                                     </p>
                                                                 )}
@@ -697,26 +696,28 @@ const ScheduleCall = () => {
                                                                                 <motion.button
                                                                                     key={idx}
                                                                                     onClick={() => handleSlotSelect(slot)}
-                                                                                    className="group flex w-full items-center justify-between rounded-[22px] border border-white/60 bg-white/42 px-4 py-3 text-left text-sm backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-white hover:bg-white/58 sm:text-base"
+                                                                                    className="group flex w-full items-center justify-between rounded-2xl border border-white/[0.07] bg-white/[0.04] px-4 py-3.5 text-left text-sm transition-all duration-300 hover:border-violet-500/40 hover:bg-white/[0.08] hover:shadow-[0_0_22px_rgba(139,92,246,0.15)] sm:text-base"
                                                                                     initial={{ opacity: 0, y: 10 }}
                                                                                     animate={{ opacity: 1, y: 0 }}
                                                                                     transition={{ duration: 0.22, delay: idx * 0.035 }}
+                                                                                    whileHover={{ y: -1 }}
+                                                                                    whileTap={{ scale: 0.99 }}
                                                                                 >
-                                                                                    <span className="font-semibold text-slate-900">
+                                                                                    <span className="font-semibold text-white/85">
                                                                                         {formatScheduleTime(slot.start)}
                                                                                     </span>
-                                                                                    <span className="rounded-full border border-slate-200/70 bg-white/70 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-700 transition-colors group-hover:border-white group-hover:bg-white">
+                                                                                    <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-violet-400 transition-all duration-300 group-hover:border-violet-400/60 group-hover:bg-violet-500/20 group-hover:text-violet-300">
                                                                                         {t('calendar.book')}
                                                                                     </span>
                                                                                 </motion.button>
                                                                             ))}
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="flex min-h-[100px] flex-col items-center justify-center rounded-[24px] border border-white/50 bg-white/25 px-6 text-center backdrop-blur-xl">
-                                                                            <p className="text-sm font-semibold text-slate-700">
+                                                                        <div className="flex min-h-[100px] flex-col items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03] px-6 text-center">
+                                                                            <p className="text-sm font-semibold text-white/60">
                                                                                 {t('calendar.noSlots')}
                                                                             </p>
-                                                                            <p className="mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
+                                                                            <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/35">
                                                                                 {t('calendar.noSlotsDescription')}
                                                                             </p>
                                                                         </div>
