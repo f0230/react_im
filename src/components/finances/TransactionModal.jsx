@@ -155,8 +155,17 @@ const TransactionModal = ({
                                     Libro contable
                                 </p>
                                 <h2 className="mt-2 text-2xl font-black text-neutral-900">
-                                    {initialValues?.id ? 'Editar movimiento' : form.type === 'income' ? 'Nuevo ingreso' : 'Nuevo gasto'}
+                                    {initialValues?.id
+                                        ? 'Editar movimiento'
+                                        : form.type === 'income'
+                                            ? 'Ingreso extra (no facturación)'
+                                            : 'Nuevo gasto'}
                                 </h2>
+                                {!initialValues?.id && form.type === 'income' && (
+                                    <p className="mt-1 text-sm text-neutral-500">
+                                        Los cobros de facturas se registran solos. Usá esto para ingresos externos: inversiones, aportes de capital u otros.
+                                    </p>
+                                )}
                             </div>
                             <button
                                 type="button"

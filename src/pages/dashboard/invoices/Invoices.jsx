@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -17,7 +17,8 @@ import {
     Briefcase,
     Filter,
     Search,
-    X
+    X,
+    CalendarRange
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
@@ -34,6 +35,8 @@ const Invoices = () => {
     const [invoices, setInvoices] = useState([]);
     const [projects, setProjects] = useState([]);
     const [clients, setClients] = useState([]);
+    // Map of invoice_id → { period_id, period_name } for paid invoices (admin only)
+    const [invoiceFinancePeriodMap, setInvoiceFinancePeriodMap] = useState({});
     const [selectedProject, setSelectedProject] = useState(projectIdParam || 'all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -93,6 +96,23 @@ const Invoices = () => {
                 .select('*')
                 .order('created_at', { ascending: false });
             setClients(clientsData || []);
+
+            // Fetch finance period for each invoice that was auto-synced
+            const { data: financeTransactions } = await supabase
+                .from('finance_transactions')
+                .select('invoice_id, period:finance_periods(id, name)')
+                .not('invoice_id', 'is', null)
+                .not('period_id', 'is', null);
+
+            if (financeTransactions) {
+                const periodMap = {};
+                financeTransactions.forEach((tx) => {
+                    if (tx.invoice_id && tx.period?.id) {
+                        periodMap[tx.invoice_id] = { period_id: tx.period.id, period_name: tx.period.name };
+                    }
+                });
+                setInvoiceFinancePeriodMap(periodMap);
+            }
         }
 
         fetchInvoices();
@@ -394,6 +414,16 @@ const Invoices = () => {
                                                         <div className="max-w-[520px]">
                                                             {renderDescriptionList(inv.description)}
                                                             <p className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mt-1">{inv.invoice_number}</p>
+                                                            {isAdmin && inv.status === 'paid' && invoiceFinancePeriodMap[inv.id] && (
+                                                                <Link
+                                                                    to={`/dashboard/finances/periods/${invoiceFinancePeriodMap[inv.id].period_id}`}
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                    className="inline-flex items-center gap-1.5 mt-1.5 text-[10px] font-bold text-skyblue hover:underline"
+                                                                >
+                                                                    <CalendarRange size={11} />
+                                                                    {invoiceFinancePeriodMap[inv.id].period_name}
+                                                                </Link>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </td>
