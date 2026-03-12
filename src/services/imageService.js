@@ -161,7 +161,11 @@ async function uploadReferenceImage(base64, apiKey) {
     const res = await fetch(base64);
     const blob = await res.blob();
     const formData = new FormData();
-    formData.append("file", blob, "reference.png");
+    const extension = getFileExtensionFromType(blob.type);
+    const fileName = `reference-${Date.now()}.${extension}`;
+    formData.append("file", blob, fileName);
+    formData.append("uploadPath", "images/banana-reference");
+    formData.append("fileName", fileName);
 
     const uploadTargets = [
         `${KIE_UPLOAD_BASE_URL}/api/file-stream-upload`,
@@ -285,6 +289,13 @@ async function parseJsonResponse(response) {
     } catch (error) {
         throw new Error(`Unexpected upload response (${response.status}): ${text.slice(0, 120)}`);
     }
+}
+
+function getFileExtensionFromType(contentType) {
+    if (contentType === "image/jpeg") return "jpg";
+    if (contentType === "image/webp") return "webp";
+    if (contentType === "image/gif") return "gif";
+    return "png";
 }
 
 export async function checkApiKey() {
