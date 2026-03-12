@@ -47,14 +47,14 @@ const FinancesLedger = () => {
                 .select(`
                     *,
                     period:finance_periods(id, name, status),
-                    project:projects(id, title, project_name, name),
+                    project:projects(id, name),
                     invoice:invoices(id, invoice_number, project_id, description),
                     invoice_id
                 `)
                 .order('transaction_date', { ascending: false })
                 .order('created_at', { ascending: false }),
             supabase.from('finance_periods').select('id, name, status').order('start_date', { ascending: false }),
-            supabase.from('projects').select('id, title, project_name, name').order('created_at', { ascending: false }),
+            supabase.from('projects').select('id, name').order('created_at', { ascending: false }),
             supabase.from('invoices').select('id, invoice_number, description, amount, currency, project_id, status, paid_at, updated_at, created_at').order('updated_at', { ascending: false }),
         ]);
 

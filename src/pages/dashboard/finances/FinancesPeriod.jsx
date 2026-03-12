@@ -48,7 +48,7 @@ const FinancesPeriod = () => {
             supabase.from('finance_periods').select('*').eq('id', periodId).maybeSingle(),
             supabase
                 .from('finance_transactions')
-                .select('*, project:projects(id, title, project_name, name), invoice_id')
+                .select('*, project:projects(id, name), invoice_id')
                 .eq('period_id', periodId)
                 .order('transaction_date', { ascending: false }),
             supabase

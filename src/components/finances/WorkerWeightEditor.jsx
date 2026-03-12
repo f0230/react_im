@@ -24,7 +24,7 @@ const WorkerWeightEditor = ({ periodId, disabled = false, onSaved }) => {
             { data: workersData, error: workersError },
             { data: contributionsData, error: contributionsError },
         ] = await Promise.all([
-            supabase.from('projects').select('id, title, project_name, name').order('created_at', { ascending: false }),
+            supabase.from('projects').select('id, name').order('created_at', { ascending: false }),
             supabase.from('project_assignments').select('project_id, worker_id'),
             supabase.from('profiles').select('id, full_name, email, avatar_url').eq('role', 'worker').order('full_name', { ascending: true }),
             supabase.from('finance_worker_contributions').select('project_id, worker_id, contribution_weight').eq('period_id', periodId),
