@@ -95,10 +95,12 @@ function SparklesIcon({ className }) {
 
 function ImageCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismiss }) {
     const [imgError, setImgError] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
     const promptLabel = task.prompt || 'Imagen compartida sin prompt guardado';
 
     useEffect(() => {
         setImgError(false);
+        setIsLoaded(false);
     }, [task.imageUrl]);
 
     if (imgError) {
@@ -121,15 +123,26 @@ function ImageCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismi
 
     return (
         <>
+            {/* Skeleton shimmer while loading */}
+            {!isLoaded && (
+                <div className="absolute inset-0 bg-white/5 animate-pulse" />
+            )}
             <img
                 src={task.imageUrl}
                 alt={promptLabel}
-                className={cn("w-full h-full object-cover", task.imageUrl && "cursor-pointer")}
+                className={cn(
+                    "w-full h-full object-cover transition-[opacity,filter,transform] duration-700 ease-out",
+                    task.imageUrl && "cursor-pointer",
+                    isLoaded
+                        ? "opacity-100 scale-100 blur-0"
+                        : "opacity-0 scale-[1.04] blur-sm"
+                )}
                 onClick={() => task.imageUrl && onSelect(task)}
                 referrerPolicy="no-referrer"
                 loading={shouldPrioritize ? 'eager' : 'lazy'}
                 fetchPriority={shouldPrioritize ? 'high' : 'auto'}
                 decoding="async"
+                onLoad={() => setIsLoaded(true)}
                 onError={() => setImgError(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 p-4 flex flex-col justify-end">
