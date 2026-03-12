@@ -11,14 +11,37 @@ function parseRatio(aspectRatio) {
     return w && h ? w / h : 1;
 }
 
-/** Distribute tasks across N columns in order (top-to-bottom, left-to-right). */
-function splitIntoColumns(tasks, cols) {
-    const columns = Array.from({ length: cols }, () => []);
-    tasks.forEach((task, i) => columns[i % cols].push(task));
+const NUM_COLS = 3;
+
+/**
+ * Assigns each task a stable column based on its id.
+ * New tasks get the next column in round-robin; existing assignments never change.
+ * This prevents images from remounting (and reloading) when other tasks are deleted.
+ */
+function useStableColumns(tasks) {
+    const assignmentsRef = useRef(new Map()); // taskId → colIndex
+    const counterRef = useRef(0);
+
+    // Assign column to any task we haven't seen yet
+    tasks.forEach((task) => {
+        if (!assignmentsRef.current.has(task.id)) {
+            assignmentsRef.current.set(task.id, counterRef.current % NUM_COLS);
+            counterRef.current++;
+        }
+    });
+
+    // Build columns preserving stable assignment
+    const columns = Array.from({ length: NUM_COLS }, () => []);
+    tasks.forEach((task) => {
+        columns[assignmentsRef.current.get(task.id)].push(task);
+    });
+
     return columns;
 }
 
 export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss }) {
+    const columns = useStableColumns(tasks);
+
     if (tasks.length === 0) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center px-6 py-16 text-white/20">
@@ -28,8 +51,6 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
             </div>
         );
     }
-
-    const columns = splitIntoColumns(tasks, 3);
 
     return (
         <div className="relative w-full px-4 py-6 pb-48 md:px-6">
