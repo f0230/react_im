@@ -158,6 +158,17 @@ function ImageCard({ task, ratio, shouldPrioritize, onSelect, onUseAsReference, 
                 onError={() => setImgError(true)}
             />
 
+            {/* Delete button — top right, always visible on hover */}
+            {onDismiss && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
+                    className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-black/60 hover:bg-red-500 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-all duration-200 backdrop-blur-sm"
+                    title="Eliminar"
+                >
+                    <X size={13} />
+                </button>
+            )}
+
             {/* Hover overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 p-3 flex flex-col justify-end pointer-events-none group-hover:pointer-events-auto">
                 <p className="text-xs text-white/90 line-clamp-3 mb-3 font-medium leading-relaxed drop-shadow-lg">{promptLabel}</p>
