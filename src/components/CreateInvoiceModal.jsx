@@ -115,7 +115,8 @@ const CreateInvoiceModal = ({
                 .insert([{
                     ...formData,
                     description: (formData.description || '').trim(),
-                    amount: parseFloat(formData.amount) || 0
+                    amount: parseFloat(formData.amount) || 0,
+                    paid_at: formData.status === 'paid' ? new Date().toISOString() : null,
                 }])
                 .select()
                 .single();

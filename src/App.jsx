@@ -32,6 +32,10 @@ const ProjectReports = lazyRoute(routeKeys.projectReports);
 const ProjectIntegrations = lazyRoute(routeKeys.projectIntegrations);
 const ClientAppointments = lazyRoute(routeKeys.clientAppointments);
 const Invoices = lazyRoute(routeKeys.invoices);
+const FinancesOverview = lazyRoute(routeKeys.financesOverview);
+const FinancesLedger = lazyRoute(routeKeys.financesLedger);
+const FinancesPeriod = lazyRoute(routeKeys.financesPeriod);
+const FinancesSettings = lazyRoute(routeKeys.financesSettings);
 const Inbox = lazyRoute(routeKeys.inbox);
 const TeamChat = lazyRoute(routeKeys.teamChat);
 const ClientChat = lazyRoute(routeKeys.clientChat);
@@ -169,6 +173,10 @@ const AppContent = () => {
             <Route path="reports" element={<ProjectReports />} />
             <Route path="integrations" element={<ProjectIntegrations />} />
             <Route path="invoices" element={<Invoices />} />
+            <Route path="finances" element={<FinancesOverview />} />
+            <Route path="finances/ledger" element={<FinancesLedger />} />
+            <Route path="finances/periods/:periodId" element={<FinancesPeriod />} />
+            <Route path="finances/settings" element={<FinancesSettings />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:projectId" element={<Navigate to="tasks" replace />} />
             <Route path="projects/:projectId/services" element={<Navigate to="/dashboard/tasks" replace />} />

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Settings as SettingsIcon, Users, Mail, Trash2, Plus, Copy, Check, Shield } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
+import WorkerEarningsWidget from '@/components/finances/WorkerEarningsWidget';
 
 const Settings = () => {
     const { profile, client } = useAuth();
@@ -154,6 +155,8 @@ const Settings = () => {
                     {error}
                 </div>
             )}
+
+            {['admin', 'worker'].includes(profile?.role) && <WorkerEarningsWidget />}
 
             {/* TEAM MANAGEMENT SECTION */}
             {client && (

@@ -207,21 +207,22 @@ const Invoices = () => {
 
         const previousInvoice = invoices.find((inv) => inv.id === invoiceId);
         if (!previousInvoice || previousInvoice.status === nextStatus) return;
+        const nextPaidAt = nextStatus === 'paid' ? new Date().toISOString() : null;
 
         setStatusUpdatingId(invoiceId);
         setInvoices((prev) => prev.map((inv) => (
-            inv.id === invoiceId ? { ...inv, status: nextStatus } : inv
+            inv.id === invoiceId ? { ...inv, status: nextStatus, paid_at: nextPaidAt } : inv
         )));
 
         const { error } = await supabase
             .from('invoices')
-            .update({ status: nextStatus })
+            .update({ status: nextStatus, paid_at: nextPaidAt })
             .eq('id', invoiceId);
 
         if (error) {
             console.error('Error updating invoice status:', error);
             setInvoices((prev) => prev.map((inv) => (
-                inv.id === invoiceId ? { ...inv, status: previousInvoice.status } : inv
+                inv.id === invoiceId ? { ...inv, status: previousInvoice.status, paid_at: previousInvoice.paid_at || null } : inv
             )));
         }
 
