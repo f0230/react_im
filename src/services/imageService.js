@@ -7,7 +7,6 @@ import {
 import { supabase } from "../lib/supabaseClient";
 
 const KIE_API_BASE_URL = "https://api.kie.ai";
-const KIE_UPLOAD_BASE_URL = "https://kieai.redpandaai.co";
 export const STUDIO_SIGNED_URL_TTL = 60 * 60 * 24;
 const SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
 const studioSignedUrlCache = new Map();
@@ -31,7 +30,7 @@ export async function startImageGeneration(task) {
         task.model
     );
     const imageUrls = referenceImages.length > 0
-        ? await Promise.all(referenceImages.map((image) => uploadReferenceImage(image, apiKey)))
+        ? await Promise.all(referenceImages.map((image) => uploadReferenceImage(image)))
         : [];
 
     const inputPayload = {
@@ -165,64 +164,23 @@ async function uploadToSupabase(imageUrl, taskId) {
     return uploadData?.path || fileName;
 }
 
-async function uploadReferenceImage(base64, apiKey) {
-    const isLocalDev = typeof window !== "undefined" && window.location.hostname === "localhost";
-
-    if (!isLocalDev) {
-        try {
-            const proxyResponse = await fetch("/api/kie-upload", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ imageDataUrl: base64 }),
-            });
-
-            if (proxyResponse.ok) {
-                const data = await parseJsonResponse(proxyResponse);
-                if (typeof data.fileUrl === "string") {
-                    return data.fileUrl;
-                }
-            }
-
-            const proxyError = await proxyResponse.text().catch(() => "");
-            console.warn("[studio] KIE upload proxy fallo:", proxyResponse.status, proxyError.slice(0, 120));
-        } catch (error) {
-            console.warn("[studio] KIE upload proxy error:", error.message);
-        }
-    }
-
-    const res = await fetch(base64);
-    const blob = await res.blob();
-    const formData = new FormData();
-    const extension = getFileExtensionFromType(blob.type);
-    const fileName = `reference-${Date.now()}.${extension}`;
-    formData.append("file", blob, fileName);
-    formData.append("uploadPath", "images/banana-reference");
-    formData.append("fileName", fileName);
-
-    const uploadResponse = await fetch(`${KIE_UPLOAD_BASE_URL}/api/file-stream-upload`, {
+async function uploadReferenceImage(base64) {
+    const proxyResponse = await fetch("/api/kie-upload", {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}` },
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageDataUrl: base64 }),
     });
 
-    const data = await parseJsonResponse(uploadResponse);
-
-    if (data.code !== 200) {
-        throw new Error(data.msg || `Reference image upload failed (${uploadResponse.status})`);
+    if (proxyResponse.ok) {
+        const data = await parseJsonResponse(proxyResponse);
+        if (typeof data.fileUrl === "string") {
+            return data.fileUrl;
+        }
+        throw new Error("KIE upload proxy respondió OK pero sin fileUrl en la respuesta.");
     }
 
-    const fileUrl =
-        data.data?.fileUrl ||
-        data.data?.downloadUrl ||
-        data.fileUrl ||
-        data.downloadUrl ||
-        data.data;
-
-    if (typeof fileUrl !== "string") {
-        throw new Error("Could not find file URL in upload response");
-    }
-
-    return fileUrl;
+    const proxyError = await proxyResponse.text().catch(() => "");
+    throw new Error(`Reference image upload failed (${proxyResponse.status}): ${proxyError.slice(0, 200)}`);
 }
 
 function normalizeReferenceImages(input, modelId) {
