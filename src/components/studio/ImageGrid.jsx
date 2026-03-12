@@ -15,7 +15,7 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
     }
 
     return (
-        <div className="min-h-full columns-1 gap-4 p-4 pb-48 pt-6 space-y-4 sm:columns-2 md:p-8 md:pt-8 md:columns-3 lg:columns-4 xl:columns-5">
+        <div className="min-h-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 auto-rows-[220px] gap-2 p-4 pb-48 pt-6 md:p-6 md:pt-6 md:pb-48">
             <AnimatePresence mode="popLayout">
                 {tasks.map((task, index) => {
                     const ratioValue = task.aspectRatio || 'auto';
@@ -28,10 +28,7 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.9 }}
-                            className={cn(
-                                "image-card group break-inside-avoid mb-4",
-                            )}
-                            style={{ aspectRatio: ratio }}
+                            className="image-card group"
                         >
                             {task.status === 'generating' ? (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/5 backdrop-blur-sm">
