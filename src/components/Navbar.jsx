@@ -280,7 +280,7 @@ const Navbar = () => {
                     } ${showNavbar ? "translate-y-0" : "-translate-y-full"}`}
             >
                 <nav
-                    className="relative w-full max-w-[1440px] mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2 h-[45px] z-30"
+                    className="relative w-full max-w-[1440px] mx-auto flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2 h-[45px] z-30 font-google-sans-flex"
                     aria-controls="mobile-menu"
                 >
                     {/* Logo */}
@@ -300,7 +300,7 @@ const Navbar = () => {
                             <li key={i}>
                                 <PrefetchLink
                                     to={item.url}
-                                    className="text-white text-sm font-bold hover:underline"
+                                    className="rounded-full px-3 py-1 text-neutral-300 text-sm font-normal transition-colors hover:bg-green hover:text-black"
                                 >
                                     {t(item.key)}
                                 </PrefetchLink>

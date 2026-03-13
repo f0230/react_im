@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@8..144,100..1000&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -32,6 +34,10 @@ body {
 @layer components {
   .all-\[unset\] {
     all: unset;
+  }
+
+  .font-google-sans-flex {
+    font-family: 'Google Sans Flex', sans-serif;
   }
 }
 
