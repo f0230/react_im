@@ -18,6 +18,7 @@ const ALLOWED_ACTIONS = new Set([
     'webhook',
     'cancel',
     'reschedule',
+    'update-status',
 ]);
 const EVENT_TYPE_CACHE_TTL_MS = 5 * 60 * 1000;
 const eventTypeCache = new Map();
@@ -615,13 +616,32 @@ const enrichBookingsWithSupabaseRelations = async ({ supabase, rows }) => {
 
     const projectIds = Array.from(new Set(rows.map((row) => row.project_id).filter(Boolean)));
     const clientIds = Array.from(new Set(rows.map((row) => row.client_id).filter(Boolean)));
+    const calBookingIds = Array.from(new Set(rows.map((row) => row.cal_booking_id).filter(Boolean)));
 
-    const [projectsResult, clientsResult] = await Promise.all([
+    const [projectsResult, clientsResult, appointmentsResult] = await Promise.all([
         projectIds.length > 0
             ? supabase.from('projects').select('id, name, title').in('id', projectIds)
             : Promise.resolve({ data: [], error: null }),
         clientIds.length > 0
             ? supabase.from('clients').select('id, company_name, full_name, email').in('id', clientIds)
+            : Promise.resolve({ data: [], error: null }),
+        calBookingIds.length > 0
+            ? supabase
+                .from('appointments')
+                .select(`
+                    id,
+                    cal_booking_id,
+                    status,
+                    start_at,
+                    end_at,
+                    booking_time_zone,
+                    duration_minutes,
+                    meeting_link,
+                    source,
+                    notes,
+                    cal_metadata
+                `)
+                .in('cal_booking_id', calBookingIds)
             : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -631,15 +651,30 @@ const enrichBookingsWithSupabaseRelations = async ({ supabase, rows }) => {
     if (clientsResult.error) {
         console.warn('Failed to enrich bookings with clients:', clientsResult.error);
     }
+    if (appointmentsResult.error) {
+        console.warn('Failed to enrich bookings with appointments:', appointmentsResult.error);
+    }
 
     const projectsById = new Map((projectsResult.data || []).map((project) => [project.id, project]));
     const clientsById = new Map((clientsResult.data || []).map((client) => [client.id, client]));
+    const appointmentsByCalId = new Map((appointmentsResult.data || []).map((appointment) => [appointment.cal_booking_id, appointment]));
 
     return rows.map((row) => {
         const project = row.project_id ? projectsById.get(row.project_id) : null;
         const client = row.client_id ? clientsById.get(row.client_id) : null;
+        const storedAppointment = row.cal_booking_id ? appointmentsByCalId.get(row.cal_booking_id) : null;
         return {
             ...row,
+            id: storedAppointment?.id || row.id,
+            status: storedAppointment?.status || row.status,
+            start_at: storedAppointment?.start_at || row.start_at || row.scheduled_at,
+            end_at: storedAppointment?.end_at || row.end_at || null,
+            booking_time_zone: storedAppointment?.booking_time_zone || row.booking_time_zone,
+            duration_minutes: storedAppointment?.duration_minutes || row.duration_minutes,
+            meeting_link: storedAppointment?.meeting_link || row.meeting_link,
+            source: storedAppointment?.source || row.source || null,
+            notes: storedAppointment?.notes || row.notes || null,
+            cal_metadata: storedAppointment?.cal_metadata || row.cal_metadata,
             projects: project ? { name: project.name || project.title || null } : null,
             clients: client ? {
                 company_name: client.company_name || null,
@@ -1218,6 +1253,100 @@ const handleReschedule = async (req, res) => {
     }
 };
 
+const ADMIN_MANAGED_STATUSES = new Set(['scheduled', 'completed']);
+
+const handleUpdateStatus = async (req, res) => {
+    if (req.method !== 'POST') {
+        res.setHeader('Allow', 'POST');
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const { error: authError } = await verifyAdmin(req);
+    if (authError) {
+        return res.status(authError.includes('Forbidden') ? 403 : 401).json({ error: authError });
+    }
+
+    const { bookingId, status, appointment } = req.body || {};
+    const normalizedBookingId = normalizeShortText(bookingId, 255);
+    const normalizedStatusInput = String(status || '').trim().toLowerCase();
+    const normalizedStatus = normalizedStatusInput === 'canceled' ? 'cancelled' : normalizedStatusInput;
+
+    if (!normalizedBookingId) {
+        return res.status(400).json({ error: 'Missing booking ID' });
+    }
+    if (!ADMIN_MANAGED_STATUSES.has(normalizedStatus)) {
+        return res.status(400).json({ error: 'Invalid admin status' });
+    }
+
+    const supabase = getSupabaseAdmin();
+    if (!supabase) {
+        return res.status(500).json({ error: 'Database connection error' });
+    }
+
+    try {
+        const scheduledAt = normalizeUtcDateTime(appointment?.scheduled_at || appointment?.start_at);
+        const durationMinutes = Number(appointment?.duration_minutes);
+        const record = compactObject({
+            cal_booking_id: normalizedBookingId,
+            scheduled_at: scheduledAt,
+            start_at: scheduledAt,
+            end_at: normalizeUtcDateTime(appointment?.end_at),
+            booking_time_zone: normalizeShortText(appointment?.booking_time_zone, 64),
+            duration_minutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes : null,
+            status: normalizedStatus,
+            client_name: normalizeShortText(appointment?.client_name, 255),
+            client_email: normalizeEmail(appointment?.client_email) || null,
+            client_phone: normalizeShortText(appointment?.client_phone, 64),
+            client_phone_normalized: normalizeShortText(
+                normalizePhoneForStorage(appointment?.client_phone || appointment?.client_phone_normalized || appointment?.whatsapp_normalized),
+                32
+            ),
+            whatsapp_normalized: normalizeShortText(
+                normalizePhoneForStorage(appointment?.whatsapp_normalized || appointment?.client_phone_normalized || appointment?.client_phone),
+                32
+            ),
+            meeting_link: normalizeShortText(appointment?.meeting_link, 500),
+            event_type_id: normalizeShortText(appointment?.event_type_id, 255),
+            event_type_name: normalizeShortText(appointment?.event_type_name, 255),
+            project_id: normalizeUuid(appointment?.project_id),
+            user_id: normalizeUuid(appointment?.user_id),
+            client_id: normalizeUuid(appointment?.client_id),
+            source: normalizeShortText(appointment?.source, 120) || 'admin',
+            notes: normalizeShortText(appointment?.notes, 2000),
+            last_cal_event: 'ADMIN_STATUS_UPDATE',
+            cal_metadata: appointment?.cal_metadata || null,
+            raw_payload: appointment?.cal_metadata || appointment || null,
+            updated_at: new Date().toISOString(),
+        });
+
+        const hydratedRecord = await hydrateAppointmentRecord({ supabase, record });
+        if (!hydratedRecord.scheduled_at) {
+            return res.status(400).json({ error: 'Appointment is not synced yet and has no scheduled date' });
+        }
+
+        const { error } = await supabase
+            .from('appointments')
+            .upsert(hydratedRecord, {
+                onConflict: 'cal_booking_id',
+            });
+
+        if (error) {
+            throw error;
+        }
+
+        return res.status(200).json({
+            ok: true,
+            data: {
+                cal_booking_id: normalizedBookingId,
+                status: normalizedStatus,
+            },
+        });
+    } catch (error) {
+        console.error('Error updating appointment status:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
 export default async function handler(req, res) {
     const action = getAction(req);
 
@@ -1232,6 +1361,7 @@ export default async function handler(req, res) {
     if (action === 'webhook') return handleWebhook(req, res);
     if (action === 'cancel') return handleCancel(req, res);
     if (action === 'reschedule') return handleReschedule(req, res);
+    if (action === 'update-status') return handleUpdateStatus(req, res);
 
     return res.status(404).json({ error: 'Cal endpoint not found' });
 }

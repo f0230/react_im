@@ -41,6 +41,7 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
 
     if (!isOpen || !appointment) return null;
     const hasParticipantEmail = Boolean(appointment.client_email && appointment.client_email !== 'Unknown');
+    const normalizedStatus = String(appointment.status || '').trim().toLowerCase();
 
     // Calculate position
     const getStyle = () => {
@@ -159,6 +160,45 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
         }
     };
 
+    const handleStatusUpdate = async (nextStatus) => {
+        if (!nextStatus || nextStatus === normalizedStatus) return;
+        setLoading(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const accessToken = session?.access_token;
+            if (!accessToken) {
+                throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
+            }
+
+            const response = await fetch('/api/cal/update-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    bookingId: appointment.cal_booking_id,
+                    status: nextStatus,
+                    appointment,
+                })
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload?.error || 'No se pudo actualizar el estado');
+            }
+
+            toast.success(nextStatus === 'completed' ? 'Cita marcada como completada' : 'Estado actualizado');
+            onUpdate();
+            onClose();
+        } catch (error) {
+            console.error(error);
+            toast.error(error?.message || 'Error al actualizar el estado');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <AnimatePresence>
             <div className="fixed inset-0 z-[100]" style={{ pointerEvents: 'none' }}>
@@ -249,6 +289,26 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                                     <CalendarClock size={14} />
                                     Reprogramar
                                 </button>
+                                {normalizedStatus !== 'completed' && (
+                                    <button
+                                        onClick={() => handleStatusUpdate('completed')}
+                                        disabled={loading}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-emerald-50 text-emerald-700 transition w-full text-left disabled:opacity-50"
+                                    >
+                                        <Check size={14} />
+                                        Marcar como completada
+                                    </button>
+                                )}
+                                {normalizedStatus !== 'scheduled' && normalizedStatus !== 'cancelled' && (
+                                    <button
+                                        onClick={() => handleStatusUpdate('scheduled')}
+                                        disabled={loading}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 text-gray-700 hover:text-black transition w-full text-left disabled:opacity-50"
+                                    >
+                                        <Clock size={14} />
+                                        Marcar como programada
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setAction('cancel')}
                                     className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-red-50 text-red-600 transition w-full text-left"
