@@ -36,7 +36,7 @@ const Section6 = () => {
       content: (
         <SlideContent
           title={t('carousel.slides.pymes.title')}
-          textColor="black"
+          textColor="white"
           text={t('carousel.slides.pymes.text')}
         />
       ),
@@ -46,7 +46,7 @@ const Section6 = () => {
       content: (
         <SlideContent
           title={t('carousel.slides.empresas.title')}
-          textColor="black"
+          textColor="white"
           text={t('carousel.slides.empresas.text')}
         />
       ),
@@ -56,7 +56,7 @@ const Section6 = () => {
       content: (
         <SlideContent
           title={t('carousel.slides.emprendedores.title')}
-          textColor="black"
+          textColor="white"
           text={t('carousel.slides.emprendedores.text')}
         />
       ),

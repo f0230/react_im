@@ -48,7 +48,7 @@ const GlassActionIcon = ({ icon: Icon, color }) => {
                 className="absolute left-0 top-0 block h-full w-full origin-[100%_100%] rounded-[1.25em] rotate-[9deg] transition-transform duration-300 ease-[cubic-bezier(0.83,0,0.17,1)] group-hover:[transform:rotate(15deg)_translate3d(-0.2em,-0.2em,0.2em)]"
                 style={{
                     background,
-                    boxShadow: '0.5em -0.5em 0.75em hsla(223, 10%, 10%, 0.15)',
+                    boxShadow: '0.5em -0.5em 0.75em hsla(223, 10%, 10%, 0.04)',
                 }}
             />
             <span
@@ -212,7 +212,7 @@ const Projects = () => {
     const fetchTeamMembers = useCallback(async (memberIds = []) => {
         let query = supabase
             .from('profiles')
-            .select('id, full_name, email, role')
+            .select('id, full_name, email, role, avatar_url')
             .in('role', ['worker', 'admin']);
 
         if (memberIds.length) {
@@ -597,15 +597,12 @@ const Projects = () => {
     if (loading) return <LoadingFallback type="spinner" />;
 
     return (
-        <div className="font-product text-neutral-900 pb-16">
-            <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-neutral-900">
+        <div className="mx-auto max-w-[1350px] px-6 md:px-10 font-product text-neutral-900 pb-16 pt-6">
+            <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-4">
+                    <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 whitespace-nowrap">
                         {t('dashboard.projects.title')}
                     </h1>
-                    <p className="text-sm text-neutral-500 mt-1">
-                        {subtitle}
-                    </p>
                 </div>
                 {(isAdmin || isClientLeader) && (
                     <button
@@ -646,7 +643,7 @@ const Projects = () => {
                     )}
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-[10px]">
                     {projects.map((project, index) => {
                         const projectId = project?.id;
                         const projectKey = projectId ?? index;
@@ -661,7 +658,7 @@ const Projects = () => {
                         return (
                             <div
                                 key={projectKey}
-                                className="grid min-h-[220px] w-full grid-cols-2 gap-[5px] overflow-hidden rounded-[10px] border border-white/60 bg-[#D9D9D9] p-2 transition-shadow hover:shadow-lg md:flex md:flex-row md:gap-0"
+                                className="grid min-h-[220px] w-full grid-cols-2 gap-[5px] overflow-hidden rounded-[10px] border border-white/60 bg-[#D9D9D9] p-2 md:flex md:flex-row md:gap-0"
                             >
                                 <div className="relative col-span-1 flex h-[208px] min-w-0 flex-col items-center justify-center overflow-hidden p-4 text-center md:h-auto md:flex-1 md:items-stretch md:justify-center md:border-r md:border-white/30 md:p-6 md:text-left">
                                     <div className="flex min-w-0 flex-col items-center gap-4 md:flex-row md:gap-5">
@@ -729,7 +726,15 @@ const Projects = () => {
                                                                     className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white bg-white text-[8px] font-bold text-neutral-700 shadow-sm"
                                                                     title={member.full_name || member.email}
                                                                 >
-                                                                    {getInitials(member.full_name || member.email)}
+                                                                    {member.avatar_url ? (
+                                                                        <img
+                                                                            src={member.avatar_url}
+                                                                            alt={member.full_name || member.email || 'Miembro del equipo'}
+                                                                            className="h-full w-full rounded-full object-cover"
+                                                                        />
+                                                                    ) : (
+                                                                        getInitials(member.full_name || member.email)
+                                                                    )}
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -845,9 +850,6 @@ const Projects = () => {
                                                 <GlassActionIcon icon={icon} color={color} />
                                             </div>
                                             <h4 className="text-sm md:text-base font-medium text-neutral-800">{label}</h4>
-                                            <p className="mt-1 max-w-[120px] text-[10px] leading-tight text-neutral-500">
-                                                {description}
-                                            </p>
                                         </div>
                                     ))}
                                 </div>
