@@ -156,7 +156,7 @@ const AppContent = () => {
           <Route path="/despega" element={<LandingDespega />} />
           <Route path="/tyc" element={<Terminos />} />
           <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
-          {/* <Route path="/desarrollo" element={<Development />} /> */}
+          <Route path="/desarrollo" element={<Navigate to="/servicios" replace />} />
           <Route path="/dte" element={<LandingDTE />} />
           <Route path="/admin" element={<AdminLogin />} />
           <Route path="/registro" element={<Registro />} />

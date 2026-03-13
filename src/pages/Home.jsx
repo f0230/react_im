@@ -1,5 +1,7 @@
 // Home.jsx optimizado
 import React, { lazy, Suspense, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 import Layout from "@/components/Layout";
 
@@ -18,13 +20,18 @@ const LazySection = ({ children }) => (
 );
 
 const Home = () => {
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [renderDeferred, setRenderDeferred] = useState(false);
-  const handleContactClick = () => {};
-  const handleRegisterClick = () => {
-    // TODO: implementar redirección o acción de registro
-    console.log('register clicked');
+  const whatsappUrl = `https://wa.me/59896280674?text=${encodeURIComponent(t("section1.whatsappMessage"))}`;
+
+  const handleContactClick = () => {
+    window.location.assign(whatsappUrl);
   };
-  const brochureUrl = "/brochure.pdf"; // ajustar según corresponda
+
+  const handleRegisterClick = () => {
+    navigate("/registro");
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -52,7 +59,11 @@ const Home = () => {
 
         <div className="relative w-full">
 
-          <HeroSection onContactClick={handleContactClick} />
+          <HeroSection
+            onRegisterClick={handleRegisterClick}
+            brochureUrl="/brochure-grupo-dte.pdf"
+            whatsappUrl={whatsappUrl}
+          />
         </div>
         <div className="relative w-full">
           <Section2 onContactClick={handleContactClick} />
@@ -85,7 +96,7 @@ const Home = () => {
             </div>
             <div className="relative w-full">
               <LazySection>
-                <Section5 onContactClick={handleContactClick} />
+                <Section5 onScheduleClick={handleContactClick} />
               </LazySection>
             </div>
 

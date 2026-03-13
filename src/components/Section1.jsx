@@ -117,7 +117,8 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                   <AnimatedContent distance={60} direction="horizontal" reverse={false} config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={1050} className="inline-block">
                     <a
                       href={brochureUrl || "/brochure-grupo-dte.pdf"}
-                      download
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="inline-flex w-[210px] md:w-auto px-6 md:px-8 text-[13px] md:text-[17px] h-[40px] md:h-[56px] bg-white text-skyblue border-2 border-skyblue rounded-full font-medium hover:bg-skyblue/5 transition-colors items-center justify-center"
                     >
                       {t("section1.ctaServices")}

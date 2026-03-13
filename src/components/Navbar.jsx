@@ -400,7 +400,7 @@ const Navbar = () => {
                     />
                     <nav className="w-full">
                         <ul className="flex flex-col gap-3">
-                            {menuItems?.filter(item => item.url !== "/desarrollo").map((item, i) => (
+                            {menuItems?.map((item, i) => (
                                 <li key={i} className="menu-item opacity-0 transform">
                                     <button
                                         onClick={() => handleMenuItemClick(item.url)}
