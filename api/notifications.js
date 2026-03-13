@@ -149,7 +149,15 @@ async function handleSlackNotify(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const secret = process.env.SLACK_NOTIFY_SECRET;
-    if (secret && req.headers['x-slack-notify-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const openclawKey = process.env.OPENCLAW_API_KEY;
+
+    const slackSecretOk = !secret || req.headers['x-slack-notify-secret'] === secret;
+
+    const authHeader = String(req.headers['authorization'] || '').trim();
+    const bearer = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+    const openclawOk = Boolean(openclawKey) && bearer === openclawKey;
+
+    if (!slackSecretOk && !openclawOk) return res.status(401).json({ error: 'Unauthorized' });
 
     const token = process.env.SLACK_BOT_TOKEN;
     const channel = process.env.SLACK_CHANNEL_ID;
@@ -198,7 +206,15 @@ async function handleSlackCreateChannel(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
     const secret = process.env.SLACK_NOTIFY_SECRET;
-    if (secret && req.headers['x-slack-notify-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const openclawKey = process.env.OPENCLAW_API_KEY;
+
+    const slackSecretOk = !secret || req.headers['x-slack-notify-secret'] === secret;
+
+    const authHeader = String(req.headers['authorization'] || '').trim();
+    const bearer = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+    const openclawOk = Boolean(openclawKey) && bearer === openclawKey;
+
+    if (!slackSecretOk && !openclawOk) return res.status(401).json({ error: 'Unauthorized' });
 
     const token = process.env.SLACK_BOT_TOKEN;
     if (!token) return res.status(500).json({ error: 'Missing SLACK_BOT_TOKEN' });
