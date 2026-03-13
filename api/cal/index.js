@@ -1233,10 +1233,10 @@ const handleCancel = async (req, res) => {
                 'Content-Type': 'application/json',
                 'cal-api-version': CAL_API_VERSION,
             },
-            body: JSON.stringify({ reason: reason || 'Cancelled by Admin' }),
+            body: JSON.stringify({ cancellationReason: reason || 'Cancelled by Admin' }),
         });
 
-        const calData = await calResponse.json();
+        const calData = await parseCalResponse(calResponse);
         if (!calResponse.ok) {
             console.error('Cal.com Cancel Error:', calData);
             return res.status(calResponse.status).json({
