@@ -194,6 +194,16 @@ const normalizePhoneForCal = (value) => {
     return { phone: `+${DEFAULT_PHONE_COUNTRY_CODE}${localDigits}`, error: null };
 };
 
+const normalizePhoneForStorage = (value) => {
+    const { phone } = normalizePhoneForCal(value);
+    if (phone) return phone;
+
+    const digits = String(value || '').replace(/\D/g, '');
+    if (!digits) return null;
+    if (digits.length < 8 || digits.length > 15) return null;
+    return `+${digits}`;
+};
+
 const getCalErrorMessage = (payload) => {
     if (typeof payload === 'string') {
         return payload.trim();
@@ -285,6 +295,223 @@ const getMetadataValue = (metadata, keys) => {
         if (metadata?.[key]) return metadata[key];
     }
     return null;
+};
+
+const parseObjectJson = (value) => {
+    if (!value) return null;
+    if (typeof value === 'object' && !Array.isArray(value)) return value;
+    if (typeof value !== 'string') return null;
+
+    try {
+        const parsed = JSON.parse(value);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            return parsed;
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
+};
+
+const getPrimaryAttendee = (booking) => {
+    const attendees = Array.isArray(booking?.attendees) ? booking.attendees : [];
+    if (attendees.length > 0 && attendees[0] && typeof attendees[0] === 'object') {
+        return attendees[0];
+    }
+
+    const fallback = compactObject({
+        name: booking?.name || booking?.attendee?.name || booking?.responses?.name,
+        email: booking?.email || booking?.attendee?.email || booking?.responses?.email,
+        phoneNumber: booking?.phoneNumber || booking?.attendee?.phoneNumber || booking?.responses?.phone,
+        timeZone: booking?.timeZone || booking?.attendee?.timeZone,
+    });
+
+    return fallback;
+};
+
+const parseTrackingMetadata = (metadata) => {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+        return {};
+    }
+
+    const legacyTracking = parseObjectJson(metadata.tracking);
+    const rawParams = parseObjectJson(metadata.trackingRawParamsJson) || {};
+
+    return compactObject({
+        entryPoint: metadata.trackingEntryPoint || legacyTracking?.entryPoint || null,
+        source: metadata.trackingSource || legacyTracking?.source || rawParams.utm_source || null,
+        medium: metadata.trackingMedium || legacyTracking?.medium || rawParams.utm_medium || null,
+        campaign: metadata.trackingCampaign || legacyTracking?.campaign || rawParams.utm_campaign || null,
+        waId: metadata.trackingWaId || legacyTracking?.waId || null,
+        rawParams,
+    });
+};
+
+const getBookingStatusFromTriggerEvent = (triggerEvent, fallbackStatus) => {
+    const normalizedTrigger = String(triggerEvent || '').trim().toUpperCase();
+    if (normalizedTrigger.includes('CANCEL')) return 'cancelled';
+    if (normalizedTrigger.includes('RESCHED')) return 'scheduled';
+    if (normalizedTrigger.includes('COMPLETE')) return 'completed';
+    return normalizeBookingStatus(fallbackStatus);
+};
+
+const computeBookingEnd = ({ start, end, durationMinutes }) => {
+    const normalizedEnd = normalizeUtcDateTime(end);
+    if (normalizedEnd) return normalizedEnd;
+
+    const normalizedStart = normalizeUtcDateTime(start);
+    if (!normalizedStart) return null;
+
+    const duration = Number(durationMinutes);
+    if (!Number.isFinite(duration) || duration <= 0) return null;
+
+    return new Date(new Date(normalizedStart).getTime() + duration * 60 * 1000).toISOString();
+};
+
+const mapBookingToAppointmentRecord = ({ booking, triggerEvent, source }) => {
+    const attendee = getPrimaryAttendee(booking);
+    const metadata = booking?.metadata || {};
+    const tracking = parseTrackingMetadata(metadata);
+    const calIdStr = booking?.id != null ? String(booking.id) : String(booking?.uid || '');
+    const projectId = normalizeUuid(getMetadataValue(metadata, ['projectId', 'project_id']));
+    const userId = normalizeUuid(getMetadataValue(metadata, ['userId', 'user_id', 'participantId', 'participant_id']));
+    const clientId = normalizeUuid(getMetadataValue(metadata, ['clientId', 'client_id']));
+    const rawPhone = attendee?.phoneNumber || attendee?.phone || booking?.phoneNumber || null;
+    const normalizedPhone = normalizePhoneForStorage(rawPhone);
+    const bookingTimeZone = normalizeShortText(
+        attendee?.timeZone
+        || booking?.timeZone
+        || getMetadataValue(metadata, ['bookingTimeZone', 'booking_time_zone']),
+        64
+    );
+    const durationMinutes = Number(booking?.duration);
+    const hasDurationMinutes = Number.isFinite(durationMinutes) && durationMinutes > 0;
+    const startAt = normalizeUtcDateTime(booking?.start || booking?.startTime || booking?.scheduled_at);
+    const status = getBookingStatusFromTriggerEvent(triggerEvent, booking?.status);
+
+    return compactObject({
+        cal_booking_id: calIdStr,
+        cal_booking_uid: normalizeShortText(booking?.uid, 255),
+        scheduled_at: startAt,
+        start_at: startAt,
+        end_at: computeBookingEnd({
+            start: startAt,
+            end: booking?.end || booking?.endTime,
+            durationMinutes,
+        }),
+        booking_time_zone: bookingTimeZone,
+        duration_minutes: hasDurationMinutes ? durationMinutes : null,
+        status,
+        client_name: normalizeShortText(attendee?.name, 255),
+        client_email: normalizeEmail(attendee?.email || booking?.email || null) || null,
+        client_phone: normalizeShortText(rawPhone, 64),
+        client_phone_normalized: normalizeShortText(normalizedPhone, 32),
+        whatsapp_normalized: normalizeShortText(normalizedPhone, 32),
+        meeting_link: normalizeShortText(booking?.meetingUrl || booking?.location || booking?.videoCallUrl, 500),
+        event_type_id: booking?.eventTypeId != null ? String(booking.eventTypeId) : normalizeShortText(getMetadataValue(metadata, ['eventTypeId', 'event_type_id']), 255),
+        event_type_name: normalizeShortText(
+            booking?.title
+            || booking?.eventType?.title
+            || getMetadataValue(metadata, ['eventTypeName', 'event_type_name']),
+            255
+        ),
+        project_id: projectId,
+        user_id: userId,
+        client_id: clientId,
+        source: normalizeShortText(
+            source
+            || tracking.source
+            || tracking.entryPoint
+            || getMetadataValue(metadata, ['source', 'origen']),
+            120
+        ) || 'cal.com',
+        utm_source: normalizeShortText(tracking.rawParams?.utm_source || tracking.source, 255),
+        utm_campaign: normalizeShortText(tracking.rawParams?.utm_campaign || tracking.campaign, 255),
+        setter_assigned: normalizeShortText(
+            getMetadataValue(metadata, ['setterAssigned', 'setter_asignado', 'participantId', 'participant_id']),
+            255
+        ),
+        notes: normalizeShortText(getMetadataValue(metadata, ['notes', 'observaciones']), 2000),
+        last_cal_event: normalizeShortText(triggerEvent, 120),
+        cal_metadata: booking,
+        raw_payload: booking,
+        updated_at: new Date().toISOString(),
+    });
+};
+
+const hydrateAppointmentRecord = async ({ supabase, record }) => {
+    if (!supabase || !record?.cal_booking_id) {
+        throw new Error('Cannot hydrate appointment record without Supabase or cal_booking_id');
+    }
+
+    if (record.scheduled_at) return record;
+
+    const { data: existing, error } = await supabase
+        .from('appointments')
+        .select(`
+            scheduled_at,
+            start_at,
+            end_at,
+            booking_time_zone,
+            duration_minutes,
+            status,
+            client_name,
+            client_email,
+            client_phone,
+            client_phone_normalized,
+            whatsapp_normalized,
+            notes,
+            meeting_link,
+            event_type_id,
+            event_type_name,
+            project_id,
+            user_id,
+            client_id,
+            source,
+            utm_source,
+            utm_campaign,
+            setter_assigned
+        `)
+        .eq('cal_booking_id', record.cal_booking_id)
+        .maybeSingle();
+
+    if (error) {
+        throw new Error(`Failed to load existing appointment ${record.cal_booking_id}: ${error.message}`);
+    }
+
+    return {
+        ...(existing || {}),
+        ...record,
+    };
+};
+
+const upsertAppointmentRecord = async ({ supabase, booking, triggerEvent, source }) => {
+    if (!supabase) {
+        throw new Error('Supabase admin client is not configured');
+    }
+
+    const record = mapBookingToAppointmentRecord({ booking, triggerEvent, source });
+    if (!record.cal_booking_id) {
+        throw new Error('Missing Cal booking ID');
+    }
+
+    const hydratedRecord = await hydrateAppointmentRecord({ supabase, record });
+    if (!hydratedRecord.scheduled_at) {
+        throw new Error(`Booking ${record.cal_booking_id} is missing scheduled_at`);
+    }
+
+    const { error } = await supabase
+        .from('appointments')
+        .upsert(hydratedRecord, {
+            onConflict: 'cal_booking_id',
+        });
+
+    if (error) {
+        throw new Error(`Failed to upsert appointment ${record.cal_booking_id}: ${error.message}`);
+    }
+
+    return hydratedRecord;
 };
 
 const mapCalBookingToAppointment = (booking) => {
@@ -720,6 +947,19 @@ const handleCreateBooking = async (req, res) => {
             });
         }
 
+        if (supabase) {
+            try {
+                await upsertAppointmentRecord({
+                    supabase,
+                    booking: calData?.data || {},
+                    triggerEvent: 'BOOKING_CREATED',
+                    source: 'cal.com:create-booking',
+                });
+            } catch (upsertError) {
+                console.error('Failed to persist booking after creation:', upsertError);
+            }
+        }
+
         return res.status(200).json({
             ok: true,
             data: calData.data,
@@ -859,6 +1099,19 @@ const handleWebhook = async (req, res) => {
         }
 
         console.log(`--- Processing Webhook: ${triggerEvent} for ${payload.id} ---`);
+
+        const supabase = getSupabaseAdmin();
+        if (!supabase) {
+            console.error('Missing Supabase admin client for Cal webhook sync');
+            return res.status(500).json({ error: 'Database connection error' });
+        }
+
+        await upsertAppointmentRecord({
+            supabase,
+            booking: payload,
+            triggerEvent,
+            source: 'cal.com:webhook',
+        });
 
         return res.status(200).json({ success: true });
     } catch (error) {
