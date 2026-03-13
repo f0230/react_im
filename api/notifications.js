@@ -177,6 +177,65 @@ async function handleSlackNotify(req, res) {
     }
 }
 
+// ─── Slack Channel Create ────────────────────────────────────────────────────
+
+async function slackApi(token, method, payload) {
+    const response = await fetch(`https://slack.com/api/${method}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(payload || {}),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.ok === false) {
+        const err = new Error(`Slack API error: ${method}`);
+        err.detail = data;
+        throw err;
+    }
+    return data;
+}
+
+async function handleSlackCreateChannel(req, res) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const secret = process.env.SLACK_NOTIFY_SECRET;
+    if (secret && req.headers['x-slack-notify-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+
+    const token = process.env.SLACK_BOT_TOKEN;
+    if (!token) return res.status(500).json({ error: 'Missing SLACK_BOT_TOKEN' });
+
+    const body = parseJsonBody(req);
+    if (!body) return res.status(400).json({ error: 'Invalid JSON' });
+
+    const name = String(body.name || '').trim();
+    const is_private = Boolean(body.is_private || body.isPrivate || false);
+    const purpose = body.purpose ? String(body.purpose).trim() : '';
+    const topic = body.topic ? String(body.topic).trim() : '';
+    const invite_user_ids = Array.isArray(body.invite_user_ids || body.inviteUserIds)
+        ? (body.invite_user_ids || body.inviteUserIds).map(String).filter(Boolean)
+        : [];
+
+    if (!name) return res.status(400).json({ error: 'Missing channel name' });
+    // Slack: lowercase, numbers, hyphens, max 80
+    const normalized = name.toLowerCase().replace(/[^a-z0-9-_]/g, '-').replace(/-+/g, '-').slice(0, 80);
+
+    try {
+        const created = await slackApi(token, 'conversations.create', { name: normalized, is_private });
+        const channelId = created?.channel?.id;
+        if (!channelId) return res.status(502).json({ error: 'Slack API did not return channel id' });
+
+        if (purpose) await slackApi(token, 'conversations.setPurpose', { channel: channelId, purpose });
+        if (topic) await slackApi(token, 'conversations.setTopic', { channel: channelId, topic });
+        if (invite_user_ids.length) await slackApi(token, 'conversations.invite', { channel: channelId, users: invite_user_ids.join(',') });
+
+        return res.status(200).json({ ok: true, id: channelId, name: normalized, is_private });
+    } catch (err) {
+        // Common case: name already taken
+        const detail = err?.detail || null;
+        const errorCode = detail?.error;
+        return res.status(502).json({ error: 'Slack API error', slack_error: errorCode, detail });
+    }
+}
+
 // ─── Main router ─────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -189,9 +248,10 @@ export default async function handler(req, res) {
     if (action === 'welcome-email') return handleWelcomeEmail(req, res);
     if (action === 'project-created') return handleProjectCreated(req, res);
     if (action === 'slack-notify') return handleSlackNotify(req, res);
+    if (action === 'slack-create-channel') return handleSlackCreateChannel(req, res);
 
     // Default fallback: if no action, treat as project-created POST (backward compat)
     if (req.method === 'POST' && !action) return handleProjectCreated(req, res);
 
-    return res.status(400).json({ error: 'Missing or unknown ?action. Valid: welcome-email, project-created, slack-notify' });
+    return res.status(400).json({ error: 'Missing or unknown ?action. Valid: welcome-email, project-created, slack-notify, slack-create-channel' });
 }
