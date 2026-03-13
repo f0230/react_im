@@ -291,6 +291,44 @@ const normalizeUuid = (value) => {
     return /^[0-9a-fA-F-]{36}$/.test(text) ? text : null;
 };
 
+const resolveBookingUid = async (value) => {
+    const identifier = normalizeShortText(value, 255);
+    if (!identifier) return null;
+
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return identifier;
+
+    try {
+        const byUid = await supabase
+            .from('appointments')
+            .select('cal_booking_uid, cal_metadata')
+            .eq('cal_booking_uid', identifier)
+            .maybeSingle();
+
+        if (byUid.error) {
+            console.warn('Failed to resolve booking UID by cal_booking_uid:', byUid.error);
+        } else if (byUid.data) {
+            return normalizeShortText(byUid.data.cal_booking_uid || byUid.data.cal_metadata?.uid, 255) || identifier;
+        }
+
+        const byId = await supabase
+            .from('appointments')
+            .select('cal_booking_id, cal_booking_uid, cal_metadata')
+            .eq('cal_booking_id', identifier)
+            .maybeSingle();
+
+        if (byId.error) {
+            console.warn('Failed to resolve booking UID by cal_booking_id:', byId.error);
+        } else if (byId.data) {
+            return normalizeShortText(byId.data.cal_booking_uid || byId.data.cal_metadata?.uid, 255) || identifier;
+        }
+    } catch (error) {
+        console.warn('Unexpected error resolving booking UID:', error);
+    }
+
+    return identifier;
+};
+
 const getMetadataValue = (metadata, keys) => {
     for (const key of keys) {
         if (metadata?.[key]) return metadata[key];
@@ -540,6 +578,7 @@ const mapCalBookingToAppointment = (booking) => {
     const mapped = {
         id: calIdStr,
         cal_booking_id: calIdStr,
+        cal_booking_uid: normalizeShortText(booking?.uid, 255),
         scheduled_at: booking?.start || null,
         booking_time_zone: bookingTimeZone,
         duration_minutes: booking?.duration || 30,
@@ -641,6 +680,7 @@ const enrichBookingsWithSupabaseRelations = async ({ supabase, rows }) => {
                 .select(`
                     id,
                     cal_booking_id,
+                    cal_booking_uid,
                     status,
                     start_at,
                     end_at,
@@ -677,6 +717,7 @@ const enrichBookingsWithSupabaseRelations = async ({ supabase, rows }) => {
             ...row,
             id: storedAppointment?.id || row.id,
             status: storedAppointment?.status || row.status,
+            cal_booking_uid: storedAppointment?.cal_booking_uid || row.cal_booking_uid || normalizeShortText(row.cal_metadata?.uid, 255),
             start_at: storedAppointment?.start_at || row.start_at || row.scheduled_at,
             end_at: storedAppointment?.end_at || row.end_at || null,
             booking_time_zone: storedAppointment?.booking_time_zone || row.booking_time_zone,
@@ -1176,7 +1217,8 @@ const handleCancel = async (req, res) => {
         return res.status(authError.includes('Forbidden') ? 403 : 401).json({ error: authError });
     }
 
-    const { bookingUid, reason } = req.body || {};
+    const { bookingUid: requestedBookingUid, reason } = req.body || {};
+    const bookingUid = await resolveBookingUid(requestedBookingUid);
     if (!bookingUid) {
         return res.status(400).json({ error: 'Missing booking UID' });
     }
@@ -1221,7 +1263,8 @@ const handleReschedule = async (req, res) => {
         return res.status(authError.includes('Forbidden') ? 403 : 401).json({ error: authError });
     }
 
-    const { bookingUid, start, reason } = req.body || {};
+    const { start, reason } = req.body || {};
+    const bookingUid = await resolveBookingUid(req.body?.bookingUid);
     if (!bookingUid || !start) {
         return res.status(400).json({ error: 'Missing booking UID or new start time' });
     }

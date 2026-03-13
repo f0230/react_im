@@ -491,7 +491,7 @@ const ScheduleCall = () => {
             const participantType = participantRole === 'client' ? 'client' : (participantRole ? 'profile' : null);
             const resolvedClientId = client?.id || profile?.client_id || null;
 
-            const response = await fetch('/api/cal/create-booking', {
+            const response = await fetch('/api/cal?action=create-booking', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

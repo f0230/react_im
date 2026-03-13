@@ -78,7 +78,7 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
 
             try {
                 const response = await fetch(
-                    `/api/cal/booking-rules?timeZone=${encodeURIComponent(SCHEDULE_TIME_ZONE)}`,
+                    `/api/cal?action=booking-rules&timeZone=${encodeURIComponent(SCHEDULE_TIME_ZONE)}`,
                     { signal: controller.signal }
                 );
 
@@ -128,7 +128,7 @@ const useCalAvailability = ({ selectedDate, enabled = true, onError } = {}) => {
                 }
 
                 const response = await fetch(
-                    `/api/cal/availability?start=${range.startIso}&end=${range.endIso}&timeZone=${SCHEDULE_TIME_ZONE}`,
+                    `/api/cal?action=availability&start=${range.startIso}&end=${range.endIso}&timeZone=${SCHEDULE_TIME_ZONE}`,
                     { signal: controller.signal }
                 );
 

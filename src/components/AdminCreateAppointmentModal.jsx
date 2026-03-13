@@ -230,7 +230,7 @@ const AdminCreateAppointmentModal = ({ isOpen, onClose, onUpdate }) => {
                 payload.phone = selectedParticipantData.phone;
             }
 
-            const response = await fetch('/api/cal/create-booking', {
+            const response = await fetch('/api/cal?action=create-booking', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)

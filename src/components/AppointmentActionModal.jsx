@@ -42,6 +42,7 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
     if (!isOpen || !appointment) return null;
     const hasParticipantEmail = Boolean(appointment.client_email && appointment.client_email !== 'Unknown');
     const normalizedStatus = String(appointment.status || '').trim().toLowerCase();
+    const bookingUid = appointment.cal_booking_uid || appointment.cal_metadata?.uid || null;
 
     const isRescheduling = action === 'reschedule';
 
@@ -81,14 +82,18 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                 throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
             }
 
-            const response = await fetch('/api/cal/cancel', {
+            if (!bookingUid) {
+                throw new Error('No se encontró el UID de la cita');
+            }
+
+            const response = await fetch('/api/cal?action=cancel', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
-                    bookingUid: appointment.cal_booking_id,
+                    bookingUid,
                     reason: cancelReason
                 })
             });
@@ -119,14 +124,18 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                 throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
             }
 
-            const response = await fetch('/api/cal/reschedule', {
+            if (!bookingUid) {
+                throw new Error('No se encontró el UID de la cita');
+            }
+
+            const response = await fetch('/api/cal?action=reschedule', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify({
-                    bookingUid: appointment.cal_booking_id,
+                    bookingUid,
                     start: selectedSlot.start,
                     reason: "Reprogramado por administración"
                 })
@@ -158,7 +167,7 @@ const AppointmentActionModal = ({ appointment, isOpen, onClose, onUpdate, positi
                 throw new Error('Sesión expirada. Vuelve a iniciar sesión.');
             }
 
-            const response = await fetch('/api/cal/update-status', {
+            const response = await fetch('/api/cal?action=update-status', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
