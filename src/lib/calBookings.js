@@ -21,7 +21,6 @@ export const fetchCalBookings = async ({
     }
 
     const params = new URLSearchParams();
-    params.set('source', 'cal');
     appendParam(params, 'status', status);
     appendParam(params, 'afterStart', afterStart);
     appendParam(params, 'beforeEnd', beforeEnd);
