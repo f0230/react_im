@@ -34,13 +34,15 @@ const DashboardHome = () => {
         nextAppointmentAt: null,
         nextAppointmentTimeZone: null,
     });
+    const [statsLoading, setStatsLoading] = useState(true);
     const [showSchedulePrompt, setShowSchedulePrompt] = useState(false);
 
     useEffect(() => {
         const run = async () => {
             if (!user?.id) return;
 
-            try {
+            setStatsLoading(true);
+        try {
                 const getCount = async (countQuery) => {
                     const { count, error } = await countQuery;
                     if (error) return null;
@@ -120,6 +122,8 @@ const DashboardHome = () => {
                 });
             } catch (error) {
                 console.error('Error loading dashboard stats:', error);
+            } finally {
+                setStatsLoading(false);
             }
         };
 
@@ -307,7 +311,11 @@ const DashboardHome = () => {
                                 <ArrowRight className="text-neutral-400 group-hover:text-black group-hover:translate-x-1 transition-all" size={20} />
                             </div>
                             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400 mb-1">{stat.label}</div>
-                            <div className="text-3xl font-black text-neutral-900">{stat.value}</div>
+                            {statsLoading ? (
+                                <div className="h-9 w-16 rounded-md bg-neutral-200 animate-pulse" />
+                            ) : (
+                                <div className="text-3xl font-black text-neutral-900">{stat.value}</div>
+                            )}
                         </Link>
                     </motion.div>
                 ))}

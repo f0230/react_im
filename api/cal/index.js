@@ -783,7 +783,9 @@ const handleBookings = async (req, res) => {
         // to match dashboard "next appointments" semantics.
         const isDefaultUpcomingQuery = !normalizedStatus && !afterStartFilter && !beforeEndFilter;
         const calStatus = normalizedStatus || undefined;
-        const calAfterStart = afterStartFilter || (isDefaultUpcomingQuery ? new Date().toISOString() : undefined);
+        const todayMidnight = new Date();
+        todayMidnight.setHours(0, 0, 0, 0);
+        const calAfterStart = afterStartFilter || (isDefaultUpcomingQuery ? todayMidnight.toISOString() : undefined);
         const queryBase = {
             eventTypeId: eventTypeIdFilter,
             afterStart: calAfterStart,
