@@ -357,6 +357,14 @@ const getBookingStatusFromTriggerEvent = (triggerEvent, fallbackStatus) => {
     return normalizeBookingStatus(fallbackStatus);
 };
 
+const getCommercialStatusFromTriggerEvent = (triggerEvent) => {
+    const normalizedTrigger = String(triggerEvent || '').trim().toUpperCase();
+    if (normalizedTrigger.includes('CANCEL')) return 'cancelada';
+    if (normalizedTrigger.includes('RESCHED')) return 'reagendada';
+    if (normalizedTrigger === 'BOOKING_CREATED' || normalizedTrigger === 'BOOKING_REQUESTED') return 'pendiente';
+    return null; // no sobreescribir en otros eventos
+};
+
 const computeBookingEnd = ({ start, end, durationMinutes }) => {
     const normalizedEnd = normalizeUtcDateTime(end);
     if (normalizedEnd) return normalizedEnd;
@@ -390,6 +398,7 @@ const mapBookingToAppointmentRecord = ({ booking, triggerEvent, source }) => {
     const hasDurationMinutes = Number.isFinite(durationMinutes) && durationMinutes > 0;
     const startAt = normalizeUtcDateTime(booking?.start || booking?.startTime || booking?.scheduled_at);
     const status = getBookingStatusFromTriggerEvent(triggerEvent, booking?.status);
+    const commercialStatus = getCommercialStatusFromTriggerEvent(triggerEvent);
 
     return compactObject({
         cal_booking_id: calIdStr,
@@ -435,6 +444,7 @@ const mapBookingToAppointmentRecord = ({ booking, triggerEvent, source }) => {
         ),
         notes: normalizeShortText(getMetadataValue(metadata, ['notes', 'observaciones']), 2000),
         last_cal_event: normalizeShortText(triggerEvent, 120),
+        commercial_status: commercialStatus,
         cal_metadata: booking,
         raw_payload: booking,
         updated_at: new Date().toISOString(),
