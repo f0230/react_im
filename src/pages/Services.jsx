@@ -197,6 +197,7 @@ const FloatingBadge = ({
 const Servicios = () => {
   const { t } = useTranslation();
   const heroRef = useRef(null);
+  const whatsappUrl = `https://wa.me/59896280674?text=${encodeURIComponent(t('section1.whatsappMessage'))}`;
 
   const { scrollYProgress: heroScroll } = useScroll({
     target: heroRef,
@@ -424,7 +425,7 @@ const Servicios = () => {
               {t('servicesPage.cta.subtitle')}
             </p>
             <ShatterButton
-              href="/meet"
+              href={whatsappUrl}
               shatterColor="#0DD122"
               className="text-base"
             >
