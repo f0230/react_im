@@ -191,7 +191,7 @@ export default function ControlPanel({
                                 onClick={() => setShowModelMenu(!showModelMenu)}
                                 className="control-item"
                             >
-                                <div className="w-5 h-5 rounded-full bg-banana flex items-center justify-center">
+                                <div className="w-5 h-5 rounded-full bg-[#0DD122] flex items-center justify-center">
                                     <span className="text-[10px] font-bold text-black">G</span>
                                 </div>
                                 <span className="text-sm font-medium">{currentModel?.name}</span>
@@ -208,7 +208,7 @@ export default function ControlPanel({
                                 <div className="absolute bottom-full mb-2 left-0 w-64 glass-panel p-2 overflow-hidden flex flex-col gap-1">
                                     {MODELS.map((m) => {
                                         const badges = {
-                                            'nano-banana-2': { label: 'Más nuevo', color: 'bg-banana text-black' },
+                                            'nano-banana-2': { label: 'Más nuevo', color: 'bg-[#0DD122] text-black' },
                                             'nano-banana': { label: 'Rápido', color: 'bg-blue-500/80 text-white' },
                                             'nano-banana-pro': { label: 'Alta calidad', color: 'bg-purple-500/80 text-white' },
                                         };
@@ -222,11 +222,11 @@ export default function ControlPanel({
                                                 }}
                                                 className={cn(
                                                     "px-3 py-2.5 rounded-xl cursor-pointer hover:bg-white/5 transition-colors flex flex-col gap-1",
-                                                    model === m.id && "bg-white/10 ring-1 ring-banana/30"
+                                                    model === m.id && "bg-white/10 ring-1 ring-[#0DD122]/30"
                                                 )}
                                             >
                                                 <div className="flex items-center justify-between">
-                                                    <span className={cn("text-sm font-semibold", model === m.id ? "text-banana" : "text-white")}>
+                                                    <span className={cn("text-sm font-semibold", model === m.id ? "text-[#0DD122]" : "text-white")}>
                                                         {m.name}
                                                     </span>
                                                     {badge && (
@@ -262,7 +262,7 @@ export default function ControlPanel({
                                             }}
                                             className={cn(
                                                 "px-2 py-1.5 rounded text-xs text-center cursor-pointer hover:bg-white/5",
-                                                aspectRatio === a.value && "bg-white/10 text-banana"
+                                                aspectRatio === a.value && "bg-white/10 text-[#0DD122]"
                                             )}
                                         >
                                             {a.label}
@@ -293,7 +293,7 @@ export default function ControlPanel({
                                                 }}
                                                 className={cn(
                                                     "px-3 py-2 rounded-lg text-sm cursor-pointer hover:bg-white/5",
-                                                    imageSize === s.value && "bg-white/10 text-banana"
+                                                    imageSize === s.value && "bg-white/10 text-[#0DD122]"
                                                 )}
                                             >
                                                 {s.label}

@@ -1,7 +1,16 @@
-"use client"
+import React from 'react';
 
-import * as AspectRatioPrimitive from "@radix-ui/react-aspect-ratio"
+const AspectRatio = React.forwardRef(({ ratio = 1, className = '', style, children, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={className}
+    style={{ aspectRatio: String(ratio), ...style }}
+    {...props}
+  >
+    {children}
+  </div>
+));
 
-const AspectRatio = AspectRatioPrimitive.Root
+AspectRatio.displayName = 'AspectRatio';
 
-export { AspectRatio }
+export { AspectRatio };
