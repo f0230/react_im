@@ -123,7 +123,7 @@ const ToolsPopover = ({ inline = false }) => {
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                     "p-2 rounded-full transition-colors duration-200 flex items-center justify-center",
-                    isOpen ? "bg-white/10 text-white" : "text-white/70 hover:text-white hover:bg-white/5"
+                    isOpen ? "bg-white/10 text-neutral-700" : "text-neutral-700 hover:text-black hover:bg-white/5"
                 )}
                 title="Tools"
             >
@@ -144,7 +144,7 @@ const ToolsPopover = ({ inline = false }) => {
             >
                 {/* Header */}
                 <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center justify-between bg-white/5">
-                    <div className="flex items-center gap-2 text-white">
+                    <div className="flex items-center gap-2 text-neutral-700">
                         <LayoutGrid size={16} />
                         <span className="text-sm font-semibold">Herramientas</span>
                     </div>
@@ -161,7 +161,7 @@ const ToolsPopover = ({ inline = false }) => {
                                 placeholder="Tool Name"
                                 value={newTool.name}
                                 onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
-                                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-neutral-700 placeholder:text-neutral-500 focus:outline-none focus:border-white/30 transition-colors"
                                 autoFocus
                             />
                             <input
@@ -169,13 +169,13 @@ const ToolsPopover = ({ inline = false }) => {
                                 placeholder="URL (e.g., google.com)"
                                 value={newTool.url}
                                 onChange={(e) => setNewTool({ ...newTool, url: e.target.value })}
-                                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/30 transition-colors"
+                                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-neutral-700 placeholder:text-neutral-500 focus:outline-none focus:border-white/30 transition-colors"
                             />
                             <div className="flex items-center gap-2 mt-2">
                                 <button
                                     type="button"
                                     onClick={() => setIsAdding(false)}
-                                    className="flex-1 bg-white/5 hover:bg-white/10 text-white/70 text-sm py-2 rounded-xl transition-colors"
+                                    className="flex-1 bg-white/5 hover:bg-white/10 text-neutral-700 text-sm py-2 rounded-xl transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -207,7 +207,7 @@ const ToolsPopover = ({ inline = false }) => {
                                         )}>
                                             <IconComp size={17} />
                                         </div>
-                                        <span className="text-[10px] text-white/70 text-center font-medium truncate w-full px-0.5 group-hover:text-white transition-colors">
+                                        <span className="text-[10px] text-neutral-700 text-center font-medium truncate w-full px-0.5 group-hover:text-black transition-colors">
                                             {tool.name}
                                         </span>
                                     </a>
@@ -219,10 +219,10 @@ const ToolsPopover = ({ inline = false }) => {
                                 onClick={() => setIsAdding(true)}
                                 className="group flex flex-col items-center gap-1.5"
                             >
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white/50 bg-white/5 border-2 border-dashed border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-200 group-hover:scale-105 group-active:scale-95">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-neutral-700 bg-white/5 border-2 border-dashed border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-200 group-hover:scale-105 group-active:scale-95">
                                     <Plus size={17} />
                                 </div>
-                                <span className="text-[10px] text-white/50 text-center font-medium truncate w-full px-0.5 group-hover:text-white/70 transition-colors">
+                                <span className="text-[10px] text-neutral-700 text-center font-medium truncate w-full px-0.5 group-hover:text-black transition-colors">
                                     New
                                 </span>
                             </button>

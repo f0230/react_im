@@ -76,7 +76,7 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
             className={POPOVER_PANEL_CLASS}
         >
             <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center justify-between bg-white/5">
-                <div className="flex items-center gap-2 text-white">
+                <div className="flex items-center gap-2 text-neutral-700">
                     <Bell size={16} />
                     <span className="text-sm font-semibold">Notificaciones</span>
                 </div>
@@ -85,7 +85,7 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
                         <button
                             type="button"
                             onClick={onMarkAllRead}
-                            className="text-[11px] text-white/60 hover:text-white"
+                            className="text-[11px] text-neutral-700 hover:text-black"
                         >
                             Marcar todo leido
                         </button>
@@ -95,10 +95,10 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
 
             {unreadNotifications.length === 0 && (
                 <div className="px-4 py-8 text-center flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/20">
+                    <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-neutral-500">
                         <Check size={16} />
                     </div>
-                    <span className="text-xs text-white/60">No tienes notificaciones pendientes.</span>
+                    <span className="text-xs text-neutral-700">No tienes notificaciones pendientes.</span>
                 </div>
             )}
 
@@ -115,15 +115,15 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
                                     <span className="mt-1.5 w-2 h-2 rounded-full bg-red-500 shrink-0" />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between gap-2">
-                                            <p className="text-xs font-semibold text-white truncate">
+                                            <p className="text-xs font-semibold text-neutral-700 truncate">
                                                 {item.title || 'Notificación'}
                                             </p>
-                                            <span className="text-[10px] text-white/40 shrink-0">
+                                            <span className="text-[10px] text-neutral-500 shrink-0">
                                                 {formatTimestamp(item.created_at)}
                                             </span>
                                         </div>
                                         {item.body && (
-                                            <p className="text-[11px] text-white/60 mt-0.5 break-words line-clamp-2">
+                                            <p className="text-[11px] text-neutral-600 mt-0.5 break-words line-clamp-2">
                                                 {item.body}
                                             </p>
                                         )}
