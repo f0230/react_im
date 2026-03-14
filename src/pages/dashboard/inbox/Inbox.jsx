@@ -9,6 +9,8 @@ import MessagingTabs from '@/components/messaging/MessagingTabs';
 import { formatTime, formatTimestamp, getInitial, normalizePhone } from '@/utils/messagingFormatters';
 import { formatPhoneForDisplay } from '@/utils/phone-format';
 
+const WHATSAPP_THREAD_COLUMNS = 'id, wa_id, client_id, client_name, client_phone, last_message, last_message_at, ai_enabled';
+const WHATSAPP_MESSAGE_COLUMNS = 'id, message_id, wa_id, direction, body, type, timestamp, created_at';
 
 const Inbox = () => {
     useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
@@ -97,7 +99,7 @@ const Inbox = () => {
         setError('');
         const { data, error: supaError } = await supabase
             .from('whatsapp_threads')
-            .select('*')
+            .select(WHATSAPP_THREAD_COLUMNS)
             .order('last_message_at', { ascending: false, nullsFirst: false });
 
         if (supaError) {
@@ -114,7 +116,7 @@ const Inbox = () => {
             if (!background) setLoadingMessages(true);
             const { data, error: supaError } = await supabase
                 .from('whatsapp_messages')
-                .select('*')
+                .select(WHATSAPP_MESSAGE_COLUMNS)
                 .eq('wa_id', waId)
                 .order('timestamp', { ascending: true });
 
@@ -165,7 +167,7 @@ const Inbox = () => {
                 .from('whatsapp_threads')
                 .update(updates)
                 .eq('wa_id', selectedThreadId)
-                .select()
+                .select(WHATSAPP_THREAD_COLUMNS)
                 .single();
 
             if (!supaError && data) {
@@ -703,7 +705,7 @@ const Inbox = () => {
                                         if (message.type === 'image') {
                                             return (
                                                 <div className="space-y-1">
-                                                    <img src={cleanUrl} alt="Sent image" className="rounded-lg max-w-full max-h-64 object-cover" />
+                                                    <img src={cleanUrl} alt="Sent image" loading="lazy" className="rounded-lg max-w-full max-h-64 object-cover" />
                                                     {caption && <p>{caption}</p>}
                                                 </div>
                                             );
@@ -711,13 +713,13 @@ const Inbox = () => {
                                         if (message.type === 'video') {
                                             return (
                                                 <div className="space-y-1">
-                                                    <video src={cleanUrl} controls className="rounded-lg max-w-full max-h-64" />
+                                                    <video src={cleanUrl} controls preload="none" className="rounded-lg max-w-full max-h-64" />
                                                     {caption && <p>{caption}</p>}
                                                 </div>
                                             );
                                         }
                                         if (message.type === 'audio') {
-                                            return <audio src={cleanUrl} controls className="w-full min-w-[200px]" />;
+                                            return <audio src={cleanUrl} controls preload="none" className="w-full min-w-[200px]" />;
                                         }
                                         if (message.type === 'document' || message.type === 'file') {
                                             return (
