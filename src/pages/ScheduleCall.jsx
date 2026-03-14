@@ -2,12 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Check, Clock3, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
-import { MorphingText } from '@/components/ui/morphing-text';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import Navbar from '@/components/Navbar';
 import { formatCalendarDate, getTodayCalendarDate, parseCalendarDate } from '@/utils/calBookingWindow';
@@ -124,6 +123,7 @@ const ScheduleCall = () => {
     const [hasChosenDate, setHasChosenDate] = useState(false);
     const [bookingPhase, setBookingPhase] = useState('slots'); // 'slots', 'form', 'success'
     const [submitting, setSubmitting] = useState(false);
+    const [heroTextIndex, setHeroTextIndex] = useState(0);
 
     const [projects, setProjects] = useState([]);
     const [selectedProjectId, setSelectedProjectId] = useState(projectId || '');
@@ -413,12 +413,43 @@ const ScheduleCall = () => {
         setSelectedDate(clampDateToRange(date, minSelectableDate, maxSelectableDate));
     }, [maxSelectableDate, minSelectableDate]);
 
+    const getSlotTimeParts = useCallback((value) => {
+        const formatted = formatScheduleTime(value);
+        const match = formatted.match(/^(\S+)\s+(.+)$/);
+
+        if (!match) {
+            return { hour: formatted, suffix: '' };
+        }
+
+        return {
+            hour: match[1],
+            suffix: match[2],
+        };
+    }, []);
+
     const heroMorphTexts = [
         t('calendar.heroMorph1'),
         t('calendar.heroMorph2'),
         t('calendar.heroMorph3'),
         t('calendar.heroMorph4'),
     ].filter(Boolean);
+
+    const heroTexts = useMemo(
+        () => heroMorphTexts.map((text) => String(text || '').trim().replace(/^dte\s+/i, '').trim().toLowerCase()),
+        [heroMorphTexts]
+    );
+
+    useEffect(() => {
+        if (heroTexts.length <= 1) return undefined;
+
+        const intervalId = window.setInterval(() => {
+            setHeroTextIndex((current) => (current + 1) % heroTexts.length);
+        }, 2400);
+
+        return () => {
+            window.clearInterval(intervalId);
+        };
+    }, [heroTexts]);
 
     const dateStripVariants = {
         hidden: {},
@@ -441,18 +472,36 @@ const ScheduleCall = () => {
     };
 
     const renderScheduleHero = () => (
-        <div className="relative overflow-hidden bg-[#09090b] px-5 py-10 text-white sm:px-8 sm:py-14 lg:px-10 lg:py-16">
+        <div className="relative overflow-hidden rounded-t-[32px] bg-[#1F1F1F] px-5 py-5 text-white sm:px-8 sm:py-6 lg:px-10 lg:py-7">
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                <div className="absolute -left-14 top-0 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-                <div className="absolute right-0 top-10 h-56 w-56 rounded-full bg-[rgba(0,113,227,0.16)] blur-3xl" />
-                <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_42%)]" />
+                <div className="absolute -left-8 top-0 h-40 w-40 rounded-full bg-white/[0.06] blur-[95px]" />
+                <div className="absolute right-0 top-6 h-44 w-44 rounded-full bg-black/20 blur-[120px]" />
+                <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.045)_0%,rgba(255,255,255,0.02)_30%,transparent_62%)]" />
             </div>
 
-            <div className="relative">
-                            <MorphingText
-                    texts={heroMorphTexts}
-                    className="!mx-0 !h-[3.2rem] !max-w-none font-product !text-[2.75rem] uppercase tracking-[-0.08em] text-white sm:!h-[4.5rem] sm:!text-[3.75rem] lg:!h-[6rem] lg:!text-[5.1rem]"
-                />
+            <div className="relative flex h-[2.5rem] items-center justify-center overflow-hidden text-white">
+                {bookingPhase === 'form' && (
+                    <button
+                        type="button"
+                        onClick={() => setBookingPhase('slots')}
+                        className="absolute left-0 flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white/85 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="uppercase">ATRAS</span>
+                    </button>
+                )}
+                <AnimatePresence mode="wait" initial={false}>
+                    <motion.div
+                        key={heroTexts[heroTextIndex] || 'hero-text'}
+                        initial={{ opacity: 0, y: 10, filter: 'blur(8px)' }}
+                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }}
+                        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                        className="font-google-sans-flex text-[30px] font-normal lowercase tracking-[-0.04em] text-white"
+                    >
+                        {heroTexts[heroTextIndex] || ''}
+                    </motion.div>
+                </AnimatePresence>
             </div>
         </div>
     );
@@ -537,7 +586,7 @@ const ScheduleCall = () => {
 
     if (bookingPhase === 'success') {
         return (
-            <div className="min-h-screen bg-[#F5F5F5]">
+            <div className="min-h-screen bg-black">
                 <Navbar />
                 <div className="mx-auto w-full max-w-[1440px] px-4 pb-10 pt-[72px] sm:px-6 sm:pt-[84px]">
                     <motion.div
@@ -564,18 +613,18 @@ const ScheduleCall = () => {
     }
 
     return (
-        <div className="min-h-screen bg-[#F5F5F5]">
+        <div className="min-h-screen bg-black">
             <Navbar />
             <div className="mx-auto w-full max-w-[1440px] px-3 pb-8 pt-[64px] sm:px-6 sm:pb-12 sm:pt-[84px] lg:px-8">
                 <motion.div
                     initial="hidden"
                     animate="visible"
                     variants={containerVariants}
-                    className="mx-auto w-full max-w-6xl overflow-hidden rounded-[32px] bg-white font-product shadow-[0_24px_60px_-35px_rgba(0,0,0,0.35)]"
+                    className="mx-auto w-full max-w-6xl overflow-hidden rounded-[32px] bg-[#1F1F1F] font-product shadow-[0_24px_60px_-35px_rgba(0,0,0,0.35)] ring-0"
                 >
                     {renderScheduleHero()}
 
-                    <div className="px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+                    <div className="bg-white px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
                         <AnimatePresence mode="wait">
                             {bookingPhase === 'slots' ? (
                                 <motion.div
@@ -585,7 +634,7 @@ const ScheduleCall = () => {
                                     exit={{ opacity: 0, x: -20 }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
-                                    <div className="relative rounded-3xl bg-gray-50 p-5 ring-1 ring-gray-200 sm:p-6">
+                                    <div className="relative rounded-3xl bg-gray-50 px-2 py-5 ring-1 ring-gray-200 sm:p-6">
                                         <div className="relative flex flex-col">
 
                                             {loadingBookingRules ? (
@@ -605,61 +654,62 @@ const ScheduleCall = () => {
                                                     <div className="dte-date-strip mb-4">
                                                         <div className="dte-date-strip__edge dte-date-strip__edge--left" />
                                                         <div className="dte-date-strip__edge dte-date-strip__edge--right" />
-                                                        <motion.div
-                                                            ref={dateStripRef}
-                                                            className="dte-date-strip__scroller"
-                                                            variants={dateStripVariants}
-                                                            initial="hidden"
-                                                            animate="visible"
-                                                        >
-                                                            {selectableDates.map((date, index) => {
-                                                                const isSelected = hasChosenDate && isSameCalendarDay(date, selectedDate);
-                                                                const isToday = isSameCalendarDay(date, todayDate);
-                                                                const dateKey = formatCalendarDate(date);
+                                                        <div ref={dateStripRef} className="dte-date-strip__viewport">
+                                                            <motion.div
+                                                                className="dte-date-strip__scroller"
+                                                                variants={dateStripVariants}
+                                                                initial="hidden"
+                                                                animate="visible"
+                                                            >
+                                                                {selectableDates.map((date, index) => {
+                                                                    const isSelected = hasChosenDate && isSameCalendarDay(date, selectedDate);
+                                                                    const isToday = isSameCalendarDay(date, todayDate);
+                                                                    const dateKey = formatCalendarDate(date);
 
-                                                                return (
-                                                                    <motion.button
-                                                                        key={dateKey || date.toISOString()}
-                                                                        type="button"
-                                                                        data-date-key={dateKey}
-                                                                        onClick={() => handleDateChange(date)}
-                                                                        className={`dte-date-strip__item ${isSelected ? 'dte-date-strip__item--selected' : ''} ${isToday ? 'dte-date-strip__item--today' : ''}`}
-                                                                        aria-pressed={isSelected}
-                                                                        aria-label={formatScheduleDateTime(date, {
-                                                                            weekday: 'long',
-                                                                            day: 'numeric',
-                                                                            month: 'long',
-                                                                            year: 'numeric',
-                                                                            timeZone: SCHEDULE_TIME_ZONE,
-                                                                        })}
-                                                                        variants={dateItemVariants}
-                                                                        whileHover={{ y: -3, scale: 1.02 }}
-                                                                        whileTap={{ scale: 0.97 }}
-                                                                    >
-                                                                        <span className="dte-date-strip__weekday">
-                                                                            {isToday
-                                                                                ? t('calendar.today')
-                                                                                : formatScheduleDateTime(date, {
-                                                                                    weekday: 'short',
+                                                                    return (
+                                                                        <motion.button
+                                                                            key={dateKey || date.toISOString()}
+                                                                            type="button"
+                                                                            data-date-key={dateKey}
+                                                                            onClick={() => handleDateChange(date)}
+                                                                            className={`dte-date-strip__item ${isSelected ? 'dte-date-strip__item--selected' : ''} ${isToday ? 'dte-date-strip__item--today' : ''}`}
+                                                                            aria-pressed={isSelected}
+                                                                            aria-label={formatScheduleDateTime(date, {
+                                                                                weekday: 'long',
+                                                                                day: 'numeric',
+                                                                                month: 'long',
+                                                                                year: 'numeric',
+                                                                                timeZone: SCHEDULE_TIME_ZONE,
+                                                                            })}
+                                                                            variants={dateItemVariants}
+                                                                            whileHover={{ y: -3, scale: 1.02 }}
+                                                                            whileTap={{ scale: 0.97 }}
+                                                                        >
+                                                                            <span className="dte-date-strip__weekday">
+                                                                                {isToday
+                                                                                    ? t('calendar.today')
+                                                                                    : formatScheduleDateTime(date, {
+                                                                                        weekday: 'short',
+                                                                                        timeZone: SCHEDULE_TIME_ZONE,
+                                                                                    })}
+                                                                            </span>
+                                                                            <span className="dte-date-strip__day">
+                                                                                {formatScheduleDateTime(date, {
+                                                                                    day: 'numeric',
                                                                                     timeZone: SCHEDULE_TIME_ZONE,
                                                                                 })}
-                                                                        </span>
-                                                                        <span className="dte-date-strip__day">
-                                                                            {formatScheduleDateTime(date, {
-                                                                                day: 'numeric',
-                                                                                timeZone: SCHEDULE_TIME_ZONE,
-                                                                            })}
-                                                                        </span>
-                                                                        <span className="dte-date-strip__month">
-                                                                            {formatScheduleDateTime(date, {
-                                                                                month: 'short',
-                                                                                timeZone: SCHEDULE_TIME_ZONE,
-                                                                            })}
-                                                                        </span>
-                                                                    </motion.button>
-                                                                );
-                                                            })}
-                                                        </motion.div>
+                                                                            </span>
+                                                                            <span className="dte-date-strip__month">
+                                                                                {formatScheduleDateTime(date, {
+                                                                                    month: 'short',
+                                                                                    timeZone: SCHEDULE_TIME_ZONE,
+                                                                                })}
+                                                                            </span>
+                                                                        </motion.button>
+                                                                    );
+                                                                })}
+                                                            </motion.div>
+                                                        </div>
                                                     </div>
 
                                                     <AnimatePresence initial={false}>
@@ -672,12 +722,12 @@ const ScheduleCall = () => {
                                                                 transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
                                                                 className="border-t border-gray-200 pt-4"
                                                             >
-                                                                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                                                <div className="mb-3 flex flex-wrap items-center justify-center gap-3 text-center">
                                                                     <div>
-                                                                        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-gray-400">
+                                                                        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-gray-400">
                                                                             {t('calendar.availableSlotsLabel')}
                                                                         </p>
-                                                                        <p className="mt-0.5 text-[0.62rem] font-medium uppercase tracking-[0.2em] text-gray-400">
+                                                                        <p className="mt-0.5 text-[0.62rem] font-medium uppercase tracking-[0.14em] text-gray-400">
                                                                             {SCHEDULE_TIME_ZONE_LABEL}
                                                                         </p>
                                                                     </div>
@@ -689,24 +739,34 @@ const ScheduleCall = () => {
                                                                     </p>
                                                                 )}
 
-                                                                <div className="dte-slot-list custom-scrollbar overflow-y-auto pr-1">
+                                                                <div className="dte-slot-list custom-scrollbar overflow-y-auto pt-1 pr-1">
                                                                     {slots.length > 0 ? (
-                                                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                                                                        <div className="grid grid-cols-1 gap-[5px] sm:grid-cols-2 xl:grid-cols-3">
                                                                             {slots.map((slot, idx) => (
                                                                                 <motion.button
                                                                                     key={idx}
                                                                                     onClick={() => handleSlotSelect(slot)}
-                                                                                    className="group flex w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-left text-sm transition-all duration-300 hover:border-gray-400 hover:bg-gray-50 sm:text-base"
+                                                                                    className="group flex w-full items-center justify-between rounded-[7px] border border-gray-200 bg-white px-4 py-3.5 text-left text-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-black/35 hover:bg-[#f7f7f7] hover:shadow-[0_18px_40px_-24px_rgba(0,0,0,0.18)] active:border-[#0DD122] active:bg-[#0DD122] sm:text-base"
                                                                                     initial={{ opacity: 0, y: 10 }}
                                                                                     animate={{ opacity: 1, y: 0 }}
                                                                                     transition={{ duration: 0.22, delay: idx * 0.035 }}
-                                                                                    whileHover={{ y: -1 }}
-                                                                                    whileTap={{ scale: 0.99 }}
+                                                                                    whileHover={{ y: -2 }}
+                                                                                    whileTap={{ scale: 0.985, backgroundColor: '#0DD122', borderColor: '#0DD122' }}
                                                                                 >
-                                                                                    <span className="font-semibold text-gray-900">
-                                                                                        {formatScheduleTime(slot.start)}
+                                                                                    <span className="flex items-center gap-2 text-gray-900 transition-colors duration-300 group-active:text-black">
+                                                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/[0.04] text-black/55 transition-colors duration-300 group-hover:bg-black/[0.08] group-hover:text-black group-active:bg-black/10 group-active:text-black">
+                                                                                            <Clock3 size={15} strokeWidth={2.1} />
+                                                                                        </span>
+                                                                                        <span className="font-google-sans-flex leading-[0.95]">
+                                                                                            <span className="font-bold">
+                                                                                                {getSlotTimeParts(slot.start).hour}
+                                                                                            </span>{' '}
+                                                                                            <span className="font-normal">
+                                                                                                {getSlotTimeParts(slot.start).suffix}
+                                                                                            </span>
+                                                                                        </span>
                                                                                     </span>
-                                                                                    <span className="rounded-full border border-black/20 bg-black/[0.05] px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-black/60 transition-all duration-300 group-hover:border-black/40 group-hover:bg-black/[0.1] group-hover:text-black/80">
+                                                                                    <span className="rounded-full border border-black/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(245,245,245,0.92)_100%)] px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-black/65 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition-all duration-300 group-hover:border-[#0DD122] group-hover:bg-[#0DD122] group-hover:text-black group-hover:shadow-[0_12px_28px_-16px_rgba(13,209,34,0.55)] group-active:border-[#0DD122] group-active:bg-[#0DD122] group-active:text-black group-active:shadow-[0_12px_28px_-16px_rgba(13,209,34,0.55)]">
                                                                                         {t('calendar.book')}
                                                                                     </span>
                                                                                 </motion.button>
@@ -734,30 +794,44 @@ const ScheduleCall = () => {
                                     </div>
                                 </motion.div>
                             ) : (
-                                <motion.div key="form" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                    <div className="mb-5 flex flex-wrap items-center gap-3 sm:mb-6 sm:gap-4">
-                                        <button
-                                            onClick={() => setBookingPhase('slots')}
-                                            className="rounded-full border border-gray-300 px-3 py-1.5 text-sm text-gray-600 transition-colors hover:border-black hover:text-black"
-                                        >
-                                            {t('calendar.back')}
-                                        </button>
+                                <motion.div key="form" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="font-google-sans-flex text-center">
+                                    <div className="mb-5 flex flex-wrap items-center justify-center gap-3 sm:mb-6 sm:gap-4">
                                         <h2 className="text-lg font-bold sm:text-xl">{t('calendar.enterDetails')}</h2>
                                     </div>
 
-                                    <div className="mb-6 rounded-xl bg-gray-50 p-4">
-                                        <p className="text-sm text-gray-500">{t('calendar.selectedTimeLabel')} · {SCHEDULE_TIME_ZONE_LABEL}</p>
-                                        <p className="mt-1 font-bold">
-                                            {selectedSlot?.start
-                                                ? `${formatScheduleDate(selectedSlot.start)} a las ${formatScheduleTime(selectedSlot.start)}`
-                                                : ''}
-                                        </p>
+                                    <div className="mb-6 rounded-xl bg-gray-50 p-4 text-center">
+                                        <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0DD122]/15 text-[#0DD122]">
+                                                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                                            </span>
+                                            <p>{t('calendar.selectedTimeLabel')} · {SCHEDULE_TIME_ZONE_LABEL}</p>
+                                        </div>
+                                        {selectedSlot?.start ? (
+                                            <div className="mt-3 flex flex-col items-center gap-2 text-black">
+                                                <div className="flex items-center justify-center gap-2 text-base font-normal capitalize">
+                                                    <CalendarDays className="h-4 w-4 text-black/60" strokeWidth={2.2} />
+                                                    <span>
+                                                        {formatScheduleDateTime(selectedSlot.start, {
+                                                            weekday: 'long',
+                                                            day: 'numeric',
+                                                            month: 'long',
+                                                            year: 'numeric',
+                                                            timeZone: SCHEDULE_TIME_ZONE,
+                                                        })}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center justify-center gap-2 text-base font-normal">
+                                                    <Clock3 className="h-4 w-4 text-black/60" strokeWidth={2.2} />
+                                                    <span>{formatScheduleTime(selectedSlot.start)}</span>
+                                                </div>
+                                            </div>
+                                        ) : null}
                                     </div>
 
-                                    <form onSubmit={handleFormSubmit} className="space-y-4">
+                                    <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-[550px] space-y-4">
                                         {projects.length > 0 && (
                                             <div>
-                                                <label className="mb-1 block text-sm font-medium text-gray-700">{t('calendar.projectLabel')}</label>
+                                                <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('calendar.projectLabel')}</label>
                                                 <MultiUseSelect
                                                     options={projects}
                                                     value={selectedProjectId}
@@ -766,60 +840,61 @@ const ScheduleCall = () => {
                                                     getOptionValue={(p) => p.id}
                                                     getOptionLabel={(p) => p.name}
                                                     getDisplayLabel={(p) => p.name}
-                                                    buttonClassName="h-[50px] rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:ring-2 focus:ring-black/15"
+                                                    buttonClassName="h-[50px] rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-bold text-gray-900 focus:ring-2 focus:ring-black/15"
                                                     className="w-full"
                                                 />
                                             </div>
                                         )}
                                         <div>
-                                            <label className="mb-1 block text-sm font-medium text-gray-700">{t('form.fullName')}</label>
+                                            <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('form.fullName')}</label>
                                             <input
                                                 type="text"
                                                 required
                                                 value={formData.name}
                                                 onChange={e => handleFieldChange('name', e.target.value)}
-                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black/15"
+                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <div>
-                                            <label className="mb-1 block text-sm font-medium text-gray-700">{t('form.email')}</label>
+                                            <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('form.email')}</label>
                                             <input
                                                 type="email"
                                                 required
                                                 value={formData.email}
                                                 onChange={e => handleFieldChange('email', e.target.value)}
-                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black/15"
+                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <div>
-                                            <label className="mb-1 block text-sm font-medium text-gray-700">{t('form.phone')}</label>
+                                            <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('form.phone')}</label>
                                             <input
                                                 type="tel"
                                                 required={requiresPhone}
                                                 value={formData.phone}
                                                 onChange={e => handleFieldChange('phone', e.target.value)}
-                                                className={`w-full rounded-xl bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black/15 ${fieldErrors.phone ? 'border border-red-400' : 'border border-gray-300'}`}
+                                                className={`w-full rounded-xl bg-white px-4 py-3 text-center font-bold outline-none focus:ring-2 focus:ring-black/15 ${fieldErrors.phone ? 'border border-red-400' : 'border border-gray-300'}`}
                                             />
                                             {fieldErrors.phone ? (
-                                                <p className="mt-2 text-sm text-red-600">{fieldErrors.phone}</p>
+                                                <p className="mt-2 text-center text-sm text-red-600">{fieldErrors.phone}</p>
                                             ) : requiresPhone ? (
-                                                <p className="mt-2 text-sm text-gray-500">{t('calendar.phoneHelp')}</p>
+                                                <p className="mt-2 text-center text-sm text-gray-500">{t('calendar.phoneHelp')}</p>
                                             ) : null}
                                         </div>
                                         <div>
-                                            <label className="mb-1 block text-sm font-medium text-gray-700">{t('form.notes')}</label>
+                                            <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('form.notes')}</label>
                                             <textarea
                                                 rows="3"
                                                 value={formData.notes}
                                                 onChange={e => handleFieldChange('notes', e.target.value)}
-                                                className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black/15"
+                                                className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <button
                                             type="submit"
                                             disabled={submitting}
-                                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-black py-4 font-bold text-white transition-colors hover:bg-zinc-800 disabled:opacity-70"
+                                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0DD122] py-4 font-semibold text-black transition-colors hover:bg-[#0bc11f] disabled:opacity-70"
                                         >
+                                            <CalendarDays className="h-5 w-5" />
                                             {submitting && <Loader2 className="h-5 w-5 animate-spin" />}
                                             {t('calendar.confirmBooking')}
                                         </button>

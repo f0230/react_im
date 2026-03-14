@@ -133,12 +133,22 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                     animate={{ opacity: 1, backdropFilter: "blur(5px)", rotate: 0, y: 0 }}
                     exit={{ opacity: 0, backdropFilter: "blur(0px)", rotate: 2, y: 10 }}
                     transition={{ duration: 1.65, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute bottom-2 transform -translate-x-1/2 w-[250px] min-h-[110px] h-auto bg-black shadow-lg p-4 flex flex-col justify-between z-30 md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:min-h-[150px]"
+                    className="absolute bottom-2 transform -translate-x-1/2 w-[250px] min-h-[110px] h-auto overflow-hidden rounded-[20px] border border-white/16 bg-black/48 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-[450px] saturate-[1] p-4 flex flex-col justify-between z-30 md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:min-h-[150px]"
                     role="dialog"
                     aria-label={t("section1.aria.popup")}
                   >
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.2),rgba(255,255,255,0.08)_20%,transparent_46%,rgba(255,255,255,0.025)_100%)]" />
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-12 mix-blend-soft-light"
+                      style={{
+                        backgroundImage:
+                          'radial-gradient(rgba(255,255,255,0.16) 0.55px, transparent 0.8px), radial-gradient(rgba(0,0,0,0.12) 0.6px, transparent 0.85px)',
+                        backgroundPosition: '0 0, 4px 4px',
+                        backgroundSize: '10px 10px, 12px 12px',
+                      }}
+                    />
                     <FadeContent blur duration={600} easing="ease-out" initialOpacity={0} delay={300}>
-                      <div className="text-white text-[12px] md:text-[17px]">
+                      <div className="relative z-10 text-white text-[12px] md:text-[17px] [mix-blend-mode:difference]">
                         <h2 className="font-normal text-[20px] md:text-[40px] leading-[1] lg:leading-[1.1]">
                           {t("section1.popupTitleLine1")} <br />
                           <span className="inline-block -mt-2">{t("section1.popupTitleLine2")}</span>
@@ -148,7 +158,7 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                           href={whatsappLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-[#0DD122] py-1.5 text-[11px] font-semibold text-black transition hover:bg-[#1ebe5d] md:py-2 md:text-[15px]"
+                          className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-[#0DD122] py-1.5 text-[11px] font-semibold text-black transition hover:bg-[#1ebe5d] md:py-2 md:text-[15px] [mix-blend-mode:normal]"
                         >
                           {t("section1.popupCta")}
                         </a>
@@ -156,7 +166,7 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                     </FadeContent>
 
                     <button
-                      className="absolute top-1 right-1 text-white p-1 rounded-full hover:bg-white/20 transition"
+                      className="absolute top-1 right-1 z-10 text-white p-1 rounded-full transition hover:bg-white/20 [mix-blend-mode:difference]"
                       onClick={() => setShowPopup(false)}
                       aria-label={t("section1.aria.close")}
                     >

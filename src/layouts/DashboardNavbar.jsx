@@ -16,6 +16,7 @@ import { PrefetchLink } from '@/components/navigation/PrefetchLink';
 
 const DashboardNavbar = () => {
     const [scrolled, setScrolled] = useState(false);
+    const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMessagesOpen, setIsMessagesOpen] = useState(false);
@@ -35,12 +36,11 @@ const DashboardNavbar = () => {
     // Get avatar from Google metadata (faster) or profile table
     const avatarUrl = user?.user_metadata?.avatar_url || profile?.avatar_url;
     const initial = (user?.user_metadata?.full_name || profile?.full_name || 'U').charAt(0);
-    const firstName = (user?.user_metadata?.full_name || profile?.full_name || '').split(' ')[0];
-
     useEffect(() => {
         const handleScroll = () => {
             const nextScrolled = window.scrollY > 20;
             setScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled));
+            setIsToolsOpen(false);
             setIsMenuOpen(false);
             setIsProfileOpen(false);
             setIsMessagesOpen(false);
@@ -54,7 +54,7 @@ const DashboardNavbar = () => {
         <header
             className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 border-b bg-black ${scrolled ? 'bg-black/80 backdrop-blur-md border-white/10' : 'border-transparent'}`}
         >
-            <div className="mx-auto px-6 md:px-10 flex items-center justify-between min-h-[45px] max-w-[1350px]">
+            <div className="mx-auto px-4 md:px-10 flex items-center justify-between min-h-[56px] md:min-h-[45px] max-w-[1350px]">
                 {/* Logo */}
                 <PrefetchLink to="/dashboard" className="flex items-center gap-2 group">
                     <OptimizedImage
@@ -70,20 +70,31 @@ const DashboardNavbar = () => {
                 </PrefetchLink>
 
                 {/* Actions */}
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-1 md:gap-2">
                     {/* Tools Popover (Admin/Worker only) */}
                     {(profile?.role === 'admin' || profile?.role === 'worker') && (
-                        <div className="relative flex items-center">
-                            <ToolsPopover />
+                        <div className="relative flex shrink-0 items-center">
+                            <ToolsPopover
+                                isOpen={isToolsOpen}
+                                onToggle={() => {
+                                    setIsToolsOpen((prev) => !prev);
+                                    setIsMessagesOpen(false);
+                                    setIsNotificationsOpen(false);
+                                    setIsProfileOpen(false);
+                                    setIsMenuOpen(false);
+                                }}
+                                onClose={() => setIsToolsOpen(false)}
+                            />
                         </div>
                     )}
 
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <MessageIcon
                             unreadCount={messageUnreadTotal}
                             isOpen={isMessagesOpen}
                             onClick={() => {
                                 setIsMessagesOpen((prev) => !prev);
+                                setIsToolsOpen(false);
                                 setIsNotificationsOpen(false);
                                 setIsProfileOpen(false);
                                 setIsMenuOpen(false);
@@ -98,12 +109,13 @@ const DashboardNavbar = () => {
                         />
                     </div>
 
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <NotificationBell
                             unreadCount={counts.unreadNotifications}
                             isOpen={isNotificationsOpen}
                             onClick={() => {
                                 setIsNotificationsOpen((prev) => !prev);
+                                setIsToolsOpen(false);
                                 setIsMessagesOpen(false);
                                 setIsProfileOpen(false);
                                 setIsMenuOpen(false);
@@ -118,10 +130,12 @@ const DashboardNavbar = () => {
                         />
                     </div>
                     {/* Profile Menu Trigger (Desktop & Mobile) */}
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <button
+                            type="button"
                             onClick={() => {
                                 setIsProfileOpen((prev) => !prev);
+                                setIsToolsOpen(false);
                                 setIsMessagesOpen(false);
                                 setIsNotificationsOpen(false);
                                 setIsMenuOpen(false);
@@ -144,10 +158,12 @@ const DashboardNavbar = () => {
                     </div>
 
                     {/* Menu Trigger Container (Relative for Popover) */}
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <button
+                            type="button"
                             onClick={() => {
                                 setIsMenuOpen((prev) => !prev);
+                                setIsToolsOpen(false);
                                 setIsProfileOpen(false);
                                 setIsMessagesOpen(false);
                                 setIsNotificationsOpen(false);

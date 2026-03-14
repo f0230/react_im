@@ -76,11 +76,21 @@ const Section5 = ({ onScheduleClick }) => {
                     animate={{ opacity: 1, backdropFilter: "blur(5px)", rotate: 0, y: 0 }}
                     exit={{ opacity: 0, backdropFilter: "blur(0px)", rotate: 2, y: 10 }}
                     transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-                    className="fixed bottom-4 left-4 w-[250px] min-h-[120px] pt-6 bg-black shadow-lg p-4 flex flex-col justify-between z-50 md:bottom-6 md:left-12 md:w-[389px]"
+                    className="fixed bottom-4 left-4 w-[250px] min-h-[120px] overflow-hidden rounded-[20px] border border-white/16 bg-black/48 pt-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-[450px] saturate-[1] p-4 flex flex-col justify-between z-50 md:bottom-6 md:left-12 md:w-[389px]"
                     role="dialog"
                     aria-label={t("section5.aria.popup")}
                 >
-                    <div className="text-white text-[12px] md:text-[17px] ">
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.2),rgba(255,255,255,0.08)_20%,transparent_46%,rgba(255,255,255,0.025)_100%)]" />
+                    <div
+                        className="pointer-events-none absolute inset-0 opacity-12 mix-blend-soft-light"
+                        style={{
+                            backgroundImage:
+                                'radial-gradient(rgba(255,255,255,0.16) 0.55px, transparent 0.8px), radial-gradient(rgba(0,0,0,0.12) 0.6px, transparent 0.85px)',
+                            backgroundPosition: '0 0, 4px 4px',
+                            backgroundSize: '10px 10px, 12px 12px',
+                        }}
+                    />
+                    <div className="relative z-10 text-white text-[12px] md:text-[17px] [mix-blend-mode:difference]">
                         <h2 className="font-normal text-[18px] md:text-[34px] leading-none  ">
                             <span className="inline-block leading-none">{t("section5.popupTitle")}</span>
                         </h2>
@@ -88,14 +98,14 @@ const Section5 = ({ onScheduleClick }) => {
                         <button
                             type="button"
                             onClick={() => onScheduleClick?.()}
-                            className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-[#FFD400] py-1.5 text-[11px] font-semibold text-black transition hover:bg-[#f3c800] md:py-2 md:text-[15px]"
+                            className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-[#FFD400] py-1.5 text-[11px] font-semibold text-black transition hover:bg-[#f3c800] md:py-2 md:text-[15px] [mix-blend-mode:normal]"
                         >
                             {t("section5.popupCta")}
                         </button>
                     </div>
 
                     <button
-                        className="absolute top-1 right-1 text-white p-1 rounded-full hover:bg-white/20 transition"
+                        className="absolute top-1 right-1 z-10 text-white p-1 rounded-full transition hover:bg-white/20 [mix-blend-mode:difference]"
                         onClick={handleClosePopup}
                         aria-label={t("section5.aria.close")}
                     >

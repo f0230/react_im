@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, Plus, Sparkles, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
 import PopoverPanel from './ui/PopoverPanel';
-import { POPOVER_PANEL_CLASS } from './ui/popoverStyles';
+import { MOBILE_POPOVER_BACKDROP_CLASS, POPOVER_PANEL_CLASS } from './ui/popoverStyles';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
 
@@ -28,12 +28,35 @@ const ICONS = {
     LinkIcon
 };
 
-const ToolsPopover = ({ inline = false }) => {
-    const [isOpen, setIsOpen] = useState(false);
+const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onClose }) => {
+    const [internalIsOpen, setInternalIsOpen] = useState(false);
     const [tools, setTools] = useState([]);
     const [isAdding, setIsAdding] = useState(false);
     const [newTool, setNewTool] = useState({ name: '', url: '' });
     const [isLoading, setIsLoading] = useState(false);
+    const isControlled = typeof controlledIsOpen === 'boolean';
+    const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+
+    const closePopover = () => {
+        setIsAdding(false);
+        if (onClose) {
+            onClose();
+            return;
+        }
+        if (!isControlled) {
+            setInternalIsOpen(false);
+        }
+    };
+
+    const togglePopover = () => {
+        if (onToggle) {
+            onToggle();
+            return;
+        }
+        if (!isControlled) {
+            setInternalIsOpen((prev) => !prev);
+        }
+    };
 
     // Load tools from Supabase
     useEffect(() => {
@@ -120,7 +143,8 @@ const ToolsPopover = ({ inline = false }) => {
     return (
         <div className="relative">
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                type="button"
+                onClick={togglePopover}
                 className={cn(
                     "p-2 rounded-full transition-colors duration-200 flex items-center justify-center",
                     isOpen ? "bg-white/10 text-neutral-700" : "text-neutral-700 hover:text-black hover:bg-white/5"
@@ -132,11 +156,9 @@ const ToolsPopover = ({ inline = false }) => {
 
             <PopoverPanel
                 isOpen={isOpen}
-                onClose={() => {
-                    setIsOpen(false);
-                    setIsAdding(false);
-                }}
+                onClose={closePopover}
                 className={POPOVER_PANEL_CLASS}
+                backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
                 initial={{ opacity: 0, scale: 0.9, y: -10, filter: 'blur(10px)' }}
                 animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, scale: 0.9, y: -10, filter: 'blur(10px)' }}

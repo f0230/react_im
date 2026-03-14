@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PopoverPanel from '../components/ui/PopoverPanel';
-import { POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
+import { MOBILE_POPOVER_BACKDROP_CLASS, POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
 import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
 
 const ProfileMenu = ({ isOpen, onClose }) => {
@@ -26,6 +26,7 @@ const ProfileMenu = ({ isOpen, onClose }) => {
             isOpen={isOpen}
             onClose={onClose}
             className={`${POPOVER_PANEL_CLASS} font-product`}
+            backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
         >
 
             {/* User Info Header */}
@@ -41,8 +42,8 @@ const ProfileMenu = ({ isOpen, onClose }) => {
                         )}
                     </div>
                     <div className="overflow-hidden">
-                        <p className="text-white font-bold text-sm truncate">{fullName}</p>
-                        <p className="text-gray-400 text-xs truncate font-inter">{email}</p>
+                        <p className="text-neutral-700 font-bold text-sm truncate">{fullName}</p>
+                        <p className="text-neutral-500 text-xs truncate font-inter">{email}</p>
                     </div>
                 </div>
             </div>
@@ -54,11 +55,11 @@ const ProfileMenu = ({ isOpen, onClose }) => {
                     className={({ isActive }) => `
                             flex items-center gap-3 px-4 py-3 rounded-[15px] transition-all duration-200 group
                             ${isActive
-                            ? 'bg-white/10 text-white font-bold'
-                            : 'text-gray-400 hover:bg-white/5 hover:text-white'}
+                            ? 'bg-white text-black font-bold'
+                            : 'text-neutral-700 hover:bg-white/5 hover:text-black'}
                         `}
                 >
-                    <User size={18} className="group-hover:text-skyblue transition-colors" />
+                    <User size={18} className="transition-colors text-current" />
                     <span className="text-sm">Mi Perfil</span>
                 </PrefetchNavLink>
 
@@ -68,11 +69,11 @@ const ProfileMenu = ({ isOpen, onClose }) => {
                     className={({ isActive }) => `
                             flex items-center gap-3 px-4 py-3 rounded-[15px] transition-all duration-200 group
                             ${isActive
-                            ? 'bg-white/10 text-white font-bold'
-                            : 'text-gray-400 hover:bg-white/5 hover:text-white'}
+                            ? 'bg-white text-black font-bold'
+                            : 'text-neutral-700 hover:bg-white/5 hover:text-black'}
                         `}
                 >
-                    <Settings size={18} className="group-hover:text-skyblue transition-colors" />
+                    <Settings size={18} className="transition-colors text-current" />
                     <span className="text-sm">Configuración</span>
                 </PrefetchNavLink>
 
@@ -80,7 +81,7 @@ const ProfileMenu = ({ isOpen, onClose }) => {
 
                 <button
                     onClick={handleSignOut}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-[15px] text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-[15px] text-neutral-700 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200"
                 >
                     <LogOut size={18} />
                     <span className="text-sm">Cerrar Sesión</span>

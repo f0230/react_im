@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const morphTime = 1.5;
 const cooldownTime = 0.5;
 
-const useMorphingText = (texts) => {
+const useMorphingText = (texts, renderText) => {
   const textIndexRef = useRef(0);
   const morphRef = useRef(0);
   const cooldownRef = useRef(0);
@@ -28,10 +28,19 @@ const useMorphingText = (texts) => {
       current1.style.filter = `blur(${Math.min(8 / invertedFraction - 8, 100)}px)`;
       current1.style.opacity = `${Math.pow(invertedFraction, 0.4) * 100}%`;
 
-      current1.textContent = texts[textIndexRef.current % texts.length];
-      current2.textContent = texts[(textIndexRef.current + 1) % texts.length];
+      const currentText = texts[textIndexRef.current % texts.length];
+      const nextText = texts[(textIndexRef.current + 1) % texts.length];
+
+      if (renderText) {
+        current1.innerHTML = renderText(currentText);
+        current2.innerHTML = renderText(nextText);
+        return;
+      }
+
+      current1.textContent = currentText;
+      current2.textContent = nextText;
     },
-    [texts],
+    [renderText, texts],
   );
 
   const doMorph = useCallback(() => {
@@ -88,8 +97,8 @@ const useMorphingText = (texts) => {
   return { text1Ref, text2Ref };
 };
 
-const Texts = ({ texts }) => {
-  const { text1Ref, text2Ref } = useMorphingText(texts);
+const Texts = ({ texts, renderText }) => {
+  const { text1Ref, text2Ref } = useMorphingText(texts, renderText);
   return (
     <>
       <span
@@ -121,14 +130,15 @@ const SvgFilters = () => (
   </svg>
 );
 
-const MorphingText = ({ texts, className }) => (
+const MorphingText = ({ texts, className, renderText, filterClassName = "[filter:url(#threshold)_blur(0.6px)]" }) => (
   <div
     className={cn(
-      "relative mx-auto h-16 w-full max-w-screen-md text-center font-sans text-[40pt] font-bold leading-none [filter:url(#threshold)_blur(0.6px)] md:h-24 lg:text-[6rem]",
+      "relative mx-auto h-16 w-full max-w-screen-md text-center font-sans text-[40pt] font-bold leading-none",
+      filterClassName,
       className,
     )}
   >
-    <Texts texts={texts} />
+    <Texts texts={texts} renderText={renderText} />
     <SvgFilters />
   </div>
 );

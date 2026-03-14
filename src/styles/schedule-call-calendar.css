@@ -248,28 +248,35 @@
     position: relative;
 }
 
-.dte-date-strip__scroller {
-    display: flex;
-    gap: 0.6rem;
+.dte-date-strip__viewport {
     overflow-x: auto;
-    overflow-y: hidden;
-    padding: 0.25rem 0 0.75rem;
+    overflow-y: visible;
     scroll-behavior: smooth;
-    scroll-snap-type: x proximity;
     overscroll-behavior-x: contain;
-    scroll-padding-inline: 0;
     scrollbar-width: none;
     -ms-overflow-style: none;
 }
 
-.dte-date-strip__scroller::-webkit-scrollbar {
+.dte-date-strip__viewport::-webkit-scrollbar {
     display: none;
+}
+
+.dte-date-strip__scroller {
+    display: flex;
+    justify-content: center;
+    gap: 0.6rem;
+    overflow: visible;
+    padding: 0.25rem 0 1.35rem;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 0;
+    width: max-content;
+    min-width: 100%;
 }
 
 .dte-date-strip__edge {
     position: absolute;
     top: 0;
-    bottom: 0.75rem;
+    bottom: 1.25rem;
     width: 3rem;
     z-index: 2;
     pointer-events: none;
@@ -317,9 +324,27 @@
 }
 
 .dte-date-strip__item--selected {
-    border-color: rgba(15, 23, 42, 0.8);
-    background: linear-gradient(135deg, #111111 0%, #2b2b2b 100%);
-    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    position: relative;
+    border-color: #0DD122;
+    background: #0DD122;
+    box-shadow: 0 10px 26px rgba(13, 209, 34, 0.28);
+    isolation: isolate;
+}
+
+.dte-date-strip__item--selected::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0.3;
+    background-image:
+        radial-gradient(rgba(0, 0, 0, 0.24) 0.8px, transparent 1px),
+        radial-gradient(rgba(255, 255, 255, 0.16) 0.65px, transparent 0.9px);
+    background-position: 0 0, 4px 4px;
+    background-size: 8px 8px, 11px 11px;
+    mix-blend-mode: multiply;
+    z-index: 0;
 }
 
 /* Typography */
@@ -331,8 +356,8 @@
 .dte-date-strip__weekday {
     color: #94a3b8;
     font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.16em;
+    font-weight: 400;
+    letter-spacing: 0.04em;
 }
 
 .dte-date-strip__day {
@@ -353,11 +378,15 @@
 /* Selected overrides */
 .dte-date-strip__item--selected .dte-date-strip__weekday,
 .dte-date-strip__item--selected .dte-date-strip__month {
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(0, 0, 0, 0.62);
+    position: relative;
+    z-index: 1;
 }
 
 .dte-date-strip__item--selected .dte-date-strip__day {
-    color: #ffffff;
+    color: #000000;
+    position: relative;
+    z-index: 1;
 }
 
 /* ── SLOT LIST ────────────────────────────────────────────────── */
@@ -379,9 +408,9 @@
     }
 
     .dte-date-strip__scroller {
+        justify-content: flex-start;
         gap: 0.5rem;
-        padding-inline: 0;
-        scroll-padding-inline: 0;
+        padding-bottom: 1.1rem;
     }
 
     .dte-date-strip__item {

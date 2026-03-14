@@ -139,7 +139,7 @@ const PortalLayout = () => {
                 <DashboardNavbar />
 
                 <main
-                    className={`relative pt-[45px] animate-fade-in ${
+                    className={`relative pt-[56px] md:pt-[45px] animate-fade-in ${
                         isStudioRoute
                             ? 'w-full max-w-none px-0'
                             : 'max-w-[1440px] px-4 md:px-10 mx-auto'

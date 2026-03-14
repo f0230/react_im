@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Hash, MessageSquare, Phone, Users } from 'lucide-react';
 import PopoverPanel from '../ui/PopoverPanel';
-import { POPOVER_PANEL_CLASS } from '../ui/popoverStyles';
+import { MOBILE_POPOVER_BACKDROP_CLASS, POPOVER_PANEL_CLASS } from '../ui/popoverStyles';
 import { formatTimestamp, getInitial } from '@/utils/messagingFormatters';
 
 const EmptyState = () => (
@@ -30,6 +30,7 @@ const MessagePanel = ({ isOpen, onClose, teamItems = [], whatsappItems = [], cli
             isOpen={isOpen}
             onClose={onClose}
             className={POPOVER_PANEL_CLASS}
+            backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
         >
             <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center justify-between bg-white/5">
                 <div className="flex items-center gap-2 text-neutral-700">
