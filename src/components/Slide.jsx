@@ -65,7 +65,7 @@ const Section6 = () => {
 
   return (
     <section
-      className="w-full h-[520px] md:h-[720px] lg:h-[950px] flex flex-col justify-evenly items-center"
+      className="flex h-[520px] w-full flex-col items-center justify-evenly md:h-[798px] lg:h-[798px]"
       aria-label={t('carousel.aria')}
     >
       <div className="w-full max-w-screen px-4 mx-auto items-center flex flex-col text-center">

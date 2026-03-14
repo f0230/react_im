@@ -55,7 +55,7 @@ const Home = () => {
   return (
 
     <Layout>
-      <div className="w-full overflow-x-hidden max-w-[1440px] mx-auto relative">
+      <div className="relative mx-auto flex w-full max-w-[1440px] flex-col gap-[10px] overflow-x-hidden">
 
         <div className="relative w-full">
 
