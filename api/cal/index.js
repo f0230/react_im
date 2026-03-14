@@ -1033,19 +1033,6 @@ const handleCreateBooking = async (req, res) => {
             });
         }
 
-        if (supabase) {
-            try {
-                await upsertAppointmentRecord({
-                    supabase,
-                    booking: calData?.data || {},
-                    triggerEvent: 'BOOKING_CREATED',
-                    source: 'cal.com:create-booking',
-                });
-            } catch (upsertError) {
-                console.error('Failed to persist booking after creation:', upsertError);
-            }
-        }
-
         return res.status(200).json({
             ok: true,
             data: calData.data,
