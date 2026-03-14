@@ -6,7 +6,7 @@ import dteKeyImg from "../assets/DTE.png";
 import grupoKeyImg from "../assets/GRUPO.png";
 import haceKeyImg from "../assets/HACE.png";
 import loKeyImg from "../assets/LO.png";
-import keySoundSrc from "./SONIDO TECLA.mp3";
+import keySoundSrc from "../assets/SONIDO TECLA.mp3";
 
 const Section2 = ({ onContactClick }) => {
   const { t } = useTranslation();
