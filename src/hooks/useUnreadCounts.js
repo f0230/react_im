@@ -330,6 +330,9 @@ export const useUnreadCounts = () => {
         refreshAll();
 
         const channels = [];
+        const notificationsFilter = user?.id ? `recipient_id=eq.${user.id}` : null;
+        const ownReadsFilter = user?.id ? `user_id=eq.${user.id}` : null;
+        const clientMessagesFilter = isClient && client?.id ? `client_id=eq.${client.id}` : null;
 
         if (isStaff) {
             channels.push(
@@ -347,13 +350,21 @@ export const useUnreadCounts = () => {
             channels.push(
                 supabase
                     .channel('unread-team-reads')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'team_channel_reads' }, scheduleRefresh)
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table: 'team_channel_reads', filter: ownReadsFilter },
+                        scheduleRefresh
+                    )
                     .subscribe()
             );
             channels.push(
                 supabase
                     .channel('unread-whatsapp-reads')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_thread_reads' }, scheduleRefresh)
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table: 'whatsapp_thread_reads', filter: ownReadsFilter },
+                        scheduleRefresh
+                    )
                     .subscribe()
             );
         }
@@ -361,7 +372,11 @@ export const useUnreadCounts = () => {
         channels.push(
             supabase
                 .channel('unread-notifications')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, scheduleRefresh)
+                .on(
+                    'postgres_changes',
+                    { event: '*', schema: 'public', table: 'notifications', filter: notificationsFilter },
+                    scheduleRefresh
+                )
                 .subscribe()
         );
 
@@ -369,7 +384,16 @@ export const useUnreadCounts = () => {
             channels.push(
                 supabase
                     .channel('unread-client-messages')
-                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'client_messages' }, scheduleRefresh)
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'INSERT',
+                            schema: 'public',
+                            table: 'client_messages',
+                            ...(clientMessagesFilter ? { filter: clientMessagesFilter } : {}),
+                        },
+                        scheduleRefresh
+                    )
                     .subscribe()
             );
         }
@@ -378,7 +402,11 @@ export const useUnreadCounts = () => {
             channels.push(
                 supabase
                     .channel('unread-client-reads')
-                    .on('postgres_changes', { event: '*', schema: 'public', table: 'client_message_reads' }, scheduleRefresh)
+                    .on(
+                        'postgres_changes',
+                        { event: '*', schema: 'public', table: 'client_message_reads', filter: ownReadsFilter },
+                        scheduleRefresh
+                    )
                     .subscribe()
             );
         }
@@ -402,9 +430,12 @@ export const useUnreadCounts = () => {
         handleExternalRefresh,
         hasClientMessagingTable,
         hasClientReadsTable,
+        isClient,
         isStaff,
         refreshAll,
         scheduleRefresh,
+        client?.id,
+        user?.id,
     ]);
 
     const messageUnreadTotal = counts.unreadTeam + counts.unreadWhatsapp + counts.unreadClients;

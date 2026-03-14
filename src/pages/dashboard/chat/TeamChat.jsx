@@ -27,6 +27,12 @@ const linkRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 const isHttpUrl = (value) => /^https?:\/\//i.test(value);
 const CLAWBOT_TRIGGER_REGEX = /(^|\s)@?clawbot\b/i;
 const CLAWBOT_AUTO_REPLY = String(import.meta.env.VITE_CLAWBOT_AUTO_REPLY || '').toLowerCase() === 'true';
+const TEAM_CHANNEL_COLUMNS = 'id, name, slug, created_by, project_id, created_at';
+const TEAM_PROJECT_COLUMNS = 'id, name, title, project_name';
+const TEAM_MESSAGE_COLUMNS = 'id, body, created_at, author_id, author_name, message_type, media_url, file_name, reply_to_id, author:profiles(id, full_name, email, avatar_url)';
+const TEAM_MEDIA_SIGNED_URL_TTL = 60 * 60 * 24;
+const TEAM_MEDIA_SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
+const teamMediaUrlCache = new Map();
 
 const renderTextWithLinks = (text) => {
     if (!text) return null;
@@ -224,7 +230,7 @@ const TeamChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('team_channels')
-            .select('*')
+            .select(TEAM_CHANNEL_COLUMNS)
             .order('name', { ascending: true });
 
         if (supaError) {
@@ -245,13 +251,24 @@ const TeamChat = () => {
         if (isHttpUrl(message.media_url)) {
             return { ...message, resolved_media_url: message.media_url };
         }
+        const cached = teamMediaUrlCache.get(message.media_url);
+        if (cached && cached.expiresAt > Date.now() + TEAM_MEDIA_SIGNED_URL_REFRESH_BUFFER_MS) {
+            return { ...message, resolved_media_url: cached.url };
+        }
         const { data, error } = await supabase.storage
             .from('chat-media')
-            .createSignedUrl(message.media_url, 60 * 60 * 24);
+            .createSignedUrl(message.media_url, TEAM_MEDIA_SIGNED_URL_TTL);
         if (error) {
             return { ...message, resolved_media_url: null };
         }
-        return { ...message, resolved_media_url: data?.signedUrl || null };
+        const signedUrl = data?.signedUrl || null;
+        if (signedUrl) {
+            teamMediaUrlCache.set(message.media_url, {
+                url: signedUrl,
+                expiresAt: Date.now() + TEAM_MEDIA_SIGNED_URL_TTL * 1000,
+            });
+        }
+        return { ...message, resolved_media_url: signedUrl };
     }, []);
 
     const hydrateMediaMessages = useCallback(async (items) => {
@@ -267,7 +284,7 @@ const TeamChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('team_messages')
-            .select('id, body, created_at, author_id, author_name, message_type, media_url, file_name, reply_to_id, author:profiles(id, full_name, email, avatar_url)')
+            .select(TEAM_MESSAGE_COLUMNS)
             .eq('channel_id', channelId)
             .order('created_at', { ascending: true });
 
@@ -288,7 +305,7 @@ const TeamChat = () => {
 
         const { data, error: supaError } = await supabase
             .from('projects')
-            .select('*')
+            .select(TEAM_PROJECT_COLUMNS)
             .limit(500);
 
         if (supaError) {
@@ -350,7 +367,7 @@ const TeamChat = () => {
     const fetchMessageById = useCallback(async (messageId) => {
         const { data } = await supabase
             .from('team_messages')
-            .select('id, body, created_at, author_id, author_name, message_type, media_url, file_name, author:profiles(id, full_name, email, avatar_url)')
+            .select(TEAM_MESSAGE_COLUMNS)
             .eq('id', messageId)
             .single();
         if (!data) return null;
@@ -663,7 +680,7 @@ const TeamChat = () => {
         let { data, error: supaError } = await supabase
             .from('team_channels')
             .insert(insertPayload)
-            .select()
+            .select(TEAM_CHANNEL_COLUMNS)
             .single();
 
         if (supaError && isMissingProjectColumnError(supaError)) {
@@ -674,7 +691,7 @@ const TeamChat = () => {
                     slug,
                     created_by: user.id,
                 })
-                .select()
+                .select(TEAM_CHANNEL_COLUMNS)
                 .single();
             data = retry.data;
             supaError = retry.error;
@@ -721,7 +738,7 @@ const TeamChat = () => {
                 .from('team_channels')
                 .update({ project_id: nextProjectId || null })
                 .eq('id', selectedChannelId)
-                .select('*')
+                .select(TEAM_CHANNEL_COLUMNS)
                 .single();
 
             if (updateError) {
@@ -788,7 +805,7 @@ const TeamChat = () => {
             .from('team_channels')
             .update({ project_id: nextProjectId || null })
             .eq('id', selectedChannelId)
-            .select('*')
+            .select(TEAM_CHANNEL_COLUMNS)
             .single();
 
         if (updateError) {
@@ -1320,7 +1337,7 @@ const TeamChat = () => {
                                                     )}
                                                     {isAudio ? (
                                                         <div className="space-y-2 min-w-[220px]">
-                                                            <audio controls src={mediaUrl} className="w-full" />
+                                                            <audio controls preload="none" src={mediaUrl} className="w-full" />
                                                             {message.file_name && (
                                                                 <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
                                                             )}
