@@ -20,6 +20,8 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { MAX_REFERENCE_IMAGES } from '@/utils/studioTypes';
 
+const STUDIO_POLL_INTERVAL_MS = 30_000;
+
 export default function Studio() {
     const { user } = useAuth();
     const [tasks, setTasks] = useState([]);
@@ -277,8 +279,11 @@ export default function Studio() {
         if (!user?.id) return undefined;
 
         const intervalId = window.setInterval(() => {
+            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+                return;
+            }
             void loadTasks({ silent: true, resumePending: hasApiKey });
-        }, 15000);
+        }, STUDIO_POLL_INTERVAL_MS);
 
         return () => window.clearInterval(intervalId);
     }, [hasApiKey, loadTasks, user?.id]);
