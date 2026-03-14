@@ -1,6 +1,6 @@
 // Section1.jsx optimizado
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import RotatingText from "./ui/RotatingText";
 import AnimatedContent from './ui/AnimatedContent';
 import FadeContent from './ui/FadeContent';
@@ -127,38 +127,43 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                   </AnimatedContent>
                 </div>
 
+                <AnimatePresence>
                 {showPopup && (
                   <motion.div
-                    initial={{ opacity: 0, backdropFilter: "blur(0px)", rotate: -2, y: 30 }}
-                    animate={{ opacity: 1, backdropFilter: "blur(5px)", rotate: 0, y: 0 }}
-                    exit={{ opacity: 0, backdropFilter: "blur(0px)", rotate: 2, y: 10 }}
-                    transition={{ duration: 1.65, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute bottom-2 transform -translate-x-1/2 w-[250px] min-h-[110px] h-auto overflow-hidden rounded-[20px] border border-white/16 bg-black/48 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-[450px] saturate-[1] p-4 flex flex-col justify-between z-30 md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:min-h-[150px]"
+                    key="section1-popup"
+                    initial={{ opacity: 0, scale: 0.94, y: 18 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: 14, filter: "blur(8px)" }}
+                    transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ backdropFilter: "blur(99px)", WebkitBackdropFilter: "blur(99px)" }}
+                    className="absolute bottom-2 transform -translate-x-1/2 w-[250px] min-h-[110px] h-auto overflow-hidden rounded-[20px] border border-white/16 bg-transparent pt-4 shadow-[0_24px_80px_rgba(0,0,0,0.2)] saturate-[1] p-4 flex flex-col justify-between z-30 md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:min-h-[150px]"
                     role="dialog"
                     aria-label={t("section1.aria.popup")}
                   >
-                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.2),rgba(255,255,255,0.08)_20%,transparent_46%,rgba(255,255,255,0.025)_100%)]" />
+                    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.14),rgba(255,255,255,0.05)_22%,transparent_48%,rgba(255,255,255,0.02)_100%)]" />
                     <div
-                      className="pointer-events-none absolute inset-0 opacity-12 mix-blend-soft-light"
+                      className="pointer-events-none absolute inset-0 opacity-6 mix-blend-soft-light"
                       style={{
                         backgroundImage:
-                          'radial-gradient(rgba(255,255,255,0.16) 0.55px, transparent 0.8px), radial-gradient(rgba(0,0,0,0.12) 0.6px, transparent 0.85px)',
+                          'radial-gradient(rgba(255,255,255,0.12) 0.5px, transparent 0.75px), radial-gradient(rgba(0,0,0,0.08) 0.55px, transparent 0.8px)',
                         backgroundPosition: '0 0, 4px 4px',
                         backgroundSize: '10px 10px, 12px 12px',
                       }}
                     />
                     <FadeContent blur duration={600} easing="ease-out" initialOpacity={0} delay={300}>
-                      <div className="relative z-10 text-white text-[12px] md:text-[17px] [mix-blend-mode:difference]">
-                        <h2 className="font-normal text-[20px] md:text-[40px] leading-[1] lg:leading-[1.1]">
-                          {t("section1.popupTitleLine1")} <br />
-                          <span className="inline-block -mt-2">{t("section1.popupTitleLine2")}</span>
+                      <div className="relative z-10 text-center text-[12px] text-[#1F1F1F] md:text-[17px]">
+                        <h2 className="text-[19px] leading-none whitespace-nowrap text-[#1F1F1F] md:text-[40px]">
+                          <span className="font-bold">{t("section1.popupTitleLine1")}</span>{" "}
+                          <span className="font-normal">{t("section1.popupTitleLine2")}</span>
                         </h2>
-                        <p className="mt-1">{t("section1.popupSubtitle")}</p>
+                        <p className="mt-2 text-[#1F1F1F]">
+                          {t("section1.popupSubtitle")}
+                        </p>
                         <a
                           href={whatsappLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-2 inline-flex w-full items-center justify-center rounded-md bg-[#0DD122] py-1.5 text-[11px] font-semibold text-black transition hover:bg-[#1ebe5d] md:py-2 md:text-[15px] [mix-blend-mode:normal]"
+                          className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#0DD122] py-1.5 text-center text-[11px] font-semibold text-black transition hover:bg-[#1ebe5d] md:py-2 md:text-[15px] [mix-blend-mode:normal]"
                         >
                           {t("section1.popupCta")}
                         </a>
@@ -166,7 +171,7 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                     </FadeContent>
 
                     <button
-                      className="absolute top-1 right-1 z-10 text-white p-1 rounded-full transition hover:bg-white/20 [mix-blend-mode:difference]"
+                      className="absolute top-1 right-1 z-10 rounded-full p-1 text-white transition hover:bg-white/20"
                       onClick={() => setShowPopup(false)}
                       aria-label={t("section1.aria.close")}
                     >
@@ -182,6 +187,7 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                     </button>
                   </motion.div>
                 )}
+                </AnimatePresence>
               </div>
             </div>
           </div>
