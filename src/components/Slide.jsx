@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, EffectCoverflow, Keyboard, Mousewheel } from 'swiper/modules';
+import { Autoplay, Keyboard, Mousewheel } from 'swiper/modules';
 import { useTranslation } from 'react-i18next';
 import CarouselSlide from './CarouselSlide';
 import SlideContent from './SlideContent';
+import Noise from './ui/Noise';
 
 // Assets
 import Slider1 from '../assets/PYMES.webp';
@@ -16,11 +17,13 @@ import tecnologiaImg from '../assets/TECNOLOGIA.png';
 
 // Swiper styles
 import 'swiper/css';
-import 'swiper/css/effect-coverflow';
 
 const Section6 = () => {
   const { t, i18n } = useTranslation();
   const [isMobile, setIsMobile] = useState(false);
+  const [swiperInstance, setSwiperInstance] = useState(null);
+  const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const stackItems = ['React', 'Supabase', 'Vercel', 'IA', 'APIs'];
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)');
@@ -38,7 +41,7 @@ const Section6 = () => {
           title={t('carousel.slides.pymes.title')}
           textColor="white"
           text={t('carousel.slides.pymes.text')}
-          titlePositionClass="md:left-[110px] md:top-[54px]"
+          titlePositionClass="md:left-[72px] md:top-[42px] lg:left-[86px] lg:top-[52px]"
         />
       ),
     },
@@ -49,7 +52,7 @@ const Section6 = () => {
           title={t('carousel.slides.empresas.title')}
           textColor="white"
           text={t('carousel.slides.empresas.text')}
-          titlePositionClass="md:left-[95px] md:top-[66px]"
+          titlePositionClass="md:left-[72px] md:top-[42px] lg:left-[86px] lg:top-[52px]"
         />
       ),
     },
@@ -60,53 +63,82 @@ const Section6 = () => {
           title={t('carousel.slides.emprendedores.title')}
           textColor="white"
           text={t('carousel.slides.emprendedores.text')}
-          titlePositionClass="md:right-[80px] md:top-[78px] md:left-auto"
+          titlePositionClass="md:left-[72px] md:top-[42px] lg:left-[86px] lg:top-[52px]"
         />
       ),
     },
   ], [isMobile, t, i18n.language]);
 
+  const carouselSlides = useMemo(() => [...slides, ...slides], [slides]);
+
+  const toggleCarouselPlayback = () => {
+    if (!swiperInstance?.autoplay) return;
+
+    if (isCarouselPaused) {
+      swiperInstance.autoplay.start();
+    } else {
+      swiperInstance.autoplay.stop();
+    }
+
+    setIsCarouselPaused((current) => !current);
+  };
+
   return (
-    <div className="w-full">
+    <div className="flex w-full flex-col gap-[10px] px-2">
       <section
-        className="flex h-[480px] w-full flex-col items-center justify-start md:h-[798px] md:justify-evenly lg:h-[798px]"
+        className="flex w-full flex-col items-center justify-start gap-[10px] pt-6 md:pt-8"
         aria-label={t('carousel.aria')}
       >
-        <div className="mx-auto mt-6 flex w-full max-w-screen flex-col items-center px-4 text-center md:mt-8">
-          <h2 className="font-product text-[35px] font-normal leading-none text-black md:text-[37px]">
-            <span className="mr-2 md:inline">{t('carousel.titlePrefix')}</span>
+        <div className="mx-auto flex w-full max-w-screen items-center justify-between gap-4 px-4">
+          <h2 className="font-product text-[22px] font-normal leading-none text-black">
+            <span className="mr-2">{t('carousel.titlePrefix')}</span>
             <span className="mr-2 font-bold">{t('carousel.titleBold')}</span>
-            <span className="md:inline">{t('carousel.titleSuffix')}</span>
+            <span>{t('carousel.titleSuffix')}</span>
           </h2>
+
+          <button
+            type="button"
+            onClick={toggleCarouselPlayback}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-black/20 bg-white text-black transition-colors hover:bg-black hover:text-white"
+            aria-label={isCarouselPaused ? 'Reproducir carrusel' : 'Pausar carrusel'}
+            aria-pressed={isCarouselPaused}
+          >
+            {isCarouselPaused ? (
+              <span className="ml-[2px] text-[15px] leading-none">▶</span>
+            ) : (
+              <span className="text-[13px] leading-none">❚❚</span>
+            )}
+          </button>
         </div>
 
-        <div className="relative mt-0 w-full px-2 md:mt-0">
+        <div className="relative w-full">
           <Swiper
-            modules={[Autoplay, EffectCoverflow, Keyboard, Mousewheel]}
-            effect={'coverflow'}
+            onSwiper={setSwiperInstance}
+            modules={[Autoplay, Keyboard, Mousewheel]}
+            dir="ltr"
             grabCursor={true}
-            centeredSlides={true}
+            centeredSlides={false}
             loop={true}
+            loopedSlides={carouselSlides.length}
+            speed={8000}
             slidesPerView={'auto'}
-            coverflowEffect={{
-              rotate: 0,
-              stretch: 0,
-              depth: 100,
-              modifier: 2.5,
-              slideShadows: false,
-            }}
+            spaceBetween={10}
+            loopAdditionalSlides={carouselSlides.length}
             autoplay={{
-              delay: 5000,
+              delay: 0,
               disableOnInteraction: false,
+              pauseOnMouseEnter: true,
+              reverseDirection: false,
+              stopOnLastSlide: false,
             }}
             keyboard={{ enabled: true }}
             mousewheel={{ forceToAxis: true }}
-            className="w-full h-[420px] pt-4 pb-0 sm:h-[400px] sm:py-4 md:h-[420px] md:py-4 lg:h-[550px]"
+            className="carousel-ticker-swiper w-full h-[420px] pt-4 pb-0 sm:h-[400px] sm:py-4 md:h-[420px] md:py-4 lg:h-[550px]"
           >
-            {slides.map((slide, index) => (
+            {carouselSlides.map((slide, index) => (
               <SwiperSlide
-                key={index}
-                className="w-full flex-shrink-0 md:w-[750px] lg:w-[1000px] xl:w-[1300px]"
+                key={`${slide.background}-${index}`}
+                className="w-[calc(100%-20px)] flex-shrink-0 md:w-[750px] lg:w-[1000px] xl:w-[1300px]"
               >
                 {({ isActive, isPrev, isNext }) => (
                   <CarouselSlide
@@ -122,11 +154,15 @@ const Section6 = () => {
         </div>
       </section>
 
-      <div className="w-full px-2 pt-[5px] md:px-0 md:pt-0">
+      <div className="w-full">
         <section
-          className="relative h-[420px] w-full overflow-hidden rounded-[18px] bg-[#707070] text-black md:h-[520px] md:rounded-none lg:h-[620px]"
+          className="relative h-[420px] w-full overflow-hidden bg-[#707070] text-black md:h-[520px] lg:h-[620px]"
           aria-label="Trabajamos con tecnologia"
         >
+          <div className="pointer-events-none absolute inset-0 z-0 opacity-60 mix-blend-multiply">
+            <Noise patternSize={110} patternRefreshInterval={1} patternAlpha={56} />
+          </div>
+
           <div className="absolute left-5 top-6 z-20 max-w-[260px] md:left-14 md:top-10 md:max-w-[520px] lg:left-20 lg:top-14">
             <header>
               <h2 className="font-google-sans-flex text-[28px] font-normal leading-[0.95] md:text-[52px] lg:text-[68px]">
@@ -138,19 +174,19 @@ const Section6 = () => {
             </header>
           </div>
 
-          <div className="absolute right-2 top-[104px] z-10 md:right-[80px] md:top-[120px] lg:right-[140px] lg:top-[150px]">
+          <div className="absolute right-0 top-[98px] z-10 md:right-[44px] md:top-[96px] lg:right-[92px] lg:top-[108px] xl:right-[138px] xl:top-[88px]">
             <img
               src={tecnologiaImg}
               alt="Tecnologia"
-              className="h-[205px] w-[205px] object-contain md:h-[260px] md:w-[260px] lg:h-[340px] lg:w-[340px]"
+              className="h-[244px] w-[244px] object-contain animate-tech-orbit md:h-[340px] md:w-[340px] md:max-w-none lg:h-[450px] lg:w-[450px] xl:h-[520px] xl:w-[520px]"
               draggable="false"
             />
           </div>
 
-          <div className="absolute bottom-[52px] left-5 z-20 font-google-sans-flex text-[15px] font-normal leading-[0.9] md:bottom-[92px] md:left-14 md:text-[28px] lg:bottom-[118px] lg:left-20 lg:text-[34px]">
-            <p>React</p>
-            <p>Supabace</p>
-            <p>IA</p>
+          <div className="absolute bottom-[50px] left-5 z-20 grid grid-cols-1 gap-y-0 font-google-sans-flex text-[15px] font-normal leading-[0.88] md:bottom-[92px] md:left-14 md:gap-y-1 md:text-[28px] lg:bottom-[118px] lg:left-20 lg:text-[34px]">
+            {stackItems.map((item) => (
+              <p key={item}>{item}</p>
+            ))}
           </div>
 
           <p className="absolute bottom-4 left-1/2 z-20 w-[84%] -translate-x-1/2 text-center font-google-sans-flex text-[11px] font-normal leading-[1.05] md:bottom-8 md:left-14 md:w-auto md:translate-x-0 md:text-left md:text-[18px] lg:bottom-10 lg:left-20 lg:text-[22px]">

@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { useTranslation } from 'react-i18next';
+import logoDte from '../assets/LOGODTE.svg';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -57,8 +58,14 @@ const SimultaneousWords = () => {
     const title = t('textEnDte.title');
     const paragraph = t('textEnDte.paragraph');
 
-    const titleWords = title.split(' ');
-    const paragraphWords = paragraph.split(' ');
+    const [titlePrefix = '', titleLogo = ''] = title.split(' ');
+    const normalizedTitlePrefix = titlePrefix
+        ? `${titlePrefix.charAt(0).toUpperCase()}${titlePrefix.slice(1).toLowerCase()}`
+        : '';
+    const paragraphBlocks = paragraph
+        .split('\n\n')
+        .map((block) => block.trim())
+        .filter(Boolean);
 
     return (
         <section
@@ -67,25 +74,39 @@ const SimultaneousWords = () => {
         >
             <article
                 ref={containerRef}
-                className="w-full max-w-[1100px] px-4 md:px-6 flex flex-col justify-center items-start"
+                className="w-full px-6 md:px-8 lg:px-10 flex flex-col justify-center items-start"
             >
                 <header>
-                    <h2 className="text-[30px] md:text-3xl font-bold font-product flex flex-wrap gap-2 mb-4">
-                        {titleWords?.map((word, i) => (
-                            <span key={i} className="title-word inline-block whitespace-nowrap">
-                                {word}
-                            </span>
-                        ))}
+                    <h2 className="mb-4 flex flex-wrap items-center gap-3 text-[30px] font-bold font-product md:text-[36px]">
+                        <span className="title-word inline-block whitespace-nowrap font-normal">
+                            {normalizedTitlePrefix}
+                        </span>
+                        <img
+                            src={logoDte}
+                            alt={titleLogo}
+                            className="title-word h-[28px] w-auto md:h-[34px]"
+                            draggable="false"
+                        />
                     </h2>
                 </header>
                 <section>
-                    <p className="text-[17px] md:text-[17px] font-product font-normal flex flex-wrap gap-1 leading-none">
-                        {paragraphWords?.map((word, i) => (
-                            <span key={i} className="paragraph-word inline-block whitespace-nowrap">
-                                {word}
-                            </span>
+                    <div className="space-y-5 md:space-y-6">
+                        {paragraphBlocks.map((block, blockIndex) => (
+                            <p
+                                key={blockIndex}
+                                className="flex flex-wrap gap-x-1 gap-y-1 font-product text-[14px] font-normal leading-[1] text-slate-800 md:text-[16px] md:leading-[1]"
+                            >
+                                {block.split(' ').map((word, wordIndex) => (
+                                    <span
+                                        key={`${blockIndex}-${wordIndex}`}
+                                        className="paragraph-word inline-block whitespace-nowrap"
+                                    >
+                                        {word}
+                                    </span>
+                                ))}
+                            </p>
                         ))}
-                    </p>
+                    </div>
                 </section>
             </article>
         </section>

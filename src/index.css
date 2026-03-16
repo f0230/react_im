@@ -186,6 +186,32 @@ body {
   will-change: transform;
 }
 
+@keyframes tech-orbit {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-tech-orbit {
+  animation: tech-orbit 18s linear infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.carousel-ticker-swiper .swiper-wrapper {
+  transition-timing-function: linear !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tech-orbit {
+    animation: none;
+  }
+}
+
 .glass-panel {
   @apply bg-[#1a1a1a]/80 backdrop-blur-xl border border-white/10 rounded-2xl;
 }

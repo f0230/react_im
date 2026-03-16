@@ -8,19 +8,9 @@ gsap.registerPlugin(ScrollTrigger);
 const CarouselSlide = ({ slide, isActive, isPrev, isNext }) => {
   const innerRef = useRef(null);
 
-  const slideStateClass = isActive
-    ? 'scale-100 opacity-100 blur-0'
-    : isPrev
-      ? 'scale-[0.97] opacity-80 blur-[2px] -translate-x-2'
-      : isNext
-        ? 'scale-[0.97] opacity-80 blur-[2px] translate-x-2'
-        : 'scale-95 opacity-65 blur-[4px]';
+  const slideStateClass = 'scale-100 opacity-100 blur-0';
 
-  const backgroundStateClass = isActive
-    ? 'scale-100 blur-0'
-    : isPrev || isNext
-      ? 'scale-[1.03] blur-[2px]'
-      : 'scale-[1.05] blur-[4px]';
+  const backgroundStateClass = 'scale-100 blur-0';
 
   useEffect(() => {
     if (!innerRef.current) return;
@@ -55,7 +45,7 @@ const CarouselSlide = ({ slide, isActive, isPrev, isNext }) => {
 
   return (
     <div
-      className={`relative snap-center w-full h-full overflow-hidden rounded-xl flex items-center justify-center transform transition-all duration-700 ease-out ${slideStateClass}`}
+      className={`relative snap-center w-full h-full overflow-hidden flex items-center justify-center transform transition-all duration-700 ease-out ${slideStateClass}`}
       aria-hidden={!isActive}
     >
       {/* Fondo */}

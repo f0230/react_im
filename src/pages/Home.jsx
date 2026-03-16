@@ -34,31 +34,29 @@ const Home = () => {
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === "undefined") return;
     let idleId;
     const start = () => setRenderDeferred(true);
 
-    if ('requestIdleCallback' in window) {
+    if ("requestIdleCallback" in window) {
       idleId = window.requestIdleCallback(start, { timeout: 1500 });
     } else {
       idleId = window.setTimeout(start, 1200);
     }
 
     return () => {
-      if ('cancelIdleCallback' in window) {
+      if ("cancelIdleCallback" in window) {
         window.cancelIdleCallback(idleId);
       } else {
         clearTimeout(idleId);
       }
     };
   }, []);
-  return (
 
+  return (
     <Layout>
       <div className="relative mx-auto flex w-full max-w-[1440px] flex-col gap-[10px] overflow-x-hidden">
-
         <div className="relative w-full">
-
           <HeroSection
             onRegisterClick={handleRegisterClick}
             brochureUrl="/brochure-grupo-dte.pdf"
@@ -68,7 +66,6 @@ const Home = () => {
         <div className="relative w-full">
           <Section2 onContactClick={handleContactClick} />
         </div>
-
 
         {renderDeferred && (
           <>
@@ -81,7 +78,16 @@ const Home = () => {
               <LazySection>
                 <Section4 />
               </LazySection>
-
+            </div>
+            <div className="relative w-full">
+              <LazySection>
+                <InfiniteCarousel />
+              </LazySection>
+            </div>
+            <div className="relative w-full">
+              <LazySection>
+                <SimultaneousWords />
+              </LazySection>
             </div>
             <div className="relative w-full">
               <LazySection>
@@ -97,17 +103,6 @@ const Home = () => {
             <div className="relative w-full">
               <LazySection>
                 <Section5 onScheduleClick={handleContactClick} />
-              </LazySection>
-            </div>
-
-            <div className="relative w-full">
-              <LazySection>
-                <SimultaneousWords />
-              </LazySection>
-            </div>
-            <div className="relative w-full">
-              <LazySection>
-                <InfiniteCarousel />
               </LazySection>
             </div>
             <div className="relative w-full">
