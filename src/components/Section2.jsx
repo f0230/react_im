@@ -6,7 +6,7 @@ import dteKeyImg from "../assets/DTE.png";
 import grupoKeyImg from "../assets/GRUPO.png";
 import haceKeyImg from "../assets/HACE.png";
 import loKeyImg from "../assets/LO.png";
-import keySoundSrc from "./SONIDO TECLA.mp3";
+import keySoundSrc from "../assets/SONIDO TECLA.mp3";
 
 const Section2 = ({ onContactClick }) => {
   const { t } = useTranslation();
@@ -39,10 +39,10 @@ const Section2 = ({ onContactClick }) => {
 
           <div className="flex w-full max-w-[1160px] flex-wrap items-center justify-center gap-3 sm:gap-4 md:flex-nowrap md:gap-5 [perspective:1600px]">
             {[
-              { src: dteKeyImg, alt: "DTE" },
               { src: grupoKeyImg, alt: "grupo" },
-              { src: haceKeyImg, alt: "hace" },
+              { src: dteKeyImg, alt: "DTE" },
               { src: loKeyImg, alt: "lo" },
+              { src: haceKeyImg, alt: "hace" },
             ].map((key) => (
               <div
                 key={key.alt}

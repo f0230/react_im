@@ -1,6 +1,6 @@
 // ScrollToTopButton.jsx
 import React, { useEffect, useState } from "react";
-import punteroIcon from "../PUNTERO.svg";
+import punteroIcon from "../../assets/PUNTERO.svg";
 
 const ScrollToTopButton = () => {
     const [isVisible, setIsVisible] = useState(false);
