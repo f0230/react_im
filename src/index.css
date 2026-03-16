@@ -231,3 +231,12 @@ body {
 .image-card img {
   @apply w-full h-auto block transition-transform duration-500 group-hover:scale-105;
 }
+
+/* Puntero Personalizado Global */
+* {
+  cursor: url('./assets/PUNTERO.svg') 20 20, auto !important;
+}
+
+a, button, [role="button"], input, select, textarea, .cursor-pointer {
+  cursor: url('./assets/PUNTERO.svg') 20 20, pointer !important;
+}
