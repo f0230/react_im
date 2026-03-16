@@ -152,7 +152,7 @@ const ScheduleCall = () => {
         }
 
         try {
-            const selectStr = 'id, name, title, project_name, user_id, project_client_users(user_id)';
+            const selectStr = 'id, name, user_id, project_client_users(user_id)';
             let response;
 
             if (isAdmin) {

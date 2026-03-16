@@ -9,8 +9,24 @@ import MessagingTabs from '@/components/messaging/MessagingTabs';
 import { formatTime, formatTimestamp, getInitial, normalizePhone } from '@/utils/messagingFormatters';
 import { formatPhoneForDisplay } from '@/utils/phone-format';
 
-const WHATSAPP_THREAD_COLUMNS = 'id, wa_id, client_id, client_name, client_phone, last_message, last_message_at, ai_enabled';
+const WHATSAPP_THREAD_BASE_COLUMNS = 'id, wa_id, client_id, client_name, client_phone, last_message, last_message_at';
+const WHATSAPP_THREAD_COLUMNS = `${WHATSAPP_THREAD_BASE_COLUMNS}, ai_enabled`;
 const WHATSAPP_MESSAGE_COLUMNS = 'id, message_id, wa_id, direction, body, type, timestamp, created_at';
+
+const isMissingColumnError = (error, columnName) => {
+    const code = String(error?.code || '');
+    const message = String(error?.message || '').toLowerCase();
+    const details = String(error?.details || '').toLowerCase();
+    const hint = String(error?.hint || '').toLowerCase();
+    const target = String(columnName || '').toLowerCase();
+    return (
+        code === '42703'
+        || code === 'PGRST204'
+        || message.includes(target)
+        || details.includes(target)
+        || hint.includes(target)
+    );
+};
 
 const Inbox = () => {
     useViewportHeight(); // Activar ajuste dinámico del viewport para teclados móviles
@@ -46,6 +62,7 @@ const Inbox = () => {
     const [messageText, setMessageText] = useState('');
     const [uploading, setUploading] = useState(false);
     const [aiToggleLoading, setAiToggleLoading] = useState(false);
+    const [supportsAiToggle, setSupportsAiToggle] = useState(true);
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [clientIdByWa, setClientIdByWa] = useState({});
     const [composerHeight, setComposerHeight] = useState(88);
@@ -97,18 +114,35 @@ const Inbox = () => {
         if (!isAllowed) return;
         if (!background) setLoadingThreads(true);
         setError('');
-        const { data, error: supaError } = await supabase
+        const requestedColumns = supportsAiToggle ? WHATSAPP_THREAD_COLUMNS : WHATSAPP_THREAD_BASE_COLUMNS;
+
+        let { data, error: supaError } = await supabase
             .from('whatsapp_threads')
-            .select(WHATSAPP_THREAD_COLUMNS)
+            .select(requestedColumns)
             .order('last_message_at', { ascending: false, nullsFirst: false });
+
+        if (supaError && supportsAiToggle && isMissingColumnError(supaError, 'ai_enabled')) {
+            const fallback = await supabase
+                .from('whatsapp_threads')
+                .select(WHATSAPP_THREAD_BASE_COLUMNS)
+                .order('last_message_at', { ascending: false, nullsFirst: false });
+            data = fallback.data;
+            supaError = fallback.error;
+            if (!fallback.error) {
+                setSupportsAiToggle(false);
+            }
+        }
 
         if (supaError) {
             if (!background) setError('No se pudo cargar la bandeja.');
         } else {
-            setThreads(data || []);
+            setThreads((data || []).map((thread) => ({
+                ...thread,
+                ai_enabled: typeof thread?.ai_enabled === 'boolean' ? thread.ai_enabled : null,
+            })));
         }
         if (!background) setLoadingThreads(false);
-    }, [isAllowed]);
+    }, [isAllowed, supportsAiToggle]);
 
     const loadMessages = useCallback(
         async (waId, background = false) => {
@@ -163,20 +197,29 @@ const Inbox = () => {
     const updateThread = useCallback(
         async (updates) => {
             if (!selectedThreadId) return;
+            const selectColumns = supportsAiToggle ? WHATSAPP_THREAD_COLUMNS : WHATSAPP_THREAD_BASE_COLUMNS;
             const { data, error: supaError } = await supabase
                 .from('whatsapp_threads')
                 .update(updates)
                 .eq('wa_id', selectedThreadId)
-                .select(WHATSAPP_THREAD_COLUMNS)
+                .select(selectColumns)
                 .single();
 
             if (!supaError && data) {
                 setThreads((prev) =>
-                    prev.map((thread) => (thread.wa_id === data.wa_id ? { ...thread, ...data } : thread))
+                    prev.map((thread) => (
+                        thread.wa_id === data.wa_id
+                            ? {
+                                ...thread,
+                                ...data,
+                                ai_enabled: typeof data?.ai_enabled === 'boolean' ? data.ai_enabled : thread.ai_enabled ?? null,
+                            }
+                            : thread
+                    ))
                 );
             }
         },
-        [selectedThreadId]
+        [selectedThreadId, supportsAiToggle]
     );
 
     const findClientByPhone = useCallback(async (rawPhone) => {
@@ -205,7 +248,7 @@ const Inbox = () => {
     }, []);
 
     const handleAiToggle = useCallback(async () => {
-        if (!selectedThreadId || aiToggleLoading) return;
+        if (!selectedThreadId || aiToggleLoading || !supportsAiToggle) return;
         const nextValue = !Boolean(selectedThread?.ai_enabled);
         setThreads((prev) =>
             prev.map((thread) =>
@@ -230,7 +273,7 @@ const Inbox = () => {
         } finally {
             setAiToggleLoading(false);
         }
-    }, [aiToggleLoading, selectedClientId, selectedThread?.ai_enabled, selectedThread?.id, selectedThreadId, updateThread]);
+    }, [aiToggleLoading, selectedClientId, selectedThread?.ai_enabled, selectedThread?.id, selectedThreadId, supportsAiToggle, updateThread]);
 
     const handleFileUpload = async (event) => {
         const file = event.target.files?.[0];
@@ -650,28 +693,30 @@ const Inbox = () => {
                                                 ))}
                                             </select>
                                         </div>
-                                        <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">AI Bot</span>
-                                                <span className="text-xs text-neutral-600">
-                                                    {selectedThread?.ai_enabled ? 'Activado' : 'Desactivado'}
-                                                </span>
+                                        {supportsAiToggle && (
+                                            <div className="flex items-center gap-3 rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">AI Bot</span>
+                                                    <span className="text-xs text-neutral-600">
+                                                        {selectedThread?.ai_enabled ? 'Activado' : 'Desactivado'}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    role="switch"
+                                                    aria-checked={Boolean(selectedThread?.ai_enabled)}
+                                                    onClick={handleAiToggle}
+                                                    disabled={aiToggleLoading}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${selectedThread?.ai_enabled ? 'bg-emerald-500' : 'bg-neutral-300'
+                                                        } ${aiToggleLoading ? 'opacity-60' : ''}`}
+                                                >
+                                                    <span
+                                                        className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${selectedThread?.ai_enabled ? 'translate-x-5' : 'translate-x-1'
+                                                            }`}
+                                                    />
+                                                </button>
                                             </div>
-                                            <button
-                                                type="button"
-                                                role="switch"
-                                                aria-checked={Boolean(selectedThread?.ai_enabled)}
-                                                onClick={handleAiToggle}
-                                                disabled={aiToggleLoading}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${selectedThread?.ai_enabled ? 'bg-emerald-500' : 'bg-neutral-300'
-                                                    } ${aiToggleLoading ? 'opacity-60' : ''}`}
-                                            >
-                                                <span
-                                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${selectedThread?.ai_enabled ? 'translate-x-5' : 'translate-x-1'
-                                                        }`}
-                                                />
-                                            </button>
-                                        </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -853,28 +898,30 @@ const Inbox = () => {
                                             </select>
                                         </div>
                                     </div>
-                                    <div className="mt-3 flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">AI Bot</span>
-                                            <span className="text-xs text-neutral-600">
-                                                {selectedThread?.ai_enabled ? 'Activado' : 'Desactivado'}
-                                            </span>
+                                    {supportsAiToggle && (
+                                        <div className="mt-3 flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-3 py-2 shadow-sm">
+                                            <div className="flex flex-col">
+                                                <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">AI Bot</span>
+                                                <span className="text-xs text-neutral-600">
+                                                    {selectedThread?.ai_enabled ? 'Activado' : 'Desactivado'}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                role="switch"
+                                                aria-checked={Boolean(selectedThread?.ai_enabled)}
+                                                onClick={handleAiToggle}
+                                                disabled={aiToggleLoading}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${selectedThread?.ai_enabled ? 'bg-emerald-500' : 'bg-neutral-300'
+                                                    } ${aiToggleLoading ? 'opacity-60' : ''}`}
+                                            >
+                                                <span
+                                                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${selectedThread?.ai_enabled ? 'translate-x-5' : 'translate-x-1'
+                                                        }`}
+                                                />
+                                            </button>
                                         </div>
-                                        <button
-                                            type="button"
-                                            role="switch"
-                                            aria-checked={Boolean(selectedThread?.ai_enabled)}
-                                            onClick={handleAiToggle}
-                                            disabled={aiToggleLoading}
-                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${selectedThread?.ai_enabled ? 'bg-emerald-500' : 'bg-neutral-300'
-                                                } ${aiToggleLoading ? 'opacity-60' : ''}`}
-                                        >
-                                            <span
-                                                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${selectedThread?.ai_enabled ? 'translate-x-5' : 'translate-x-1'
-                                                    }`}
-                                            />
-                                        </button>
-                                    </div>
+                                    )}
                                 </div>
                             )}
                             {selectedClientId ? (

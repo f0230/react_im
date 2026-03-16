@@ -28,7 +28,7 @@ const isHttpUrl = (value) => /^https?:\/\//i.test(value);
 const CLAWBOT_TRIGGER_REGEX = /(^|\s)@?clawbot\b/i;
 const CLAWBOT_AUTO_REPLY = String(import.meta.env.VITE_CLAWBOT_AUTO_REPLY || '').toLowerCase() === 'true';
 const TEAM_CHANNEL_COLUMNS = 'id, name, slug, created_by, project_id, created_at';
-const TEAM_PROJECT_COLUMNS = 'id, name, title, project_name';
+const TEAM_PROJECT_COLUMNS = 'id, name';
 const TEAM_MESSAGE_COLUMNS = 'id, body, created_at, author_id, author_name, message_type, media_url, file_name, reply_to_id, author:profiles(id, full_name, email, avatar_url)';
 const TEAM_MEDIA_SIGNED_URL_TTL = 60 * 60 * 24;
 const TEAM_MEDIA_SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
