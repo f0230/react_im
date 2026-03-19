@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Key, LayoutGrid } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import ControlPanel from '@/components/studio/ControlPanel';
 import ImageGrid from '@/components/studio/ImageGrid';
 import ImageViewer from '@/components/studio/ImageViewer';
 import {
     checkApiKey,
+    getRemainingCredits,
     requestApiKey,
     resumeImageGeneration,
     startImageGeneration,
@@ -18,7 +18,7 @@ import {
     updateStudioTask,
 } from '@/services/studioService';
 import { useAuth } from '@/context/AuthContext';
-import { MAX_REFERENCE_IMAGES } from '@/utils/studioTypes';
+import { getStudioCredits, MAX_REFERENCE_IMAGES } from '@/utils/studioTypes';
 
 const STUDIO_POLL_INTERVAL_MS = 30_000;
 
@@ -30,6 +30,7 @@ export default function Studio() {
     const [hasApiKey, setHasApiKey] = useState(true);
     const [isCheckingApiKey, setIsCheckingApiKey] = useState(true);
     const [isLoadingTasks, setIsLoadingTasks] = useState(true);
+    const [creditBalance, setCreditBalance] = useState(null);
     const [batchState, setBatchState] = useState({ queued: 0, active: 0 });
     const activeTaskIdsRef = useRef(new Set());
     const promptQueueRef = useRef([]);
@@ -132,6 +133,7 @@ export default function Studio() {
                 model: config.model,
                 aspectRatio: config.aspectRatio,
                 imageSize: config.imageSize,
+                creditsCost: getStudioCredits(config.model, config.imageSize),
                 status: 'generating',
                 createdBy: user.id,
                 processingBy: user.id,
@@ -163,14 +165,6 @@ export default function Studio() {
             });
 
             upsertTask(completedTask);
-            setSelectedTask(completedTask);
-
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#e3ff31', '#ffffff'],
-            });
 
             return completedTask;
         } catch (error) {
@@ -257,6 +251,13 @@ export default function Studio() {
                 setHasApiKey(ok);
                 setIsCheckingApiKey(false);
 
+                if (ok) {
+                    const balance = await getRemainingCredits();
+                    if (mounted) setCreditBalance(balance);
+                } else if (mounted) {
+                    setCreditBalance(null);
+                }
+
                 await loadTasks({ resumePending: ok });
             } catch (error) {
                 console.error('[studio] Error inicializando:', error);
@@ -339,37 +340,40 @@ export default function Studio() {
         setHasApiKey(ok);
 
         if (ok) {
+            const balance = await getRemainingCredits();
+            setCreditBalance(balance);
             await loadTasks({ silent: true, resumePending: true });
+        } else {
+            setCreditBalance(null);
         }
     }, [loadTasks]);
 
     const isGenerating = batchState.active > 0 || tasks.some((task) => (
         task.status === 'generating' && task.processingBy === user?.id
     ));
-
-    const sortedTasks = [...tasks].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const sortedTasks = [...tasks].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const scrollRef = useRef(null);
-    const isAtBottomRef = useRef(true);
+    const isAtTopRef = useRef(true);
     const prevTaskCountRef = useRef(tasks.length);
 
     const handleScroll = useCallback(() => {
         const el = scrollRef.current;
         if (!el) return;
-        isAtBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+        isAtTopRef.current = el.scrollTop < 120;
     }, []);
 
-    // Stick to bottom while images load (ResizeObserver fires on each image that renders)
+    // Keep the viewport pinned to the top while recent images render there.
     useEffect(() => {
         const el = scrollRef.current;
         if (!el || isLoadingTasks) return;
 
-        el.scrollTop = el.scrollHeight;
-        isAtBottomRef.current = true;
+        el.scrollTop = 0;
+        isAtTopRef.current = true;
 
         const observer = new ResizeObserver(() => {
-            if (isAtBottomRef.current) {
-                el.scrollTop = el.scrollHeight;
+            if (isAtTopRef.current) {
+                el.scrollTop = 0;
             }
         });
 
@@ -377,11 +381,11 @@ export default function Studio() {
         return () => observer.disconnect();
     }, [isLoadingTasks]);
 
-    // Scroll to bottom when a new task is added
+    // Keep new tasks visible at the top.
     useEffect(() => {
         if (tasks.length > prevTaskCountRef.current && scrollRef.current) {
-            isAtBottomRef.current = true;
-            scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+            isAtTopRef.current = true;
+            scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
         }
         prevTaskCountRef.current = tasks.length;
     }, [tasks.length]);
@@ -442,6 +446,7 @@ export default function Studio() {
                 canGenerate={hasApiKey}
                 onRequestKey={handleRequestKey}
                 batchState={batchState}
+                remainingCredits={creditBalance}
             />
 
             <ImageViewer

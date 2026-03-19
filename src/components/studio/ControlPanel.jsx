@@ -16,6 +16,7 @@ import {
     PRO_ASPECT_RATIOS,
     IMAGE_SIZES,
     MAX_REFERENCE_IMAGES,
+    getStudioCredits,
     getModelReferenceLimit,
     modelSupportsReferenceImages,
 } from "@/utils/studioTypes";
@@ -31,6 +32,7 @@ export default function ControlPanel({
     canGenerate = true,
     onRequestKey,
     batchState = { queued: 0, active: 0 },
+    remainingCredits = null,
 }) {
     const [prompt, setPrompt] = useState("");
     const [model, setModel] = useState("nano-banana-2");
@@ -39,6 +41,7 @@ export default function ControlPanel({
     const [showModelMenu, setShowModelMenu] = useState(false);
     const [showAspectMenu, setShowAspectMenu] = useState(false);
     const [showSizeMenu, setShowSizeMenu] = useState(false);
+    const [isDragOverReferences, setIsDragOverReferences] = useState(false);
 
     const fileInputRef = useRef(null);
     const currentModel = MODELS.find((m) => m.id === model);
@@ -51,6 +54,7 @@ export default function ControlPanel({
     const queuedCount = batchState.queued || 0;
     const isQueueActive = queuedCount > 0 || batchState.active > 0;
     const remainingReferenceSlots = Math.max(effectiveMaxReferenceImages - referenceImages.length, 0);
+    const currentCreditsCost = getStudioCredits(model, imageSize);
 
     const handleFileSelection = async (files) => {
         const selectedFiles = Array.from(files || []).slice(0, remainingReferenceSlots);
@@ -79,6 +83,42 @@ export default function ControlPanel({
 
         e.preventDefault();
         void handleFileSelection(files);
+    };
+
+    const handleReferenceDragOver = (e) => {
+        if (!supportsReferenceImages || remainingReferenceSlots === 0) return;
+
+        const dragTypes = Array.from(e.dataTransfer?.types || []);
+        const hasStudioReference = dragTypes.some((type) => (
+            type === "application/x-studio-reference"
+            || type === "text/plain"
+            || type === "text/uri-list"
+        ));
+        if (!hasStudioReference) return;
+
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "copy";
+        setIsDragOverReferences(true);
+    };
+
+    const handleReferenceDragLeave = (e) => {
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+        setIsDragOverReferences(false);
+    };
+
+    const handleReferenceDrop = (e) => {
+        e.preventDefault();
+
+        const imageUrl =
+            e.dataTransfer?.getData("application/x-studio-reference") ||
+            e.dataTransfer?.getData("text/uri-list") ||
+            e.dataTransfer?.getData("text/plain");
+
+        setIsDragOverReferences(false);
+
+        if (!supportsReferenceImages || remainingReferenceSlots === 0 || !imageUrl) return;
+
+        onAddReferenceImages?.([imageUrl.trim()]);
     };
 
     const handleSubmit = (e) => {
@@ -149,41 +189,70 @@ export default function ControlPanel({
                         </button>
                     </div>
 
-                    {referenceImages.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2 px-2">
-                            {referenceImages.map((image, index) => (
-                                <div
-                                    key={`${image}-${index}`}
-                                    className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/20"
-                                >
-                                    <img
-                                        src={image}
-                                        alt={`Reference ${index + 1}`}
-                                        className="w-full h-full object-cover"
-                                    />
+                    <div className="flex items-center justify-between px-2 text-[11px] text-white/45">
+                        <span>Costo actual: {currentCreditsCost} creditos</span>
+                        {typeof remainingCredits === "number" && (
+                            <span>Restan: {remainingCredits} creditos</span>
+                        )}
+                    </div>
+
+                    <div
+                        onDragOver={handleReferenceDragOver}
+                        onDragLeave={handleReferenceDragLeave}
+                        onDrop={handleReferenceDrop}
+                        className={cn(
+                            "rounded-2xl border border-dashed px-2 py-2 transition-all",
+                            isDragOverReferences
+                                ? "border-banana bg-banana/10 shadow-[0_0_0_1px_rgba(227,255,49,0.18)]"
+                                : "border-transparent",
+                        )}
+                    >
+                        {referenceImages.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-2">
+                                {referenceImages.map((image, index) => (
+                                    <div
+                                        key={`${image}-${index}`}
+                                        className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/20"
+                                    >
+                                        <img
+                                            src={image}
+                                            alt={`Reference ${index + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemoveReferenceImage?.(index)}
+                                            className="absolute top-0 right-0 p-0.5 bg-black/60 text-white hover:bg-black"
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <span className="text-xs text-white/40">
+                                    {referenceImages.length}/{effectiveMaxReferenceImages} referencias
+                                </span>
+                                {referenceImages.length > 1 && (
                                     <button
                                         type="button"
-                                        onClick={() => onRemoveReferenceImage?.(index)}
-                                        className="absolute top-0 right-0 p-0.5 bg-black/60 text-white hover:bg-black"
+                                        onClick={onClearReferenceImages}
+                                        className="text-xs text-white/45 hover:text-white transition-colors"
                                     >
-                                        <X size={12} />
+                                        Limpiar
                                     </button>
-                                </div>
-                            ))}
-                            <span className="text-xs text-white/40">
-                                {referenceImages.length}/{effectiveMaxReferenceImages} referencias
-                            </span>
-                            {referenceImages.length > 1 && (
-                                <button
-                                    type="button"
-                                    onClick={onClearReferenceImages}
-                                    className="text-xs text-white/45 hover:text-white transition-colors"
-                                >
-                                    Limpiar
-                                </button>
-                            )}
-                        </div>
-                    )}
+                                )}
+                            </div>
+                        )}
+
+                        {supportsReferenceImages && remainingReferenceSlots > 0 && (
+                            <p className={cn(
+                                "text-[11px] transition-colors",
+                                referenceImages.length > 0 ? "mt-2 text-white/35" : "text-white/35",
+                                isDragOverReferences && "text-banana"
+                            )}>
+                                Arrastra una imagen generada aqui para usarla como referencia.
+                            </p>
+                        )}
+                    </div>
 
                     <div className="flex items-center gap-2 pt-1.5 border-t border-white/5 relative">
                         <div className="relative">

@@ -1,52 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { useInView } from 'framer-motion';
 import { Loader2, AlertCircle, Download, Copy, RefreshCw, X, ImageOff } from 'lucide-react';
 import { cn, copyImageToClipboard, downloadImage } from '@/lib/utils';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
+import Noise from '@/components/ui/Noise';
+import { getStudioCredits } from '@/utils/studioTypes';
 
-/** Converts "16:9" → 16/9. Falls back to 1 (square). */
-function parseRatio(aspectRatio) {
-    if (!aspectRatio || aspectRatio === 'auto') return 1;
-    const [w, h] = aspectRatio.split(':').map(Number);
-    return w && h ? w / h : 1;
-}
-
-const NUM_COLS = 3;
-
-/**
- * Assigns each task a stable column based on its id.
- * New tasks get the next column in round-robin; existing assignments never change.
- * This prevents images from remounting (and reloading) when other tasks are deleted.
- */
-function useStableColumns(tasks) {
-    const assignmentsRef = useRef(new Map()); // taskId → colIndex
-    const counterRef = useRef(0);
-
-    // Assign column to any task we haven't seen yet
-    tasks.forEach((task) => {
-        if (!assignmentsRef.current.has(task.id)) {
-            assignmentsRef.current.set(task.id, counterRef.current % NUM_COLS);
-            counterRef.current++;
-        }
-    });
-
-    // Build columns preserving stable assignment
-    const columns = Array.from({ length: NUM_COLS }, () => []);
-    tasks.forEach((task) => {
-        columns[assignmentsRef.current.get(task.id)].push(task);
-    });
-
-    return columns;
-}
+const GRID_RATIO = 9 / 16;
 
 export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss }) {
-    const columns = useStableColumns(tasks);
-
     if (tasks.length === 0) {
         return (
             <div className="flex min-h-full flex-col items-center justify-center px-6 py-16 text-white/20">
-                <SparklesIcon className="w-16 h-16 mb-4 opacity-10" />
-                <p className="text-lg font-medium text-[#c5e01b]">Tus creaciones aparecerán aquí</p>
+                <SparklesIcon className="mb-4 h-16 w-16 opacity-10" />
+                <p className="text-lg font-medium text-[#c5e01b]">Tus creaciones apareceran aqui</p>
                 <p className="text-sm">Comienza escribiendo un prompt abajo</p>
             </div>
         );
@@ -54,20 +21,16 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
 
     return (
         <div className="relative w-full px-4 py-6 pb-48 md:px-6">
-            <div className="mx-auto grid w-full max-w-6xl gap-3 grid-cols-2 sm:grid-cols-3">
-                {columns.map((col, colIdx) => (
-                    <div key={colIdx} className="grid gap-3 content-start">
-                        {col.map((task, rowIdx) => (
-                            <TaskCard
-                                key={task.id}
-                                task={task}
-                                shouldPrioritize={colIdx * 10 + rowIdx < 6}
-                                onSelect={onSelect}
-                                onUseAsReference={onUseAsReference}
-                                onDismiss={onDismiss}
-                            />
-                        ))}
-                    </div>
+            <div className="mx-auto grid w-full max-w-7xl grid-cols-3 gap-3 lg:grid-cols-5">
+                {tasks.map((task, index) => (
+                    <TaskCard
+                        key={task.id}
+                        task={task}
+                        shouldPrioritize={index < 6}
+                        onSelect={onSelect}
+                        onUseAsReference={onUseAsReference}
+                        onDismiss={onDismiss}
+                    />
                 ))}
             </div>
         </div>
@@ -75,14 +38,18 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
 }
 
 function TaskCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismiss }) {
-    const ratio = parseRatio(task.aspectRatio);
-
     if (task.status === 'generating') {
         return (
-            <AspectRatio ratio={ratio} className="rounded-xl overflow-hidden bg-white/5">
-                <div className="flex flex-col items-center justify-center w-full h-full">
-                    <Loader2 className="w-7 h-7 text-banana animate-spin mb-2" />
-                    <span className="text-xs font-medium text-white/40 uppercase tracking-widest">Generando</span>
+            <AspectRatio ratio={GRID_RATIO} className="overflow-hidden rounded-xl border border-white/10 bg-[#0b0b0b]">
+                <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-white/[0.04] via-transparent to-black/40">
+                    <Noise patternSize={120} patternScaleX={1.2} patternScaleY={1.2} patternRefreshInterval={3} patternAlpha={24} />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(227,255,49,0.08),transparent_60%)]" />
+                    <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
+                    <div className="relative z-10 flex flex-col items-center justify-center">
+                        <Loader2 className="mb-3 h-8 w-8 animate-spin text-banana" />
+                        <span className="text-xs font-medium uppercase tracking-[0.22em] text-white/55">Generando</span>
+                        <GenerationTimer task={task} />
+                    </div>
                 </div>
             </AspectRatio>
         );
@@ -90,15 +57,15 @@ function TaskCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismis
 
     if (task.status === 'failed') {
         return (
-            <AspectRatio ratio={ratio} className="rounded-xl overflow-hidden bg-red-950/60">
-                <div className="flex flex-col items-center justify-center w-full h-full p-4 text-center">
-                    <AlertCircle className="w-7 h-7 text-red-400 mb-2" />
-                    <span className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Falló</span>
-                    <p className="text-[10px] text-red-300/70 line-clamp-3">{task.error}</p>
+            <AspectRatio ratio={GRID_RATIO} className="overflow-hidden rounded-xl bg-red-950/60">
+                <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
+                    <AlertCircle className="mb-2 h-7 w-7 text-red-400" />
+                    <span className="mb-1 text-xs font-bold uppercase tracking-widest text-red-400">Fallo</span>
+                    <p className="line-clamp-3 text-[10px] text-red-300/70">{task.error}</p>
                     {onDismiss && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
-                            className="mt-3 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 text-[11px] font-medium transition-colors"
+                            className="mt-3 flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-1.5 text-[11px] font-medium text-red-300 transition-colors hover:bg-red-500/40"
                         >
                             <X size={12} /> Cerrar
                         </button>
@@ -111,7 +78,6 @@ function TaskCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismis
     return (
         <ImageCard
             task={task}
-            ratio={ratio}
             shouldPrioritize={shouldPrioritize}
             onSelect={onSelect}
             onUseAsReference={onUseAsReference}
@@ -120,12 +86,15 @@ function TaskCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismis
     );
 }
 
-function ImageCard({ task, ratio, shouldPrioritize, onSelect, onUseAsReference, onDismiss }) {
+function ImageCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismiss }) {
     const ref = useRef(null);
+    const isDraggingRef = useRef(false);
     const isInView = useInView(ref, { once: true });
     const [isLoading, setIsLoading] = useState(true);
     const [imgError, setImgError] = useState(false);
     const promptLabel = task.prompt || 'Imagen compartida sin prompt guardado';
+    const generationDurationLabel = getGenerationDurationLabel(task);
+    const creditsLabel = getTaskCredits(task);
 
     useEffect(() => {
         setIsLoading(true);
@@ -134,14 +103,14 @@ function ImageCard({ task, ratio, shouldPrioritize, onSelect, onUseAsReference, 
 
     if (imgError) {
         return (
-            <AspectRatio ratio={ratio} className="rounded-xl overflow-hidden bg-white/5">
-                <div className="flex flex-col items-center justify-center w-full h-full p-4 text-center gap-2">
-                    <ImageOff className="w-7 h-7 text-white/20" />
-                    <span className="text-[11px] text-white/30 font-medium">URL expirada</span>
+            <AspectRatio ratio={GRID_RATIO} className="overflow-hidden rounded-xl bg-white/5">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center">
+                    <ImageOff className="h-7 w-7 text-white/20" />
+                    <span className="text-[11px] font-medium text-white/30">URL expirada</span>
                     {onDismiss && (
                         <button
                             onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
-                            className="mt-1 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/50 text-[11px] transition-colors"
+                            className="mt-1 flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] text-white/50 transition-colors hover:bg-white/20"
                         >
                             <X size={11} /> Cerrar
                         </button>
@@ -154,23 +123,55 @@ function ImageCard({ task, ratio, shouldPrioritize, onSelect, onUseAsReference, 
     return (
         <AspectRatio
             ref={ref}
-            ratio={ratio}
-            className="group relative rounded-xl overflow-hidden bg-white/5 border border-white/5"
+            ratio={GRID_RATIO}
+            className="group relative overflow-hidden rounded-xl border border-white/5 bg-white/5"
+            role="button"
+            tabIndex={0}
+            draggable={Boolean(task.imageUrl)}
+            onDragStart={(e) => {
+                if (!task.imageUrl) return;
+                isDraggingRef.current = true;
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('text/plain', task.imageUrl);
+                e.dataTransfer.setData('text/uri-list', task.imageUrl);
+                e.dataTransfer.setData('application/x-studio-reference', task.imageUrl);
+            }}
+            onDragEnd={() => {
+                window.setTimeout(() => {
+                    isDraggingRef.current = false;
+                }, 0);
+            }}
+            onClick={() => {
+                if (!task.imageUrl || isDraggingRef.current) return;
+                onSelect(task);
+            }}
+            onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && task.imageUrl) {
+                    e.preventDefault();
+                    onSelect(task);
+                }
+            }}
         >
-            {/* Skeleton */}
             {isLoading && (
-                <div className="absolute inset-0 animate-pulse bg-white/5 rounded-xl" />
+                <div className="absolute inset-0 animate-pulse rounded-xl bg-white/5" />
             )}
+
+            <div
+                className={cn(
+                    'absolute inset-0 rounded-xl bg-black/30 transition-opacity duration-700 ease-out',
+                    isLoading ? 'opacity-100' : 'opacity-0',
+                )}
+            />
 
             <img
                 src={task.imageUrl}
                 alt={promptLabel}
+                draggable={false}
                 className={cn(
-                    'absolute inset-0 w-full h-full object-cover transition-all duration-700 ease-in-out',
+                    'absolute inset-0 h-full w-full object-cover transition-all duration-700 ease-out',
                     task.imageUrl && 'cursor-pointer',
-                    isInView && !isLoading ? 'opacity-100' : 'opacity-0',
+                    isInView && !isLoading ? 'scale-100 opacity-100' : 'scale-[1.02] opacity-0',
                 )}
-                onClick={() => task.imageUrl && onSelect(task)}
                 referrerPolicy="no-referrer"
                 loading={shouldPrioritize ? 'eager' : 'lazy'}
                 fetchPriority={shouldPrioritize ? 'high' : 'auto'}
@@ -179,38 +180,49 @@ function ImageCard({ task, ratio, shouldPrioritize, onSelect, onUseAsReference, 
                 onError={() => setImgError(true)}
             />
 
-            {/* Delete button — top right, always visible on hover */}
             {onDismiss && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
-                    className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-black/60 hover:bg-red-500 text-white/70 hover:text-white opacity-0 group-hover:opacity-100 transition-all duration-200 backdrop-blur-sm"
+                    className="absolute right-2 top-2 z-10 rounded-lg bg-black/60 p-1.5 text-white/70 opacity-0 transition-all duration-200 backdrop-blur-sm group-hover:opacity-100 hover:bg-red-500 hover:text-white"
                     title="Eliminar"
                 >
                     <X size={13} />
                 </button>
             )}
 
-            {/* Hover overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 p-3 flex flex-col justify-end pointer-events-none group-hover:pointer-events-auto">
-                <p className="text-xs text-white/90 line-clamp-3 mb-3 font-medium leading-relaxed drop-shadow-lg">{promptLabel}</p>
-                <div className="flex items-center gap-1.5 translate-y-3 group-hover:translate-y-0 transition-transform duration-300">
+            <div className="pointer-events-none absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/20 to-transparent p-3 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:opacity-100">
+                {creditsLabel && (
+                    <div className="mb-2">
+                        <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white/80">
+                            Creditos: {creditsLabel}
+                        </span>
+                    </div>
+                )}
+                {generationDurationLabel && (
+                    <div className="mb-3">
+                        <span className="rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white/80">
+                            Tiempo: {generationDurationLabel}
+                        </span>
+                    </div>
+                )}
+                <div className="flex translate-y-3 items-center gap-1.5 transition-transform duration-300 group-hover:translate-y-0">
                     <button
                         onClick={(e) => { e.stopPropagation(); task.imageUrl && downloadImage(task.imageUrl, `banana-${task.id}.png`); }}
-                        className="p-2 rounded-lg bg-white/10 hover:bg-banana hover:text-black transition-all"
+                        className="rounded-lg bg-white/10 p-2 transition-all hover:bg-banana hover:text-black"
                         title="Descargar"
                     >
                         <Download size={14} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); task.imageUrl && copyImageToClipboard(task.imageUrl); }}
-                        className="p-2 rounded-lg bg-white/10 hover:bg-banana hover:text-black transition-all"
+                        className="rounded-lg bg-white/10 p-2 transition-all hover:bg-banana hover:text-black"
                         title="Copiar al portapapeles"
                     >
                         <Copy size={14} />
                     </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); task.imageUrl && onUseAsReference(task.imageUrl); }}
-                        className="p-2 rounded-lg bg-white/10 hover:bg-banana hover:text-black transition-all"
+                        className="rounded-lg bg-white/10 p-2 transition-all hover:bg-banana hover:text-black"
                         title="Usar como referencia"
                     >
                         <RefreshCw size={14} />
@@ -218,9 +230,8 @@ function ImageCard({ task, ratio, shouldPrioritize, onSelect, onUseAsReference, 
                 </div>
             </div>
 
-            {/* Model badge */}
-            <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-bold text-white/70 uppercase tracking-wider">
-                {getModelBadge(task.model)}
+            <div className="absolute left-2 top-2 rounded-md border border-white/10 bg-black/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/70 backdrop-blur-md">
+                {getResolutionBadge(task)}
             </div>
         </AspectRatio>
     );
@@ -230,14 +241,72 @@ function SparklesIcon({ className }) {
     return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
             <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-            <path d="M5 3v4" /><path d="M19 17v4" /><path d="M3 5h4" /><path d="M17 19h4" />
+            <path d="M5 3v4" />
+            <path d="M19 17v4" />
+            <path d="M3 5h4" />
+            <path d="M17 19h4" />
         </svg>
     );
 }
 
-function getModelBadge(model) {
-    if (model === 'nano-banana-2') return 'BANANA 2';
-    if (model === 'nano-banana-pro') return 'PRO';
-    if (model === 'nano-banana') return 'STD';
-    return 'ARCHIVE';
+function getResolutionBadge(task) {
+    if (task.imageSize && task.imageSize !== 'N/A') return task.imageSize;
+    if (task.aspectRatio && task.aspectRatio !== 'auto') return task.aspectRatio;
+    return 'AUTO';
+}
+
+function getTaskCredits(task) {
+    if (!task?.model) return null;
+    return task.creditsCost ?? getStudioCredits(task.model, task.imageSize);
+}
+
+function GenerationTimer({ task }) {
+    const startedAt = getTaskStartTime(task);
+    const [now, setNow] = useState(() => Date.now());
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            setNow(Date.now());
+        }, 1000);
+
+        return () => window.clearInterval(intervalId);
+    }, []);
+
+    return (
+        <span className="mt-2 rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-[11px] font-medium text-white/70">
+            {startedAt ? formatDuration(now - startedAt.getTime()) : 'Calculando...'}
+        </span>
+    );
+}
+
+function getGenerationDurationLabel(task) {
+    const startedAt = getTaskStartTime(task);
+    const finishedAt = getTaskEndTime(task);
+
+    if (!startedAt || !finishedAt) return null;
+    return formatDuration(finishedAt.getTime() - startedAt.getTime());
+}
+
+function getTaskStartTime(task) {
+    const value = task.processingStartedAt || task.createdAt;
+    return value ? new Date(value) : null;
+}
+
+function getTaskEndTime(task) {
+    const value = task.updatedAt || task.createdAt;
+    return value ? new Date(value) : null;
+}
+
+function formatDuration(durationMs) {
+    const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    if (minutes >= 60) {
+        const hours = Math.floor(minutes / 60);
+        const remainingMinutes = minutes % 60;
+        return `${hours}:${String(remainingMinutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
 }

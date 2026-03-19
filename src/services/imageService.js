@@ -60,7 +60,11 @@ export async function startImageGeneration(task) {
         }),
     });
 
-    const createData = await createResponse.json();
+    const createData = await parseJsonResponse(createResponse);
+    if (!createData) {
+        throw new Error(`KIE createTask devolvio una respuesta vacia (HTTP ${createResponse.status}).`);
+    }
+
     if (createData.code !== 200) {
         throw new Error(createData.msg || `API Error: ${createData.code}`);
     }
@@ -132,7 +136,8 @@ async function uploadToSupabase(imageUrl, taskId) {
             });
 
             if (probeRes.ok) {
-                const { path } = await probeRes.json();
+                const proxyData = await parseJsonResponse(probeRes);
+                const path = proxyData?.path;
                 if (path) {
                     console.log("[studio] Imagen guardada via proxy:", path);
                     return path;
@@ -171,14 +176,18 @@ async function uploadReferenceImage(base64) {
         body: JSON.stringify({ imageDataUrl: base64 }),
     });
 
-    const data = await proxyResponse.json();
+    const data = await parseJsonResponse(proxyResponse);
 
     if (!proxyResponse.ok) {
-        throw new Error(data.error || `Reference image upload failed (${proxyResponse.status})`);
+        throw new Error(data?.error || `Reference image upload failed (${proxyResponse.status})`);
+    }
+
+    if (!data) {
+        throw new Error("KIE upload proxy devolvio una respuesta vacia.");
     }
 
     if (typeof data.fileUrl !== "string") {
-        throw new Error("KIE upload proxy no devolvió fileUrl.");
+        throw new Error("KIE upload proxy no devolvio fileUrl.");
     }
 
     return data.fileUrl;
@@ -211,7 +220,15 @@ async function pollTaskStatus(taskId, apiKey) {
             }
         );
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
+
+        if (!data) {
+            if (!response.ok) {
+                throw new Error(`KIE status devolvio una respuesta vacia (HTTP ${response.status}).`);
+            }
+            await wait(interval);
+            continue;
+        }
 
         if (data.code !== 200) {
             if (data.code === 404 && i < 5) {
@@ -258,6 +275,17 @@ function wait(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function parseJsonResponse(response) {
+    const raw = await response.text().catch(() => "");
+    if (!raw) return null;
+
+    try {
+        return JSON.parse(raw);
+    } catch {
+        throw new Error(`Respuesta JSON invalida (HTTP ${response.status}).`);
+    }
+}
+
 function getFileExtensionFromType(contentType) {
     if (contentType === "image/jpeg") return "jpg";
     if (contentType === "image/webp") return "webp";
@@ -279,4 +307,24 @@ export async function requestApiKey() {
         return;
     }
     alert("Por favor establece VITE_KIE_API_KEY en el archivo .env.");
+}
+
+export async function getRemainingCredits() {
+    const apiKey = getApiKey();
+    const response = await fetch(`${KIE_API_BASE_URL}/api/v1/chat/credit`, {
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+        },
+    });
+
+    const data = await parseJsonResponse(response);
+    if (!data) {
+        throw new Error(`KIE credit devolvio una respuesta vacia (HTTP ${response.status}).`);
+    }
+
+    if (data.code !== 200) {
+        throw new Error(data.msg || `Credit API Error: ${data.code}`);
+    }
+
+    return Number(data.data || 0);
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Users, Briefcase, FileText, MessageSquare, Calendar, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, FileText, MessageSquare, Calendar, TrendingUp, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PopoverPanel from '../components/ui/PopoverPanel';
 import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
@@ -28,6 +28,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: MessageSquare, label: 'Mensajeria', path: '/dashboard/messages' },
+            { icon: Sparkles, label: 'Studio IA', path: '/dashboard/studio' },
         ],
         admin: [
             { icon: LayoutDashboard, label: 'Control', path: '/dashboard' },
@@ -37,6 +38,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturacion', path: '/dashboard/invoices' },
             { icon: TrendingUp, label: 'Finanzas', path: '/dashboard/finances' },
+            { icon: Sparkles, label: 'Studio IA', path: '/dashboard/studio' },
         ],
     };
 
