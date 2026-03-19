@@ -15,6 +15,44 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const devApiPlugin = () => {
   const calHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/cal/index.js')).href;
+  const whatsappHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/whatsapp.js')).href;
+
+  const apiRoutes = [
+    {
+      name: '/api/cal',
+      matches: (pathname) => pathname === '/api/cal' || pathname.startsWith('/api/cal/'),
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        const actionFromPath = pathname.startsWith('/api/cal/')
+          ? pathname.slice('/api/cal/'.length)
+          : null;
+        if (actionFromPath && !query.action) {
+          query.action = actionFromPath;
+        }
+        return query;
+      },
+      handlerUrl: calHandlerUrl,
+    },
+    {
+      name: '/api/whatsapp',
+      matches: (pathname) => [
+        '/api/whatsapp',
+        '/api/whatsapp-send',
+        '/api/whatsapp-webhook',
+        '/api/whatsapp-ai-toggle',
+      ].includes(pathname),
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        if (!query.action) {
+          if (pathname === '/api/whatsapp-send') query.action = 'send';
+          if (pathname === '/api/whatsapp-webhook') query.action = 'webhook';
+          if (pathname === '/api/whatsapp-ai-toggle') query.action = 'ai-toggle';
+        }
+        return query;
+      },
+      handlerUrl: whatsappHandlerUrl,
+    },
+  ];
 
   const parseJsonBody = async (req) => {
     if (req.method === 'GET' || req.method === 'HEAD') return undefined;
@@ -37,7 +75,7 @@ const devApiPlugin = () => {
   };
 
   return {
-    name: 'local-api-cal-handler',
+    name: 'local-api-handler',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (!req.url) {
@@ -47,20 +85,14 @@ const devApiPlugin = () => {
 
         const url = new URL(req.url, 'http://localhost');
         const pathname = url.pathname;
-        if (pathname !== '/api/cal' && !pathname.startsWith('/api/cal/')) {
+        const route = apiRoutes.find((candidate) => candidate.matches(pathname));
+        if (!route) {
           next();
           return;
         }
 
         try {
-          const actionFromPath = pathname.startsWith('/api/cal/')
-            ? pathname.slice('/api/cal/'.length)
-            : null;
-
-          req.query = Object.fromEntries(url.searchParams.entries());
-          if (actionFromPath && !req.query.action) {
-            req.query.action = actionFromPath;
-          }
+          req.query = route.resolveQuery(pathname, url.searchParams);
           req.body = await parseJsonBody(req);
 
           res.status = (code) => {
@@ -82,16 +114,16 @@ const devApiPlugin = () => {
             return res;
           };
 
-          const handlerModule = await import(`${calHandlerUrl}?t=${Date.now()}`);
+          const handlerModule = await import(`${route.handlerUrl}?t=${Date.now()}`);
           const handler = handlerModule.default;
 
           if (typeof handler !== 'function') {
-            throw new Error('api/cal default export is not a function');
+            throw new Error(`${route.name} default export is not a function`);
           }
 
           await handler(req, res);
         } catch (error) {
-          console.error('[vite local api] /api/cal failed:', error);
+          console.error(`[vite local api] ${pathname} failed:`, error);
           if (!res.headersSent) {
             res.statusCode = 500;
             res.setHeader('Content-Type', 'application/json');

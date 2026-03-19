@@ -9,8 +9,13 @@ import MessagingTabs from '@/components/messaging/MessagingTabs';
 import { formatTime, formatTimestamp, getInitial, normalizePhone } from '@/utils/messagingFormatters';
 import { formatPhoneForDisplay } from '@/utils/phone-format';
 
-const WHATSAPP_THREAD_BASE_COLUMNS = 'id, wa_id, client_id, client_name, client_phone, last_message, last_message_at';
-const WHATSAPP_THREAD_COLUMNS = `${WHATSAPP_THREAD_BASE_COLUMNS}, ai_enabled`;
+const WHATSAPP_THREAD_REQUIRED_COLUMNS = ['id', 'wa_id', 'client_name', 'client_phone', 'last_message', 'last_message_at'];
+const buildWhatsappThreadColumns = ({ supportsAiToggle, supportsThreadClientId }) => [
+    ...WHATSAPP_THREAD_REQUIRED_COLUMNS.slice(0, 2),
+    ...(supportsThreadClientId ? ['client_id'] : []),
+    ...WHATSAPP_THREAD_REQUIRED_COLUMNS.slice(2),
+    ...(supportsAiToggle ? ['ai_enabled'] : []),
+].join(', ');
 const WHATSAPP_MESSAGE_COLUMNS = 'id, message_id, wa_id, direction, body, type, timestamp, created_at';
 
 const isMissingColumnError = (error, columnName) => {
@@ -63,6 +68,7 @@ const Inbox = () => {
     const [uploading, setUploading] = useState(false);
     const [aiToggleLoading, setAiToggleLoading] = useState(false);
     const [supportsAiToggle, setSupportsAiToggle] = useState(true);
+    const [supportsThreadClientId, setSupportsThreadClientId] = useState(true);
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [clientIdByWa, setClientIdByWa] = useState({});
     const [composerHeight, setComposerHeight] = useState(88);
@@ -114,18 +120,42 @@ const Inbox = () => {
         if (!isAllowed) return;
         if (!background) setLoadingThreads(true);
         setError('');
-        const requestedColumns = supportsAiToggle ? WHATSAPP_THREAD_COLUMNS : WHATSAPP_THREAD_BASE_COLUMNS;
+        let nextSupportsAiToggle = supportsAiToggle;
+        let nextSupportsThreadClientId = supportsThreadClientId;
 
-        let { data, error: supaError } = await supabase
+        const fetchThreads = (columns) => supabase
             .from('whatsapp_threads')
-            .select(requestedColumns)
+            .select(columns)
             .order('last_message_at', { ascending: false, nullsFirst: false });
 
-        if (supaError && supportsAiToggle && isMissingColumnError(supaError, 'ai_enabled')) {
-            const fallback = await supabase
-                .from('whatsapp_threads')
-                .select(WHATSAPP_THREAD_BASE_COLUMNS)
-                .order('last_message_at', { ascending: false, nullsFirst: false });
+        let requestedColumns = buildWhatsappThreadColumns({
+            supportsAiToggle: nextSupportsAiToggle,
+            supportsThreadClientId: nextSupportsThreadClientId,
+        });
+
+        let { data, error: supaError } = await fetchThreads(requestedColumns);
+
+        if (supaError && nextSupportsThreadClientId && isMissingColumnError(supaError, 'client_id')) {
+            nextSupportsThreadClientId = false;
+            requestedColumns = buildWhatsappThreadColumns({
+                supportsAiToggle: nextSupportsAiToggle,
+                supportsThreadClientId: nextSupportsThreadClientId,
+            });
+            const fallback = await fetchThreads(requestedColumns);
+            data = fallback.data;
+            supaError = fallback.error;
+            if (!fallback.error) {
+                setSupportsThreadClientId(false);
+            }
+        }
+
+        if (supaError && nextSupportsAiToggle && isMissingColumnError(supaError, 'ai_enabled')) {
+            nextSupportsAiToggle = false;
+            requestedColumns = buildWhatsappThreadColumns({
+                supportsAiToggle: nextSupportsAiToggle,
+                supportsThreadClientId: nextSupportsThreadClientId,
+            });
+            const fallback = await fetchThreads(requestedColumns);
             data = fallback.data;
             supaError = fallback.error;
             if (!fallback.error) {
@@ -134,15 +164,17 @@ const Inbox = () => {
         }
 
         if (supaError) {
+            console.error('Failed to load whatsapp_threads', supaError);
             if (!background) setError('No se pudo cargar la bandeja.');
         } else {
             setThreads((data || []).map((thread) => ({
                 ...thread,
+                client_id: thread?.client_id ?? null,
                 ai_enabled: typeof thread?.ai_enabled === 'boolean' ? thread.ai_enabled : null,
             })));
         }
         if (!background) setLoadingThreads(false);
-    }, [isAllowed, supportsAiToggle]);
+    }, [isAllowed, supportsAiToggle, supportsThreadClientId]);
 
     const loadMessages = useCallback(
         async (waId, background = false) => {
@@ -197,10 +229,22 @@ const Inbox = () => {
     const updateThread = useCallback(
         async (updates) => {
             if (!selectedThreadId) return;
-            const selectColumns = supportsAiToggle ? WHATSAPP_THREAD_COLUMNS : WHATSAPP_THREAD_BASE_COLUMNS;
+            const nextUpdates = { ...updates };
+            if (!supportsThreadClientId) {
+                delete nextUpdates.client_id;
+            }
+            if (!supportsAiToggle) {
+                delete nextUpdates.ai_enabled;
+            }
+            if (Object.keys(nextUpdates).length === 0) return;
+
+            const selectColumns = buildWhatsappThreadColumns({
+                supportsAiToggle,
+                supportsThreadClientId,
+            });
             const { data, error: supaError } = await supabase
                 .from('whatsapp_threads')
-                .update(updates)
+                .update(nextUpdates)
                 .eq('wa_id', selectedThreadId)
                 .select(selectColumns)
                 .single();
@@ -212,6 +256,7 @@ const Inbox = () => {
                             ? {
                                 ...thread,
                                 ...data,
+                                client_id: data?.client_id ?? thread.client_id ?? null,
                                 ai_enabled: typeof data?.ai_enabled === 'boolean' ? data.ai_enabled : thread.ai_enabled ?? null,
                             }
                             : thread
@@ -219,7 +264,7 @@ const Inbox = () => {
                 );
             }
         },
-        [selectedThreadId, supportsAiToggle]
+        [selectedThreadId, supportsAiToggle, supportsThreadClientId]
     );
 
     const findClientByPhone = useCallback(async (rawPhone) => {
@@ -475,7 +520,7 @@ const Inbox = () => {
             const clientId = await findClientByPhone(phone);
             if (cancelled || !clientId) return;
             setClientIdByWa((prev) => ({ ...prev, [selectedThreadId]: clientId }));
-            if (!selectedThread.client_id) {
+            if (!selectedThread.client_id && supportsThreadClientId) {
                 await updateThread({ client_id: clientId });
             }
         })();
@@ -483,7 +528,7 @@ const Inbox = () => {
         return () => {
             cancelled = true;
         };
-    }, [findClientByPhone, resolvedClientId, selectedThread, selectedThreadId, updateThread]);
+    }, [findClientByPhone, resolvedClientId, selectedThread, selectedThreadId, supportsThreadClientId, updateThread]);
 
     useEffect(() => {
         if (!isClientModalOpen) return undefined;
