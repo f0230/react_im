@@ -38,10 +38,8 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
         <link rel="preload" as="image" href={heroSpinImage} fetchpriority="high" />
       </Helmet>
     <section className="font-product relative z-10 flex w-full items-start justify-center px-2 pt-[10px]" aria-label={t("section1.aria.hero")}>
-      <div className="relative mx-auto h-[1200px] w-full max-w-[1400px] overflow-visible sm:h-[600px] md:h-[700px] lg:h-[700px]">
-        <AnimatedContent distance={150} direction="vertical" reverse={false} config={{ tension: 80, friction: 20 }} initialOpacity={0.2} animateOpacity scale={1}>
-
-          <div className="relative mx-auto mt-[45px] h-[1200px] w-full overflow-hidden sm:mt-0 sm:h-[600px] md:h-[700px] lg:h-[700px]" style={{ zIndex: 20 }}>
+   
+          <div className="relative mx-auto mt-[45px] h-[550px] w-full overflow-hidden sm:mt-0 sm:h-[600px] md:h-[700px] lg:h-[700px]" style={{ zIndex: 20 }}>
             <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#CFCFCF_0%,#F5F5F7_100%)]" />
             <img
               src={mobileSectionImage}
@@ -190,7 +188,7 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                     exit={{ opacity: 0, scale: 0.96, y: 14, filter: "blur(8px)" }}
                     transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                     style={{ backdropFilter: "blur(99px)", WebkitBackdropFilter: "blur(99px)" }}
-                    className="absolute bottom-2 transform -translate-x-1/2 w-[250px] min-h-[110px] h-auto overflow-hidden rounded-[20px] border border-white/16 bg-transparent pt-4 shadow-[0_24px_80px_rgba(0,0,0,0.2)] saturate-[1] p-4 flex flex-col justify-between z-30 md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:min-h-[150px]"
+                    className="absolute bottom-14 transform -translate-x-1/2 w-[250px] min-h-[110px] h-auto overflow-hidden rounded-[20px] border border-white/16 bg-transparent pt-4 shadow-[0_24px_80px_rgba(0,0,0,0.2)] saturate-[1] p-4 flex flex-col justify-between z-30 md:bottom-auto md:left-auto md:transform-none md:right-4 md:top-4 md:w-[389px] md:min-h-[150px]"
                     role="dialog"
                     aria-label={t("section1.aria.popup")}
                   >
@@ -245,9 +243,6 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
               </div>
             </div>
           </div>
-
-        </AnimatedContent>
-      </div>
     </section>
     </>
   );
