@@ -8,11 +8,9 @@ import OptimizedImage from "@/components/OptimizedImage";
 import { useTranslation } from "react-i18next";
 import { Helmet } from "react-helmet-async";
 
-
-
-import bgMobileImg from "../assets/PORTADA_1_MOVIL.webp";
-import bgDesktopImg from "../assets/PORTADA_1.webp";
+import desktopSectionImage from "../assets/FONODO CON TEXTO 1440.webp";
 import grupodte from "../assets/LOGODTE.svg";
+import heroCenterImage from "../assets/DOS IMG 1.png";
 import xclose from "../assets/x-close.svg";
 
 const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
@@ -31,61 +29,36 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
   return (
     <>
       <Helmet>
-        <link rel="preload" as="image" href={bgDesktopImg} media="(min-width: 768px)" fetchpriority="high" />
-        <link rel="preload" as="image" href={bgMobileImg} media="(max-width: 767px)" fetchpriority="high" />
+        <link rel="preload" as="image" href={desktopSectionImage} media="(min-width: 1024px)" fetchpriority="high" />
         <link rel="preload" as="image" href={grupodte} fetchpriority="high" />
+        <link rel="preload" as="image" href={heroCenterImage} fetchpriority="high" />
       </Helmet>
-    <section className="font-product relative w-full flex justify-center items-start px-2 pt-[10px] z-10" aria-label={t("section1.aria.hero")}>
-      <div className="relative w-full xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px] sm:h-[600px] md:h-[700px] lg:h-[700px] overflow-hidden mx-auto">
+    <section className="font-product relative z-10 flex w-full items-start justify-center bg-[linear-gradient(to_bottom,#CFCFCF_0%,#F5F5F7_100%)] px-4 pt-[10px] md:px-6" aria-label={t("section1.aria.hero")}>
+      <div className="relative mx-auto w-full overflow-visible px-4 xl:w-[1440px] lg:w-[1280px] md:w-[960px] sm:w-[600px] sm:h-[600px] md:h-[700px] lg:h-[700px]">
         <AnimatedContent distance={150} direction="vertical" reverse={false} config={{ tension: 80, friction: 20 }} initialOpacity={0.2} animateOpacity scale={1}>
 
           <div className="relative w-full h-[500px] sm:h-[600px] md:h-[700px] lg:h-[700px] overflow-hidden mt-[45px] sm:mt-0 mx-auto" style={{ zIndex: 20 }}>
-            {/* Imágenes de fondo - LCP: carga prioritaria */}
-            <div className="absolute inset-0 block md:hidden">
-              <img
-                src={bgMobileImg}
-                alt={t("section1.aria.bgMobileAlt")}
-                className="w-full h-full object-cover"
-                loading="eager"
-                decoding="async"
-                fetchpriority="high"
-                width={600}
-                height={500}
-              />
-            </div>
-            <div className="absolute inset-0 hidden md:block">
-              <img
-                src={bgDesktopImg}
-                alt={t("section1.aria.bgDesktopAlt")}
-                className="w-full h-full object-cover"
-                loading="eager"
-                decoding="async"
-                fetchpriority="high"
-                width={1440}
-                height={700}
-              />
-            </div>
+            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#CFCFCF_0%,#F5F5F7_100%)]" />
+            <img
+              src={desktopSectionImage}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 hidden h-full w-full object-cover lg:block"
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
+            />
 
             {/* Contenido principal */}
             <div className="relative z-10 w-full h-full flex items-center justify-center">
               <div className="w-full max-w-7xl mx-auto flex flex-col items-center justify-center text-black">
 
-                <FadeContent duration={800} easing="ease-out" initialOpacity={0} delay={200}>
-                  <OptimizedImage
-                    src={grupodte}
-                    alt={t("section1.aria.logoAlt")}
-                    width={200}
-                    height={200}
-                    className="mx-auto w-[150px] sm:w-[175px] md:w-[200px]"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </FadeContent>
-
                 <AnimatedContent distance={40} direction="vertical" reverse config={{ tension: 120, friction: 14 }} initialOpacity={0} animateOpacity delay={400}>
-                  <h1 className="mx-auto text-[26px] sm:text-5xl md:text-[45px] lg:text-[60px] leading-none text-center whitespace-nowrap">
-                    {t("section1.titleLine")}{" "}
-                    <span className="font-bold inline-block">
+                  <div className="mx-auto flex flex-nowrap items-end justify-center gap-2 whitespace-nowrap px-3 sm:gap-3 md:gap-4" style={{ color: "#3E3E3E" }}>
+                    <span className="text-[26px] font-normal leading-none tracking-[-0.04em] sm:text-[36px] md:text-[45px] lg:text-[45px]" style={{ color: "#3E3E3E" }}>
+                      impulsa tu
+                    </span>
+                    <span className="inline-block text-[26px] font-bold leading-none tracking-[-0.04em] sm:text-[36px] md:text-[45px] lg:text-[45px]">
                       <RotatingText
                         texts={safeWords}
                         rotationInterval={2500}
@@ -95,14 +68,34 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                         mainClassName="font-bold"
                       />
                     </span>
-                  </h1>
+                  </div>
                 </AnimatedContent>
 
                 <FadeContent duration={1000} easing="ease-in-out" initialOpacity={0} delay={700}>
-                  <p className="text-[12px] md:text-[17px] mt-4">{t("section1.subtitle")}</p>
+                  <p className="mt-4 max-w-[720px] text-center text-[12px] leading-[1.14] md:text-[17px]" style={{ color: "#656565" }}>
+                    En DTE unimos tecnologia y automatizaciones con estrategia y diseno
+                    <br />
+                    para que tu empresa crezca con claridad y opere con control.
+                  </p>
                 </FadeContent>
 
-                <div className="mt-4 md:mt-8 flex flex-col md:flex-row items-center justify-center gap-3 md:gap-5">
+                <FadeContent duration={1000} easing="ease-out" initialOpacity={0} delay={820}>
+                  <div className="relative mt-8 md:mt-10">
+                    <div className="pointer-events-none absolute left-[56%] top-[18%] h-[220px] w-[220px] -translate-x-1/2 rounded-full bg-white/95 blur-[90px] sm:h-[260px] sm:w-[260px] md:h-[320px] md:w-[320px]" />
+                    <div className="pointer-events-none absolute left-[36%] top-[58%] h-[220px] w-[220px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/25 blur-[80px] sm:h-[260px] sm:w-[260px] md:h-[300px] md:w-[300px]" />
+                    <OptimizedImage
+                      src={heroCenterImage}
+                      alt="Composicion visual DTE"
+                      width={620}
+                      height={380}
+                      className="relative z-10 w-[360px] max-w-[88vw] sm:w-[430px] md:w-[520px] lg:w-[660px]"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  </div>
+                </FadeContent>
+
+                <div className="mt-8 md:mt-10 flex w-full max-w-[460px] flex-wrap items-center justify-center gap-3 md:max-w-[520px] md:gap-5">
                   <AnimatedContent distance={60} direction="horizontal" reverse config={{ tension: 100, friction: 16 }} initialOpacity={0} animateOpacity delay={900} className="inline-block">
                     <button
                       onClick={onRegisterClick}
