@@ -137,6 +137,7 @@ const TeamChat = () => {
     const [reactionsByMessage, setReactionsByMessage] = useState({});
     const [channelReads, setChannelReads] = useState([]);
     const [lightboxImage, setLightboxImage] = useState(null);
+    const [channelLastMsgAt, setChannelLastMsgAt] = useState(new Map());
 
     const recorderRef = useRef(null);
     const streamRef = useRef(null);
@@ -182,6 +183,18 @@ const TeamChat = () => {
         });
         return map;
     }, [teamPreviews]);
+
+    const lastMsgAtByChannel = useMemo(() => {
+        const map = new Map(channelLastMsgAt);
+        teamPreviews.forEach((preview) => {
+            if (!preview?.channel_id || !preview?.event_at) return;
+            const existing = map.get(preview.channel_id);
+            if (!existing || new Date(preview.event_at) > new Date(existing)) {
+                map.set(preview.channel_id, preview.event_at);
+            }
+        });
+        return map;
+    }, [channelLastMsgAt, teamPreviews]);
 
     const formatUnread = (value) => {
         if (!value) return 0;
@@ -245,6 +258,21 @@ const TeamChat = () => {
 
         if (!background) setLoadingChannels(false);
     }, [isAllowed, selectedChannelId]);
+
+    const loadChannelLastMessages = useCallback(async () => {
+        if (!isAllowed) return;
+        const { data } = await supabase
+            .from('team_messages')
+            .select('channel_id, created_at')
+            .order('created_at', { ascending: false })
+            .limit(500);
+        if (!Array.isArray(data)) return;
+        const map = new Map();
+        data.forEach(({ channel_id, created_at }) => {
+            if (!map.has(channel_id)) map.set(channel_id, created_at);
+        });
+        setChannelLastMsgAt(map);
+    }, [isAllowed]);
 
     const resolveMediaMessage = useCallback(async (message) => {
         if (!message || message.message_type === 'text' || !message.media_url) return message;
@@ -832,6 +860,7 @@ const TeamChat = () => {
     useEffect(() => {
         if (!isAllowed) return;
         loadChannels();
+        loadChannelLastMessages();
 
         const channelSubscription = supabase
             .channel('team-channels')
@@ -863,7 +892,7 @@ const TeamChat = () => {
         return () => {
             supabase.removeChannel(channelSubscription);
         };
-    }, [isAllowed, loadChannels]);
+    }, [isAllowed, loadChannels, loadChannelLastMessages]);
 
     useEffect(() => {
         if (!canCreateChannel) return;
@@ -907,6 +936,11 @@ const TeamChat = () => {
                     setMessages((prev) => {
                         if (prev.some((message) => message.id === payload.new.id)) return prev;
                         return [...prev, fullMessage || payload.new];
+                    });
+                    setChannelLastMsgAt((prev) => {
+                        const next = new Map(prev);
+                        next.set(payload.new.channel_id, payload.new.created_at);
+                        return next;
                     });
                     markChannelRead(selectedChannelId, payload.new.created_at);
                 }
@@ -1174,7 +1208,7 @@ const TeamChat = () => {
                                                 </span>
                                             )}
                                             <span className={`text-[10px] ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
-                                                {formatTimestamp(channel.created_at)}
+                                                {formatTimestamp(lastMsgAtByChannel.get(channel.id) || channel.created_at)}
                                             </span>
                                         </div>
                                     </div>

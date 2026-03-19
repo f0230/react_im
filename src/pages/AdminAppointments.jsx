@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Plus, MessageCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { fetchCalBookings } from '@/lib/calBookings';
 import toast from 'react-hot-toast';
 import AdminCalendar from '@/components/AdminCalendar';
@@ -395,18 +396,34 @@ const AdminAppointments = () => {
                                                         </span>
                                                     </td>
                                                     <td className="p-5">
-                                                        {apt.meeting_link && (
-                                                            <a
-                                                                href={apt.meeting_link}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                                className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black hover:underline"
-                                                            >
-                                                                <LinkIcon size={14} />
-                                                                {t("admin.appointments.table.join")}
-                                                            </a>
-                                                        )}
+                                                        <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                                                            {apt.meeting_link && (
+                                                                <a
+                                                                    href={apt.meeting_link}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black hover:underline"
+                                                                >
+                                                                    <LinkIcon size={14} />
+                                                                    {t("admin.appointments.table.join")}
+                                                                </a>
+                                                            )}
+                                                            {(() => {
+                                                                const tracking = parseTrackingMetadata(apt?.cal_metadata?.metadata || {});
+                                                                const waPhone = apt.whatsapp_normalized || apt.client_phone_normalized || tracking.waId;
+                                                                if (!waPhone) return null;
+                                                                const inboxUrl = `/dashboard/inbox?wa=${encodeURIComponent(waPhone)}`;
+                                                                return (
+                                                                    <Link
+                                                                        to={inboxUrl}
+                                                                        className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-800 hover:underline"
+                                                                    >
+                                                                        <MessageCircle size={14} />
+                                                                        <span>{waPhone}</span>
+                                                                    </Link>
+                                                                );
+                                                            })()}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
