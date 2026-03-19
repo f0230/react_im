@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Keyboard, Mousewheel } from 'swiper/modules';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { gsap } from 'gsap';
 import { useTranslation } from 'react-i18next';
 import CarouselSlide from './CarouselSlide';
 import SlideContent from './SlideContent';
@@ -15,14 +14,16 @@ import MSlider2 from '../assets/EMPRESAS_M.webp';
 import MSlider3 from '../assets/EM_ESTABLAECIDAS_M.webp';
 import tecnologiaImg from '../assets/TECNOLOGIA.png';
 
-// Swiper styles
-import 'swiper/css';
+// Seconds for one full loop of the duplicated track (adjust for speed)
+const TICKER_DURATION = 28;
 
 const Section6 = () => {
   const { t, i18n } = useTranslation();
   const [isMobile, setIsMobile] = useState(false);
-  const [swiperInstance, setSwiperInstance] = useState(null);
   const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const trackRef = useRef(null);
+  const tweenRef = useRef(null);
+  const isPressedRef = useRef(false);
   const stackItems = ['React', 'Supabase', 'Vercel', 'IA', 'APIs'];
 
   useEffect(() => {
@@ -69,18 +70,60 @@ const Section6 = () => {
     },
   ], [isMobile, t, i18n.language]);
 
-  const carouselSlides = useMemo(() => [...slides, ...slides], [slides]);
+  // Duplicated track: [A, B, C, A, B, C]
+  // GSAP animates x from 0 to -50% (= width of one set), then repeats seamlessly
+  const allSlides = useMemo(() => [...slides, ...slides], [slides]);
 
-  const toggleCarouselPlayback = () => {
-    if (!swiperInstance?.autoplay) return;
+  useEffect(() => {
+    if (!trackRef.current) return;
 
-    if (isCarouselPaused) {
-      swiperInstance.autoplay.start();
-    } else {
-      swiperInstance.autoplay.stop();
+    if (tweenRef.current) {
+      tweenRef.current.kill();
     }
 
-    setIsCarouselPaused((current) => !current);
+    gsap.set(trackRef.current, { x: 0 });
+
+    tweenRef.current = gsap.to(trackRef.current, {
+      x: '-50%',
+      duration: TICKER_DURATION,
+      ease: 'none',
+      repeat: -1,
+    });
+
+    if (isCarouselPaused) {
+      tweenRef.current.pause();
+    }
+
+    return () => {
+      tweenRef.current?.kill();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allSlides]);
+
+  const toggleCarouselPlayback = () => {
+    setIsCarouselPaused((prev) => {
+      const next = !prev;
+      if (next) {
+        tweenRef.current?.pause();
+      } else if (!isPressedRef.current) {
+        tweenRef.current?.resume();
+      }
+      return next;
+    });
+  };
+
+  const handlePressStart = () => {
+    if (isCarouselPaused) return;
+    isPressedRef.current = true;
+    tweenRef.current?.pause();
+  };
+
+  const handlePressEnd = () => {
+    if (!isPressedRef.current) return;
+    isPressedRef.current = false;
+    if (!isCarouselPaused) {
+      tweenRef.current?.resume();
+    }
   };
 
   return (
@@ -111,46 +154,37 @@ const Section6 = () => {
           </button>
         </div>
 
-        <div className="relative w-full">
-          <Swiper
-            onSwiper={setSwiperInstance}
-            modules={[Autoplay, Keyboard, Mousewheel]}
-            dir="ltr"
-            grabCursor={true}
-            centeredSlides={false}
-            loop={true}
-            loopedSlides={carouselSlides.length}
-            speed={8000}
-            slidesPerView={'auto'}
-            spaceBetween={10}
-            loopAdditionalSlides={carouselSlides.length}
-            autoplay={{
-              delay: 0,
-              disableOnInteraction: false,
-              pauseOnMouseEnter: true,
-              reverseDirection: false,
-              stopOnLastSlide: false,
-            }}
-            keyboard={{ enabled: true }}
-            mousewheel={{ forceToAxis: true }}
-            className="carousel-ticker-swiper w-full h-[420px] pt-4 pb-0 sm:h-[400px] sm:py-4 md:h-[420px] md:py-4 lg:h-[550px]"
+        {/* GSAP ticker — overflow hidden clips the track */}
+        <div
+          className="relative w-full overflow-hidden h-[420px] sm:h-[400px] md:h-[420px] lg:h-[550px]"
+          onMouseDown={handlePressStart}
+          onMouseUp={handlePressEnd}
+          onMouseLeave={handlePressEnd}
+          onTouchStart={handlePressStart}
+          onTouchEnd={handlePressEnd}
+          onTouchCancel={handlePressEnd}
+          style={{ cursor: 'grab' }}
+        >
+          {/* Track: flex row, 2x slides side by side */}
+          <div
+            ref={trackRef}
+            className="flex h-full gap-[10px] will-change-transform"
+            style={{ width: 'max-content' }}
           >
-            {carouselSlides.map((slide, index) => (
-              <SwiperSlide
+            {allSlides.map((slide, index) => (
+              <div
                 key={`${slide.background}-${index}`}
-                className="w-[calc(100%-20px)] flex-shrink-0 md:w-[750px] lg:w-[1000px] xl:w-[1300px]"
+                className="flex-shrink-0 w-[calc(100vw-20px)] md:w-[750px] lg:w-[1000px] xl:w-[1300px] h-full"
               >
-                {({ isActive, isPrev, isNext }) => (
-                  <CarouselSlide
-                    slide={slide}
-                    isActive={isActive}
-                    isPrev={isPrev}
-                    isNext={isNext}
-                  />
-                )}
-              </SwiperSlide>
+                <CarouselSlide
+                  slide={slide}
+                  isActive={true}
+                  isPrev={false}
+                  isNext={false}
+                />
+              </div>
             ))}
-          </Swiper>
+          </div>
         </div>
       </section>
 
