@@ -20,7 +20,7 @@ const TICKER_DURATION = 28;
 const Section6 = () => {
   const { t, i18n } = useTranslation();
   const [isMobile, setIsMobile] = useState(false);
-  const [isCarouselPaused, setIsCarouselPaused] = useState(false);
+  const [isCarouselPaused] = useState(false);
   const trackRef = useRef(null);
   const tweenRef = useRef(null);
   const isPressedRef = useRef(false);
@@ -100,19 +100,7 @@ const Section6 = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allSlides]);
 
-  const toggleCarouselPlayback = () => {
-    setIsCarouselPaused((prev) => {
-      const next = !prev;
-      if (next) {
-        tweenRef.current?.pause();
-      } else if (!isPressedRef.current) {
-        tweenRef.current?.resume();
-      }
-      return next;
-    });
-  };
-
-  const handlePressStart = () => {
+const handlePressStart = () => {
     if (isCarouselPaused) return;
     isPressedRef.current = true;
     tweenRef.current?.pause();
@@ -139,19 +127,6 @@ const Section6 = () => {
             <span>{t('carousel.titleSuffix')}</span>
           </h2>
 
-          <button
-            type="button"
-            onClick={toggleCarouselPlayback}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-black/20 bg-white text-black transition-colors hover:bg-black hover:text-white"
-            aria-label={isCarouselPaused ? 'Reproducir carrusel' : 'Pausar carrusel'}
-            aria-pressed={isCarouselPaused}
-          >
-            {isCarouselPaused ? (
-              <span className="ml-[2px] text-[15px] leading-none">▶</span>
-            ) : (
-              <span className="text-[13px] leading-none">❚❚</span>
-            )}
-          </button>
         </div>
 
         {/* GSAP ticker — overflow hidden clips the track */}
