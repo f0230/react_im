@@ -33,11 +33,11 @@ const ScrollToTopButton = () => {
             }`}
             aria-label="Scroll to top"
         >
-            <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full">
                 <img
                     src={punteroIcon}
                     alt=""
-                    className="h-5 w-5 scale-[3.4] select-none"
+                    className="h-5 w-5 select-none"
                     draggable="false"
                 />
             </span>

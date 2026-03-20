@@ -10,6 +10,7 @@ import { UIProvider, useUI } from "@/context/UIContext";
 import useCycleLockedVisibility from "@/hooks/useCycleLockedVisibility";
 
 const Home = lazyRoute(routeKeys.home);
+const Brief = lazyRoute(routeKeys.brief);
 const Colors = lazyRoute(routeKeys.colors);
 const About = lazyRoute(routeKeys.about);
 const Contact = lazyRoute(routeKeys.contact);
@@ -44,6 +45,7 @@ const Settings = lazyRoute(routeKeys.settings);
 const ScheduleCall = lazyRoute(routeKeys.scheduleCall);
 const AdminAppointments = lazyRoute(routeKeys.adminAppointments);
 const Studio = lazyRoute(routeKeys.studio);
+const HeroPanchoPreview = lazy(() => import('@/pages/HeroPanchoPreview'));
 const PortalLayout = lazy(() => import('@/layouts/PortalLayout'));
 
 const AppContent = () => {
@@ -149,6 +151,7 @@ const AppContent = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
+          <Route path="/brief" element={<Brief />} />
           <Route path="/colors" element={<Colors />} />
           <Route path="/Nosotros" element={<About />} />
           <Route path="/Contacto" element={<Contact />} />
@@ -163,6 +166,7 @@ const AppContent = () => {
           <Route path="/invite" element={<Invite />} />
           <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/meet/:projectId?" element={<ScheduleCall />} />
+          <Route path="/hero-pancho" element={<HeroPanchoPreview />} />
 
           {/* Private Portal Routes */}
           <Route path="/dashboard" element={<PortalLayout />}>

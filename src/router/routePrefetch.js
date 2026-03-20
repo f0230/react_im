@@ -15,6 +15,7 @@ const once = (importer) => {
 
 export const routeKeys = Object.freeze({
     home: 'home',
+    brief: 'brief',
     colors: 'colors',
     about: 'about',
     contact: 'contact',
@@ -53,6 +54,7 @@ export const routeKeys = Object.freeze({
 
 const routeImporters = {
     [routeKeys.home]: once(() => import('@/pages/Home')),
+    [routeKeys.brief]: once(() => import('@/pages/Brief')),
     [routeKeys.colors]: once(() => import('@/pages/Colors')),
     [routeKeys.about]: once(() => import('@/pages/About')),
     [routeKeys.contact]: once(() => import('@/pages/Contact')),
@@ -91,6 +93,7 @@ const routeImporters = {
 
 const pathKeyMap = new Map([
     ['/', routeKeys.home],
+    ['/brief', routeKeys.brief],
     ['/colors', routeKeys.colors],
     ['/nosotros', routeKeys.about],
     ['/contacto', routeKeys.contact],

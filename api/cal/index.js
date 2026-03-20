@@ -156,6 +156,51 @@ const buildTrackingMetadata = (tracking) => {
     });
 };
 
+const normalizeBriefPayload = (brief) => {
+    if (!brief || typeof brief !== 'object' || Array.isArray(brief)) return null;
+
+    const normalized = compactObject({
+        company: normalizeShortText(brief.empresa, 120),
+        role: normalizeShortText(brief.cargo, 120),
+        goal: normalizeShortText(brief.objetivoPrincipal, 160),
+        service: normalizeShortText(brief.servicioInteres, 160),
+        revenue: normalizeShortText(brief.facturacionMensual, 120),
+        channel: normalizeShortText(brief.canalPrincipal, 160),
+        dataReady: normalizeShortText(brief.comparteDatos, 160),
+        budget: normalizeShortText(brief.presupuesto, 120),
+        urgency: normalizeShortText(brief.urgencia, 120),
+        bottleneck: normalizeShortText(brief.cuelloBotella, 280),
+        business: normalizeShortText(brief.empresaDescripcion, 280),
+    });
+
+    if (Object.keys(normalized).length === 0) return null;
+
+    return {
+        ...normalized,
+        capturedAt: new Date().toISOString(),
+    };
+};
+
+const buildBriefMetadata = (brief) => {
+    const normalized = normalizeBriefPayload(brief);
+    if (!normalized) return {};
+
+    return compactObject({
+        briefCompany: serializeMetadataValue(normalized.company, 120),
+        briefRole: serializeMetadataValue(normalized.role, 120),
+        briefGoal: serializeMetadataValue(normalized.goal, 160),
+        briefService: serializeMetadataValue(normalized.service, 160),
+        briefRevenue: serializeMetadataValue(normalized.revenue, 120),
+        briefChannel: serializeMetadataValue(normalized.channel, 160),
+        briefDataReady: serializeMetadataValue(normalized.dataReady, 160),
+        briefBudget: serializeMetadataValue(normalized.budget, 120),
+        briefUrgency: serializeMetadataValue(normalized.urgency, 120),
+        briefBottleneck: serializeMetadataValue(normalized.bottleneck, 280),
+        briefBusiness: serializeMetadataValue(normalized.business, 280),
+        briefCapturedAt: serializeMetadataValue(normalized.capturedAt, 40),
+    });
+};
+
 const normalizePhoneForCal = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return { phone: null, error: null };
@@ -872,6 +917,7 @@ const handleCreateBooking = async (req, res) => {
         timeZone,
         eventTypeId: bodyEventTypeId,
         tracking,
+        brief,
     } = req.body || {};
 
     const eventTypeId = bodyEventTypeId || EVENT_TYPE_ID;
@@ -998,6 +1044,7 @@ const handleCreateBooking = async (req, res) => {
             participantId: serializeMetadataValue(participantId, 64),
             notes: serializeMetadataValue(notes, 500),
             ...buildTrackingMetadata(tracking),
+            ...buildBriefMetadata(brief),
         });
 
         const bookingPayload = {

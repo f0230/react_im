@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import useCalAvailability from '@/hooks/useCalAvailability';
 import Navbar from '@/components/Navbar';
+import { buildBookingNotesWithBrief, buildBriefSummary, clearStoredBrief, loadStoredBrief } from '@/lib/briefStorage';
 import { formatCalendarDate, getTodayCalendarDate, parseCalendarDate } from '@/utils/calBookingWindow';
 import { isValidPhone } from '@/utils/phone-validation';
 import { stripLeadingPlus } from '@/utils/phone-format';
@@ -118,6 +119,7 @@ const ScheduleCall = () => {
     const isClient = role === 'client';
     const requiresPhone = !isAdmin && !isWorker;
     const dateStripRef = useRef(null);
+    const [storedBrief] = useState(() => loadStoredBrief());
 
     const [selectedDate, setSelectedDate] = useState(() => getTodayCalendarDate(SCHEDULE_TIME_ZONE) || new Date());
     const [hasChosenDate, setHasChosenDate] = useState(false);
@@ -130,9 +132,9 @@ const ScheduleCall = () => {
     const [fieldErrors, setFieldErrors] = useState({});
 
     const [formData, setFormData] = useState({
-        name: '',
-        email: '',
-        phone: '',
+        name: storedBrief?.nombre || '',
+        email: storedBrief?.email || '',
+        phone: stripLeadingPlus(storedBrief?.whatsapp || ''),
         notes: ''
     });
 
@@ -140,6 +142,7 @@ const ScheduleCall = () => {
         () => buildTrackingPayload({ pathname: location.pathname, search: location.search }),
         [location.pathname, location.search]
     );
+    const briefSummary = useMemo(() => buildBriefSummary(storedBrief), [storedBrief]);
 
     useEffect(() => {
         setSelectedProjectId(projectId || '');
@@ -547,6 +550,8 @@ const ScheduleCall = () => {
                     start: selectedSlot.start,
                     ...formData,
                     phone: trimmedPhone,
+                    notes: buildBookingNotesWithBrief({ notes: formData.notes, brief: storedBrief }),
+                    brief: storedBrief,
                     projectId: selectedProjectId || projectId,
                     userId: user?.id,
                     clientId: resolvedClientId,
@@ -565,6 +570,7 @@ const ScheduleCall = () => {
                 }
                 throw new Error(detailedError);
             }
+            clearStoredBrief();
             setBookingPhase('success');
             toast.success(t('calendar.bookingSuccess'));
         } catch (error) {
@@ -827,6 +833,17 @@ const ScheduleCall = () => {
                                             </div>
                                         ) : null}
                                     </div>
+
+                                    {briefSummary ? (
+                                        <div className="mb-6 rounded-xl border border-[#0DD122]/20 bg-[#0DD122]/[0.06] p-4 text-left">
+                                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0DD122]">
+                                                Brief cargado
+                                            </p>
+                                            <p className="mt-2 text-sm leading-relaxed text-black/70">
+                                                {briefSummary}
+                                            </p>
+                                        </div>
+                                    ) : null}
 
                                     <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-[550px] space-y-4">
                                         {projects.length > 0 && (
