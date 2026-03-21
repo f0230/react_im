@@ -1,5 +1,5 @@
-// Home.jsx optimizado
-import React, { lazy, Suspense, useEffect, useState } from "react";
+// Home.jsx — mobile-first optimizado
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
@@ -15,42 +15,49 @@ const InfiniteCarousel = lazy(() => import("@/components/Slide"));
 const Section7 = lazy(() => import("@/components/Section8"));
 const CurvedLoop = lazy(() => import("@/components/CurvedLoop"));
 
+// Fallback mínimo: evita layout shift sin coste de render
 const LazySection = ({ children }) => (
-  <Suspense fallback={null}>{children}</Suspense>
+  <Suspense fallback={<div className="h-px" aria-hidden="true" />}>{children}</Suspense>
 );
 
 const Home = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [renderDeferred, setRenderDeferred] = useState(false);
-  const whatsappUrl = `https://wa.me/59896280674?text=${encodeURIComponent(t("section1.whatsappMessage"))}`;
+  const sentinelRef = useRef(null);
 
-  const handleContactClick = () => {
+  // Estable entre renders — no recrear en cada llamada
+  const whatsappUrl = useMemo(
+    () => `https://wa.me/59896280674?text=${encodeURIComponent(t("section1.whatsappMessage"))}`,
+    [t]
+  );
+
+  const handleContactClick = useCallback(() => {
     window.location.assign(whatsappUrl);
-  };
+  }, [whatsappUrl]);
 
-  const handleRegisterClick = () => {
+  const handleRegisterClick = useCallback(() => {
     navigate("/registro");
-  };
+  }, [navigate]);
 
+  // IntersectionObserver: carga diferida solo cuando el usuario se acerca,
+  // no forzamos un timer arbitrario de 1.2–1.5s en dispositivos lentos.
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    let idleId;
-    const start = () => setRenderDeferred(true);
+    const el = sentinelRef.current;
+    if (!el) return;
 
-    if ("requestIdleCallback" in window) {
-      idleId = window.requestIdleCallback(start, { timeout: 1500 });
-    } else {
-      idleId = window.setTimeout(start, 1200);
-    }
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRenderDeferred(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "300px" } // Pre-carga 300px antes de que el sentinel sea visible
+    );
 
-    return () => {
-      if ("cancelIdleCallback" in window) {
-        window.cancelIdleCallback(idleId);
-      } else {
-        clearTimeout(idleId);
-      }
-    };
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -66,6 +73,9 @@ const Home = () => {
         <div className="relative w-full">
           <Section2 onContactClick={handleContactClick} />
         </div>
+
+        {/* Sentinel: dispara la carga diferida cuando el usuario se acerca al final de Section2 */}
+        <div ref={sentinelRef} className="h-px" aria-hidden="true" />
 
         {renderDeferred && (
           <>

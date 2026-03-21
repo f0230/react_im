@@ -1,5 +1,5 @@
-import { useRef } from 'react';
-import { motion, useMotionValue, useScroll, useSpring, useTransform } from 'framer-motion';
+import React, { memo, useCallback, useMemo, useRef } from 'react';
+import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import Layout from '@/components/Layout';
 import SEO from '@/components/SEO';
@@ -16,6 +16,9 @@ import espaciosImg from '@/assets/BANNER_ESPACIOS.webp';
 import empresasImg from '@/assets/EMPRESAS.webp';
 import compuImg from '@/assets/compu_fondo.webp';
 import profeImg from '@/assets/Profeweb.webp';
+
+// Evaluado una vez al cargar el módulo — sin re-renders, sin listeners
+const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches;
 
 const CATEGORY_IMAGES = {
   proyectos: profeImg,
@@ -39,8 +42,8 @@ const renderTitleWithAside = (title) => {
   );
 };
 
-/* ─── Service item row ─────────────────────────────────── */
-const ServiceItem = ({ title, text, index }) => (
+/* ─── Service item row — memo: solo re-renderiza si sus props cambian ─── */
+const ServiceItem = memo(({ title, text, index }) => (
   <motion.div
     initial={{ opacity: 0, y: 24 }}
     whileInView={{ opacity: 1, y: 0 }}
@@ -63,38 +66,43 @@ const ServiceItem = ({ title, text, index }) => (
     </div>
     <div className="mt-4 h-px bg-[#0DD122]/0 group-hover:bg-[#0DD122]/25 transition-all duration-500 origin-left scale-x-0 group-hover:scale-x-100" />
   </motion.div>
-);
+));
 
-/* ─── Category section with parallax background ────────── */
+/* ─── Category section — parallax desactivado en móvil ─────────────── */
 const CategorySection = ({ category, services, index, t }) => {
   const ref = useRef(null);
+  const prefersReducedMotion = useReducedMotion();
+  const skipParallax = isMobile || prefersReducedMotion;
+
   const { scrollYProgress } = useScroll({
     target: ref,
     offset: ['start end', 'end start'],
   });
-  const bgY = useTransform(scrollYProgress, [0, 1], ['-10%', '10%']);
+
+  // Si se va a ignorar, no suscribimos la transform al DOM → cero repaints en scroll
+  const bgY = useTransform(scrollYProgress, [0, 1], skipParallax ? ['0%', '0%'] : ['-10%', '10%']);
   const image = CATEGORY_IMAGES[category.id];
   const isEven = index % 2 === 0;
 
   return (
     <section ref={ref} className="relative overflow-hidden py-24 md:py-36">
-      {/* Parallax background image */}
+      {/* Parallax background image — blur reducido en móvil para aliviar GPU */}
       <motion.div className="absolute inset-0 z-0" style={{ y: bgY }}>
         <img
           src={image}
           alt=""
-          className="w-full h-full object-cover scale-[1.15] blur-[100px]"
+          className="w-full h-full object-cover scale-[1.15] blur-[60px] md:blur-[100px]"
           loading="lazy"
         />
         <div className="absolute inset-0 bg-black/35" />
         <div className="absolute inset-0 opacity-[0.34] pointer-events-none">
-          <Noise patternSize={180} patternRefreshInterval={2} patternAlpha={34} />
+          {/* Refresh más lento en móvil: menos pixel manipulation por frame */}
+          <Noise patternSize={180} patternRefreshInterval={isMobile ? 6 : 2} patternAlpha={34} />
         </div>
       </motion.div>
 
       {/* Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-6 md:px-12">
-        {/* Category header */}
         <div className={`mb-10 flex items-end gap-4 ${isEven ? '' : 'flex-row-reverse text-right'}`}>
           <motion.span
             initial={{ opacity: 0 }}
@@ -122,7 +130,6 @@ const CategorySection = ({ category, services, index, t }) => {
           </motion.div>
         </div>
 
-        {/* Animated divider */}
         <motion.div
           initial={{ scaleX: 0 }}
           whileInView={{ scaleX: 1 }}
@@ -131,7 +138,6 @@ const CategorySection = ({ category, services, index, t }) => {
           className="h-px bg-white/20 mb-10 origin-left"
         />
 
-        {/* Services grid */}
         <div className="grid md:grid-cols-2 gap-x-14">
           {services.map((service, i) => (
             <ServiceItem
@@ -159,8 +165,8 @@ const ScrollIndicator = () => (
   </motion.div>
 );
 
-/* ─── Floating badge ────────────────────────────────────── */
-const FloatingBadge = ({
+/* ─── Floating badge — memo: 10 instancias con springs, no re-renderizar sin causa ─── */
+const FloatingBadge = memo(({
   children,
   className = '',
   strengthX = 0,
@@ -191,43 +197,48 @@ const FloatingBadge = ({
       </motion.div>
     </motion.div>
   );
-};
+});
 
 /* ─── Main page ─────────────────────────────────────────── */
 const Servicios = () => {
   const { t } = useTranslation();
   const heroRef = useRef(null);
-  const whatsappUrl = `https://wa.me/59896280674?text=${encodeURIComponent(t('section1.whatsappMessage'))}`;
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  const whatsappUrl = useMemo(
+    () => `https://wa.me/59896280674?text=${encodeURIComponent(t('section1.whatsappMessage'))}`,
+    [t]
+  );
 
   const { scrollYProgress: heroScroll } = useScroll({
     target: heroRef,
     offset: ['start start', 'end start'],
   });
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
   const heroContentOpacity = useTransform(heroScroll, [0, 0.75], [1, 0]);
   const heroContentY = useTransform(heroScroll, [0, 0.75], ['0%', '-12%']);
 
-  const introService = servicios[0];
-  const categorized = {};
-  servicios.slice(1).forEach((s) => {
-    if (!categorized[s.category]) categorized[s.category] = [];
-    categorized[s.category].push(s);
-  });
+  // Calculado una sola vez al montar, no en cada render
+  const { introService, categorized } = useMemo(() => {
+    const intro = servicios[0];
+    const grouped = {};
+    servicios.slice(1).forEach((s) => {
+      if (!grouped[s.category]) grouped[s.category] = [];
+      grouped[s.category].push(s);
+    });
+    return { introService: intro, categorized: grouped };
+  }, []);
 
-  const handleHeroMouseMove = (event) => {
+  const handleHeroMouseMove = useCallback((event) => {
     const rect = event.currentTarget.getBoundingClientRect();
-    const relativeX = (event.clientX - rect.left) / rect.width;
-    const relativeY = (event.clientY - rect.top) / rect.height;
+    mouseX.set(((event.clientX - rect.left) / rect.width - 0.5) * 2);
+    mouseY.set(((event.clientY - rect.top) / rect.height - 0.5) * 2);
+  }, [mouseX, mouseY]);
 
-    mouseX.set((relativeX - 0.5) * 2);
-    mouseY.set((relativeY - 0.5) * 2);
-  };
-
-  const handleHeroMouseLeave = () => {
+  const handleHeroMouseLeave = useCallback(() => {
     mouseX.set(0);
     mouseY.set(0);
-  };
+  }, [mouseX, mouseY]);
 
   return (
     <>
@@ -240,199 +251,201 @@ const Servicios = () => {
 
       <Layout noFooter>
         <div className="font-google-sans-flex">
-        {/* ── HERO ─────────────────────────────────────── */}
-        <section
-          ref={heroRef}
-          className="relative h-screen min-h-[600px] overflow-hidden"
-          onMouseMove={handleHeroMouseMove}
-          onMouseLeave={handleHeroMouseLeave}
-        >
-          {/* Bubble animation background */}
-          <div className="absolute inset-0 overflow-hidden">
-            <BubbleAnimation
-              width={1920}
-              height={1080}
-              totalBubbles={20}
-              colors={["#FF3500", "#0DD122", "#2E2E2E"]}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/40" />
-            <div className="absolute inset-0 opacity-[0.32] pointer-events-none">
-              <Noise patternSize={160} patternRefreshInterval={2} patternAlpha={34} />
+          {/* ── HERO ─────────────────────────────────────── */}
+          <section
+            ref={heroRef}
+            className="relative h-screen min-h-[600px] overflow-hidden"
+            onMouseMove={isMobile ? undefined : handleHeroMouseMove}
+            onMouseLeave={isMobile ? undefined : handleHeroMouseLeave}
+          >
+            {/* Bubble animation — menos burbujas en móvil */}
+            <div className="absolute inset-0 overflow-hidden">
+              <BubbleAnimation
+                width={1920}
+                height={1080}
+                totalBubbles={isMobile ? 8 : 20}
+                colors={["#FF3500", "#0DD122", "#2E2E2E"]}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/40" />
+              <div className="absolute inset-0 opacity-[0.32] pointer-events-none">
+                <Noise patternSize={160} patternRefreshInterval={isMobile ? 6 : 2} patternAlpha={34} />
+              </div>
             </div>
+
+            {/* Floating badges — solo en desktop: 10 badges × 20 hooks = 0 en móvil */}
+            {!isMobile && (
+              <>
+                <FloatingBadge className="top-[28%] left-[8%]" strengthX={-18} strengthY={-12} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-green" />
+                  Estrategia
+                </FloatingBadge>
+                <FloatingBadge className="top-[22%] right-[8%]" strengthX={22} strengthY={-8} delay={0.2} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF3500]" />
+                  Ventas
+                </FloatingBadge>
+                <FloatingBadge className="top-[68%] right-[12%]" strengthX={18} strengthY={12} delay={0.8} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-banana" />
+                  Funnels
+                </FloatingBadge>
+                <FloatingBadge className="bottom-[12%] right-[26%]" strengthX={14} strengthY={18} delay={1.6} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
+                  IA
+                </FloatingBadge>
+                <FloatingBadge className="top-[38%] right-[10%]" strengthX={20} strengthY={-10} delay={1.2} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-banana" />
+                  Branding
+                </FloatingBadge>
+                <FloatingBadge className="top-[18%] left-[18%]" strengthX={-24} strengthY={-16} delay={0.4} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0DD122]" />
+                  Automatizaciones
+                </FloatingBadge>
+                <FloatingBadge className="top-[56%] right-[16%]" strengthX={16} strengthY={12} delay={1.8} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF3500]" />
+                  Campañas
+                </FloatingBadge>
+                <FloatingBadge className="bottom-[30%] left-[12%]" strengthX={-14} strengthY={14} delay={0.6} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-skyblue" />
+                  Digital
+                </FloatingBadge>
+                <FloatingBadge className="bottom-[18%] left-[22%]" strengthX={-22} strengthY={18} delay={1} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
+                  CRM
+                </FloatingBadge>
+                <FloatingBadge className="bottom-[22%] left-[34%]" strengthX={-12} strengthY={16} delay={1.4} mouseX={mouseX} mouseY={mouseY}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-skyblue" />
+                  Desarrollo Web
+                </FloatingBadge>
+              </>
+            )}
+
+            {/* Hero content */}
+            <motion.div
+              className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6 text-white"
+              style={{ opacity: heroContentOpacity, y: heroContentY }}
+            >
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.7 }}
+                className="text-[11px] md:text-xs leading-[1] uppercase tracking-[0.35em] mb-5 text-white/50 font-medium"
+              >
+                Grupo DTE
+              </motion.p>
+
+              <BlurText
+                text={t('servicesPage.title')}
+                delay={70}
+                animateBy="words"
+                className="text-5xl md:text-7xl font-bold mb-5 leading-[1] md:leading-[1] justify-center"
+              />
+
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.85, duration: 0.7 }}
+                className="text-base md:text-lg max-w-lg text-white/65 mb-14 leading-[1] md:leading-[1]"
+              >
+                {t('servicesPage.description')}
+              </motion.p>
+
+              <ScrollIndicator />
+            </motion.div>
+          </section>
+
+          {/* ── TICKER ───────────────────────────────────── */}
+          <div className="py-3 bg-black overflow-hidden border-t border-white/5">
+            <ScrollVelocity
+              texts={[
+                t('servicesPage.ticker.row1'),
+                t('servicesPage.ticker.row2'),
+              ]}
+              velocity={55}
+              className="text-white/70 text-4xl md:text-5xl uppercase tracking-tighter font-bold"
+              parallaxStyle={{ padding: '2px 0' }}
+            />
           </div>
 
-          {/* Floating badges */}
-          <FloatingBadge className="top-[28%] left-[8%]" strengthX={-18} strengthY={-12} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-green" />
-            Estrategia
-          </FloatingBadge>
-          <FloatingBadge className="top-[22%] right-[8%]" strengthX={22} strengthY={-8} delay={0.2} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF3500]" />
-            Ventas
-          </FloatingBadge>
-          <FloatingBadge className="top-[68%] right-[12%]" strengthX={18} strengthY={12} delay={0.8} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-banana" />
-            Funnels
-          </FloatingBadge>
-          <FloatingBadge className="bottom-[12%] right-[26%]" strengthX={14} strengthY={18} delay={1.6} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
-            IA
-          </FloatingBadge>
-          <FloatingBadge className="top-[38%] right-[10%]" strengthX={20} strengthY={-10} delay={1.2} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-banana" />
-            Branding
-          </FloatingBadge>
-          <FloatingBadge className="top-[18%] left-[18%]" strengthX={-24} strengthY={-16} delay={0.4} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#0DD122]" />
-            Automatizaciones
-          </FloatingBadge>
-          <FloatingBadge className="top-[56%] right-[16%]" strengthX={16} strengthY={12} delay={1.8} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-[#FF3500]" />
-            Campañas
-          </FloatingBadge>
-          <FloatingBadge className="bottom-[30%] left-[12%]" strengthX={-14} strengthY={14} delay={0.6} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-skyblue" />
-            Digital
-          </FloatingBadge>
-          <FloatingBadge className="bottom-[18%] left-[22%]" strengthX={-22} strengthY={18} delay={1} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
-            CRM
-          </FloatingBadge>
-          <FloatingBadge className="bottom-[22%] left-[34%]" strengthX={-12} strengthY={16} delay={1.4} mouseX={mouseX} mouseY={mouseY}>
-            <span className="w-1.5 h-1.5 rounded-full bg-skyblue" />
-            Desarrollo Web
-          </FloatingBadge>
+          {/* ── INTRO ────────────────────────────────────── */}
+          <section className="py-20 md:py-28 px-6 bg-white">
+            <div className="max-w-3xl mx-auto">
+              <motion.p
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.9, ease: 'easeOut' }}
+                className="text-[17px] leading-[1] text-black/65 text-center"
+              >
+                {t(introService.textKey).split('DTE').map((part, index, parts) => (
+                  <span key={`${part}-${index}`}>
+                    {part}
+                    {index < parts.length - 1 ? <strong className="font-bold text-black">DTE</strong> : null}
+                  </span>
+                ))}
+              </motion.p>
 
-          {/* Hero content */}
-          <motion.div
-            className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6 text-white"
-            style={{ opacity: heroContentOpacity, y: heroContentY }}
-          >
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.7 }}
-              className="text-[11px] md:text-xs leading-[1] uppercase tracking-[0.35em] mb-5 text-white/50 font-medium"
-            >
-              Grupo DTE
-            </motion.p>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                className="mt-14 flex flex-wrap justify-center gap-10"
+              >
+                {[
+                  { num: '22+', label: 'Servicios' },
+                  { num: '6', label: 'Áreas de expertise' },
+                  { num: '360°', label: 'Enfoque integral' },
+                ].map(({ num, label }) => (
+                  <div key={label} className="text-center">
+                    <p className="text-4xl md:text-5xl font-bold text-black">{num}</p>
+                    <p className="text-xs leading-[1] uppercase tracking-widest text-black/40 mt-1">{label}</p>
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+          </section>
 
-            <BlurText
-              text={t('servicesPage.title')}
-              delay={70}
-              animateBy="words"
-              className="text-5xl md:text-7xl font-bold mb-5 leading-[1] md:leading-[1] justify-center"
+          {/* ── CATEGORIES ───────────────────────────────── */}
+          {categories.map((cat, i) => (
+            <CategorySection
+              key={cat.id}
+              category={cat}
+              services={categorized[cat.id] || []}
+              index={i}
+              t={t}
             />
+          ))}
 
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.85, duration: 0.7 }}
-              className="text-base md:text-lg max-w-lg text-white/65 mb-14 leading-[1] md:leading-[1]"
-            >
-              {t('servicesPage.description')}
-            </motion.p>
+          {/* ── CTA ──────────────────────────────────────── */}
+          <section className="py-28 px-6 bg-black text-white text-center overflow-hidden relative">
+            <div className="absolute top-0 left-1/4 w-72 h-72 bg-skyblue/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-banana/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute inset-0 opacity-[0.3] pointer-events-none">
+              <Noise patternSize={200} patternRefreshInterval={isMobile ? 6 : 2} patternAlpha={30} />
+            </div>
 
-            <ScrollIndicator />
-          </motion.div>
-        </section>
-
-        {/* ── TICKER ───────────────────────────────────── */}
-        <div className="py-3 bg-black overflow-hidden border-t border-white/5">
-          <ScrollVelocity
-            texts={[
-              t('servicesPage.ticker.row1'),
-              t('servicesPage.ticker.row2'),
-            ]}
-            velocity={55}
-            className="text-white/70 text-4xl md:text-5xl uppercase tracking-tighter font-bold"
-            parallaxStyle={{ padding: '2px 0' }}
-          />
-        </div>
-
-        {/* ── INTRO ────────────────────────────────────── */}
-        <section className="py-20 md:py-28 px-6 bg-white">
-          <div className="max-w-3xl mx-auto">
-            <motion.p
-              initial={{ opacity: 0, y: 30 }}
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.9, ease: 'easeOut' }}
-              className="text-[17px] leading-[1] text-black/65 text-center"
+              className="relative z-10 max-w-xl mx-auto"
             >
-              {t(introService.textKey).split('DTE').map((part, index, parts) => (
-                <span key={`${part}-${index}`}>
-                  {part}
-                  {index < parts.length - 1 ? <strong className="font-bold text-black">DTE</strong> : null}
-                </span>
-              ))}
-            </motion.p>
-
-            {/* Service count stat */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="mt-14 flex flex-wrap justify-center gap-10"
-            >
-              {[
-                { num: '22+', label: 'Servicios' },
-                { num: '6', label: 'Áreas de expertise' },
-                { num: '360°', label: 'Enfoque integral' },
-              ].map(({ num, label }) => (
-                <div key={label} className="text-center">
-                  <p className="text-4xl md:text-5xl font-bold text-black">{num}</p>
-                  <p className="text-xs leading-[1] uppercase tracking-widest text-black/40 mt-1">{label}</p>
-                </div>
-              ))}
+              <h2 className="text-4xl md:text-6xl font-bold mb-5 leading-tight">
+                {t('servicesPage.cta.title')}
+              </h2>
+              <p className="text-white/50 text-lg mb-10 leading-relaxed">
+                {t('servicesPage.cta.subtitle')}
+              </p>
+              <ShatterButton
+                href={whatsappUrl}
+                shatterColor="#0DD122"
+                className="text-base"
+              >
+                {t('servicesPage.cta.button')}
+              </ShatterButton>
             </motion.div>
-          </div>
-        </section>
-
-        {/* ── CATEGORIES ───────────────────────────────── */}
-        {categories.map((cat, i) => (
-          <CategorySection
-            key={cat.id}
-            category={cat}
-            services={categorized[cat.id] || []}
-            index={i}
-            t={t}
-          />
-        ))}
-
-        {/* ── CTA ──────────────────────────────────────── */}
-        <section className="py-28 px-6 bg-black text-white text-center overflow-hidden relative">
-          {/* Decorative blobs */}
-          <div className="absolute top-0 left-1/4 w-72 h-72 bg-skyblue/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-banana/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute inset-0 opacity-[0.3] pointer-events-none">
-            <Noise patternSize={200} patternRefreshInterval={2} patternAlpha={30} />
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.9, ease: 'easeOut' }}
-            className="relative z-10 max-w-xl mx-auto"
-          >
-            <h2 className="text-4xl md:text-6xl font-bold mb-5 leading-tight">
-              {t('servicesPage.cta.title')}
-            </h2>
-            <p className="text-white/50 text-lg mb-10 leading-relaxed">
-              {t('servicesPage.cta.subtitle')}
-            </p>
-            <ShatterButton
-              href={whatsappUrl}
-              shatterColor="#0DD122"
-              className="text-base"
-            >
-              {t('servicesPage.cta.button')}
-            </ShatterButton>
-          </motion.div>
-        </section>
+          </section>
         </div>
       </Layout>
     </>

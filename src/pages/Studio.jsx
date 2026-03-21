@@ -461,10 +461,8 @@ export default function Studio() {
 }
 
 function parsePromptBatch(promptInput) {
-    return String(promptInput || '')
-        .split(/\r?\n/)
-        .map((prompt) => prompt.trim())
-        .filter(Boolean);
+    const single = String(promptInput || '').replace(/\r?\n/g, ' ').trim();
+    return single ? [single] : [];
 }
 
 function mergeReferenceImages(currentImages, nextImages) {

@@ -391,10 +391,8 @@ export default function ControlPanel({
 }
 
 function getPromptBatch(prompt) {
-    return String(prompt || "")
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter(Boolean);
+    const single = String(prompt || "").replace(/\r?\n/g, ' ').trim();
+    return single ? [single] : [];
 }
 
 function getButtonLabel({ canGenerate, isGenerating, isQueueActive, queuedCount, promptCount }) {
