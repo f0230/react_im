@@ -156,6 +156,7 @@ const resolveRouteKey = (to) => {
     const directMatch = pathKeyMap.get(path);
     if (directMatch) return directMatch;
 
+    if (path.startsWith('/brief/')) return routeKeys.brief;
     if (path.startsWith('/meet/')) return routeKeys.scheduleCall;
     if (path.startsWith('/dashboard/clients/')) return routeKeys.clientDetail;
     if (path.startsWith('/dashboard/finances/periods/')) return routeKeys.financesPeriod;

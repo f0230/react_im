@@ -151,7 +151,7 @@ const AppContent = () => {
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
-          <Route path="/brief" element={<Brief />} />
+          <Route path="/brief/:bookingId?" element={<Brief />} />
           <Route path="/colors" element={<Colors />} />
           <Route path="/Nosotros" element={<About />} />
           <Route path="/Contacto" element={<Contact />} />

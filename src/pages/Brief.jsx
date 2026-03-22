@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
 
 import logoDte from '@/assets/LOGODTE.svg';
+import { supabase } from '@/lib/supabaseClient';
 import { loadStoredBrief, saveStoredBrief } from '@/lib/briefStorage';
 
 const TOTAL = 8;
@@ -30,7 +31,7 @@ const getInitialStep = () => {
     const lastStep = Number(stored?.lastStep);
 
     if (!Number.isFinite(lastStep)) return 0;
-    if (stored?.completedAt) return 0;
+    if (stored?.completedAt) return TOTAL + 1;
 
     return Math.min(Math.max(lastStep, 0), TOTAL);
 };
@@ -101,8 +102,7 @@ function StepChoice({
 }
 
 const Brief = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
+    const { bookingId } = useParams();
     const transitionTimerRef = useRef(null);
 
     const [step, setStep] = useState(getInitialStep);
@@ -138,18 +138,37 @@ const Brief = () => {
     const goNext = () => transitionTo(Math.min(step + 1, TOTAL));
     const goBack = () => transitionTo(Math.max(step - 1, 0));
 
-    const finishBrief = (nextData) => {
-        const payload = {
+    const finishBrief = async (nextData) => {
+        const now = new Date().toISOString();
+
+        const localPayload = {
             ...nextData,
             lastStep: TOTAL,
-            completedAt: new Date().toISOString(),
+            completedAt: now,
         };
+        saveStoredBrief(localPayload);
 
-        saveStoredBrief(payload);
+        try {
+            await supabase.from('briefs').insert({
+                cal_booking_uid: bookingId || null,
+                etapa: nextData.etapa || null,
+                objetivo_principal: nextData.objetivoPrincipal || null,
+                servicio_interes: nextData.servicioInteres || null,
+                facturacion_mensual: nextData.facturacionMensual || null,
+                canal_principal: nextData.canalPrincipal || null,
+                activos_digitales: nextData.activosDigitales || null,
+                presupuesto: nextData.presupuesto || null,
+                urgencia: nextData.urgencia || null,
+                completed_at: now,
+            });
+        } catch {
+            // El brief ya quedó en localStorage como fallback
+        }
 
         setVisible(false);
         queueTransition(() => {
-            navigate(location.search ? `/meet${location.search}` : '/meet');
+            setStep(TOTAL + 1);
+            setVisible(true);
         }, 240);
     };
 
@@ -169,7 +188,7 @@ const Brief = () => {
         }, 180);
     };
 
-    const progressPct = step === 0 ? 0 : Math.round((step / TOTAL) * 100);
+    const progressPct = step === 0 ? 0 : step > TOTAL ? 100 : Math.round((step / TOTAL) * 100);
 
     return (
         <div className="min-h-screen bg-[#050505] font-product text-white">
@@ -209,11 +228,11 @@ const Brief = () => {
                             </div>
 
                             <h1 className="font-google-sans-flex text-[34px] font-semibold leading-[0.94] tracking-[-0.05em] text-white sm:text-[52px]">
-                                Un brief corto antes de pasar a agenda.
+                                Un brief corto para llegar preparados a la llamada.
                             </h1>
 
                             <p className="max-w-[34ch] text-sm leading-relaxed text-white/52 sm:text-base">
-                                Respondé 8 preguntas rápidas y te llevamos directo a elegir horario.
+                                Respondé 8 preguntas rápidas así aprovechamos mejor la reunión.
                             </p>
 
                             <button
@@ -356,6 +375,22 @@ const Brief = () => {
                                 { value: 'Solo estoy investigando por ahora', label: 'Solo estoy investigando por ahora' },
                             ]}
                         />
+                    ) : null}
+
+                    {step === TOTAL + 1 ? (
+                        <div className="flex flex-col items-center gap-6 text-center">
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#0DD122]/15">
+                                <CheckCircle className="h-8 w-8 text-[#0DD122]" />
+                            </div>
+
+                            <h1 className="font-google-sans-flex text-[34px] font-semibold leading-[0.94] tracking-[-0.05em] text-white sm:text-[52px]">
+                                ¡Listo, gracias!
+                            </h1>
+
+                            <p className="max-w-[34ch] text-sm leading-relaxed text-white/52 sm:text-base">
+                                Ya tenemos todo lo que necesitamos. Nos vemos en la llamada.
+                            </p>
+                        </div>
                     ) : null}
                 </div>
             </main>
