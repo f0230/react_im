@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Plus, MessageCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Link as LinkIcon, AlertCircle, Plus, MessageCircle, FileText, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchCalBookings } from '@/lib/calBookings';
+import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 import AdminCalendar from '@/components/AdminCalendar';
 import AppointmentActionModal from '@/components/AppointmentActionModal';
@@ -21,6 +22,8 @@ const AdminAppointments = () => {
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [modalPosition, setModalPosition] = useState(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [briefsMap, setBriefsMap] = useState({});
+    const [briefModalData, setBriefModalData] = useState(null);
 
     const normalizeStatus = (status) => {
         const value = String(status || '').trim().toLowerCase();
@@ -167,6 +170,25 @@ const AdminAppointments = () => {
         try {
             const bookings = await fetchCalBookings();
             setAppointments(bookings);
+
+            const bookingIds = bookings
+                .map((b) => b.cal_booking_id)
+                .filter(Boolean);
+
+            if (bookingIds.length > 0) {
+                const { data: briefs } = await supabase
+                    .from('briefs')
+                    .select('*')
+                    .in('cal_booking_uid', bookingIds);
+
+                if (briefs) {
+                    const map = {};
+                    for (const brief of briefs) {
+                        map[brief.cal_booking_uid] = brief;
+                    }
+                    setBriefsMap(map);
+                }
+            }
         } catch (err) {
             console.error('Error fetching appointments:', err);
             setError(err.message);
@@ -410,7 +432,7 @@ const AdminAppointments = () => {
                                                             )}
                                                             {(() => {
                                                                 const tracking = parseTrackingMetadata(apt?.cal_metadata?.metadata || {});
-                                                                const waPhone = apt.whatsapp_normalized || apt.client_phone_normalized || tracking.waId;
+                                                                const waPhone = apt.whatsapp_normalized || apt.client_phone_normalized || apt.client_phone || tracking.waId;
                                                                 if (!waPhone) return null;
                                                                 const inboxUrl = `/dashboard/inbox?wa=${encodeURIComponent(waPhone)}`;
                                                                 return (
@@ -421,6 +443,20 @@ const AdminAppointments = () => {
                                                                         <MessageCircle size={14} />
                                                                         <span>{waPhone}</span>
                                                                     </Link>
+                                                                );
+                                                            })()}
+                                                            {(() => {
+                                                                const brief = briefsMap[apt.cal_booking_id];
+                                                                if (!brief) return null;
+                                                                return (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setBriefModalData(brief)}
+                                                                        className="inline-flex items-center gap-2 text-sm text-violet-600 hover:text-violet-800 hover:underline"
+                                                                    >
+                                                                        <FileText size={14} />
+                                                                        <span>Brief</span>
+                                                                    </button>
                                                                 );
                                                             })()}
                                                         </div>
@@ -462,6 +498,60 @@ const AdminAppointments = () => {
                 onClose={() => setIsCreateModalOpen(false)}
                 onUpdate={() => fetchAppointments()}
             />
+
+            {/* Brief Modal */}
+            <AnimatePresence>
+                {briefModalData && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+                        onClick={() => setBriefModalData(null)}
+                    >
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden"
+                        >
+                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+                                <h3 className="text-lg font-bold text-gray-900">Brief Comercial</h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setBriefModalData(null)}
+                                    className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                                >
+                                    <X size={20} className="text-gray-500" />
+                                </button>
+                            </div>
+                            <div className="px-6 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
+                                {[
+                                    { label: 'Etapa del negocio', value: briefModalData.etapa },
+                                    { label: 'Objetivo principal', value: briefModalData.objetivo_principal },
+                                    { label: 'Servicio de interés', value: briefModalData.servicio_interes },
+                                    { label: 'Facturación mensual', value: briefModalData.facturacion_mensual },
+                                    { label: 'Canal principal', value: briefModalData.canal_principal },
+                                    { label: 'Activos digitales', value: briefModalData.activos_digitales },
+                                    { label: 'Presupuesto', value: briefModalData.presupuesto },
+                                    { label: 'Urgencia', value: briefModalData.urgencia },
+                                ].map((item) => (
+                                    <div key={item.label} className="rounded-xl bg-gray-50 px-4 py-3">
+                                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{item.label}</p>
+                                        <p className="text-sm font-medium text-gray-900">{item.value || '-'}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            {briefModalData.completed_at && (
+                                <div className="px-6 py-3 border-t border-gray-100 text-xs text-gray-400">
+                                    Completado el {new Date(briefModalData.completed_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                            )}
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
