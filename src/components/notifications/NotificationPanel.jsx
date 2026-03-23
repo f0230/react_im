@@ -45,6 +45,8 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
                     return `/dashboard/projects?projectId=${projectId}`;
                 }
                 return '/dashboard/projects';
+            case 'new_appointment':
+                return '/dashboard/appointments';
             default:
                 return '/dashboard';
         }

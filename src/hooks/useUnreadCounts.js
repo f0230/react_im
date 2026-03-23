@@ -171,8 +171,9 @@ export const useUnreadCounts = () => {
             .from('notifications')
             .select('id, title, body, type, created_at, read_at, data')
             .eq('recipient_id', user.id)
+            .is('read_at', null)
             .order('created_at', { ascending: false })
-            .limit(20);
+            .limit(50);
         if (!error && Array.isArray(data)) {
             setNotifications(data);
         } else {

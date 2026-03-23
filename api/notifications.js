@@ -133,6 +133,14 @@ async function enrichForSlack({ table, record }) {
             ]);
             return { channel_name: ch?.data?.name, channel_slug: ch?.data?.slug, author_name: record.author_name || au?.data?.full_name || au?.data?.email };
         }
+        if (table === 'notifications' && record.recipient_id) {
+            const { data } = await supabase.from('profiles').select('full_name, email').eq('id', record.recipient_id).maybeSingle();
+            return data ? { recipient_name: data.full_name || data.email } : {};
+        }
+        if (table === 'client_messages' && record.client_id) {
+            const { data } = await supabase.from('clients').select('full_name, company_name, email').eq('id', record.client_id).maybeSingle();
+            return data ? { client_name: data.full_name || data.company_name || data.email } : {};
+        }
     } catch (err) { console.warn('[notifications] slack enrichment failed:', err); }
     return {};
 }
@@ -142,7 +150,10 @@ function formatSlackText({ event, table, record, enrich }) {
     if (table === 'team_channel_members' && event === 'INSERT') return `👤 Nuevo miembro en ${enrich?.channel_name || record?.channel_id}: ${enrich?.member_name || record?.member_id}${enrich?.added_by_name ? ` (por ${enrich.added_by_name})` : ''}.`;
     if (table === 'team_messages' && event === 'INSERT') return `💬 Mensaje en ${enrich?.channel_name || record?.channel_id} de ${enrich?.author_name || record?.author_id}: ${truncate(record?.body || record?.file_name || '') || '[sin texto]'}.`;
     if (table === 'whatsapp_messages' && event === 'INSERT') return record?.direction === 'inbound' ? `📲 WhatsApp de ${record?.wa_id}: ${truncate(record?.body || '') || '[sin texto]'}.` : null;
-    return `🔔 Evento ${event} en ${table}.`;
+    if (table === 'notifications' && event === 'INSERT') return `🔔 ${record?.title || 'Notificación'}: ${truncate(record?.body || '') || '[sin detalle]'}`;
+    if (table === 'appointments' && event === 'INSERT') return `📅 Nueva cita: ${record?.event_type_name || 'Reunión'} con ${record?.client_name || record?.client_email || 'cliente'} — ${record?.scheduled_at || ''}`;
+    if (table === 'client_messages' && event === 'INSERT') return record?.sender_role === 'client' ? `👤 Mensaje de cliente ${enrich?.client_name || record?.client_id}: ${truncate(record?.body || '') || '[sin texto]'}` : null;
+    return null;
 }
 
 async function handleSlackNotify(req, res) {
