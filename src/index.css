@@ -240,3 +240,82 @@ body {
 a, button, [role="button"], input, select, textarea, .cursor-pointer {
   cursor: url('./assets/PUNTERO.svg') 20 20, pointer !important;
 }
+
+/* ─── Chat UI ─── */
+
+.chat-bg {
+  background-color: #f0ebe3;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(0,0,0,0.012) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(0,0,0,0.012) 0%, transparent 50%);
+  background-size: 100% 100%;
+}
+
+.chat-bubble {
+  position: relative;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.06);
+}
+
+.chat-bubble-out {
+  background: #d9fdd3;
+  border-radius: 10px 2px 10px 10px;
+}
+
+.chat-bubble-in {
+  background: #ffffff;
+  border-radius: 2px 10px 10px 10px;
+}
+
+.chat-composer {
+  background: #f0ebe3;
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+
+.chat-sidebar-item {
+  transition: all 0.15s ease;
+}
+
+.chat-sidebar-item:hover {
+  transform: translateX(2px);
+}
+
+.chat-sidebar-active {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.chat-avatar {
+  background: linear-gradient(135deg, #e8e0d8 0%, #d4ccc4 100%);
+  color: #6b5e52;
+}
+
+.chat-avatar-active {
+  background: rgba(255,255,255,0.12);
+  color: #ffffff;
+}
+
+.chat-header {
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.chat-reply-preview {
+  background: linear-gradient(135deg, #f5f3f0 0%, #ece8e3 100%);
+  border-left: 3px solid #b8a99a;
+  border-radius: 0 8px 8px 0;
+}
+
+.chat-empty-state {
+  color: #b8a99a;
+}
+
+@keyframes chat-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-animate-in {
+  animation: chat-fade-in 0.2s ease-out;
+}

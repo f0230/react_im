@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { ArrowLeft, Hash, Image, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { useUnreadCounts } from '@/context/UnreadCountsContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
@@ -11,7 +12,12 @@ import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
 import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
 import { fetchReactionsForMessages, toggleReaction } from '@/services/chatReactions';
 import { formatShortDateTime, formatTime, formatTimestamp, getUserColor } from '@/utils/messagingFormatters';
-
+import ChatAudioPlayer from '@/components/chat/ChatAudioPlayer';
+import {
+    ChatBubble,
+    ChatBubbleAvatar,
+    ChatBubbleMessage,
+} from '@/components/ui/chat-bubble';
 
 const buildSlug = (value) => {
     if (!value) return '';
@@ -25,14 +31,13 @@ const buildSlug = (value) => {
 
 const linkRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 const isHttpUrl = (value) => /^https?:\/\//i.test(value);
-const CLAWBOT_TRIGGER_REGEX = /(^|\s)@?clawbot\b/i;
-const CLAWBOT_AUTO_REPLY = String(import.meta.env.VITE_CLAWBOT_AUTO_REPLY || '').toLowerCase() === 'true';
 const TEAM_CHANNEL_COLUMNS = 'id, name, slug, created_by, project_id, created_at';
 const TEAM_PROJECT_COLUMNS = 'id, name';
 const TEAM_MESSAGE_COLUMNS = 'id, body, created_at, author_id, author_name, message_type, media_url, file_name, reply_to_id, author:profiles(id, full_name, email, avatar_url)';
 const TEAM_MEDIA_SIGNED_URL_TTL = 60 * 60 * 24;
 const TEAM_MEDIA_SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
 const teamMediaUrlCache = new Map();
+const CLAWBOT_AVATAR_URL = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=96&h=96&q=80&crop=faces&fit=crop';
 
 const renderTextWithLinks = (text) => {
     if (!text) return null;
@@ -58,13 +63,21 @@ const renderTextWithLinks = (text) => {
 
 const looksLikeClawbot = (value) => typeof value === 'string' && /clawbot/i.test(value);
 
+const getInitials = (value) => {
+    if (!value || typeof value !== 'string') return 'AI';
+    const parts = value
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2);
+    if (parts.length === 0) return 'AI';
+    return parts.map((part) => part.charAt(0).toUpperCase()).join('');
+};
+
 const isMessageFromClawbot = (message) =>
     looksLikeClawbot(message?.author_name)
     || looksLikeClawbot(message?.author?.full_name)
     || looksLikeClawbot(message?.author?.email);
-
-const shouldTriggerClawbot = (value) =>
-    typeof value === 'string' && CLAWBOT_TRIGGER_REGEX.test(value);
 
 const getProjectLabel = (project) => {
     if (!project) return '';
@@ -236,6 +249,9 @@ const TeamChat = () => {
         }, null);
     }, [channelReads, user?.id]);
 
+    const selectedChannelIdRef = useRef(selectedChannelId);
+    selectedChannelIdRef.current = selectedChannelId;
+
     const loadChannels = useCallback(async (background = false) => {
         if (!isAllowed) return;
         if (!background) setLoadingChannels(true);
@@ -251,13 +267,14 @@ const TeamChat = () => {
         } else {
             const nextChannels = data || [];
             setChannels(nextChannels);
-            if (selectedChannelId && !nextChannels.some((channel) => channel.id === selectedChannelId)) {
+            const currentSelected = selectedChannelIdRef.current;
+            if (currentSelected && !nextChannels.some((channel) => channel.id === currentSelected)) {
                 setSelectedChannelId(null);
             }
         }
 
         if (!background) setLoadingChannels(false);
-    }, [isAllowed, selectedChannelId]);
+    }, [isAllowed]);
 
     const loadChannelLastMessages = useCallback(async () => {
         if (!isAllowed) return;
@@ -471,31 +488,29 @@ const TeamChat = () => {
         }
     }, [reactionTable, user?.id]);
 
-    const triggerClawbotReply = useCallback(async ({ channelId, prompt, triggerMessageId }) => {
-        if (!channelId || !prompt || !triggerMessageId) return;
+    const notifySlackTeamMessage = useCallback(async (messageId) => {
+        if (!messageId) return;
 
-        const { data: { session } } = await supabase.auth.getSession();
-        const accessToken = session?.access_token;
-        if (!accessToken) {
-            throw new Error('Sesion expirada');
-        }
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const accessToken = session?.access_token;
+            if (!accessToken) return;
 
-        const response = await fetch('/api/clawbot-team-chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({
-                channel_id: channelId,
-                prompt,
-                trigger_message_id: triggerMessageId,
-            }),
-        });
+            const response = await fetch('/api/notifications?action=team-chat-message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({ messageId }),
+            });
 
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || payload?.ok === false) {
-            throw new Error(payload?.error || 'Clawbot no pudo responder');
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                console.error('TeamChat Slack notify failed:', payload?.error || response.status);
+            }
+        } catch (error) {
+            console.error('TeamChat Slack notify failed:', error);
         }
     }, []);
 
@@ -505,7 +520,6 @@ const TeamChat = () => {
         if (!body) return;
 
         const replyTarget = replyingTo;
-        const shouldCallClawbot = CLAWBOT_AUTO_REPLY || shouldTriggerClawbot(body) || isMessageFromClawbot(replyTarget);
 
         setSending(true);
         setSendError('');
@@ -527,21 +541,13 @@ const TeamChat = () => {
         } else {
             setMessageText('');
             setReplyingTo(null);
-
-            if (shouldCallClawbot && insertedMessage?.id) {
-                triggerClawbotReply({
-                    channelId: selectedChannelId,
-                    prompt: body,
-                    triggerMessageId: insertedMessage.id,
-                }).catch((error) => {
-                    console.error('Clawbot reply error:', error);
-                    setSendError('Tu mensaje se envio, pero Clawbot no pudo responder.');
-                });
+            if (insertedMessage?.id) {
+                void notifySlackTeamMessage(insertedMessage.id);
             }
         }
 
         setSending(false);
-    }, [messageText, replyingTo, selectedChannelId, sending, triggerClawbotReply, user?.id]);
+    }, [messageText, notifySlackTeamMessage, replyingTo, selectedChannelId, sending, user?.id]);
 
     const uploadAudioBlob = useCallback(async (blob, fileName) => {
         if (!selectedChannelId || !user?.id) return;
@@ -564,7 +570,7 @@ const TeamChat = () => {
 
             if (uploadError) throw uploadError;
 
-            const { error: insertError } = await supabase
+            const { data: insertedMessage, error: insertError } = await supabase
                 .from('team_messages')
                 .insert({
                     channel_id: selectedChannelId,
@@ -573,15 +579,20 @@ const TeamChat = () => {
                     message_type: 'audio',
                     media_url: storagePath,
                     file_name: safeName,
-                });
+                })
+                .select('id')
+                .single();
 
             if (insertError) throw insertError;
+            if (insertedMessage?.id) {
+                void notifySlackTeamMessage(insertedMessage.id);
+            }
         } catch (err) {
             setSendError(err.message || 'No se pudo subir el audio.');
         } finally {
             setUploadingAudio(false);
         }
-    }, [selectedChannelId, user?.id]);
+    }, [notifySlackTeamMessage, selectedChannelId, user?.id]);
 
     const uploadImageFile = useCallback(async (file) => {
         if (!file || !selectedChannelId || !user?.id) return;
@@ -611,7 +622,7 @@ const TeamChat = () => {
 
             if (uploadError) throw uploadError;
 
-            const { error: insertError } = await supabase
+            const { data: insertedMessage, error: insertError } = await supabase
                 .from('team_messages')
                 .insert({
                     channel_id: selectedChannelId,
@@ -620,15 +631,20 @@ const TeamChat = () => {
                     message_type: 'image',
                     media_url: storagePath,
                     file_name: safeName,
-                });
+                })
+                .select('id')
+                .single();
 
             if (insertError) throw insertError;
+            if (insertedMessage?.id) {
+                void notifySlackTeamMessage(insertedMessage.id);
+            }
         } catch (err) {
             setSendError(err.message || 'No se pudo subir la imagen.');
         } finally {
             setUploadingImage(false);
         }
-    }, [selectedChannelId, user?.id]);
+    }, [notifySlackTeamMessage, selectedChannelId, user?.id]);
 
     const handleImageUpload = useCallback((event) => {
         const file = event.target.files?.[0];
@@ -1095,17 +1111,17 @@ const TeamChat = () => {
         >
             <MessagingTabs />
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-0">
-                <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-200 ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
-                    <div className="p-4 border-b border-black/5 space-y-3">
+                <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-100 bg-white ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
+                    <div className="p-4 border-b border-neutral-100 space-y-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Hash size={18} className="text-neutral-500" />
-                                <p className="text-sm font-semibold text-neutral-800">Canales</p>
+                                <Hash size={18} className="text-neutral-400" />
+                                <p className="text-[13px] font-bold text-neutral-800 tracking-tight">Canales</p>
                             </div>
                             {canCreateChannel && (
                                 <button
                                     onClick={() => setIsCreateOpen((prev) => !prev)}
-                                    className="p-1 rounded-full border border-neutral-200 text-neutral-600 hover:text-neutral-900 hover:border-neutral-400"
+                                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
                                     title="Crear canal"
                                 >
                                     <Plus size={16} />
@@ -1118,7 +1134,7 @@ const TeamChat = () => {
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
                                 placeholder="Buscar canales..."
-                                className="w-full rounded-full border border-black/10 bg-neutral-50 pl-9 pr-3 py-2 text-xs focus:border-black/40 focus:bg-white transition"
+                                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-9 pr-3 py-2 text-xs focus:border-neutral-300 focus:bg-white focus:shadow-sm transition-all"
                             />
                         </div>
                         {isCreateOpen && canCreateChannel && (
@@ -1156,9 +1172,9 @@ const TeamChat = () => {
                             </div>
                         )}
                     </div>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar overscroll-y-contain">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar overscroll-y-contain">
                         {error && !loadingChannels && (
-                            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                            <div className="p-3 m-1 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-700">
                                 <p className="font-semibold mb-1">Error de carga</p>
                                 {error}
                                 <button
@@ -1170,7 +1186,7 @@ const TeamChat = () => {
                             </div>
                         )}
                         {!loadingChannels && !error && filteredChannels.length === 0 && (
-                            <div className="text-sm text-neutral-400 px-2">No hay canales disponibles.</div>
+                            <div className="text-sm text-neutral-400 px-3 py-4">No hay canales disponibles.</div>
                         )}
                         {filteredChannels.map((channel) => {
                             const isActive = channel.id === selectedChannelId;
@@ -1183,22 +1199,29 @@ const TeamChat = () => {
                                 <button
                                     key={channel.id}
                                     onClick={() => setSelectedChannelId(channel.id)}
-                                    className={`w-full text-left rounded-2xl border px-3 py-2.5 transition ${isActive
-                                        ? 'border-black/10 bg-black text-white shadow-lg'
-                                        : 'border-black/5 bg-white hover:bg-neutral-50'
+                                    className={`chat-sidebar-item w-full text-left rounded-xl px-3 py-2.5 ${isActive
+                                        ? 'chat-sidebar-active text-white'
+                                        : 'hover:bg-neutral-50'
                                         }`}
                                 >
                                     <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <Hash size={14} className={isActive ? 'text-white/70' : 'text-neutral-400'} />
-                                            <p className={`text-sm font-semibold truncate ${isActive ? 'text-white' : 'text-neutral-900'}`}>
-                                                {channel.name}
-                                            </p>
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/10' : 'bg-neutral-100'}`}>
+                                                <Hash size={14} className={isActive ? 'text-white/80' : 'text-neutral-500'} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className={`text-[13px] font-semibold truncate ${isActive ? 'text-white' : 'text-neutral-800'}`}>
+                                                    {channel.name}
+                                                </p>
+                                                <span className={`text-[10px] ${isActive ? 'text-white/50' : 'text-neutral-400'}`}>
+                                                    {formatTimestamp(lastMsgAtByChannel.get(channel.id) || channel.created_at)}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2 shrink-0">
+                                        <div className="flex items-center shrink-0">
                                             {unreadCount > 0 && (
                                                 <span
-                                                    className={`inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full px-1 text-[10px] ${isActive
+                                                    className={`inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full px-1 text-[10px] font-bold ${isActive
                                                         ? 'bg-white/20 text-white'
                                                         : 'bg-red-500 text-white'
                                                         }`}
@@ -1207,17 +1230,13 @@ const TeamChat = () => {
                                                     {formatUnread(unreadCount)}
                                                 </span>
                                             )}
-                                            <span className={`text-[10px] ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
-                                                {formatTimestamp(lastMsgAtByChannel.get(channel.id) || channel.created_at)}
-                                            </span>
                                         </div>
                                     </div>
                                     {channel.description && (
-                                        <p className={`text-xs mt-1 truncate ${isActive ? 'text-white/70' : 'text-neutral-500'}`}>
+                                        <p className={`text-[11px] mt-0.5 ml-[42px] truncate ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
                                             {channel.description}
                                         </p>
                                     )}
-
                                 </button>
                             );
                         })}
@@ -1227,32 +1246,36 @@ const TeamChat = () => {
                 <div className={`relative flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     {selectedChannel ? (
                         <>
-                            <div className="sticky top-0 z-40 shrink-0 border-b border-neutral-200 bg-white shadow-sm supports-[backdrop-filter]:bg-white/90 backdrop-blur">
+                            <div className="sticky top-0 z-40 shrink-0 chat-header">
                                 <div className="px-4 py-3 flex items-center justify-between gap-4">
-                                    <div className="min-w-0 flex items-start gap-2">
+                                    <div className="min-w-0 flex items-center gap-3">
                                         <button
                                             onClick={() => setSelectedChannelId(null)}
-                                            className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
+                                            className="lg:hidden p-2 -ml-2 text-neutral-400 hover:text-neutral-800 transition-colors"
                                             aria-label="Volver"
                                         >
                                             <ArrowLeft size={20} />
                                         </button>
+                                        <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
+                                            <Hash size={18} className="text-neutral-500" />
+                                        </div>
                                         <div className="min-w-0">
                                             {selectedChannel.project_id ? (
                                                 <button
                                                     type="button"
                                                     onClick={() => navigate(`/dashboard/tasks?projectId=${selectedChannel.project_id}`)}
-                                                    className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0 hover:text-blue-600 transition-colors group/title"
+                                                    className="text-[15px] font-bold text-neutral-900 flex items-center gap-1 min-w-0 hover:text-blue-600 transition-colors group/title"
                                                     title="Ver proyecto"
                                                 >
-                                                    <Hash size={16} className="text-neutral-400 group-hover/title:text-blue-400 transition-colors" />
                                                     <span className="truncate underline-offset-2 group-hover/title:underline">{selectedChannel.name}</span>
                                                 </button>
                                             ) : (
-                                                <p className="text-base font-semibold text-neutral-900 flex items-center gap-2 min-w-0">
-                                                    <Hash size={16} className="text-neutral-400" />
-                                                    <span className="truncate">{selectedChannel.name}</span>
+                                                <p className="text-[15px] font-bold text-neutral-900 truncate">
+                                                    {selectedChannel.name}
                                                 </p>
+                                            )}
+                                            {selectedChannelProjectLabel && (
+                                                <p className="text-[11px] text-neutral-400 truncate">{selectedChannelProjectLabel}</p>
                                             )}
                                         </div>
                                     </div>
@@ -1263,26 +1286,34 @@ const TeamChat = () => {
                                                     setIsMembersOpen(true);
                                                     loadMembers(selectedChannelId);
                                                 }}
-                                                className="rounded-full border border-neutral-200 px-3 py-1 text-xs font-semibold text-neutral-600 hover:text-neutral-900 hover:border-neutral-400"
+                                                className="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200 transition-colors"
                                             >
                                                 Miembros
                                             </button>
                                         </div>
                                     )}
                                 </div>
-
                             </div>
 
                             <div
                                 ref={messagesContainerRef}
-                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-1.5 custom-scrollbar overscroll-y-contain bg-neutral-50"
+                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-1.5 custom-scrollbar overscroll-y-contain chat-bg"
                                 style={{ paddingBottom: `calc(${composerHeight}px)` }}
                             >
                                 {loadingMessages && (
-                                    <div className="text-xs text-neutral-400">Cargando mensajes...</div>
+                                    <div className="flex items-center gap-2 text-xs text-neutral-400 py-8 justify-center">
+                                        <RefreshCw size={14} className="animate-spin" />
+                                        Cargando mensajes...
+                                    </div>
                                 )}
                                 {!loadingMessages && messages.length === 0 && (
-                                    <div className="text-sm text-neutral-400">No hay mensajes en este canal.</div>
+                                    <div className="chat-empty-state flex flex-col items-center justify-center py-16 text-center">
+                                        <div className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-3 shadow-sm">
+                                            <MessageSquare size={24} className="text-neutral-300" />
+                                        </div>
+                                        <p className="text-sm font-medium text-neutral-500">No hay mensajes en este canal</p>
+                                        <p className="text-xs text-neutral-400 mt-1">Inicia la conversacion enviando un mensaje</p>
+                                    </div>
                                 )}
                                 {messages.map((message) => {
                                     const botMessage = isMessageFromClawbot(message);
@@ -1307,109 +1338,136 @@ const TeamChat = () => {
                                         || repliedMessage?.author?.email
                                         || 'Mensaje original';
                                     const repliedBody = repliedMessage?.body || '...';
+                                    const avatarSrc = botMessage
+                                        ? CLAWBOT_AVATAR_URL
+                                        : message?.author?.avatar_url
+                                        || (isOutbound ? profile?.avatar_url || user?.user_metadata?.avatar_url : null);
+                                    const avatarFallback = botMessage
+                                        ? 'AI'
+                                        : getInitials(isOutbound
+                                            ? profile?.full_name || user?.email || 'Tu'
+                                            : authorName);
                                     return (
-                                        <div key={message.id} className={`flex flex-col min-w-0 max-w-[85%] group ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                            <div className="flex items-center gap-1.5 mb-0 px-1">
+                                        <ChatBubble
+                                            key={message.id}
+                                            variant={isOutbound ? 'sent' : 'received'}
+                                            layout={botMessage ? 'ai' : 'default'}
+                                            className="chat-animate-in mb-2 w-full group"
+                                        >
+                                            <ChatBubbleAvatar
+                                                src={avatarSrc}
+                                                fallback={avatarFallback}
+                                                className="h-9 w-9 shrink-0 ring-1 ring-black/5"
+                                            />
+                                            <div className={`flex min-w-0 max-w-[80%] flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
+                                                <div className="flex items-center gap-1.5 mb-0.5 px-1">
                                                 {isOutbound && (
                                                     <button
                                                         onClick={() => setReplyingTo(message)}
                                                         className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600 leading-none"
                                                     >
-                                                        • Responder
+                                                        Responder
                                                     </button>
                                                 )}
                                                 <span className={`text-[10px] font-bold leading-none ${getUserColor(authorName)}`}>
                                                     {authorName}
                                                 </span>
-                                                <span className="text-[9px] text-neutral-400 leading-none">
+                                                <span className="text-[9px] text-neutral-400/80 leading-none">
                                                     {formatShortDateTime(message.created_at)}
                                                 </span>
+                                                {isSeen && (
+                                                    <span className="text-[9px] font-semibold leading-none text-emerald-500">
+                                                        Leído
+                                                    </span>
+                                                )}
                                                 {!isOutbound && (
                                                     <button
                                                         onClick={() => setReplyingTo(message)}
                                                         className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600 leading-none"
                                                     >
-                                                        • Responder
+                                                        Responder
                                                     </button>
                                                 )}
-                                            </div>
-                                            <ReactionPickerPopover
-                                                onSelect={(emoji) => handleToggleReaction(message.id, emoji)}
-                                                openOnClick={false}
-                                            >
-                                                <div
-                                                    id={`msg-${message.id}`}
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    className={`relative max-w-full px-3 py-2 text-sm rounded-lg shadow-sm group ${isOutbound
-                                                        ? 'bg-[#d9fdd3] text-neutral-900 rounded-tr-none'
-                                                        : 'bg-white text-neutral-900 rounded-tl-none'
-                                                        }`}
-                                                >
-                                                    {message.reply_to_id && (
-                                                        <div
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const el = document.getElementById(`msg-${message.reply_to_id}`);
-                                                                if (el) {
-                                                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                                    el.classList.add('bg-black/10', 'transition-colors', 'duration-500');
-                                                                    setTimeout(() => {
-                                                                        el.classList.remove('bg-black/10');
-                                                                    }, 1500);
-                                                                }
-                                                            }}
-                                                            className="mb-2 w-full min-w-0 max-w-full overflow-hidden p-2 bg-black/5 border-l-4 border-black/20 rounded text-[11px] cursor-pointer hover:bg-black/10 transition-colors"
-                                                        >
-                                                            <p className="font-bold opacity-70 italic truncate">
-                                                                Respondiento a {repliedAuthor}
-                                                            </p>
-                                                            <p className="truncate max-w-full opacity-60">
-                                                                {repliedBody}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                    {isAudio ? (
-                                                        <div className="space-y-2 min-w-[220px]">
-                                                            <audio controls preload="none" src={mediaUrl} className="w-full" />
-                                                            {message.file_name && (
-                                                                <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
-                                                            )}
-                                                        </div>
-                                                    ) : isImage ? (
-                                                        <div className="space-y-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => openLightbox(mediaUrl, message.file_name)}
-                                                                className="block focus:outline-none"
-                                                            >
-                                                                <img
-                                                                    src={mediaUrl}
-                                                                    alt={message.file_name || 'Imagen compartida'}
-                                                                    className="max-h-64 rounded-lg object-cover cursor-zoom-in"
-                                                                    loading="lazy"
-                                                                />
-                                                            </button>
-                                                            {message.file_name && (
-                                                                <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
-                                                            )}
-                                                        </div>
-                                                    ) : message?.message_type === 'audio' ? (
-                                                        <p className="text-xs text-neutral-500">Audio no disponible.</p>
-                                                    ) : message?.message_type === 'image' ? (
-                                                        <p className="text-xs text-neutral-500">Imagen no disponible.</p>
-                                                    ) : (
-                                                        <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderTextWithLinks(message.body)}</p>
-                                                    )}
-
                                                 </div>
-                                            </ReactionPickerPopover>
-                                            <MessageReactionsBar
-                                                reactions={reactionsByMessage[message.id] || []}
-                                                currentUserId={user?.id}
-                                                onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
-                                            />
-                                        </div>
+                                                <ReactionPickerPopover
+                                                    onSelect={(emoji) => handleToggleReaction(message.id, emoji)}
+                                                    openOnClick={false}
+                                                >
+                                                    <ChatBubbleMessage
+                                                        id={`msg-${message.id}`}
+                                                        variant={isOutbound ? 'sent' : 'received'}
+                                                        role="button"
+                                                        tabIndex={0}
+                                                        className={cn(
+                                                            'chat-bubble relative max-w-full px-3 py-2 text-sm shadow-sm',
+                                                            isOutbound
+                                                                ? 'chat-bubble-out bg-transparent text-neutral-900'
+                                                                : 'chat-bubble-in bg-transparent text-neutral-900',
+                                                        )}
+                                                    >
+                                                        {message.reply_to_id && (
+                                                            <div
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const el = document.getElementById(`msg-${message.reply_to_id}`);
+                                                                    if (el) {
+                                                                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                        el.classList.add('bg-black/10', 'transition-colors', 'duration-500');
+                                                                        setTimeout(() => {
+                                                                            el.classList.remove('bg-black/10');
+                                                                        }, 1500);
+                                                                    }
+                                                                }}
+                                                                className="chat-reply-preview mb-2 w-full min-w-0 max-w-full overflow-hidden p-2 text-[11px] cursor-pointer hover:opacity-80 transition-opacity"
+                                                            >
+                                                                <p className="font-semibold text-neutral-600 truncate">
+                                                                    Respondiendo a {repliedAuthor}
+                                                                </p>
+                                                                <p className="truncate max-w-full text-neutral-500">
+                                                                    {repliedBody}
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                        {isAudio ? (
+                                                            <ChatAudioPlayer
+                                                                src={mediaUrl}
+                                                                fileName={message.file_name}
+                                                                variant={isOutbound ? 'outbound' : 'inbound'}
+                                                            />
+                                                        ) : isImage ? (
+                                                            <div className="space-y-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => openLightbox(mediaUrl, message.file_name)}
+                                                                    className="block focus:outline-none"
+                                                                >
+                                                                    <img
+                                                                        src={mediaUrl}
+                                                                        alt={message.file_name || 'Imagen compartida'}
+                                                                        className="max-h-64 rounded-lg object-cover cursor-zoom-in"
+                                                                        loading="lazy"
+                                                                    />
+                                                                </button>
+                                                                {message.file_name && (
+                                                                    <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
+                                                                )}
+                                                            </div>
+                                                        ) : message?.message_type === 'audio' ? (
+                                                            <p className="text-xs text-neutral-500">Audio no disponible.</p>
+                                                        ) : message?.message_type === 'image' ? (
+                                                            <p className="text-xs text-neutral-500">Imagen no disponible.</p>
+                                                        ) : (
+                                                            <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderTextWithLinks(message.body)}</p>
+                                                        )}
+                                                    </ChatBubbleMessage>
+                                                </ReactionPickerPopover>
+                                                <MessageReactionsBar
+                                                    reactions={reactionsByMessage[message.id] || []}
+                                                    currentUserId={user?.id}
+                                                    onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
+                                                />
+                                            </div>
+                                        </ChatBubble>
                                     );
                                 })}
                                 <div ref={messagesEndRef} />
@@ -1417,30 +1475,30 @@ const TeamChat = () => {
 
                             <div
                                 ref={composerRef}
-                                className="shrink-0 border-t border-black/5 px-4 py-3 bg-white"
+                                className="shrink-0 chat-composer px-4 py-3"
                                 style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
                             >
                                 <div className="space-y-2">
                                     {replyingTo && (
-                                        <div className="flex items-center justify-between gap-2 p-2 mb-2 bg-neutral-50 border-l-4 border-black/40 rounded-lg animate-in slide-in-from-bottom-2">
+                                        <div className="chat-reply-preview chat-animate-in flex items-center justify-between gap-2 p-2.5 mb-1 rounded-lg">
                                             <div className="min-w-0 flex-1">
-                                                <p className={`text-[11px] font-bold truncate ${getUserColor(replyingTo.author_name || replyingTo.author?.full_name)}`}>
-                                                    Reponiendo a {replyingTo.author_name || replyingTo.author?.full_name || 'Equipo'}
+                                                <p className={`text-[11px] font-semibold truncate ${getUserColor(replyingTo.author_name || replyingTo.author?.full_name)}`}>
+                                                    Respondiendo a {replyingTo.author_name || replyingTo.author?.full_name || 'Equipo'}
                                                 </p>
-                                                <p className="text-xs text-neutral-500 truncate max-w-full">{replyingTo.body}</p>
+                                                <p className="text-[11px] text-neutral-500 truncate max-w-full">{replyingTo.body}</p>
                                             </div>
                                             <button
                                                 onClick={() => setReplyingTo(null)}
-                                                className="shrink-0 p-1 text-neutral-400 hover:text-neutral-600"
+                                                className="shrink-0 p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-black/5 transition-colors"
                                             >
-                                                X
+                                                <span className="text-xs font-bold">✕</span>
                                             </button>
                                         </div>
                                     )}
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5">
                                         <button
                                             type="button"
-                                            className={`p-2 transition disabled:opacity-50 ${uploadingImage ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700'}`}
+                                            className={`p-2 rounded-lg transition disabled:opacity-50 ${uploadingImage ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/60'}`}
                                             title="Adjuntar imagen"
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={uploadingImage || !selectedChannelId}
@@ -1455,7 +1513,7 @@ const TeamChat = () => {
                                             className="hidden"
                                         />
                                         <button
-                                            className={`p-2 transition disabled:opacity-50 ${uploadingAudio ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700'}`}
+                                            className={`p-2 rounded-lg transition disabled:opacity-50 ${isRecording ? 'text-red-500 bg-red-50' : uploadingAudio ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/60'}`}
                                             title={isRecording ? 'Detener grabación' : 'Grabar nota de voz'}
                                             onClick={() => {
                                                 if (isRecording) {
@@ -1477,8 +1535,8 @@ const TeamChat = () => {
                                             ref={textareaRef}
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
-                                            placeholder="Mensaje..."
-                                            className="flex-1 min-h-[40px] max-h-32 rounded-2xl bg-neutral-100 px-4 py-2.5 text-base lg:text-[14px] focus:bg-neutral-200 focus:outline-none resize-none transition-colors custom-scrollbar"
+                                            placeholder="Escribe un mensaje..."
+                                            className="flex-1 min-h-[40px] max-h-32 rounded-xl bg-white px-4 py-2.5 text-base lg:text-[14px] focus:outline-none focus:ring-1 focus:ring-neutral-300 resize-none transition-all custom-scrollbar shadow-sm"
                                             onPaste={(event) => {
                                                 const items = event.clipboardData?.items;
                                                 if (!items || items.length === 0) return;
@@ -1499,22 +1557,24 @@ const TeamChat = () => {
                                         <button
                                             onClick={handleSend}
                                             disabled={sending || !messageText.trim()}
-                                            className="p-2 text-neutral-500 hover:text-neutral-700 transition disabled:opacity-50"
+                                            className={`p-2.5 rounded-xl transition-all disabled:opacity-30 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-sm' : 'text-neutral-400'}`}
                                         >
-                                            {sending ? <RefreshCw size={20} className="animate-spin" /> : <Send size={20} />}
+                                            {sending ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
                                         </button>
                                     </div>
-                                    {sendError && <p className="text-xs text-red-600">{sendError}</p>}
+                                    {sendError && <p className="text-xs text-red-600 mt-1">{sendError}</p>}
                                 </div>
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center text-neutral-400">
-                            <div className="text-center">
-                                <MessageSquare size={32} className="mx-auto mb-3" />
-                                <p className="font-semibold text-neutral-700">Selecciona un canal</p>
-                                <p className="text-sm text-neutral-400 mt-1">
-                                    Elige un canal para ver los mensajes.
+                        <div className="flex-1 flex items-center justify-center chat-bg">
+                            <div className="text-center chat-empty-state">
+                                <div className="w-16 h-16 rounded-2xl bg-white/80 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                    <MessageSquare size={28} className="text-neutral-300" />
+                                </div>
+                                <p className="font-semibold text-neutral-600">Selecciona un canal</p>
+                                <p className="text-[13px] text-neutral-400 mt-1">
+                                    Elige un canal para ver los mensajes
                                 </p>
                             </div>
                         </div>

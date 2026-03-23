@@ -15,6 +15,7 @@ import {
     handleReportsIngest,
 } from '../server/services/reportsPipeline.js';
 import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
+import { verifyAuthenticated } from '../server/utils/auth.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -156,22 +157,12 @@ function formatSlackText({ event, table, record, enrich }) {
     return null;
 }
 
-async function handleSlackNotify(req, res) {
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-    const secret = process.env.SLACK_NOTIFY_SECRET;
-    if (secret && req.headers['x-slack-notify-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
-
+async function sendSlackText(text) {
     const token = process.env.SLACK_BOT_TOKEN;
     const channel = process.env.SLACK_CHANNEL_ID;
-    if (!token || !channel) return res.status(500).json({ error: 'Missing Slack credentials' });
-
-    const payload = typeof req.body === 'object' ? req.body : null;
-    if (!payload?.table || !payload?.event) return res.status(400).json({ error: 'Invalid payload' });
-
-    const enrich = await enrichForSlack({ table: payload.table, record: payload.record });
-    const text = formatSlackText({ event: payload.event, table: payload.table, record: payload.record, enrich });
-    if (!text) return res.status(200).json({ ok: true, skipped: true });
+    if (!token || !channel) {
+        return { ok: false, status: 500, payload: { error: 'Missing Slack credentials' } };
+    }
 
     try {
         const response = await fetch('https://slack.com/api/chat.postMessage', {
@@ -180,12 +171,68 @@ async function handleSlackNotify(req, res) {
             body: JSON.stringify({ channel, text }),
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.ok === false) return res.status(502).json({ error: 'Slack API error', detail: data });
-        return res.status(200).json({ ok: true, ts: data.ts });
+        if (!response.ok || data.ok === false) {
+            return { ok: false, status: 502, payload: { error: 'Slack API error', detail: data } };
+        }
+        return { ok: true, status: 200, payload: { ok: true, ts: data.ts } };
     } catch (err) {
         console.error('[notifications] slack error:', err);
-        return res.status(500).json({ error: 'Failed to notify Slack' });
+        return { ok: false, status: 500, payload: { error: 'Failed to notify Slack' } };
     }
+}
+
+async function handleSlackNotify(req, res) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const secret = process.env.SLACK_NOTIFY_SECRET;
+    if (secret && req.headers['x-slack-notify-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+
+    const payload = typeof req.body === 'object' ? req.body : null;
+    if (!payload?.table || !payload?.event) return res.status(400).json({ error: 'Invalid payload' });
+
+    const enrich = await enrichForSlack({ table: payload.table, record: payload.record });
+    const text = formatSlackText({ event: payload.event, table: payload.table, record: payload.record, enrich });
+    if (!text) return res.status(200).json({ ok: true, skipped: true });
+
+    const result = await sendSlackText(text);
+    return res.status(result.status).json(result.payload);
+}
+
+async function handleTeamChatMessage(req, res) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const { user, profile, error } = await verifyAuthenticated(req);
+    if (error) return res.status(401).json({ error });
+    if (!['admin', 'worker'].includes(profile?.role)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const body = parseJsonBody(req);
+    const messageId = String(body?.messageId || body?.message_id || '').trim();
+    if (!messageId) return res.status(400).json({ error: 'Missing messageId' });
+
+    const supabase = getSupabaseAdmin();
+    if (!supabase) return res.status(500).json({ error: 'Database connection error' });
+
+    const { data: record, error: recordError } = await supabase
+        .from('team_messages')
+        .select('id, channel_id, author_id, author_name, body, file_name, message_type, media_url, created_at')
+        .eq('id', messageId)
+        .maybeSingle();
+
+    if (recordError) return res.status(500).json({ error: 'Failed to load message' });
+    if (!record) return res.status(404).json({ error: 'Message not found' });
+
+    if (record.author_id !== user.id && profile.role !== 'admin') {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const enrich = await enrichForSlack({ table: 'team_messages', record });
+    const text = formatSlackText({ event: 'INSERT', table: 'team_messages', record, enrich });
+    if (!text) return res.status(200).json({ ok: true, skipped: true });
+
+    const result = await sendSlackText(text);
+    return res.status(result.status).json(result.payload);
 }
 
 // ─── Slack Channel Create ────────────────────────────────────────────────────
@@ -259,10 +306,11 @@ export default async function handler(req, res) {
     if (action === 'welcome-email') return handleWelcomeEmail(req, res);
     if (action === 'project-created') return handleProjectCreated(req, res);
     if (action === 'slack-notify') return handleSlackNotify(req, res);
+    if (action === 'team-chat-message') return handleTeamChatMessage(req, res);
     if (action === 'slack-create-channel') return handleSlackCreateChannel(req, res);
 
     // Default fallback: if no action, treat as project-created POST (backward compat)
     if (req.method === 'POST' && !action) return handleProjectCreated(req, res);
 
-    return res.status(400).json({ error: 'Missing or unknown ?action. Valid: welcome-email, project-created, slack-notify, slack-create-channel' });
+    return res.status(400).json({ error: 'Missing or unknown ?action. Valid: welcome-email, project-created, slack-notify, team-chat-message, slack-create-channel' });
 }

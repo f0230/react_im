@@ -19,22 +19,22 @@ const MessagingTabs = () => {
     };
 
     return (
-        <div className="shrink-0 border-b border-neutral-200 bg-white px-4 py-2">
-            <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar">
+        <div className="shrink-0 bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
                 {tabs.map((tab) => (
                     <NavLink
                         key={tab.key}
                         to={tab.path}
-                        className={({ isActive }) => `inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition whitespace-nowrap ${isActive
-                            ? 'border-black bg-black text-white'
-                            : 'border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400 hover:text-neutral-900'
+                        className={({ isActive }) => `inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-all whitespace-nowrap ${isActive
+                            ? 'bg-neutral-900 text-white shadow-sm'
+                            : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-800'
                             }`}
                     >
-                        <tab.icon size={14} />
+                        <tab.icon size={15} />
                         {tab.label}
                         {unreadMap[tab.key] > 0 && (
                             <span
-                                className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] px-1"
+                                className="ml-0.5 inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full bg-red-500 text-white text-[10px] font-bold px-1"
                                 aria-label={`${formatUnread(unreadMap[tab.key])} mensajes sin leer`}
                             >
                                 {formatUnread(unreadMap[tab.key])}

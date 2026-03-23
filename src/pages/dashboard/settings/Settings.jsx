@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings as SettingsIcon, Users, Mail, Trash2, Plus, Copy, Check, Shield } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Mail, Trash2, Plus, Copy, Check, Shield, Camera, Loader2, Save } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../lib/supabaseClient';
 import WorkerEarningsWidget from '@/components/finances/WorkerEarningsWidget';
 
 const Settings = () => {
-    const { profile, client } = useAuth();
+    const { user, profile, client, refreshProfile } = useAuth();
     const [invitations, setInvitations] = useState([]);
     const [teamMembers, setTeamMembers] = useState([]);
     const [newEmail, setNewEmail] = useState('');
@@ -14,6 +14,13 @@ const Settings = () => {
     const [fetching, setFetching] = useState(true);
     const [error, setError] = useState(null);
     const [copiedToken, setCopiedToken] = useState(null);
+    const [profileForm, setProfileForm] = useState({
+        full_name: '',
+        avatar_url: '',
+    });
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [avatarUploading, setAvatarUploading] = useState(false);
+    const [profileMessage, setProfileMessage] = useState('');
 
     const isLeader = profile?.is_client_leader;
 
@@ -24,6 +31,13 @@ const Settings = () => {
             setFetching(false);
         }
     }, [client]);
+
+    useEffect(() => {
+        setProfileForm({
+            full_name: profile?.full_name || '',
+            avatar_url: profile?.avatar_url || '',
+        });
+    }, [profile?.avatar_url, profile?.full_name]);
 
     const fetchTeamData = async () => {
         try {
@@ -134,6 +148,99 @@ const Settings = () => {
         setTimeout(() => setCopiedToken(null), 2000);
     };
 
+    const handleProfileFieldChange = (event) => {
+        const { name, value } = event.target;
+        setProfileMessage('');
+        setProfileForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleAvatarUpload = async (event) => {
+        const file = event.target.files?.[0];
+        if (!file || !user?.id) return;
+
+        if (!file.type.startsWith('image/')) {
+            setError('Solo se permiten imágenes para la foto de perfil.');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            setError('La foto de perfil no puede superar 5MB.');
+            return;
+        }
+
+        setAvatarUploading(true);
+        setError(null);
+        setProfileMessage('');
+
+        try {
+            const fileExt = file.name.split('.').pop() || 'jpg';
+            const filePath = `profile-avatars/${user.id}-${Date.now()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file, {
+                    upsert: true,
+                    contentType: file.type || 'image/jpeg',
+                });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            setProfileForm((prev) => ({ ...prev, avatar_url: publicUrl }));
+        } catch (err) {
+            console.error('Avatar upload error:', err);
+            setError(`No se pudo subir la foto. ${err.message || 'Verifica el bucket "avatars".'}`);
+        } finally {
+            setAvatarUploading(false);
+            event.target.value = '';
+        }
+    };
+
+    const handleProfileSave = async (event) => {
+        event.preventDefault();
+        if (!user?.id) return;
+
+        setProfileSaving(true);
+        setError(null);
+        setProfileMessage('');
+
+        try {
+            const trimmedName = profileForm.full_name.trim();
+
+            const { error: profileUpdateError } = await supabase
+                .from('profiles')
+                .update({
+                    full_name: trimmedName || null,
+                    avatar_url: profileForm.avatar_url || null,
+                })
+                .eq('id', user.id);
+
+            if (profileUpdateError) throw profileUpdateError;
+
+            if (profile?.role === 'client' && profile?.is_client_leader !== false) {
+                const { error: clientUpdateError } = await supabase
+                    .from('clients')
+                    .update({
+                        full_name: trimmedName || null,
+                    })
+                    .eq('user_id', user.id);
+
+                if (clientUpdateError) throw clientUpdateError;
+            }
+
+            await refreshProfile();
+            setProfileMessage('Perfil actualizado.');
+        } catch (err) {
+            console.error('Profile save error:', err);
+            setError(err.message || 'No se pudo actualizar el perfil.');
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
     if (fetching) {
         return <div className="p-8 text-white font-product animate-pulse">Loading settings...</div>;
     }
@@ -157,6 +264,97 @@ const Settings = () => {
             )}
 
             {['admin', 'worker'].includes(profile?.role) && <WorkerEarningsWidget />}
+
+            <div className="bg-[#111] border border-white/10 rounded-2xl overflow-hidden mb-8">
+                <div className="p-6 border-b border-white/10">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Camera className="w-5 h-5 text-green" />
+                        <h2 className="text-xl font-bold">Mi perfil</h2>
+                    </div>
+                    <p className="text-sm text-gray-400">
+                        Sube una foto para que aparezca en Team Chat y en el resto del dashboard.
+                    </p>
+                </div>
+
+                <form onSubmit={handleProfileSave} className="p-6">
+                    <div className="flex flex-col md:flex-row gap-6 md:items-center">
+                        <div className="flex flex-col items-center md:items-start gap-3">
+                            <div className="relative group">
+                                <div className="w-24 h-24 rounded-full overflow-hidden bg-gradient-to-tr from-green/20 to-blue-500/20 border border-white/10">
+                                    {profileForm.avatar_url ? (
+                                        <img
+                                            src={profileForm.avatar_url}
+                                            alt={profileForm.full_name || profile?.email || 'Foto de perfil'}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-white/80">
+                                            {(profileForm.full_name || profile?.email || '?').charAt(0).toUpperCase()}
+                                        </div>
+                                    )}
+                                </div>
+                                <label className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                                    {avatarUploading ? (
+                                        <Loader2 className="w-5 h-5 animate-spin text-white" />
+                                    ) : (
+                                        <Camera className="w-5 h-5 text-white" />
+                                    )}
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleAvatarUpload}
+                                        className="hidden"
+                                        disabled={avatarUploading}
+                                    />
+                                </label>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                PNG, JPG o WEBP. Máximo 5MB.
+                            </p>
+                        </div>
+
+                        <div className="flex-1 grid gap-4">
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider font-bold">
+                                    Nombre
+                                </label>
+                                <input
+                                    type="text"
+                                    name="full_name"
+                                    value={profileForm.full_name}
+                                    onChange={handleProfileFieldChange}
+                                    placeholder="Tu nombre"
+                                    className="w-full bg-black/50 border border-white/10 rounded-xl py-2.5 px-4 text-sm text-white focus:outline-none focus:border-green/50 transition-colors"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider font-bold">
+                                    Email
+                                </label>
+                                <input
+                                    type="email"
+                                    value={profile?.email || user?.email || ''}
+                                    disabled
+                                    className="w-full bg-black/30 border border-white/5 rounded-xl py-2.5 px-4 text-sm text-gray-500"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="submit"
+                                    disabled={profileSaving || avatarUploading}
+                                    className="flex items-center gap-2 bg-white text-black px-5 py-2.5 rounded-xl font-bold hover:bg-gray-200 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+                                >
+                                    {profileSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    Guardar perfil
+                                </button>
+                                {profileMessage && <p className="text-sm text-green-400">{profileMessage}</p>}
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
 
             {/* TEAM MANAGEMENT SECTION */}
             {client && (

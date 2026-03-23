@@ -7,6 +7,7 @@ import ClientDetail from '@/pages/dashboard/crm/ClientDetail';
 import useViewportHeight from '@/hooks/useViewportHeight';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
 import { formatTime, formatTimestamp, getInitial, normalizePhone } from '@/utils/messagingFormatters';
+import ChatAudioPlayer from '@/components/chat/ChatAudioPlayer';
 import { formatPhoneForDisplay } from '@/utils/phone-format';
 
 const WHATSAPP_THREAD_REQUIRED_COLUMNS = ['id', 'wa_id', 'client_name', 'client_phone', 'last_message', 'last_message_at'];
@@ -116,12 +117,17 @@ const Inbox = () => {
         }
     }, []);
 
+    const supportsAiToggleRef = useRef(supportsAiToggle);
+    supportsAiToggleRef.current = supportsAiToggle;
+    const supportsThreadClientIdRef = useRef(supportsThreadClientId);
+    supportsThreadClientIdRef.current = supportsThreadClientId;
+
     const loadThreads = useCallback(async (background = false) => {
         if (!isAllowed) return;
         if (!background) setLoadingThreads(true);
         setError('');
-        let nextSupportsAiToggle = supportsAiToggle;
-        let nextSupportsThreadClientId = supportsThreadClientId;
+        let nextSupportsAiToggle = supportsAiToggleRef.current;
+        let nextSupportsThreadClientId = supportsThreadClientIdRef.current;
 
         const fetchThreads = (columns) => supabase
             .from('whatsapp_threads')
@@ -174,7 +180,7 @@ const Inbox = () => {
             })));
         }
         if (!background) setLoadingThreads(false);
-    }, [isAllowed, supportsAiToggle, supportsThreadClientId]);
+    }, [isAllowed]);
 
     const loadMessages = useCallback(
         async (waId, background = false) => {
@@ -592,29 +598,29 @@ const Inbox = () => {
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[360px_1fr] min-h-0">
                 {/* List Side */}
                 <div
-                    className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-200 ${selectedThreadId ? 'hidden lg:flex' : 'flex'
+                    className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-100 bg-white ${selectedThreadId ? 'hidden lg:flex' : 'flex'
                         }`}
                 >
-                    <div className="p-4 border-b border-black/5 shrink-0">
+                    <div className="p-4 border-b border-neutral-100 shrink-0">
                         <div className="relative">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
                             <input
                                 value={searchTerm}
                                 onChange={(event) => setSearchTerm(event.target.value)}
-                                placeholder="Buscar..."
-                                className="w-full rounded-full border border-black/10 bg-neutral-50 pl-9 pr-3 py-2 text-sm focus:border-black/40 focus:bg-white transition"
+                                placeholder="Buscar conversacion..."
+                                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-9 pr-3 py-2 text-xs focus:border-neutral-300 focus:bg-white focus:shadow-sm transition-all"
                             />
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar overscroll-y-contain">
-                        {loadingThreads && (
-                            <div className="text-xs text-neutral-400 px-2 flex items-center gap-2">
+                    <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar overscroll-y-contain">
+                        {loadingThreads && filteredThreads.length === 0 && (
+                            <div className="text-xs text-neutral-400 px-3 py-4 flex items-center gap-2">
                                 <RefreshCw size={12} className="animate-spin" />
                                 Cargando bandeja...
                             </div>
                         )}
                         {error && !loadingThreads && (
-                            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                            <div className="p-3 m-1 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-700">
                                 <p className="font-semibold mb-1">Error de carga</p>
                                 {error}
                                 <button
@@ -626,7 +632,7 @@ const Inbox = () => {
                             </div>
                         )}
                         {!loadingThreads && !error && filteredThreads.length === 0 && (
-                            <div className="text-sm text-neutral-400 px-2">No hay conversaciones.</div>
+                            <div className="text-sm text-neutral-400 px-3 py-4">No hay conversaciones.</div>
                         )}
                         {filteredThreads.map((thread) => {
                             const displayName = thread.client_name || formatPhoneForDisplay(thread.client_phone) || formatPhoneForDisplay(thread.wa_id) || 'Cliente';
@@ -635,28 +641,28 @@ const Inbox = () => {
                                 <button
                                     key={thread.wa_id}
                                     onClick={() => setSelectedThreadId(thread.wa_id)}
-                                    className={`w-full text-left rounded-2xl border px-3 py-3 transition ${isActive
-                                        ? 'border-black/10 bg-black text-white shadow-lg'
-                                        : 'border-black/5 bg-white hover:bg-neutral-50'
+                                    className={`chat-sidebar-item w-full text-left rounded-xl px-3 py-2.5 ${isActive
+                                        ? 'chat-sidebar-active text-white'
+                                        : 'hover:bg-neutral-50'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
                                         <div
-                                            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${isActive ? 'bg-white/10 text-white' : 'bg-neutral-100 text-neutral-700'
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold shrink-0 ${isActive ? 'chat-avatar-active' : 'chat-avatar'
                                                 }`}
                                         >
                                             {getInitial(displayName)}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between gap-2">
-                                                <p className={`text-sm font-semibold truncate ${isActive ? 'text-white' : 'text-neutral-900'}`}>
+                                                <p className={`text-[13px] font-semibold truncate ${isActive ? 'text-white' : 'text-neutral-800'}`}>
                                                     {displayName}
                                                 </p>
-                                                <span className={`text-[10px] shrink-0 ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
+                                                <span className={`text-[10px] shrink-0 ${isActive ? 'text-white/50' : 'text-neutral-400'}`}>
                                                     {formatTimestamp(thread.last_message_at)}
                                                 </span>
                                             </div>
-                                            <p className={`text-xs truncate ${isActive ? 'text-white/70' : 'text-neutral-500'}`}>
+                                            <p className={`text-[11px] truncate ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
                                                 {thread.last_message || 'Sin mensajes'}
                                             </p>
                                         </div>
@@ -673,12 +679,12 @@ const Inbox = () => {
                 >
                     {selectedThread ? (
                         <>
-                            <div className="sticky top-0 z-40 shrink-0 border-b border-neutral-200 bg-white shadow-sm supports-[backdrop-filter]:bg-white/90 backdrop-blur">
+                            <div className="sticky top-0 z-40 shrink-0 chat-header">
                                 <div className="px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <button
                                             onClick={() => setSelectedThreadId(null)}
-                                            className="lg:hidden p-2 -ml-2 text-neutral-500 hover:text-neutral-900"
+                                            className="lg:hidden p-2 -ml-2 text-neutral-400 hover:text-neutral-800 transition-colors"
                                             aria-label="Volver"
                                         >
                                             <ArrowLeft size={20} />
@@ -689,10 +695,10 @@ const Inbox = () => {
                                             className="group flex items-center gap-3 min-w-0 text-left"
                                         >
                                             <div className="relative">
-                                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-50 to-sky-50 text-emerald-700 flex items-center justify-center font-semibold shadow-sm ring-1 ring-emerald-100">
+                                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-emerald-50 to-sky-50 text-emerald-700 flex items-center justify-center font-semibold shadow-sm">
                                                     {getInitial(selectedThread.client_name || formatPhoneForDisplay(selectedThread.client_phone) || formatPhoneForDisplay(selectedThread.wa_id))}
                                                 </div>
-                                                <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-white shadow-sm flex items-center justify-center">
+                                                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-white shadow-sm flex items-center justify-center">
                                                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                                                 </span>
                                             </div>
@@ -768,20 +774,29 @@ const Inbox = () => {
 
                             <div
                                 ref={messagesContainerRef}
-                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-2 custom-scrollbar overscroll-y-contain bg-neutral-50"
+                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-1.5 custom-scrollbar overscroll-y-contain chat-bg"
                                 style={{ paddingBottom: `${composerHeight}px` }}
                             >
                                 {loadingMessages && (
-                                    <div className="text-xs text-neutral-400">Cargando mensajes...</div>
+                                    <div className="flex items-center gap-2 text-xs text-neutral-400 py-8 justify-center">
+                                        <RefreshCw size={14} className="animate-spin" />
+                                        Cargando mensajes...
+                                    </div>
                                 )}
                                 {!loadingMessages && messages.length === 0 && (
-                                    <div className="text-sm text-neutral-400">No hay mensajes en esta conversacion.</div>
+                                    <div className="chat-empty-state flex flex-col items-center justify-center py-16 text-center">
+                                        <div className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-3 shadow-sm">
+                                            <MessageSquare size={24} className="text-neutral-300" />
+                                        </div>
+                                        <p className="text-sm font-medium text-neutral-500">No hay mensajes en esta conversacion</p>
+                                        <p className="text-xs text-neutral-400 mt-1">Los mensajes apareceran aqui</p>
+                                    </div>
                                 )}
                                 {messages.map((message) => {
                                     const isOutbound = message.direction === 'outbound';
                                     const bubbleClass = isOutbound
-                                        ? 'ml-auto bg-[#d9fdd3] text-neutral-900 rounded-tr-none shadow-sm'
-                                        : 'mr-auto bg-white text-neutral-900 rounded-tl-none shadow-sm';
+                                        ? 'ml-auto chat-bubble chat-bubble-out text-neutral-900'
+                                        : 'mr-auto chat-bubble chat-bubble-in text-neutral-900';
 
                                     const renderContent = () => {
                                         if (message.type === 'text' || !message.type) {
@@ -809,7 +824,12 @@ const Inbox = () => {
                                             );
                                         }
                                         if (message.type === 'audio') {
-                                            return <audio src={cleanUrl} controls preload="none" className="w-full min-w-[200px]" />;
+                                            return (
+                                                <ChatAudioPlayer
+                                                    src={cleanUrl}
+                                                    variant={isOutbound ? 'outbound' : 'inbound'}
+                                                />
+                                            );
                                         }
                                         if (message.type === 'document' || message.type === 'file') {
                                             return (
@@ -823,10 +843,10 @@ const Inbox = () => {
                                     };
 
                                     return (
-                                        <div key={message.id || message.message_id} className="flex flex-col max-w-[85%]">
-                                            <div className={`relative px-3 py-2 text-sm rounded-lg ${bubbleClass}`}>
+                                        <div key={message.id || message.message_id} className={`chat-animate-in flex flex-col max-w-[80%] ${isOutbound ? 'ml-auto' : 'mr-auto'}`}>
+                                            <div className={`relative px-3 py-2 text-sm ${bubbleClass}`}>
                                                 {renderContent()}
-                                                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-500">
+                                                <div className="mt-1 flex items-center justify-end gap-1 text-[10px] text-neutral-400/80">
                                                     <span>{formatTime(message.timestamp)}</span>
                                                 </div>
                                             </div>
@@ -837,55 +857,60 @@ const Inbox = () => {
 
                             <div
                                 ref={composerRef}
-                                className="shrink-0 border-t border-black/5 px-4 pt-3 pb-2 bg-white shadow-[0_-12px_24px_-20px_rgba(0,0,0,0.3)]"
-                                style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+                                className="shrink-0 chat-composer px-4 py-3"
+                                style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
                             >
-                                <div className="space-y-3">
-                                    <div className="flex flex-col gap-3">
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                className="hidden"
-                                                onChange={handleFileUpload}
-                                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
-                                            />
-                                            <button
-                                                className="p-2 text-neutral-500 hover:text-neutral-700 transition"
-                                                title="Adjuntar"
-                                                onClick={() => fileInputRef.current?.click()}
-                                                disabled={uploading}
-                                            >
-                                                {uploading ? <RefreshCw size={24} className="animate-spin" /> : <Paperclip size={24} />}
-                                            </button>
-                                            <input
-                                                value={messageText}
-                                                onChange={(event) => setMessageText(event.target.value)}
-                                                placeholder="Escribe un mensaje"
-                                                className="flex-1 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm focus:border-neutral-400 focus:outline-none"
-                                            />
-
-                                            <button
-                                                onClick={handleSend}
-                                                disabled={sending || !messageText.trim()}
-                                                className="p-2 text-neutral-500 hover:text-neutral-700 transition disabled:opacity-50"
-                                            >
-                                                <Send size={24} />
-                                            </button>
-                                        </div>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            onChange={handleFileUpload}
+                                            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                        />
+                                        <button
+                                            className={`p-2 rounded-lg transition disabled:opacity-50 ${uploading ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/60'}`}
+                                            title="Adjuntar"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploading}
+                                        >
+                                            {uploading ? <RefreshCw size={20} className="animate-spin" /> : <Paperclip size={20} />}
+                                        </button>
+                                        <input
+                                            value={messageText}
+                                            onChange={(event) => setMessageText(event.target.value)}
+                                            placeholder="Escribe un mensaje..."
+                                            className="flex-1 rounded-xl bg-white px-4 py-2.5 text-base lg:text-[14px] focus:outline-none focus:ring-1 focus:ring-neutral-300 transition-all shadow-sm"
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter' && !event.shiftKey) {
+                                                    event.preventDefault();
+                                                    handleSend();
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={sending || !messageText.trim()}
+                                            className={`p-2.5 rounded-xl transition-all disabled:opacity-30 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-sm' : 'text-neutral-400'}`}
+                                        >
+                                            {sending ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                                        </button>
                                     </div>
-                                    {sendError && <p className="text-xs text-red-600">{sendError}</p>}
-                                    {error && <p className="text-xs text-amber-600">{error}</p>}
+                                    {sendError && <p className="text-xs text-red-600 mt-1">{sendError}</p>}
+                                    {error && <p className="text-xs text-amber-600 mt-1">{error}</p>}
                                 </div>
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center text-neutral-400">
-                            <div className="text-center">
-                                <MessageSquare size={32} className="mx-auto mb-3" />
-                                <p className="font-semibold text-neutral-700">Selecciona una conversacion</p>
-                                <p className="text-sm text-neutral-400 mt-1">
-                                    Elige un thread de la bandeja para ver los mensajes.
+                        <div className="flex-1 flex items-center justify-center chat-bg">
+                            <div className="text-center chat-empty-state">
+                                <div className="w-16 h-16 rounded-2xl bg-white/80 flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                    <MessageSquare size={28} className="text-neutral-300" />
+                                </div>
+                                <p className="font-semibold text-neutral-600">Selecciona una conversacion</p>
+                                <p className="text-[13px] text-neutral-400 mt-1">
+                                    Elige un thread de la bandeja para ver los mensajes
                                 </p>
                             </div>
                         </div>
