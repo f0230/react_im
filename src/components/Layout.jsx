@@ -30,13 +30,27 @@ const Layout = ({ children, noFooter = false }) => {
             <Helmet>
                 <title>{defaultTitle}</title>
                 <meta name="description" content={defaultDescription} />
+
+                {/* Open Graph — Facebook, WhatsApp, LinkedIn, Telegram */}
                 <meta property="og:type" content="website" />
+                <meta property="og:site_name" content="Grupo DTE" />
+                <meta property="og:locale" content="es_UY" />
                 <meta property="og:title" content={defaultTitle} />
                 <meta property="og:description" content={defaultDescription} />
                 <meta property="og:image" content={ogImage} />
+                <meta property="og:image:width" content="1200" />
+                <meta property="og:image:height" content="630" />
+                <meta property="og:image:type" content="image/jpeg" />
                 <meta property="og:url" content={currentUrl} />
+
+                {/* Twitter / X */}
                 <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={defaultTitle} />
+                <meta name="twitter:description" content={defaultDescription} />
+                <meta name="twitter:image" content={ogImage} />
+
                 <link rel="canonical" href={currentUrl} />
+
                 <script type="application/ld+json">
                     {JSON.stringify({
                         "@context": "https://schema.org",
