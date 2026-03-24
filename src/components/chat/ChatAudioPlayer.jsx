@@ -20,10 +20,13 @@ const ChatAudioPlayer = ({ src, fileName, variant = 'outbound' }) => {
     const [progress, setProgress] = useState(0);
     const [duration, setDuration] = useState(0);
     const [currentTime, setCurrentTime] = useState(0);
+    const [loadError, setLoadError] = useState(false);
 
     useEffect(() => {
         const audio = audioRef.current;
         if (!audio) return;
+
+        setLoadError(false);
 
         const onTimeUpdate = () => {
             setCurrentTime(audio.currentTime);
@@ -48,30 +51,43 @@ const ChatAudioPlayer = ({ src, fileName, variant = 'outbound' }) => {
             }
         };
 
+        const onError = () => {
+            setPlaying(false);
+            setLoadError(true);
+        };
+
         audio.addEventListener('timeupdate', onTimeUpdate);
         audio.addEventListener('loadedmetadata', onLoadedMetadata);
         audio.addEventListener('durationchange', onDurationChange);
         audio.addEventListener('ended', onEnded);
+        audio.addEventListener('error', onError);
 
         return () => {
             audio.removeEventListener('timeupdate', onTimeUpdate);
             audio.removeEventListener('loadedmetadata', onLoadedMetadata);
             audio.removeEventListener('durationchange', onDurationChange);
             audio.removeEventListener('ended', onEnded);
+            audio.removeEventListener('error', onError);
             audio.pause();
         };
     }, [src]);
 
-    const togglePlay = useCallback(() => {
+    const togglePlay = useCallback(async () => {
         const audio = audioRef.current;
-        if (!audio) return;
+        if (!audio || loadError) return;
         if (playing) {
             audio.pause();
+            setPlaying(false);
         } else {
-            audio.play().catch(() => { });
+            try {
+                await audio.play();
+                setPlaying(true);
+            } catch {
+                setPlaying(false);
+                setLoadError(true);
+            }
         }
-        setPlaying(!playing);
-    }, [playing]);
+    }, [playing, loadError]);
 
     const handleBarClick = useCallback((event) => {
         const audio = audioRef.current;
@@ -89,6 +105,15 @@ const ChatAudioPlayer = ({ src, fileName, variant = 'outbound' }) => {
     const btnBg = isOut
         ? 'bg-emerald-700/20 hover:bg-emerald-700/30 text-emerald-900'
         : 'bg-neutral-200 hover:bg-neutral-300 text-neutral-700';
+
+    if (loadError) {
+        return (
+            <div className="flex items-center gap-2 min-w-[200px] py-1 text-xs text-neutral-400 italic">
+                <audio ref={audioRef} src={src} preload="none" />
+                <span>Audio no disponible</span>
+            </div>
+        );
+    }
 
     return (
         <div className="flex items-center gap-3 min-w-[240px] py-1">
