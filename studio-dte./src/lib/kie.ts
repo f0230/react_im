@@ -46,16 +46,26 @@ export async function createMarketTask(
   model: string,
   input: Record<string, any>,
 ): Promise<string> {
+  const payload = { model, input };
+  console.log('[KIE] createTask request:', JSON.stringify(payload, null, 2));
+
   const res = await fetch(`${KIE_API}/jobs/createTask`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ model, input }),
+    body: JSON.stringify(payload),
   });
 
-  if (!res.ok) throw new Error(`Create task failed: ${res.status} ${await res.text()}`);
-  const data = await res.json();
-  const id = data.taskId || data.task_id;
-  if (!id) throw new Error(data.message || 'No taskId returned');
+  const text = await res.text();
+  console.log('[KIE] createTask response:', res.status, text);
+
+  if (!res.ok) throw new Error(`Create task failed (${res.status}): ${text}`);
+
+  let data: any;
+  try { data = JSON.parse(text); } catch { throw new Error(`Invalid JSON from KIE: ${text}`); }
+
+  // Try multiple possible response shapes
+  const id = data.taskId || data.task_id || data.data?.taskId || data.data?.task_id;
+  if (!id) throw new Error(`No taskId in response: ${text}`);
   return id;
 }
 
@@ -114,16 +124,24 @@ export async function createVeoTask(params: {
     body.generationType = 'TEXT_2_VIDEO';
   }
 
+  console.log('[KIE] veo generate request:', JSON.stringify(body, null, 2));
+
   const res = await fetch(`${KIE_API}/veo/generate`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) throw new Error(`Veo task failed: ${res.status} ${await res.text()}`);
-  const data = await res.json();
-  const id = data.taskId || data.task_id;
-  if (!id) throw new Error(data.message || 'No taskId returned');
+  const text = await res.text();
+  console.log('[KIE] veo generate response:', res.status, text);
+
+  if (!res.ok) throw new Error(`Veo task failed (${res.status}): ${text}`);
+
+  let data: any;
+  try { data = JSON.parse(text); } catch { throw new Error(`Invalid JSON from KIE: ${text}`); }
+
+  const id = data.taskId || data.task_id || data.data?.taskId || data.data?.task_id;
+  if (!id) throw new Error(`No taskId in response: ${text}`);
   return id;
 }
 
