@@ -3,183 +3,314 @@ import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
 import MultiUseSelect from '../MultiUseSelect';
+import {
+  uploadBase64,
+  createMarketTask,
+  pollMarketTask,
+  createVeoTask,
+  pollVeoTask,
+} from '../../lib/kie';
 
-export default function ModelNode({ id, data }: { id: string, data: any }) {
+// ---------------------------------------------------------------------------
+// Model registry
+// ---------------------------------------------------------------------------
+const IMAGE_MODELS = [
+  'google/nano-banana',
+  'google/nano-banana-edit',
+  'nano-banana-2',
+  'nano-banana-pro',
+];
+
+const MODEL_OPTIONS = [
+  {
+    label: 'Image Models',
+    options: [
+      { label: 'Nano Banana', value: 'google/nano-banana' },
+      { label: 'Nano Banana Edit', value: 'google/nano-banana-edit' },
+      { label: 'Nano Banana 2', value: 'nano-banana-2' },
+      { label: 'Nano Banana Pro', value: 'nano-banana-pro' },
+    ],
+  },
+  {
+    label: 'Video Models',
+    options: [
+      { label: 'Kling 2.6', value: 'kling-2.6' },
+      { label: 'Kling 3.0', value: 'kling-3.0' },
+      { label: 'Sora 2', value: 'sora-2' },
+      { label: 'Veo 3', value: 'veo3' },
+      { label: 'Veo 3 Fast', value: 'veo3_fast' },
+    ],
+  },
+];
+
+function isImageModel(model: string) {
+  return IMAGE_MODELS.includes(model);
+}
+
+function isVeoModel(model: string) {
+  return model === 'veo3' || model === 'veo3_fast';
+}
+
+/** Models that support a separate resolution/quality setting */
+function supportsResolution(model: string) {
+  return model === 'nano-banana-2' || model === 'nano-banana-pro';
+}
+
+/** Models that support a duration setting */
+function supportsDuration(model: string) {
+  return model.startsWith('kling-');
+}
+
+// ---------------------------------------------------------------------------
+// Build the correct request body for each model
+// ---------------------------------------------------------------------------
+function buildMarketInput(
+  model: string,
+  prompt: string,
+  imageUrl: string | null,
+  aspectRatio: string,
+  resolution: string,
+  duration: string,
+): { apiModel: string; input: Record<string, any> } {
+  switch (model) {
+    // --- Google Nano Banana family ---
+    case 'google/nano-banana':
+      return {
+        apiModel: 'google/nano-banana',
+        input: { prompt, output_format: 'png', image_size: aspectRatio },
+      };
+
+    case 'google/nano-banana-edit':
+      return {
+        apiModel: 'google/nano-banana-edit',
+        input: {
+          prompt,
+          image_urls: imageUrl ? [imageUrl] : [],
+          output_format: 'png',
+          image_size: aspectRatio,
+        },
+      };
+
+    case 'nano-banana-2':
+      return {
+        apiModel: 'nano-banana-2',
+        input: {
+          prompt,
+          aspect_ratio: aspectRatio,
+          resolution,
+          output_format: 'jpg',
+          google_search: false,
+          image_input: imageUrl ? [imageUrl] : [],
+        },
+      };
+
+    case 'nano-banana-pro':
+      return {
+        apiModel: 'nano-banana-pro',
+        input: {
+          prompt,
+          image_input: imageUrl ? [imageUrl] : [],
+          aspect_ratio: aspectRatio,
+          resolution,
+          output_format: 'png',
+        },
+      };
+
+    // --- Kling ---
+    case 'kling-2.6':
+      if (imageUrl) {
+        return {
+          apiModel: 'kling-2.6/image-to-video',
+          input: { prompt, image_urls: [imageUrl], sound: false, duration },
+        };
+      }
+      return {
+        apiModel: 'kling-2.6/text-to-video',
+        input: { prompt, sound: false, aspect_ratio: aspectRatio, duration },
+      };
+
+    case 'kling-3.0':
+      return {
+        apiModel: 'kling-3.0/video',
+        input: {
+          prompt,
+          ...(imageUrl ? { image_urls: [imageUrl] } : {}),
+          sound: false,
+          duration,
+          aspect_ratio: aspectRatio,
+          mode: 'std',
+        },
+      };
+
+    // --- Sora 2 ---
+    case 'sora-2':
+      if (imageUrl) {
+        return {
+          apiModel: 'sora-2-image-to-video',
+          input: { prompt, image_urls: [imageUrl], aspect_ratio: aspectRatio },
+        };
+      }
+      return {
+        apiModel: 'sora-2-text-to-video',
+        input: { prompt, aspect_ratio: aspectRatio },
+      };
+
+    default:
+      throw new Error(`Unknown market model: ${model}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+export default function ModelNode({ id, data }: { id: string; data: any }) {
   const { updateNodeData, getNodes, getEdges, setNodes, setEdges } = useReactFlow();
-  const isVideo = data.modelType === 'video';
+  const isVideo = !isImageModel(data.model);
 
   const handleGenerate = async () => {
     const nodes = getNodes();
     const edges = getEdges();
-    
-    const connectedEdges = edges.filter(e => e.source === id);
-    const targetNodeIds = connectedEdges.map(e => e.target);
 
-    const inputEdges = edges.filter(e => e.target === id);
-    
-    const promptEdge = inputEdges.find(e => e.targetHandle === 'prompt');
-    const promptNode = promptEdge ? nodes.find(n => n.id === promptEdge.source) : null;
-    const promptText = promptNode?.data?.enhancedText || promptNode?.data?.text || '';
+    // Find connected output nodes
+    const connectedEdges = edges.filter((e) => e.source === id);
+    const targetNodeIds = connectedEdges.map((e) => e.target);
 
-    const refImageEdge = inputEdges.find(e => e.targetHandle === 'ref-image');
-    const refImageNode = refImageEdge ? nodes.find(n => n.id === refImageEdge.source) : null;
-    let refImageUrl = refImageNode?.data?.imageUrl || refImageNode?.data?.resultUrl || null;
+    // Gather inputs
+    const inputEdges = edges.filter((e) => e.target === id);
 
-    if (refImageUrl && refImageUrl.startsWith('http')) {
-      try {
-        const response = await fetch(refImageUrl);
-        const blob = await response.blob();
-        const reader = new FileReader();
-        refImageUrl = await new Promise((resolve) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      } catch (e) {
-        console.error("Error fetching reference image:", e);
-      }
-    }
+    const promptEdge = inputEdges.find((e) => e.targetHandle === 'prompt');
+    const promptNode = promptEdge ? nodes.find((n) => n.id === promptEdge.source) : null;
+    const promptText = (promptNode?.data?.enhancedText || promptNode?.data?.text || '') as string;
+
+    const refImageEdge = inputEdges.find((e) => e.targetHandle === 'ref-image');
+    const refImageNode = refImageEdge ? nodes.find((n) => n.id === refImageEdge.source) : null;
+    let refImageDataUrl: string | null =
+      (refImageNode?.data?.imageUrl as string) ||
+      (refImageNode?.data?.resultUrl as string) ||
+      null;
 
     if (!promptText) {
-      alert("Por favor, conecta un nodo de Prompt con texto antes de generar.");
+      alert('Por favor, conecta un nodo de Prompt con texto antes de generar.');
       return;
     }
 
-    setNodes(nds => nds.map(n => {
-      if (targetNodeIds.includes(n.id) && n.type === 'output') {
-        return { ...n, data: { ...n.data, status: 'loading', error: null } };
-      }
-      return n;
-    }));
-    
-    setEdges(eds => eds.map(e => {
-      if (e.source === id && targetNodeIds.includes(e.target)) {
-        return { ...e, data: { ...e.data, status: 'processing' } };
-      }
-      return e;
-    }));
-
-    try {
-      // @ts-ignore
-      if ((data.model === 'gemini-3.1-flash-image-preview' || data.model.startsWith('veo-')) && window.aistudio) {
-        // @ts-ignore
-        if (!(await window.aistudio.hasSelectedApiKey())) {
-          // @ts-ignore
-          await window.aistudio.openSelectKey();
-        }
-      }
-
-      const { GoogleGenAI } = await import('@google/genai');
-      // @ts-ignore
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      const ai = new GoogleGenAI({ apiKey });
-
-      let resultUrl = '';
-
-      if (data.modelType === 'image') {
-        const contents: any[] = [{ text: promptText }];
-        
-        if (refImageUrl) {
-          const base64Data = refImageUrl.split(',')[1];
-          const mimeType = refImageUrl.split(';')[0].split(':')[1];
-          contents.push({
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType
-            }
-          });
-        }
-
-        const response = await ai.models.generateContent({
-          model: data.model,
-          contents: contents,
-          config: {
-            imageConfig: {
-              aspectRatio: data.aspectRatio || "1:1",
-              imageSize: data.resolution || "1K"
-            }
-          }
-        });
-
-        const part = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-        if (part?.inlineData) {
-          resultUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        } else {
-          throw new Error("No se generó ninguna imagen");
-        }
-      } else if (data.modelType === 'video') {
-        const videoConfig: any = {
-          model: data.model,
-          prompt: promptText,
-          config: {
-            numberOfVideos: 1,
-            resolution: '720p',
-            aspectRatio: (data.aspectRatio === '1:1' ? '16:9' : data.aspectRatio) as any
-          }
-        };
-
-        if (refImageUrl) {
-          const base64Data = refImageUrl.split(',')[1];
-          const mimeType = refImageUrl.split(';')[0].split(':')[1];
-          videoConfig.image = {
-            imageBytes: base64Data,
-            mimeType: mimeType
-          };
-        }
-
-        let operation = await ai.models.generateVideos(videoConfig);
-
-        while (!operation.done) {
-          await new Promise(resolve => setTimeout(resolve, 10000));
-          operation = await ai.operations.getVideosOperation({operation: operation});
-        }
-
-        const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-        if (!downloadLink) throw new Error("No se generó ningún video");
-        
-        const videoResponse = await fetch(downloadLink, {
-          method: 'GET',
-          headers: {
-            'x-goog-api-key': apiKey as string,
-          },
-        });
-        
-        const blob = await videoResponse.blob();
-        resultUrl = URL.createObjectURL(blob);
-      }
-
-      const actualAspectRatio = data.modelType === 'video' && data.aspectRatio === '1:1' ? '16:9' : (data.aspectRatio || '1:1');
-
-      setNodes(nds => nds.map(n => {
+    // Set output nodes to loading
+    setNodes((nds) =>
+      nds.map((n) => {
         if (targetNodeIds.includes(n.id) && n.type === 'output') {
-          return { 
-            ...n, 
-            data: { 
-              ...n.data, 
-              status: 'success', 
-              resultUrl, 
-              resultType: data.modelType,
-              resultAspectRatio: actualAspectRatio
-            } 
-          };
+          return { ...n, data: { ...n.data, status: 'loading', error: null } };
         }
         return n;
-      }));
+      }),
+    );
 
-    } catch (error) {
-      console.error("Error de generación:", error);
-      setNodes(nds => nds.map(n => {
-        if (targetNodeIds.includes(n.id) && n.type === 'output') {
-          return { ...n, data: { ...n.data, status: 'error', error: String(error) } };
-        }
-        return n;
-      }));
-    } finally {
-      setEdges(eds => eds.map(e => {
+    setEdges((eds) =>
+      eds.map((e) => {
         if (e.source === id && targetNodeIds.includes(e.target)) {
-          return { ...e, data: { ...e.data, status: 'idle' } };
+          return { ...e, data: { ...e.data, status: 'processing' } };
         }
         return e;
-      }));
+      }),
+    );
+
+    try {
+      // If we have a ref image, convert remote URLs to base64 first
+      if (refImageDataUrl && refImageDataUrl.startsWith('http')) {
+        try {
+          const response = await fetch(refImageDataUrl);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          refImageDataUrl = await new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        } catch (e) {
+          console.error('Error fetching reference image:', e);
+        }
+      }
+
+      // Upload ref image to KIE if we have one
+      let uploadedImageUrl: string | null = null;
+      if (refImageDataUrl) {
+        uploadedImageUrl = await uploadBase64(refImageDataUrl);
+      }
+
+      let resultUrl = '';
+      const selectedModel = data.model as string;
+      const aspectRatio = (data.aspectRatio || '1:1') as string;
+      const resolution = (data.resolution || '1K') as string;
+      const duration = (data.duration || '5') as string;
+
+      if (isVeoModel(selectedModel)) {
+        // ---- Veo 3 / 3.1 dedicated API ----
+        const taskId = await createVeoTask({
+          prompt: promptText,
+          model: selectedModel,
+          imageUrls: uploadedImageUrl ? [uploadedImageUrl] : undefined,
+          aspectRatio:
+            aspectRatio === '1:1' ? '16:9' : aspectRatio,
+        });
+        const result = await pollVeoTask(taskId);
+        resultUrl = result.urls[0] || '';
+      } else {
+        // ---- Market API (Nano Banana, Kling, Sora 2) ----
+        const { apiModel, input } = buildMarketInput(
+          selectedModel,
+          promptText,
+          uploadedImageUrl,
+          aspectRatio,
+          resolution,
+          duration,
+        );
+        const taskId = await createMarketTask(apiModel, input);
+        const result = await pollMarketTask(taskId);
+        resultUrl = result.urls[0] || '';
+      }
+
+      if (!resultUrl) throw new Error('No se generó ningún resultado');
+
+      const resultType = isImageModel(selectedModel) ? 'image' : 'video';
+      const actualAspectRatio =
+        resultType === 'video' && aspectRatio === '1:1'
+          ? '16:9'
+          : aspectRatio;
+
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (targetNodeIds.includes(n.id) && n.type === 'output') {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                status: 'success',
+                resultUrl,
+                resultType,
+                resultAspectRatio: actualAspectRatio,
+              },
+            };
+          }
+          return n;
+        }),
+      );
+    } catch (error) {
+      console.error('Error de generación:', error);
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (targetNodeIds.includes(n.id) && n.type === 'output') {
+            return { ...n, data: { ...n.data, status: 'error', error: String(error) } };
+          }
+          return n;
+        }),
+      );
+    } finally {
+      setEdges((eds) =>
+        eds.map((e) => {
+          if (e.source === id && targetNodeIds.includes(e.target)) {
+            return { ...e, data: { ...e.data, status: 'idle' } };
+          }
+          return e;
+        }),
+      );
     }
   };
 
@@ -197,46 +328,48 @@ export default function ModelNode({ id, data }: { id: string, data: any }) {
 
         <div className="w-full h-px bg-white/10" />
 
+        {/* Model Selector */}
         <div className="flex flex-col gap-2">
-          <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Model</label>
+          <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">
+            Model
+          </label>
           <MultiUseSelect
             value={data.model}
             onChange={(val) => {
               const v = val as string;
-              const type = v.includes('veo') ? 'video' : 'image';
+              const type = isImageModel(v) ? 'image' : 'video';
               updateNodeData(id, { model: v, modelType: type });
             }}
-            options={[
-              { label: 'Image Models', options: [
-                { label: 'Nano Banana Pro', value: 'gemini-3.1-flash-image-preview' },
-                { label: 'Nano Banana', value: 'gemini-2.5-flash-image' },
-              ]},
-              { label: 'Video Models', options: [
-                { label: 'Veo Fast', value: 'veo-3.1-fast-generate-preview' },
-                { label: 'Veo Pro', value: 'veo-3.1-generate-preview' },
-              ]},
-            ]}
+            options={MODEL_OPTIONS}
           />
         </div>
 
+        {/* Controls grid */}
         <div className="grid grid-cols-2 gap-4 mt-1">
           {!isVideo ? (
             <>
+              {/* Image model controls */}
+              {supportsResolution(data.model) && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">
+                    Calidad
+                  </label>
+                  <MultiUseSelect
+                    value={data.resolution || '1K'}
+                    onChange={(val) => updateNodeData(id, { resolution: val as string })}
+                    options={[
+                      { label: '512px', value: '512px' },
+                      { label: '1K', value: '1K' },
+                      { label: '2K', value: '2K' },
+                      { label: '4K', value: '4K' },
+                    ]}
+                  />
+                </div>
+              )}
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Calidad</label>
-                <MultiUseSelect
-                  value={data.resolution || '1K'}
-                  onChange={(val) => updateNodeData(id, { resolution: val as string })}
-                  options={[
-                    { label: '512px', value: '512px' },
-                    { label: '1K', value: '1K' },
-                    { label: '2K', value: '2K' },
-                    { label: '4K', value: '4K' },
-                  ]}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Proporción</label>
+                <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">
+                  Proporción
+                </label>
                 <MultiUseSelect
                   value={data.aspectRatio || '1:1'}
                   onChange={(val) => updateNodeData(id, { aspectRatio: val as string })}
@@ -250,29 +383,67 @@ export default function ModelNode({ id, data }: { id: string, data: any }) {
             </>
           ) : (
             <>
+              {/* Video model controls */}
               <div className="flex flex-col gap-2">
-                <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Proporción</label>
+                <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">
+                  Proporción
+                </label>
                 <MultiUseSelect
-                  value={data.aspectRatio === '16:9' || data.aspectRatio === '9:16' ? data.aspectRatio : '16:9'}
+                  value={
+                    data.aspectRatio === '16:9' || data.aspectRatio === '9:16' || data.aspectRatio === '1:1'
+                      ? data.aspectRatio
+                      : '16:9'
+                  }
                   onChange={(val) => updateNodeData(id, { aspectRatio: val as string })}
                   options={[
                     { label: '16:9', value: '16:9' },
                     { label: '9:16', value: '9:16' },
+                    ...(data.model?.startsWith('kling-')
+                      ? [{ label: '1:1', value: '1:1' }]
+                      : []),
                   ]}
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Cámara</label>
-                <MultiUseSelect
-                  value={data.camera || 'static'}
-                  onChange={(val) => updateNodeData(id, { camera: val as string })}
-                  options={[
-                    { label: 'Pan', value: 'pan' },
-                    { label: 'Zoom', value: 'zoom' },
-                    { label: 'Static', value: 'static' },
-                  ]}
-                />
-              </div>
+
+              {supportsDuration(data.model) ? (
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">
+                    Duración
+                  </label>
+                  <MultiUseSelect
+                    value={data.duration || '5'}
+                    onChange={(val) => updateNodeData(id, { duration: val as string })}
+                    options={
+                      data.model === 'kling-3.0'
+                        ? [
+                            { label: '3s', value: '3' },
+                            { label: '5s', value: '5' },
+                            { label: '10s', value: '10' },
+                            { label: '15s', value: '15' },
+                          ]
+                        : [
+                            { label: '5s', value: '5' },
+                            { label: '10s', value: '10' },
+                          ]
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">
+                    Cámara
+                  </label>
+                  <MultiUseSelect
+                    value={data.camera || 'static'}
+                    onChange={(val) => updateNodeData(id, { camera: val as string })}
+                    options={[
+                      { label: 'Pan', value: 'pan' },
+                      { label: 'Zoom', value: 'zoom' },
+                      { label: 'Static', value: 'static' },
+                    ]}
+                  />
+                </div>
+              )}
             </>
           )}
         </div>
@@ -286,7 +457,12 @@ export default function ModelNode({ id, data }: { id: string, data: any }) {
       </div>
 
       <div className="absolute right-0 top-1/2 -translate-y-1/2">
-        <Port type="source" id="out" color="green" icon={isVideo ? <VideoIcon size={14} /> : <ImageIcon size={14} />} />
+        <Port
+          type="source"
+          id="out"
+          color="green"
+          icon={isVideo ? <VideoIcon size={14} /> : <ImageIcon size={14} />}
+        />
       </div>
     </BaseNode>
   );

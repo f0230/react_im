@@ -56,7 +56,7 @@ export default function App() {
       type: 'model',
       position: { x: 700, y: 250 },
       data: { 
-        model: 'gemini-3.1-flash-image-preview', 
+        model: 'nano-banana-pro',
         modelType: 'image', 
         resolution: '1K', 
         aspectRatio: '1:1',
@@ -180,7 +180,7 @@ export default function App() {
       data: { 
         ...(type === 'prompt' ? { text: '' } : {}),
         ...(type === 'model' ? { 
-          model: 'gemini-3.1-flash-image-preview', 
+          model: 'nano-banana-pro',
           modelType: 'image', 
           resolution: '1K', 
           aspectRatio: '1:1'
