@@ -72,6 +72,8 @@ const PortalLayout = () => {
                 (p) => p.startsWith('/dashboard/settings'),
                 (p) => p.startsWith('/dashboard/profile'),
                 (p) => p.startsWith('/dashboard/studio'),
+                (p) => p.startsWith('/dashboard/studio/banana'),
+                (p) => p.startsWith('/dashboard/studio/workflow'),
             ],
             admin: [
                 () => true,

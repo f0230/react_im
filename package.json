@@ -12,6 +12,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.29.0",
+    "@xyflow/react": "^12.10.1",
     "@emoji-mart/data": "^1.1.2",
     "@emoji-mart/react": "^1.1.1",
     "@radix-ui/react-aspect-ratio": "^1.1.8",

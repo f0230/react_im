@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --animate-dashdraw: dashdraw 1s linear infinite;
+  
+  @keyframes dashdraw {
+    from {
+      stroke-dashoffset: 10;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+}
+
+.react-flow__edge-path {
+  animation: dashdraw 1s linear infinite;
+}
+
+.react-flow__node {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.react-flow__node.selected > div {
+  box-shadow: 0 0 0 2px #0A84FF, 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}

@@ -45,6 +45,8 @@ const Settings = lazyRoute(routeKeys.settings);
 const ScheduleCall = lazyRoute(routeKeys.scheduleCall);
 const AdminAppointments = lazyRoute(routeKeys.adminAppointments);
 const Studio = lazyRoute(routeKeys.studio);
+const BananaStudio = lazyRoute(routeKeys.bananaStudio);
+const StudioDTE = lazyRoute(routeKeys.studioDte);
 const HeroPanchoPreview = lazy(() => import('@/pages/HeroPanchoPreview'));
 const PortalLayout = lazy(() => import('@/layouts/PortalLayout'));
 
@@ -197,6 +199,8 @@ const AppContent = () => {
             <Route path="settings" element={<Settings />} />
             <Route path="profile" element={<Settings />} />
             <Route path="studio" element={<Studio />} />
+            <Route path="studio/banana" element={<BananaStudio />} />
+            <Route path="studio/workflow" element={<StudioDTE />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

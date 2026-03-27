@@ -405,6 +405,20 @@ const Inbox = () => {
         if (!body) return;
         const payload = { to: selectedThreadId, text: body };
 
+        // Optimistic update — show the message immediately
+        const optimisticId = `optimistic-${Date.now()}`;
+        const optimisticMsg = {
+            id: optimisticId,
+            wa_id: selectedThreadId,
+            direction: 'outbound',
+            body,
+            type: 'text',
+            timestamp: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, optimisticMsg]);
+        setMessageText('');
+
         setSending(true);
         try {
             const response = await fetch('/api/whatsapp-send', {
@@ -417,11 +431,13 @@ const Inbox = () => {
                 const result = await response.json().catch(() => ({}));
                 throw new Error(result?.error || 'Error enviando mensaje');
             }
-
-            setMessageText('');
-            // No need to reload messages/threads manually, Realtime will handle it
-            // eventually, but for UX 'snappiness' we might wait for the insert event
+            // Realtime INSERT will eventually arrive with the real DB row;
+            // the duplicate guard (prev.some(m => m.id === msg.id)) handles it.
+            // Remove the optimistic placeholder once the real row lands.
         } catch (sendErr) {
+            // Roll back the optimistic message on failure
+            setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
+            setMessageText(body);
             setSendError(sendErr.message || 'Error enviando mensaje');
         } finally {
             setSending(false);
@@ -447,10 +463,12 @@ const Inbox = () => {
                     const { eventType, new: newRecord, old: oldRecord } = payload;
                     setThreads((prev) => {
                         if (eventType === 'INSERT') {
+                            if (prev.some((t) => t.id === newRecord.id)) return prev;
                             return [newRecord, ...prev];
                         } else if (eventType === 'UPDATE') {
-                            return prev.map((t) => (t.id === newRecord.id ? newRecord : t))
-                                .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+                            return prev.map((t) =>
+                                t.id === newRecord.id ? { ...t, ...newRecord } : t
+                            ).sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
                         } else if (eventType === 'DELETE') {
                             return prev.filter((t) => t.id !== oldRecord.id);
                         }
@@ -458,7 +476,9 @@ const Inbox = () => {
                     });
                 }
             )
-            .subscribe();
+            .subscribe((status, err) => {
+                if (err) console.error('[Inbox] threads subscription error:', err);
+            });
 
         return () => {
             supabase.removeChannel(channel);
@@ -472,6 +492,11 @@ const Inbox = () => {
 
         setMessages([]);
 
+        // NOTE: We subscribe WITHOUT a server-side filter on wa_id because
+        // Supabase Realtime filters only work when the column is part of
+        // the table's replica identity (usually just `id`). If wa_id is not
+        // in the replica identity the filter silently matches nothing and
+        // no events are delivered. We filter client-side instead.
         const messageChannel = supabase
             .channel(`messages-${selectedThreadId}`)
             .on(
@@ -480,19 +505,22 @@ const Inbox = () => {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'whatsapp_messages',
-                    filter: `wa_id=eq.${selectedThreadId}`
                 },
                 (payload) => {
+                    const msg = payload.new;
+                    if (msg.wa_id !== selectedThreadId) return; // client-side filter
                     setMessages((prev) => {
-                        if (prev.some((message) => message.id === payload.new.id)) return prev;
-                        return [...prev, payload.new];
+                        if (prev.some((m) => m.id === msg.id)) return prev;
+                        return [...prev, msg];
                     });
-                    if (payload.new?.direction !== 'outbound') {
-                        markThreadRead(selectedThreadId, payload.new.timestamp);
+                    if (msg.direction !== 'outbound') {
+                        markThreadRead(selectedThreadId, msg.timestamp);
                     }
                 }
             )
-            .subscribe();
+            .subscribe((status, err) => {
+                if (err) console.error('[Inbox] messages subscription error:', err);
+            });
 
         loadMessages(selectedThreadId);
 

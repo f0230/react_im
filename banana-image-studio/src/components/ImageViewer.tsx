@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Copy, RefreshCw, Info, Type, ChevronLeft, ChevronRight } from 'lucide-react';
 import { GenerationTask } from '../types';
 import { copyImageToClipboard, downloadImage } from '../lib/utils';
