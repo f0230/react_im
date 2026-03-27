@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type UIEvent, type WheelEvent } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from './nodes/BaseNode';
 
@@ -55,6 +55,10 @@ export default function MultiUseSelect({
     const wrapperRef = useRef<HTMLDivElement>(null);
     const [internalOpen, setInternalOpen] = useState(false);
     const isOpen = alwaysOpen || (typeof open === 'boolean' ? open : internalOpen);
+    
+    const stopScrollPropagation = (event: UIEvent<HTMLElement> | WheelEvent<HTMLElement>) => {
+        event.stopPropagation();
+    };
 
     const flatOptions = useMemo(() => {
         const flat: Option[] = [];
@@ -149,14 +153,14 @@ export default function MultiUseSelect({
     };
 
     return (
-        <div ref={wrapperRef} className={cn('relative w-full nodrag', className)}>
+        <div ref={wrapperRef} className={cn('relative w-full nodrag nowheel', className)}>
             {!alwaysOpen && (
                 <button
                     type="button"
                     onClick={() => setOpen(!isOpen)}
                     disabled={disabled}
                     className={cn(
-                        'flex w-full items-center justify-between gap-3 rounded-[12px] bg-white/5 border border-white/10 px-3 py-3 text-left text-[14px] text-white transition-all duration-300',
+                        'nowheel flex w-full items-center justify-between gap-3 rounded-[12px] bg-white/5 border border-white/10 px-3 py-3 text-left text-[14px] text-white transition-all duration-300',
                         'hover:bg-white/10 focus:outline-none focus:bg-white/10 focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF]',
                         disabled && 'opacity-50 cursor-not-allowed',
                         buttonClassName,
@@ -175,10 +179,12 @@ export default function MultiUseSelect({
             {isOpen && (
                 <div
                     className={cn(
-                        'absolute z-50 max-h-60 overflow-auto rounded-[16px] bg-[#1a1a1e] border border-white/10 p-1.5 shadow-xl shadow-black/40 backdrop-blur-xl',
+                        'nowheel absolute z-50 max-h-60 overflow-y-auto overscroll-contain rounded-[16px] bg-[#1a1a1e] border border-white/10 p-1.5 shadow-xl shadow-black/40 backdrop-blur-xl',
                         placementClass,
                         listClassName,
                     )}
+                    onWheel={stopScrollPropagation}
+                    onScroll={stopScrollPropagation}
                     role="listbox"
                     aria-multiselectable={multiple || undefined}
                 >
