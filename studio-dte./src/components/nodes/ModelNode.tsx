@@ -1,7 +1,8 @@
-import { Cpu, Play, Type, Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
+import { Play, Type, Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
+import MultiUseSelect from '../MultiUseSelect';
 
 export default function ModelNode({ id, data }: { id: string, data: any }) {
   const { updateNodeData, getNodes, getEdges, setNodes, setEdges } = useReactFlow();
@@ -198,24 +199,24 @@ export default function ModelNode({ id, data }: { id: string, data: any }) {
 
         <div className="flex flex-col gap-2">
           <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Model</label>
-          <select
-            className="nodrag w-full bg-white/5 border border-white/10 rounded-[12px] p-3 text-[14px] text-white focus:outline-none focus:bg-white/10 focus:border-[#0A84FF] focus:ring-1 focus:ring-[#0A84FF] appearance-none transition-all duration-300"
+          <MultiUseSelect
             value={data.model}
-            onChange={(e) => {
-              const val = e.target.value;
-              const type = val.includes('veo') ? 'video' : 'image';
-              updateNodeData(id, { model: val, modelType: type });
+            onChange={(val) => {
+              const v = val as string;
+              const type = v.includes('veo') ? 'video' : 'image';
+              updateNodeData(id, { model: v, modelType: type });
             }}
-          >
-            <optgroup label="Image Models">
-              <option value="gemini-3.1-flash-image-preview">Nano Banana Pro</option>
-              <option value="gemini-2.5-flash-image">Nano Banana</option>
-            </optgroup>
-            <optgroup label="Video Models">
-              <option value="veo-3.1-fast-generate-preview">Veo Fast</option>
-              <option value="veo-3.1-generate-preview">Veo Pro</option>
-            </optgroup>
-          </select>
+            options={[
+              { label: 'Image Models', options: [
+                { label: 'Nano Banana Pro', value: 'gemini-3.1-flash-image-preview' },
+                { label: 'Nano Banana', value: 'gemini-2.5-flash-image' },
+              ]},
+              { label: 'Video Models', options: [
+                { label: 'Veo Fast', value: 'veo-3.1-fast-generate-preview' },
+                { label: 'Veo Pro', value: 'veo-3.1-generate-preview' },
+              ]},
+            ]}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4 mt-1">
@@ -223,54 +224,54 @@ export default function ModelNode({ id, data }: { id: string, data: any }) {
             <>
               <div className="flex flex-col gap-2">
                 <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Calidad</label>
-                <select
-                  className="nodrag w-full bg-white/5 border border-white/10 rounded-[12px] p-3 text-[14px] text-white focus:outline-none focus:bg-white/10 focus:border-[#0A84FF] appearance-none transition-all duration-300"
+                <MultiUseSelect
                   value={data.resolution || '1K'}
-                  onChange={(e) => updateNodeData(id, { resolution: e.target.value })}
-                >
-                  <option value="512px">512px</option>
-                  <option value="1K">1K</option>
-                  <option value="2K">2K</option>
-                  <option value="4K">4K</option>
-                </select>
+                  onChange={(val) => updateNodeData(id, { resolution: val as string })}
+                  options={[
+                    { label: '512px', value: '512px' },
+                    { label: '1K', value: '1K' },
+                    { label: '2K', value: '2K' },
+                    { label: '4K', value: '4K' },
+                  ]}
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Proporción</label>
-                <select
-                  className="nodrag w-full bg-white/5 border border-white/10 rounded-[12px] p-3 text-[14px] text-white focus:outline-none focus:bg-white/10 focus:border-[#0A84FF] appearance-none transition-all duration-300"
+                <MultiUseSelect
                   value={data.aspectRatio || '1:1'}
-                  onChange={(e) => updateNodeData(id, { aspectRatio: e.target.value })}
-                >
-                  <option value="1:1">1:1</option>
-                  <option value="16:9">16:9</option>
-                  <option value="9:16">9:16</option>
-                </select>
+                  onChange={(val) => updateNodeData(id, { aspectRatio: val as string })}
+                  options={[
+                    { label: '1:1', value: '1:1' },
+                    { label: '16:9', value: '16:9' },
+                    { label: '9:16', value: '9:16' },
+                  ]}
+                />
               </div>
             </>
           ) : (
             <>
               <div className="flex flex-col gap-2">
                 <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Proporción</label>
-                <select
-                  className="nodrag w-full bg-white/5 border border-white/10 rounded-[12px] p-3 text-[14px] text-white focus:outline-none focus:bg-white/10 focus:border-[#0A84FF] appearance-none transition-all duration-300"
+                <MultiUseSelect
                   value={data.aspectRatio === '16:9' || data.aspectRatio === '9:16' ? data.aspectRatio : '16:9'}
-                  onChange={(e) => updateNodeData(id, { aspectRatio: e.target.value })}
-                >
-                  <option value="16:9">16:9</option>
-                  <option value="9:16">9:16</option>
-                </select>
+                  onChange={(val) => updateNodeData(id, { aspectRatio: val as string })}
+                  options={[
+                    { label: '16:9', value: '16:9' },
+                    { label: '9:16', value: '9:16' },
+                  ]}
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">Cámara</label>
-                <select
-                  className="nodrag w-full bg-white/5 border border-white/10 rounded-[12px] p-3 text-[14px] text-white focus:outline-none focus:bg-white/10 focus:border-[#0A84FF] appearance-none transition-all duration-300"
+                <MultiUseSelect
                   value={data.camera || 'static'}
-                  onChange={(e) => updateNodeData(id, { camera: e.target.value })}
-                >
-                  <option value="pan">Pan</option>
-                  <option value="zoom">Zoom</option>
-                  <option value="static">Static</option>
-                </select>
+                  onChange={(val) => updateNodeData(id, { camera: val as string })}
+                  options={[
+                    { label: 'Pan', value: 'pan' },
+                    { label: 'Zoom', value: 'zoom' },
+                    { label: 'Static', value: 'static' },
+                  ]}
+                />
               </div>
             </>
           )}

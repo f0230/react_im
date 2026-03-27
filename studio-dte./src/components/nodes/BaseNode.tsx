@@ -29,13 +29,13 @@ export default function BaseNode({ id, children, className, title }: BaseNodePro
       className
     )}>
       {title && (
-        <div className="absolute -top-7 left-4 text-[11px] text-white/40 uppercase tracking-widest font-semibold flex items-center justify-between w-[calc(100%-2rem)]">
-          <span>{title}</span>
+        <div className="absolute -top-7 left-4 text-[11px] text-white/40 uppercase tracking-widest font-semibold truncate" style={{ maxWidth: 'calc(100% - 3rem)' }}>
+          {title}
         </div>
       )}
       <button
         onClick={handleClose}
-        className="absolute -top-3 -right-3 w-7 h-7 bg-[#2a2a2e] hover:bg-[#FF3B30] text-white/40 hover:text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/10 hover:border-transparent shadow-md z-50"
+        className="absolute top-2 right-2 w-7 h-7 bg-[#2a2a2e] hover:bg-[#FF3B30] text-white/40 hover:text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 border border-white/10 hover:border-transparent shadow-md z-50"
       >
         <X size={14} />
       </button>
