@@ -12,6 +12,30 @@ function authHeaders(json = true): Record<string, string> {
   return h;
 }
 
+/** Parse KIE response — they sometimes return HTTP 200 with error codes in the body */
+async function parseKieResponse(res: Response, label: string): Promise<any> {
+  const text = await res.text();
+  console.log(`[KIE] ${label} response:`, res.status, text);
+
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Invalid JSON from KIE (${label}): ${text}`);
+  }
+
+  // KIE can return HTTP 200 but with an error code in the body
+  if (data.code && data.code !== 200 && data.code !== 0) {
+    throw new Error(`KIE ${label}: ${data.msg || data.message || `Error code ${data.code}`}`);
+  }
+
+  if (!res.ok) {
+    throw new Error(`KIE ${label} failed (${res.status}): ${data.msg || data.message || text}`);
+  }
+
+  return data;
+}
+
 // ---------------------------------------------------------------------------
 // File Upload (base64)
 // ---------------------------------------------------------------------------
@@ -34,8 +58,7 @@ export async function uploadBase64(base64WithPrefix: string): Promise<string> {
     }),
   });
 
-  if (!res.ok) throw new Error(`Upload failed: ${res.status} ${await res.text()}`);
-  const data = await res.json();
+  const data = await parseKieResponse(res, 'upload');
   return data.downloadUrl || data.url;
 }
 
@@ -55,17 +78,10 @@ export async function createMarketTask(
     body: JSON.stringify(payload),
   });
 
-  const text = await res.text();
-  console.log('[KIE] createTask response:', res.status, text);
+  const data = await parseKieResponse(res, 'createTask');
 
-  if (!res.ok) throw new Error(`Create task failed (${res.status}): ${text}`);
-
-  let data: any;
-  try { data = JSON.parse(text); } catch { throw new Error(`Invalid JSON from KIE: ${text}`); }
-
-  // Try multiple possible response shapes
   const id = data.taskId || data.task_id || data.data?.taskId || data.data?.task_id;
-  if (!id) throw new Error(`No taskId in response: ${text}`);
+  if (!id) throw new Error(`No taskId in KIE response: ${JSON.stringify(data)}`);
   return id;
 }
 
@@ -81,7 +97,7 @@ export async function pollMarketTask(
     const res = await fetch(`${KIE_API}/jobs/recordInfo?taskId=${taskId}`, {
       headers: authHeaders(false),
     });
-    const data = await res.json();
+    const data = await parseKieResponse(res, 'recordInfo');
     onProgress?.(data.state);
 
     if (data.state === 'success') {
@@ -132,16 +148,10 @@ export async function createVeoTask(params: {
     body: JSON.stringify(body),
   });
 
-  const text = await res.text();
-  console.log('[KIE] veo generate response:', res.status, text);
-
-  if (!res.ok) throw new Error(`Veo task failed (${res.status}): ${text}`);
-
-  let data: any;
-  try { data = JSON.parse(text); } catch { throw new Error(`Invalid JSON from KIE: ${text}`); }
+  const data = await parseKieResponse(res, 'veo generate');
 
   const id = data.taskId || data.task_id || data.data?.taskId || data.data?.task_id;
-  if (!id) throw new Error(`No taskId in response: ${text}`);
+  if (!id) throw new Error(`No taskId in KIE response: ${JSON.stringify(data)}`);
   return id;
 }
 
@@ -154,7 +164,7 @@ export async function pollVeoTask(taskId: string): Promise<{ urls: string[] }> {
     const res = await fetch(`${KIE_API}/veo/record-info?taskId=${taskId}`, {
       headers: authHeaders(false),
     });
-    const data = await res.json();
+    const data = await parseKieResponse(res, 'veo record-info');
 
     // successFlag: 0=processing, 1=success, 2=partial, 3=failed
     if (data.successFlag === 1 || data.successFlag === 2) {
