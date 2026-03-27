@@ -4,7 +4,7 @@ import BaseNode from './BaseNode';
 import { Port } from './Port';
 import MultiUseSelect from '../MultiUseSelect';
 import {
-  uploadBase64,
+  uploadImage,
   createMarketTask,
   pollMarketTask,
   createVeoTask,
@@ -232,7 +232,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       // Upload ref image to KIE if we have one
       let uploadedImageUrl: string | null = null;
       if (refImageDataUrl) {
-        uploadedImageUrl = await uploadBase64(refImageDataUrl);
+        uploadedImageUrl = await uploadImage(refImageDataUrl);
       }
 
       let resultUrl = '';
