@@ -3,7 +3,7 @@ import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI } from '@google/genai';
+import OpenAI from 'openai';
 import { enhancePrompt } from '../../lib/prompt-enhancer';
 import toast from 'react-hot-toast';
 
@@ -83,41 +83,47 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
       return;
     }
 
-    // For images, use Gemini vision
+    // For images, use OpenAI vision
     setIsDescribing(true);
     try {
-      const response = await fetch(mediaUrl);
-      const blob = await response.blob();
-      const base64Full = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-      });
-      const base64Data = base64Full.split(',')[1];
-      const mimeType = blob.type || 'image/jpeg';
+      // Convert to base64 if it's a remote URL
+      let imageDataUrl = mediaUrl;
+      if (mediaUrl.startsWith('http')) {
+        const response = await fetch(mediaUrl);
+        const blob = await response.blob();
+        imageDataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      }
 
-      // @ts-ignore
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      const ai = new GoogleGenAI({ apiKey });
-      const result = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      if (!apiKey) throw new Error('VITE_OPENAI_API_KEY is not configured');
+      const ai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+      const response = await ai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
           {
             role: 'user',
-            parts: [
+            content: [
               {
+                type: 'text',
                 text: 'Describe this image in vivid detail for use as an AI image/video generation prompt. Be specific about composition, lighting, colors, subjects, style, and mood. Return ONLY the prompt text, no explanations or prefixes.',
               },
               {
-                inlineData: { mimeType, data: base64Data },
+                type: 'image_url',
+                image_url: { url: imageDataUrl },
               },
             ],
           },
         ],
+        max_tokens: 500,
       });
 
-      if (result.text) {
-        updateNodeData(id, { text: result.text });
+      const text = response.choices[0]?.message?.content?.trim();
+      if (text) {
+        updateNodeData(id, { text });
         toast.success('Media described');
       }
     } catch (error) {
