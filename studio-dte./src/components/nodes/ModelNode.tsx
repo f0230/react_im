@@ -629,7 +629,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     );
 
     try {
-      // -- Upload reference image --
+      // -- Upload reference image (shared across all generations) --
       let uploadedImageUrl: string | null = null;
       if (refImageDataUrl) {
         if (refImageDataUrl.startsWith('http')) {
@@ -645,7 +645,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
         );
       }
 
-      // -- Upload reference video --
+      // -- Upload reference video (shared across all generations) --
       let uploadedVideoUrl: string | null = null;
       if (refVideoDataUrl && selectedCaps.supportsReferenceVideo) {
         if (refVideoDataUrl.startsWith('http')) {
@@ -661,47 +661,12 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
         );
       }
 
-      let resultUrl = '';
-      let taskId = '';
-
-      if (selectedCaps.provider === 'veo') {
-        // ---- Veo dedicated API ----
-        const aspectRatio = (data.aspectRatio || '16:9') as string;
-        const seeds = parseSeeds(data.seeds);
-        const genType = (data.generationType || 'auto') as string;
-
-        taskId = await createVeoTask({
-          prompt: promptText,
-          model: selectedModel,
-          imageUrls: uploadedImageUrl ? [uploadedImageUrl] : undefined,
-          aspectRatio: aspectRatio === '1:1' ? '16:9' : aspectRatio,
-          seeds: seeds.length ? seeds : undefined,
-          enableTranslation: data.enableTranslation ?? false,
-          enableFallback: data.enableFallback ?? true,
-          generationType: genType !== 'auto' ? genType : undefined,
-          callBackUrl: data.callBackUrl || undefined,
-        });
-        const result = await pollVeoTask(taskId);
-        resultUrl = result.urls[0] || '';
-      } else {
-        // ---- Market API ----
-        const { apiModel, input } = buildMarketInput(
-          selectedModel,
-          promptText,
-          uploadedImageUrl,
-          uploadedVideoUrl,
-          data,
-        );
-        taskId = await createMarketTask(apiModel, input, {
-          callBackUrl: data.callBackUrl || undefined,
-          progressCallBackUrl: data.progressCallBackUrl || undefined,
-        });
-        const result = await pollMarketTask(taskId);
-        resultUrl = result.urls[0] || '';
-      }
-
-      if (abortRef.current) return;
-      if (!resultUrl) throw new Error('No se generó ningún resultado');
+      // -- Generate one result per connected output node --
+      const outputNodeIds = targetNodeIds.filter((tid) => {
+        const n = nodes.find((nd) => nd.id === tid);
+        return n?.type === 'output';
+      });
+      const genCount = Math.max(outputNodeIds.length, 1);
 
       const resultType = selectedCaps.kind;
       const actualAspectRatio =
@@ -709,26 +674,106 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
           ? '16:9'
           : (data.aspectRatio || '1:1');
 
+      const generateOne = async (): Promise<{ resultUrl: string; taskId: string }> => {
+        if (abortRef.current) throw new Error('Cancelled');
+
+        let resultUrl = '';
+        let taskId = '';
+
+        if (selectedCaps.provider === 'veo') {
+          const aspectRatio = (data.aspectRatio || '16:9') as string;
+          const seeds = parseSeeds(data.seeds);
+          const genType = (data.generationType || 'auto') as string;
+
+          taskId = await createVeoTask({
+            prompt: promptText,
+            model: selectedModel,
+            imageUrls: uploadedImageUrl ? [uploadedImageUrl] : undefined,
+            aspectRatio: aspectRatio === '1:1' ? '16:9' : aspectRatio,
+            seeds: seeds.length ? seeds : undefined,
+            enableTranslation: data.enableTranslation ?? false,
+            enableFallback: data.enableFallback ?? true,
+            generationType: genType !== 'auto' ? genType : undefined,
+            callBackUrl: data.callBackUrl || undefined,
+          });
+          const result = await pollVeoTask(taskId);
+          resultUrl = result.urls[0] || '';
+        } else {
+          const { apiModel, input } = buildMarketInput(
+            selectedModel,
+            promptText,
+            uploadedImageUrl,
+            uploadedVideoUrl,
+            data,
+          );
+          taskId = await createMarketTask(apiModel, input, {
+            callBackUrl: data.callBackUrl || undefined,
+            progressCallBackUrl: data.progressCallBackUrl || undefined,
+          });
+          const result = await pollMarketTask(taskId);
+          resultUrl = result.urls[0] || '';
+        }
+
+        if (!resultUrl) throw new Error('No se generó ningún resultado');
+        return { resultUrl, taskId };
+      };
+
+      // Launch all generations in parallel
+      const results = await Promise.allSettled(
+        Array.from({ length: genCount }, () => generateOne()),
+      );
+
+      if (abortRef.current) return;
+
+      // Update each output node with its own result
+      let successCount = 0;
+      let failCount = 0;
+
       setNodes((nds) =>
         nds.map((n) => {
-          if (targetNodeIds.includes(n.id) && n.type === 'output') {
+          const idx = outputNodeIds.indexOf(n.id);
+          if (idx === -1 || n.type !== 'output') return n;
+
+          const result = results[idx];
+          if (result.status === 'fulfilled') {
+            successCount++;
             return {
               ...n,
               data: {
                 ...n.data,
                 status: 'success',
-                resultUrl,
+                resultUrl: result.value.resultUrl,
                 resultType,
                 resultAspectRatio: actualAspectRatio,
-                taskId,
+                taskId: result.value.taskId,
                 provider: selectedCaps.provider,
               },
             };
+          } else {
+            failCount++;
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                status: 'error',
+                error: String(result.reason),
+              },
+            };
           }
-          return n;
         }),
       );
-      toast.success('Generation complete!');
+
+      if (failCount === 0) {
+        toast.success(
+          genCount > 1
+            ? `${genCount} generations complete!`
+            : 'Generation complete!',
+        );
+      } else if (successCount > 0) {
+        toast.success(`${successCount}/${genCount} generated, ${failCount} failed`);
+      } else {
+        toast.error('All generations failed');
+      }
     } catch (error) {
       if (abortRef.current) return;
       console.error('Error de generación:', error);
