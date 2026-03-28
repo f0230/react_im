@@ -2,46 +2,39 @@ import { Sparkles, Loader2, Type } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
+import { enhancePrompt } from '../../lib/prompt-enhancer';
+import toast from 'react-hot-toast';
 
-export default function EnhancerNode({ id, data }: { id: string, data: any }) {
+export default function EnhancerNode({ id, data }: { id: string; data: any }) {
   const { getNodes, getEdges, updateNodeData } = useReactFlow();
 
   const handleEnhance = async () => {
     const nodes = getNodes();
     const edges = getEdges();
-    
+
     const inputEdges = edges.filter(e => e.target === id);
     const promptEdge = inputEdges.find(e => e.targetHandle === 'in');
     const promptNode = promptEdge ? nodes.find(n => n.id === promptEdge.source) : null;
     const promptText = promptNode?.data?.text || '';
 
     if (!promptText) {
-      alert("Por favor, conecta un nodo de Prompt con texto antes de mejorar.");
+      toast.error('Conecta un nodo de Prompt con texto antes de mejorar.');
       return;
     }
 
     updateNodeData(id, { isEnhancing: true });
 
     try {
-      const { GoogleGenAI } = await import('@google/genai');
-      // @ts-ignore
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      const ai = new GoogleGenAI({ apiKey });
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Enhance the following prompt for an image/video generation AI. Make it highly detailed, cinematic, and descriptive. Return ONLY the enhanced prompt text, nothing else.\n\nOriginal prompt: ${promptText}`
-      });
-
-      updateNodeData(id, { 
-        isEnhancing: false, 
-        enhancedText: response.text?.trim() || promptText 
-      });
+      const enhanced = await enhancePrompt(promptText as string);
+      updateNodeData(id, { isEnhancing: false, enhancedText: enhanced });
+      toast.success('Prompt enhanced');
     } catch (error) {
-      console.error("Error enhancing prompt:", error);
-      updateNodeData(id, { 
-        isEnhancing: false, 
-        enhancedText: `${promptText}, masterpiece, high quality, highly detailed, 8k resolution, cinematic lighting` 
+      console.error('Error enhancing prompt:', error);
+      toast.error('Failed to enhance prompt');
+      // Fallback: basic keyword enhancement
+      updateNodeData(id, {
+        isEnhancing: false,
+        enhancedText: `${promptText}, masterpiece, high quality, highly detailed, 8k resolution, cinematic lighting`
       });
     }
   };
@@ -57,7 +50,7 @@ export default function EnhancerNode({ id, data }: { id: string, data: any }) {
           <span className="text-[13px] font-medium text-white/70 flex items-center gap-1.5">
             <Sparkles size={14} className="text-[#FF2D55]" /> Prompt Enhancer
           </span>
-          <button 
+          <button
             onClick={handleEnhance}
             disabled={data.isEnhancing}
             className="px-4 py-1.5 bg-[#FF2D55]/10 hover:bg-[#FF2D55]/20 text-[#FF2D55] text-[12px] font-semibold rounded-full transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
@@ -65,7 +58,7 @@ export default function EnhancerNode({ id, data }: { id: string, data: any }) {
             {data.isEnhancing ? 'Enhancing...' : 'Enhance'}
           </button>
         </div>
-        
+
         <div className="flex flex-col gap-1.5 relative">
           {data.isEnhancing && (
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded-[16px] z-10 flex items-center justify-center">
@@ -80,7 +73,7 @@ export default function EnhancerNode({ id, data }: { id: string, data: any }) {
           />
         </div>
       </div>
-      
+
       <div className="absolute right-0 top-1/2 -translate-y-1/2">
         <Port type="source" id="out" color="pink" icon={<Type size={14} />} />
       </div>

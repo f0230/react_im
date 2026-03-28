@@ -3,21 +3,25 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import { Copy, Trash2 } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import {
+  Copy,
+  Trash2,
+  Undo2,
+  Redo2,
+  Download,
+  Upload,
+  RotateCcw,
+} from 'lucide-react';
 import {
   ReactFlow,
   Background,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  Connection,
-  Edge,
   Node,
   NodeTypes,
   Panel,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import toast, { Toaster } from 'react-hot-toast';
 
 import PromptNode from './components/nodes/PromptNode';
 import ModelNode from './components/nodes/ModelNode';
@@ -25,6 +29,7 @@ import ImageNode from './components/nodes/ImageNode';
 import OutputNode from './components/nodes/OutputNode';
 import EnhancerNode from './components/nodes/EnhancerNode';
 import WorkflowEdge from './components/edges/WorkflowEdge';
+import { useWorkflowStore, getDefaultData } from './lib/store';
 
 const nodeTypes: NodeTypes = {
   prompt: PromptNode,
@@ -38,59 +43,33 @@ const edgeTypes = {
   default: WorkflowEdge,
 };
 
-const initialEdges: Edge[] = [
-  { id: 'e1-2', source: 'prompt-1', sourceHandle: 'out', target: 'model-1', targetHandle: 'prompt', type: 'default', animated: true, data: { color: 'pink' } },
-  { id: 'e3-4', source: 'model-1', sourceHandle: 'out', target: 'output-1', targetHandle: 'in', type: 'default', animated: true, data: { color: 'green' } },
-];
-
 export default function App() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([
-    {
-      id: 'prompt-1',
-      type: 'prompt',
-      position: { x: 250, y: 300 },
-      data: { text: '', mediaContextUrl: null, mediaContextType: null, mediaContextSourceNodeId: null },
-    },
-    {
-      id: 'model-1',
-      type: 'model',
-      position: { x: 700, y: 250 },
-      data: {
-        model: 'nano-banana-pro',
-        modelType: 'image',
-        aspectRatio: '1:1',
-        resolution: '1K',
-        duration: '5',
-        outputFormat: 'png',
-        googleSearch: false,
-        mode: 'std',
-        sound: false,
-        removeWatermark: false,
-        uploadMethod: 'url',
-        enableTranslation: false,
-        enableFallback: true,
-        generationType: 'auto',
-        seeds: '',
-        nFrames: '',
-        characterIdList: '',
-        characterOrientation: '',
-        backgroundSource: '',
-        multiPrompt: '',
-        multiShots: '',
-        klingElements: '',
-        callBackUrl: '',
-        progressCallBackUrl: '',
-      },
-    },
-    {
-      id: 'output-1',
-      type: 'output',
-      position: { x: 1100, y: 250 },
-      data: { status: 'idle', resultUrl: null, resultType: null, taskId: null, provider: null },
-    },
-  ] as Node[]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [menu, setMenu] = useState<{ id: string, top: number, left: number } | null>(null);
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    setNodes,
+    setEdges,
+    addNode,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    pushSnapshot,
+    exportWorkflow,
+    importWorkflow,
+    resetWorkflow,
+  } = useWorkflowStore();
+
+  const [menu, setMenu] = useState<{
+    id: string;
+    top: number;
+    left: number;
+  } | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
@@ -103,7 +82,7 @@ export default function App() {
         left: event.clientX - bounds.left,
       });
     },
-    [setMenu]
+    [setMenu],
   );
 
   const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
@@ -112,6 +91,7 @@ export default function App() {
     if (!menu) return;
     const nodeToDuplicate = nodes.find((n) => n.id === menu.id);
     if (nodeToDuplicate) {
+      pushSnapshot();
       const newNodeId = `${nodeToDuplicate.type}-${Date.now()}`;
       const newNode = {
         ...nodeToDuplicate,
@@ -126,19 +106,25 @@ export default function App() {
       setNodes((nds) => [...nds, newNode]);
     }
     setMenu(null);
-  }, [menu, nodes, setNodes]);
+  }, [menu, nodes, setNodes, pushSnapshot]);
 
   const deleteNode = useCallback(() => {
     if (!menu) return;
+    pushSnapshot();
     setNodes((nds) => nds.filter((n) => n.id !== menu.id));
-    setEdges((eds) => eds.filter((e) => e.source !== menu.id && e.target !== menu.id));
+    setEdges((eds) =>
+      eds.filter((e) => e.source !== menu.id && e.target !== menu.id),
+    );
     setMenu(null);
-  }, [menu, setNodes, setEdges]);
+  }, [menu, setNodes, setEdges, pushSnapshot]);
 
+  // Paste image → new Image node
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      // Ignore paste if user is typing in an input or textarea
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
@@ -153,117 +139,224 @@ export default function App() {
           const reader = new FileReader();
           reader.onload = (event) => {
             const imageUrl = event.target?.result as string;
-            
             const newNodeId = `image-${Date.now()}`;
             const newNode = {
               id: newNodeId,
               type: 'image',
-              position: { x: Math.random() * 200 + 300, y: Math.random() * 200 + 300 },
+              position: {
+                x: Math.random() * 200 + 300,
+                y: Math.random() * 200 + 300,
+              },
               data: { imageUrl },
             };
+            pushSnapshot();
             setNodes((nds) => [...nds, newNode]);
           };
           reader.readAsDataURL(file);
-          break; // Only handle the first image
+          break;
         }
       }
     };
 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [setNodes]);
+  }, [setNodes, pushSnapshot]);
 
-  const onConnect = useCallback(
-    (params: Connection) => {
-      const sourceNode = nodes.find(n => n.id === params.source);
-      const th = params.targetHandle || '';
+  // Keyboard shortcuts: Ctrl+Z / Ctrl+Shift+Z
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
 
-      let color = 'green';
-      let warning = false;
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      if (
+        (e.metaKey || e.ctrlKey) &&
+        ((e.key === 'z' && e.shiftKey) || e.key === 'y')
+      ) {
+        e.preventDefault();
+        redo();
+      }
+    };
 
-      // Text sources → pink edges
-      if (sourceNode?.type === 'prompt' || sourceNode?.type === 'enhancer') {
-        color = 'pink';
-        // Text to media port = type mismatch
-        if (th === 'ref-image' || th === 'ref-video' || th === 'media-in') {
-          warning = true;
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
+
+  // Export workflow
+  const handleExport = useCallback(() => {
+    try {
+      const json = exportWorkflow();
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `studio-dte-workflow-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Workflow exported');
+    } catch {
+      toast.error('Failed to export workflow');
+    }
+  }, [exportWorkflow]);
+
+  // Import workflow
+  const handleImport = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          importWorkflow(event.target?.result as string);
+          toast.success('Workflow imported');
+        } catch {
+          toast.error('Invalid workflow file');
         }
-      }
-
-      // Image source to text-only port = mismatch
-      if (sourceNode?.type === 'image') {
-        if (th === 'prompt') warning = true;
-        if (th === 'ref-video') warning = true;
-      }
-
-      // Output → prompt text port = mismatch (media→text)
-      if (sourceNode?.type === 'output') {
-        if (th === 'prompt') warning = true;
-        // output→media-in, output→ref-image, output→ref-video are all valid
-      }
-
-      setEdges((eds) => addEdge({
-        ...params,
-        type: 'default',
-        animated: true,
-        data: { color, warning }
-      }, eds));
+      };
+      reader.readAsText(file);
+      // Reset input so the same file can be re-imported
+      e.target.value = '';
     },
-    [setEdges, nodes],
+    [importWorkflow],
   );
 
-  const addNode = (type: string) => {
-    const newNodeId = `${type}-${Date.now()}`;
-    const newNode = {
-      id: newNodeId,
-      type,
-      position: { x: Math.random() * 200 + 300, y: Math.random() * 200 + 300 },
-      data: { 
-        ...(type === 'prompt' ? { text: '', mediaContextUrl: null, mediaContextType: null, mediaContextSourceNodeId: null } : {}),
-        ...(type === 'model' ? {
-          model: 'nano-banana-pro',
-          modelType: 'image',
-          aspectRatio: '1:1',
-          resolution: '1K',
-          duration: '5',
-          outputFormat: 'png',
-          googleSearch: false,
-          mode: 'std',
-          sound: false,
-          removeWatermark: false,
-          uploadMethod: 'url',
-          enableTranslation: false,
-          enableFallback: true,
-          generationType: 'auto',
-          seeds: '',
-          nFrames: '',
-          characterIdList: '',
-          characterOrientation: '',
-          backgroundSource: '',
-          multiPrompt: '',
-          multiShots: '',
-          klingElements: '',
-          callBackUrl: '',
-          progressCallBackUrl: '',
-        } : {}),
-        ...(type === 'image' ? { imageUrl: null } : {}),
-        ...(type === 'output' ? { status: 'idle', resultUrl: null, resultType: null, taskId: null, provider: null } : {}),
-        ...(type === 'enhancer' ? { enhancedText: '', isEnhancing: false } : {}),
-      },
-    };
-    setNodes((nds) => [...nds, newNode]);
-  };
+  // Export all media from output nodes
+  const handleExportMedia = useCallback(async () => {
+    const outputNodes = nodes.filter(
+      (n) => n.type === 'output' && n.data?.resultUrl,
+    );
+    if (!outputNodes.length) {
+      toast.error('No generated media to export');
+      return;
+    }
+
+    let downloaded = 0;
+    for (const n of outputNodes) {
+      try {
+        const response = await fetch(n.data.resultUrl as string);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const ext = n.data.resultType === 'video' ? 'mp4' : 'png';
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `studio-dte-${n.data.taskId || n.id}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+        downloaded++;
+      } catch {
+        // skip failed downloads
+      }
+    }
+    toast.success(`Downloaded ${downloaded} file(s)`);
+  }, [nodes]);
+
+  const handleReset = useCallback(() => {
+    resetWorkflow();
+    toast.success('Workflow reset');
+  }, [resetWorkflow]);
 
   return (
     <div className="w-full h-full bg-[#0a0a0c] text-white font-sans flex flex-col relative overflow-hidden">
+      {/* Toast */}
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: '#1a1a1e',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            fontSize: '13px',
+          },
+          success: { iconTheme: { primary: '#32D74B', secondary: '#fff' } },
+          error: { iconTheme: { primary: '#FF3B30', secondary: '#fff' } },
+        }}
+      />
+
       {/* Ambient Background Blobs */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute top-[30%] left-[40%] w-[40%] h-[40%] bg-pink-500/8 rounded-full blur-[100px] pointer-events-none" />
 
-      {/* Top Bar - Glassmorphism */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 h-10 bg-white/8 backdrop-blur-2xl border border-white/10 rounded-full flex items-center px-8 z-50 shadow-xl shadow-black/20">
-        <span className="text-sm font-semibold text-white/80 tracking-widest">STUDIO DTE.</span>
+      {/* Top Bar */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 h-10 bg-white/8 backdrop-blur-2xl border border-white/10 rounded-full flex items-center px-6 gap-3 z-50 shadow-xl shadow-black/20">
+        <span className="text-sm font-semibold text-white/80 tracking-widest">
+          STUDIO DTE.
+        </span>
+
+        <div className="w-px h-5 bg-white/10" />
+
+        {/* Undo / Redo */}
+        <button
+          onClick={undo}
+          disabled={!canUndo()}
+          className="p-1.5 text-white/50 hover:text-white disabled:text-white/15 transition-colors"
+          title="Undo (Ctrl+Z)"
+        >
+          <Undo2 size={14} />
+        </button>
+        <button
+          onClick={redo}
+          disabled={!canRedo()}
+          className="p-1.5 text-white/50 hover:text-white disabled:text-white/15 transition-colors"
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <Redo2 size={14} />
+        </button>
+
+        <div className="w-px h-5 bg-white/10" />
+
+        {/* Export / Import */}
+        <button
+          onClick={handleExport}
+          className="p-1.5 text-white/50 hover:text-white transition-colors"
+          title="Export workflow"
+        >
+          <Download size={14} />
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="p-1.5 text-white/50 hover:text-white transition-colors"
+          title="Import workflow"
+        >
+          <Upload size={14} />
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={handleImport}
+        />
+        <button
+          onClick={handleExportMedia}
+          className="p-1.5 text-[#32D74B]/70 hover:text-[#32D74B] transition-colors"
+          title="Download all generated media"
+        >
+          <Download size={14} />
+        </button>
+
+        <div className="w-px h-5 bg-white/10" />
+
+        <button
+          onClick={handleReset}
+          className="p-1.5 text-white/50 hover:text-[#FF3B30] transition-colors"
+          title="Reset workflow"
+        >
+          <RotateCcw size={14} />
+        </button>
       </div>
 
       {/* Canvas Area */}
@@ -282,17 +375,41 @@ export default function App() {
           fitView
           colorMode="dark"
         >
-          <Background gap={24} size={2} color="rgba(255,255,255,0.04)" />
+          <Background
+            gap={24}
+            size={2}
+            color="rgba(255,255,255,0.04)"
+          />
 
           <Panel position="bottom-center" className="mb-6">
             <div className="bg-white/8 backdrop-blur-2xl rounded-full border border-white/10 p-2 flex items-center gap-2 shadow-xl shadow-black/20">
-              <button onClick={() => addNode('prompt')} className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all">Prompt</button>
+              <button
+                onClick={() => addNode('prompt')}
+                className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              >
+                Prompt
+              </button>
               <div className="w-px h-4 bg-white/10" />
-              <button onClick={() => addNode('image')} className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all">Image Ref</button>
+              <button
+                onClick={() => addNode('image')}
+                className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              >
+                Image Ref
+              </button>
               <div className="w-px h-4 bg-white/10" />
-              <button onClick={() => addNode('model')} className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all">AI Model</button>
+              <button
+                onClick={() => addNode('model')}
+                className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              >
+                AI Model
+              </button>
               <div className="w-px h-4 bg-white/10" />
-              <button onClick={() => addNode('output')} className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all">Output</button>
+              <button
+                onClick={() => addNode('output')}
+                className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              >
+                Output
+              </button>
             </div>
           </Panel>
 

@@ -4,6 +4,8 @@ import BaseNode from './BaseNode';
 import { Port } from './Port';
 import { useState } from 'react';
 import { GoogleGenAI } from '@google/genai';
+import { enhancePrompt } from '../../lib/prompt-enhancer';
+import toast from 'react-hot-toast';
 
 export default function PromptNode({ id, data }: { id: string; data: any }) {
   const { updateNodeData, getEdges, getNodes } = useReactFlow();
@@ -16,19 +18,12 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
 
     setIsEnhancing(true);
     try {
-      // @ts-ignore
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Enhance this prompt for an AI image/video generator. Make it highly detailed, cinematic, and descriptive. Return ONLY the enhanced prompt text, nothing else.\n\nOriginal prompt: ${currentText}`
-      });
-
-      if (response.text) {
-        updateNodeData(id, { text: response.text });
-      }
+      const enhanced = await enhancePrompt(currentText);
+      updateNodeData(id, { text: enhanced });
+      toast.success('Prompt enhanced');
     } catch (error) {
-      console.error("Failed to enhance prompt:", error);
+      console.error('Failed to enhance prompt:', error);
+      toast.error('Failed to enhance prompt');
     } finally {
       setIsEnhancing(false);
     }
@@ -42,7 +37,7 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
       (e) => e.target === id && e.targetHandle === 'media-in',
     );
     if (!mediaEdge) {
-      alert('Conecta un Output o Image al puerto media-in primero.');
+      toast.error('Conecta un Output o Image al puerto media-in primero.');
       return;
     }
 
@@ -57,7 +52,7 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
       (sourceNode.data?.resultType as string) || 'image';
 
     if (!mediaUrl) {
-      alert('El nodo conectado no tiene media disponible todavía.');
+      toast.error('El nodo conectado no tiene media disponible todavia.');
       return;
     }
 
@@ -111,9 +106,11 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
 
       if (result.text) {
         updateNodeData(id, { text: result.text });
+        toast.success('Media described');
       }
     } catch (error) {
       console.error('Failed to describe media:', error);
+      toast.error('Failed to describe media');
     } finally {
       setIsDescribing(false);
     }

@@ -107,7 +107,7 @@ export async function pollMarketTask(taskId: string): Promise<{ urls: string[] }
     });
 
     const data = await res.json();
-    console.log(`[KIE] Poll (${taskId}):`, data);
+    if (import.meta.env.DEV) console.log(`[KIE] Poll (${taskId}):`, data);
 
     if (data.code !== 200) {
       if (data.code === 404 && i < 5) {
@@ -255,7 +255,7 @@ export async function pollVeoTask(taskId: string): Promise<{ urls: string[] }> {
     });
 
     const data = await parseJson(res);
-    console.log(`[KIE] Veo poll (${taskId}):`, data);
+    if (import.meta.env.DEV) console.log(`[KIE] Veo poll (${taskId}):`, data);
 
     // successFlag: 0=processing, 1=success, 2=partial, 3=failed
     const flag = data.successFlag ?? data.data?.successFlag;

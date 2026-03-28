@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   Play,
+  Square,
   Type,
   Image as ImageIcon,
   Video as VideoIcon,
@@ -17,6 +18,7 @@ import {
   createVeoTask,
   pollVeoTask,
 } from '../../lib/kie';
+import toast from 'react-hot-toast';
 
 // ---------------------------------------------------------------------------
 // Model capabilities registry
@@ -487,6 +489,8 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
   const { updateNodeData, getNodes, getEdges, setNodes, setEdges } =
     useReactFlow();
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const abortRef = useRef(false);
 
   const caps = getCaps(data.model);
   const isVideo = caps.kind === 'video';
@@ -513,7 +517,37 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
   // -----------------------------------------------------------------------
   // Generate handler
   // -----------------------------------------------------------------------
+  const handleCancel = () => {
+    abortRef.current = true;
+    setIsGenerating(false);
+    // Reset output nodes back to idle
+    const edges = getEdges();
+    const connectedEdges = edges.filter((e) => e.source === id);
+    const targetNodeIds = connectedEdges.map((e) => e.target);
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (targetNodeIds.includes(n.id) && n.type === 'output') {
+          return { ...n, data: { ...n.data, status: 'idle', error: null } };
+        }
+        return n;
+      }),
+    );
+    setEdges((eds) =>
+      eds.map((e) => {
+        if (e.source === id && targetNodeIds.includes(e.target)) {
+          return { ...e, data: { ...e.data, status: 'idle' } };
+        }
+        return e;
+      }),
+    );
+    toast('Generation cancelled', { icon: '⏹' });
+  };
+
   const handleGenerate = async () => {
+    if (isGenerating) return;
+    abortRef.current = false;
+    setIsGenerating(true);
+
     const nodes = getNodes();
     const edges = getEdges();
 
@@ -561,21 +595,17 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
 
     // -- Validations --
     if (!promptText) {
-      alert('Por favor, conecta un nodo de Prompt con texto antes de generar.');
+      toast.error('Conecta un nodo de Prompt con texto antes de generar.');
       return;
     }
 
     if (selectedCaps.supportsReferenceVideo) {
       if (!refImageDataUrl) {
-        alert(
-          'Motion Control requiere una imagen de referencia conectada al puerto ref-image.',
-        );
+        toast.error('Motion Control requiere una imagen de referencia (ref-image).');
         return;
       }
       if (!refVideoDataUrl) {
-        alert(
-          'Motion Control requiere un video de referencia conectado al puerto ref-video.',
-        );
+        toast.error('Motion Control requiere un video de referencia (ref-video).');
         return;
       }
     }
@@ -670,6 +700,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
         resultUrl = result.urls[0] || '';
       }
 
+      if (abortRef.current) return;
       if (!resultUrl) throw new Error('No se generó ningún resultado');
 
       const resultType = selectedCaps.kind;
@@ -697,8 +728,12 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
           return n;
         }),
       );
+      toast.success('Generation complete!');
     } catch (error) {
+      if (abortRef.current) return;
       console.error('Error de generación:', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      toast.error(errorMsg.length > 80 ? errorMsg.slice(0, 80) + '...' : errorMsg);
       setNodes((nds) =>
         nds.map((n) => {
           if (targetNodeIds.includes(n.id) && n.type === 'output') {
@@ -711,6 +746,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
         }),
       );
     } finally {
+      setIsGenerating(false);
       setEdges((eds) =>
         eds.map((e) => {
           if (e.source === id && targetNodeIds.includes(e.target)) {
@@ -1082,13 +1118,22 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
           </>
         )}
 
-        {/* ---------- Generate ---------- */}
-        <button
-          onClick={handleGenerate}
-          className="w-full mt-2 py-3.5 bg-[#0A84FF] hover:bg-[#007AFF] text-white text-[15px] font-semibold rounded-[14px] shadow-[0_0_20px_rgba(10,132,255,0.3)] hover:shadow-[0_0_25px_rgba(10,132,255,0.5)] transition-all duration-300 flex items-center justify-center gap-2 active:scale-[0.98]"
-        >
-          <Play size={16} className="fill-white" /> Generate
-        </button>
+        {/* ---------- Generate / Cancel ---------- */}
+        {isGenerating ? (
+          <button
+            onClick={handleCancel}
+            className="w-full mt-2 py-3.5 bg-[#FF3B30] hover:bg-[#FF2D20] text-white text-[15px] font-semibold rounded-[14px] shadow-[0_0_20px_rgba(255,59,48,0.3)] hover:shadow-[0_0_25px_rgba(255,59,48,0.5)] transition-all duration-300 flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <Square size={16} className="fill-white" /> Cancel
+          </button>
+        ) : (
+          <button
+            onClick={handleGenerate}
+            className="w-full mt-2 py-3.5 bg-[#0A84FF] hover:bg-[#007AFF] text-white text-[15px] font-semibold rounded-[14px] shadow-[0_0_20px_rgba(10,132,255,0.3)] hover:shadow-[0_0_25px_rgba(10,132,255,0.5)] transition-all duration-300 flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            <Play size={16} className="fill-white" /> Generate
+          </button>
+        )}
       </div>
 
       {/* ---------- Output Port ---------- */}
