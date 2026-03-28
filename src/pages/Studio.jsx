@@ -392,14 +392,14 @@ export default function Studio() {
 
     if (isCheckingApiKey || isLoadingTasks) {
         return (
-            <div className="flex h-[calc(100dvh-45px)] items-center justify-center bg-[#0a0a0a] text-white">
+            <div className="flex h-[100dvh] items-center justify-center bg-[#0a0a0a] text-white">
                 <div className="animate-pulse text-banana font-mono">INICIALIZANDO STUDIO...</div>
             </div>
         );
     }
 
     return (
-        <div className="relative flex flex-col overflow-hidden bg-[#0a0a0a] text-white" style={{ zoom: 0.8, height: 'calc((100dvh - 45px) / 0.8)', minHeight: 'calc((100dvh - 45px) / 0.8)' }}>
+        <div className="relative flex flex-col overflow-hidden bg-[#0a0a0a] text-white" style={{ zoom: 0.8, height: 'calc(100dvh / 0.8)', minHeight: 'calc(100dvh / 0.8)' }}>
             <main ref={scrollRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto overscroll-contain h-full">
                 {!hasApiKey && (
                     <div className="m-8 max-w-2xl mx-auto p-8 glass-panel border-banana/20 flex flex-col items-center text-center">

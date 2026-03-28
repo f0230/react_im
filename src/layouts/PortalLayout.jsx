@@ -138,12 +138,12 @@ const PortalLayout = () => {
     return (
         <div className={`min-h-screen font-product ${isStudioRoute ? 'bg-black' : 'bg-[#f2f2f2]'}`}>
             <UnreadCountsProvider>
-                <DashboardNavbar />
+                <DashboardNavbar autoHideInStudio={isStudioRoute} />
 
                 <main
-                    className={`relative pt-[56px] md:pt-[45px] animate-fade-in ${
+                    className={`relative animate-fade-in ${
                         isStudioRoute
-                            ? 'w-full max-w-none px-0'
+                            ? 'w-full max-w-none px-0 pt-0'
                             : 'max-w-[1440px] px-4 md:px-10 mx-auto'
                     }`}
                 >

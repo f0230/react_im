@@ -14,13 +14,17 @@ import DashboardMenu from './DashboardMenu';
 import ToolsPopover from '@/components/ToolsPopover';
 import { PrefetchLink } from '@/components/navigation/PrefetchLink';
 
-const DashboardNavbar = () => {
+const DashboardNavbar = ({ autoHideInStudio = false }) => {
     const [scrolled, setScrolled] = useState(false);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMessagesOpen, setIsMessagesOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [supportsHoverReveal, setSupportsHoverReveal] = useState(false);
+    const [isRevealHotspotActive, setIsRevealHotspotActive] = useState(false);
+    const [isNavbarHovered, setIsNavbarHovered] = useState(false);
+    const [isNavbarFocused, setIsNavbarFocused] = useState(false);
     const { user, profile } = useAuth();
     const {
         counts,
@@ -36,6 +40,7 @@ const DashboardNavbar = () => {
     // Get avatar from Google metadata (faster) or profile table
     const avatarUrl = user?.user_metadata?.avatar_url || profile?.avatar_url;
     const initial = (user?.user_metadata?.full_name || profile?.full_name || 'U').charAt(0);
+
     useEffect(() => {
         const handleScroll = () => {
             const nextScrolled = window.scrollY > 20;
@@ -46,141 +51,207 @@ const DashboardNavbar = () => {
             setIsMessagesOpen(false);
             setIsNotificationsOpen(false);
         };
+
         window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+            setSupportsHoverReveal(false);
+            return undefined;
+        }
+
+        const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+        const syncHoverReveal = () => setSupportsHoverReveal(mediaQuery.matches);
+
+        syncHoverReveal();
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', syncHoverReveal);
+            return () => mediaQuery.removeEventListener('change', syncHoverReveal);
+        }
+
+        mediaQuery.addListener(syncHoverReveal);
+        return () => mediaQuery.removeListener(syncHoverReveal);
+    }, []);
+
+    const hasOpenPopover =
+        isToolsOpen ||
+        isMenuOpen ||
+        isProfileOpen ||
+        isMessagesOpen ||
+        isNotificationsOpen;
+
+    const shouldAutoHide = autoHideInStudio && supportsHoverReveal;
+    const isNavbarVisible =
+        !shouldAutoHide ||
+        isRevealHotspotActive ||
+        isNavbarHovered ||
+        isNavbarFocused ||
+        hasOpenPopover;
+
     return (
-        <header
-            className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 border-b bg-black ${scrolled ? 'bg-black/80 backdrop-blur-md border-white/10' : 'border-transparent'}`}
-        >
-            <div className="mx-auto px-4 md:px-10 flex items-center justify-between min-h-[56px] md:min-h-[45px] max-w-[1350px]">
-                {/* Logo */}
-                <PrefetchLink to="/dashboard" className="flex items-center gap-2 group">
-                    <OptimizedImage
-                        src={logo}
-                        alt="DTE Logo"
-                        width={70}
-                        height={24}
-                        className="h-3 w-auto "
-                    />
-                    <span className="text-white/30 text-xs font-product tracking-widest pl-2 border-l border-white/10 ml-2 hidden sm:block">
-                        PLATFORM
-                    </span>
-                </PrefetchLink>
+        <>
+            {shouldAutoHide && (
+                <div
+                    aria-hidden="true"
+                    className="fixed inset-x-0 top-0 z-30 h-4"
+                    onMouseEnter={() => setIsRevealHotspotActive(true)}
+                    onMouseLeave={() => setIsRevealHotspotActive(false)}
+                />
+            )}
 
-                {/* Actions */}
-                <div className="flex shrink-0 items-center gap-1 md:gap-2">
-                    {/* Tools Popover (Admin/Worker only) */}
-                    {(profile?.role === 'admin' || profile?.role === 'worker') && (
-                        <div className="relative flex shrink-0 items-center">
-                            <ToolsPopover
-                                isOpen={isToolsOpen}
-                                onToggle={() => {
-                                    setIsToolsOpen((prev) => !prev);
-                                    setIsMessagesOpen(false);
-                                    setIsNotificationsOpen(false);
-                                    setIsProfileOpen(false);
-                                    setIsMenuOpen(false);
-                                }}
-                                onClose={() => setIsToolsOpen(false)}
+            <div
+                className={`fixed top-0 left-0 right-0 z-40 transition-transform duration-300 ${
+                    isNavbarVisible ? 'translate-y-0 pointer-events-auto' : '-translate-y-full pointer-events-none'
+                }`}
+                onMouseEnter={() => setIsNavbarHovered(true)}
+                onMouseLeave={() => {
+                    setIsNavbarHovered(false);
+                    setIsRevealHotspotActive(false);
+                }}
+                onFocusCapture={() => setIsNavbarFocused(true)}
+                onBlurCapture={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                        setIsNavbarFocused(false);
+                    }
+                }}
+            >
+                <header
+                    className={`transition-all duration-300 border-b bg-black ${
+                        scrolled ? 'bg-black/80 backdrop-blur-md border-white/10' : 'border-transparent'
+                    }`}
+                >
+                    <div className="mx-auto px-4 md:px-10 flex items-center justify-between min-h-[56px] md:min-h-[45px] max-w-[1350px]">
+                        {/* Logo */}
+                        <PrefetchLink to="/dashboard" className="flex items-center gap-2 group">
+                            <OptimizedImage
+                                src={logo}
+                                alt="DTE Logo"
+                                width={70}
+                                height={24}
+                                className="h-3 w-auto "
                             />
-                        </div>
-                    )}
+                            <span className="text-white/30 text-xs font-product tracking-widest pl-2 border-l border-white/10 ml-2 hidden sm:block">
+                                PLATFORM
+                            </span>
+                        </PrefetchLink>
 
-                    <div className="relative shrink-0">
-                        <MessageIcon
-                            unreadCount={messageUnreadTotal}
-                            isOpen={isMessagesOpen}
-                            onClick={() => {
-                                setIsMessagesOpen((prev) => !prev);
-                                setIsToolsOpen(false);
-                                setIsNotificationsOpen(false);
-                                setIsProfileOpen(false);
-                                setIsMenuOpen(false);
-                            }}
-                        />
-                        <MessagePanel
-                            isOpen={isMessagesOpen}
-                            onClose={() => setIsMessagesOpen(false)}
-                            teamItems={teamPreviews}
-                            whatsappItems={whatsappPreviews}
-                            clientItems={clientPreviews}
-                        />
-                    </div>
+                        {/* Actions */}
+                        <div className="flex shrink-0 items-center gap-1 md:gap-2">
+                            {/* Tools Popover (Admin/Worker only) */}
+                            {(profile?.role === 'admin' || profile?.role === 'worker') && (
+                                <div className="relative flex shrink-0 items-center">
+                                    <ToolsPopover
+                                        isOpen={isToolsOpen}
+                                        onToggle={() => {
+                                            setIsToolsOpen((prev) => !prev);
+                                            setIsMessagesOpen(false);
+                                            setIsNotificationsOpen(false);
+                                            setIsProfileOpen(false);
+                                            setIsMenuOpen(false);
+                                        }}
+                                        onClose={() => setIsToolsOpen(false)}
+                                    />
+                                </div>
+                            )}
 
-                    <div className="relative shrink-0">
-                        <NotificationBell
-                            unreadCount={counts.unreadNotifications}
-                            isOpen={isNotificationsOpen}
-                            onClick={() => {
-                                setIsNotificationsOpen((prev) => !prev);
-                                setIsToolsOpen(false);
-                                setIsMessagesOpen(false);
-                                setIsProfileOpen(false);
-                                setIsMenuOpen(false);
-                            }}
-                        />
-                        <NotificationPanel
-                            isOpen={isNotificationsOpen}
-                            onClose={() => setIsNotificationsOpen(false)}
-                            notifications={notifications}
-                            onMarkAllRead={markAllNotificationsRead}
-                            onMarkRead={markNotificationRead}
-                        />
-                    </div>
-                    {/* Profile Menu Trigger (Desktop & Mobile) */}
-                    <div className="relative shrink-0">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsProfileOpen((prev) => !prev);
-                                setIsToolsOpen(false);
-                                setIsMessagesOpen(false);
-                                setIsNotificationsOpen(false);
-                                setIsMenuOpen(false);
-                            }}
-                            className="flex items-center group"
-                        >
-                            <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 relative transition-transform group-hover:scale-105">
-                                {avatarUrl ? (
-                                    <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full bg-skyblue flex items-center justify-center text-xs font-bold text-white">
-                                        {initial}
+                            <div className="relative shrink-0">
+                                <MessageIcon
+                                    unreadCount={messageUnreadTotal}
+                                    isOpen={isMessagesOpen}
+                                    onClick={() => {
+                                        setIsMessagesOpen((prev) => !prev);
+                                        setIsToolsOpen(false);
+                                        setIsNotificationsOpen(false);
+                                        setIsProfileOpen(false);
+                                        setIsMenuOpen(false);
+                                    }}
+                                />
+                                <MessagePanel
+                                    isOpen={isMessagesOpen}
+                                    onClose={() => setIsMessagesOpen(false)}
+                                    teamItems={teamPreviews}
+                                    whatsappItems={whatsappPreviews}
+                                    clientItems={clientPreviews}
+                                />
+                            </div>
+
+                            <div className="relative shrink-0">
+                                <NotificationBell
+                                    unreadCount={counts.unreadNotifications}
+                                    isOpen={isNotificationsOpen}
+                                    onClick={() => {
+                                        setIsNotificationsOpen((prev) => !prev);
+                                        setIsToolsOpen(false);
+                                        setIsMessagesOpen(false);
+                                        setIsProfileOpen(false);
+                                        setIsMenuOpen(false);
+                                    }}
+                                />
+                                <NotificationPanel
+                                    isOpen={isNotificationsOpen}
+                                    onClose={() => setIsNotificationsOpen(false)}
+                                    notifications={notifications}
+                                    onMarkAllRead={markAllNotificationsRead}
+                                    onMarkRead={markNotificationRead}
+                                />
+                            </div>
+
+                            {/* Profile Menu Trigger (Desktop & Mobile) */}
+                            <div className="relative shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsProfileOpen((prev) => !prev);
+                                        setIsToolsOpen(false);
+                                        setIsMessagesOpen(false);
+                                        setIsNotificationsOpen(false);
+                                        setIsMenuOpen(false);
+                                    }}
+                                    className="flex items-center group"
+                                >
+                                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 relative transition-transform group-hover:scale-105">
+                                        {avatarUrl ? (
+                                            <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full bg-skyblue flex items-center justify-center text-xs font-bold text-white">
+                                                {initial}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
+                                </button>
+
+                                <ProfileMenu isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
                             </div>
 
-                        </button>
+                            {/* Menu Trigger Container (Relative for Popover) */}
+                            <div className="relative shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsMenuOpen((prev) => !prev);
+                                        setIsToolsOpen(false);
+                                        setIsProfileOpen(false);
+                                        setIsMessagesOpen(false);
+                                        setIsNotificationsOpen(false);
+                                    }}
+                                    className={`flex items-center group ${isMenuOpen ? 'text-skyblue' : 'text-white hover:text-skyblue'}`}
+                                >
+                                    <div className={`p-2 rounded-full transition-colors ${isMenuOpen ? 'text-skyblue' : 'text-white'}`}>
+                                        <Menu size={20} />
+                                    </div>
+                                </button>
 
-                        <ProfileMenu isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
-                    </div>
-
-                    {/* Menu Trigger Container (Relative for Popover) */}
-                    <div className="relative shrink-0">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setIsMenuOpen((prev) => !prev);
-                                setIsToolsOpen(false);
-                                setIsProfileOpen(false);
-                                setIsMessagesOpen(false);
-                                setIsNotificationsOpen(false);
-                            }}
-                            className={`flex items-center group ${isMenuOpen ? 'text-skyblue' : 'text-white hover:text-skyblue'}`}
-                        >
-                            <div className={`p-2 rounded-full transition-colors ${isMenuOpen ? 'text-skyblue' : 'text-white'}`}>
-                                <Menu size={20} />
+                                {/* Dropdown Menu */}
+                                <DashboardMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
                             </div>
-                        </button>
-
-                        {/* Dropdown Menu */}
-                        <DashboardMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+                        </div>
                     </div>
-                </div>
+                </header>
             </div>
-        </header>
+        </>
     );
 };
 
