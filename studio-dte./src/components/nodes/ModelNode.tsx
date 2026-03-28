@@ -37,7 +37,6 @@ interface ModelCaps {
   supportsSound?: boolean;
   supportsMode?: boolean;
   supportsSeeds?: boolean;
-  supportsCallbacks?: boolean;
   supportsTranslation?: boolean;
   supportsFallback?: boolean;
   supportsFrameCount?: boolean;
@@ -45,10 +44,11 @@ interface ModelCaps {
   supportsUploadMethod?: boolean;
   supportsCharacterIds?: boolean;
   supportsMultiPrompt?: boolean;
-  supportsMultiShots?: boolean;
   supportsKlingElements?: boolean;
   supportsCharacterOrientation?: boolean;
   supportsBackgroundSource?: boolean;
+  supportsNegativePrompt?: boolean;
+  supportsSecondImage?: boolean;
 }
 
 const MODEL_CAPS: Record<string, ModelCaps> = {
@@ -91,7 +91,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsAspectRatio: true,
     supportsDuration: true,
     supportsSound: true,
-    supportsCallbacks: true,
+
   },
   'kling-2.6/image-to-video': {
     kind: 'video',
@@ -99,7 +99,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsReferenceImage: true,
     supportsDuration: true,
     supportsSound: true,
-    supportsCallbacks: true,
+
   },
   'kling-2.6/motion-control': {
     kind: 'video',
@@ -108,7 +108,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsReferenceVideo: true,
     supportsMode: true,
     supportsCharacterOrientation: true,
-    supportsCallbacks: true,
+
   },
 
   /* ---- Kling 3.0 variants ---- */
@@ -116,14 +116,15 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     kind: 'video',
     provider: 'market',
     supportsReferenceImage: true,
+    supportsSecondImage: true,
+    supportsNegativePrompt: true,
     supportsAspectRatio: true,
     supportsDuration: true,
     supportsSound: true,
     supportsMode: true,
     supportsMultiPrompt: true,
-    supportsMultiShots: true,
     supportsKlingElements: true,
-    supportsCallbacks: true,
+
   },
   'kling-3.0/motion-control': {
     kind: 'video',
@@ -133,7 +134,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsMode: true,
     supportsCharacterOrientation: true,
     supportsBackgroundSource: true,
-    supportsCallbacks: true,
+
   },
 
   /* ---- Sora 2 variants ---- */
@@ -145,7 +146,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsRemoveWatermark: true,
     supportsUploadMethod: true,
     supportsCharacterIds: true,
-    supportsCallbacks: true,
+
   },
   'sora-2-image-to-video': {
     kind: 'video',
@@ -156,7 +157,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsRemoveWatermark: true,
     supportsUploadMethod: true,
     supportsCharacterIds: true,
-    supportsCallbacks: true,
+
   },
 
   /* ---- Veo ---- */
@@ -166,7 +167,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsReferenceImage: true,
     supportsAspectRatio: true,
     supportsSeeds: true,
-    supportsCallbacks: true,
+
     supportsTranslation: true,
     supportsFallback: true,
   },
@@ -176,7 +177,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsReferenceImage: true,
     supportsAspectRatio: true,
     supportsSeeds: true,
-    supportsCallbacks: true,
+
     supportsTranslation: true,
     supportsFallback: true,
   },
@@ -231,24 +232,21 @@ function parseSeeds(val: string | undefined): number[] {
     .filter((n) => !isNaN(n) && isFinite(n));
 }
 
-function parseJsonSafe(val: string | undefined): unknown | undefined {
-  if (!val || !val.trim()) return undefined;
-  try {
-    return JSON.parse(val);
-  } catch {
-    return undefined;
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Build Market request input per model
 // ---------------------------------------------------------------------------
 function buildMarketInput(
   model: string,
   prompt: string,
+  negativePrompt: string,
   imageUrl: string | null,
+  imageUrl2: string | null,
   videoUrl: string | null,
   data: Record<string, any>,
+  extras?: {
+    multiPrompt?: Array<{ prompt: string; duration: number }>;
+    klingElements?: Array<{ name: string; description: string; element_input_urls: string[] }>;
+  },
 ): { apiModel: string; input: Record<string, any> } {
   const aspectRatio = (data.aspectRatio || '1:1') as string;
   const resolution = (data.resolution || '1K') as string;
@@ -339,14 +337,21 @@ function buildMarketInput(
         aspect_ratio: aspectRatio,
         mode,
       };
-      if (imageUrl) input.image_urls = [imageUrl];
-
-      const multiPrompt = parseJsonSafe(data.multiPrompt);
-      if (multiPrompt) input.multi_prompt = multiPrompt;
-      const multiShots = parseJsonSafe(data.multiShots);
-      if (multiShots) input.multi_shots = multiShots;
-      const klingElements = parseJsonSafe(data.klingElements);
-      if (klingElements) input.kling_elements = klingElements;
+      if (imageUrl && imageUrl2) {
+        input.image_urls = [imageUrl, imageUrl2];
+      } else if (imageUrl) {
+        input.image_urls = [imageUrl];
+      }
+      if (negativePrompt) {
+        input.negative_prompt = negativePrompt;
+      }
+      if (extras?.multiPrompt?.length) {
+        input.multi_shots = true;
+        input.multi_prompt = extras.multiPrompt;
+      }
+      if (extras?.klingElements?.length) {
+        input.kling_elements = extras.klingElements;
+      }
 
       return { apiModel: 'kling-3.0/video', input };
     }
@@ -488,7 +493,6 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
   const isMotionControl = !!caps.supportsReferenceVideo;
 
   const hasAdvanced =
-    caps.supportsCallbacks ||
     caps.supportsSeeds ||
     caps.supportsTranslation ||
     caps.supportsFallback ||
@@ -496,9 +500,6 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     caps.supportsRemoveWatermark ||
     caps.supportsUploadMethod ||
     caps.supportsCharacterIds ||
-    caps.supportsMultiPrompt ||
-    caps.supportsMultiShots ||
-    caps.supportsKlingElements ||
     caps.supportsBackgroundSource ||
     caps.provider === 'veo'; // generationType
 
@@ -556,6 +557,17 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       promptNode?.data?.text ||
       '') as string;
 
+    // -- Negative prompt --
+    const negPromptEdge = inputEdges.find(
+      (e) => e.targetHandle === 'negative-prompt',
+    );
+    const negPromptNode = negPromptEdge
+      ? nodes.find((n) => n.id === negPromptEdge.source)
+      : null;
+    const negativePromptText = (negPromptNode?.data?.enhancedText ||
+      negPromptNode?.data?.text ||
+      '') as string;
+
     // -- Reference image --
     const refImageEdge = inputEdges.find(
       (e) => e.targetHandle === 'ref-image',
@@ -566,6 +578,18 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     let refImageDataUrl: string | null =
       (refImageNode?.data?.imageUrl as string) ||
       (refImageNode?.data?.resultUrl as string) ||
+      null;
+
+    // -- Reference image 2 (last frame) --
+    const refImage2Edge = inputEdges.find(
+      (e) => e.targetHandle === 'ref-image-2',
+    );
+    const refImage2Node = refImage2Edge
+      ? nodes.find((n) => n.id === refImage2Edge.source)
+      : null;
+    let refImage2DataUrl: string | null =
+      (refImage2Node?.data?.imageUrl as string) ||
+      (refImage2Node?.data?.resultUrl as string) ||
       null;
 
     // -- Reference video --
@@ -580,6 +604,46 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       (refVideoNode?.data?.videoUrl as string) ||
       (refVideoNode?.data?.imageUrl as string) ||
       null;
+
+    // -- Multi Prompt (from MultiPromptNode) --
+    const multiPromptEdge = inputEdges.find(
+      (e) => e.targetHandle === 'multi-prompt',
+    );
+    const multiPromptNode = multiPromptEdge
+      ? nodes.find((n) => n.id === multiPromptEdge.source)
+      : null;
+    const multiPromptData = multiPromptNode?.data?.segments as
+      | Array<{ prompt: string; duration: number }>
+      | undefined;
+
+    // -- Kling Elements (from ElementNodes) --
+    const elementEdges = inputEdges.filter(
+      (e) => e.targetHandle === 'elements',
+    );
+    const klingElementsData = elementEdges
+      .map((ee) => {
+        const elNode = nodes.find((n) => n.id === ee.source);
+        if (!elNode?.data?.name) return null;
+        const elImageEdges = edges.filter(
+          (e) => e.target === elNode.id && e.targetHandle === 'ref-images',
+        );
+        const imageUrls = elImageEdges
+          .map((ie) => {
+            const src = nodes.find((n) => n.id === ie.source);
+            return (src?.data?.imageUrl || src?.data?.resultUrl) as string | undefined;
+          })
+          .filter(Boolean) as string[];
+        return {
+          name: elNode.data.name as string,
+          description: (elNode.data.description || '') as string,
+          element_input_urls: imageUrls,
+        };
+      })
+      .filter(Boolean) as Array<{
+      name: string;
+      description: string;
+      element_input_urls: string[];
+    }>;
 
     const selectedModel = data.model as string;
     const selectedCaps = getCaps(selectedModel);
@@ -636,6 +700,22 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
         );
       }
 
+      // -- Upload reference image 2 (last frame, shared) --
+      let uploadedImage2Url: string | null = null;
+      if (refImage2DataUrl && selectedCaps.supportsSecondImage) {
+        if (refImage2DataUrl.startsWith('http')) {
+          try {
+            refImage2DataUrl = await toBase64(refImage2DataUrl);
+          } catch (e) {
+            console.error('Error fetching reference image 2:', e);
+          }
+        }
+        uploadedImage2Url = await uploadFile(
+          refImage2DataUrl,
+          'images/studio-dte',
+        );
+      }
+
       // -- Upload reference video (shared across all generations) --
       let uploadedVideoUrl: string | null = null;
       if (refVideoDataUrl && selectedCaps.supportsReferenceVideo) {
@@ -685,7 +765,6 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             enableTranslation: data.enableTranslation ?? false,
             enableFallback: data.enableFallback ?? true,
             generationType: genType !== 'auto' ? genType : undefined,
-            callBackUrl: data.callBackUrl || undefined,
           });
           const result = await pollVeoTask(taskId);
           resultUrl = result.urls[0] || '';
@@ -693,14 +772,17 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
           const { apiModel, input } = buildMarketInput(
             selectedModel,
             promptText,
+            negativePromptText,
             uploadedImageUrl,
+            uploadedImage2Url,
             uploadedVideoUrl,
             data,
+            {
+              multiPrompt: multiPromptData,
+              klingElements: klingElementsData.length ? klingElementsData : undefined,
+            },
           );
-          taskId = await createMarketTask(apiModel, input, {
-            callBackUrl: data.callBackUrl || undefined,
-            progressCallBackUrl: data.progressCallBackUrl || undefined,
-          });
+          taskId = await createMarketTask(apiModel, input);
           const result = await pollMarketTask(taskId);
           resultUrl = result.urls[0] || '';
         }
@@ -802,25 +884,24 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       <div className="flex flex-col gap-4">
         {/* ---------- Input Ports ---------- */}
         <div className="flex flex-col gap-2 relative -ml-4">
-          <Port
-            type="target"
-            id="prompt"
-            color="pink"
-            icon={<Type size={14} />}
-          />
-          <Port
-            type="target"
-            id="ref-image"
-            color="green"
-            icon={<ImageIcon size={14} />}
-          />
+          <Port type="target" id="prompt" color="pink" label="Prompt" />
+          {caps.supportsNegativePrompt && (
+            <Port type="target" id="negative-prompt" color="pink" label="Neg. Prompt" />
+          )}
+          {caps.supportsReferenceImage && (
+            <Port type="target" id="ref-image" color="green" label="Image" />
+          )}
+          {caps.supportsSecondImage && (
+            <Port type="target" id="ref-image-2" color="green" label="Image 2" />
+          )}
           {caps.supportsReferenceVideo && (
-            <Port
-              type="target"
-              id="ref-video"
-              color="green"
-              icon={<VideoIcon size={14} />}
-            />
+            <Port type="target" id="ref-video" color="green" label="Video" />
+          )}
+          {caps.supportsMultiPrompt && (
+            <Port type="target" id="multi-prompt" color="pink" label="Multi Prompt" />
+          )}
+          {caps.supportsKlingElements && (
+            <Port type="target" id="elements" color="green" label="Elements" />
           )}
         </div>
 
@@ -834,7 +915,16 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             onChange={(val) => {
               const v = val as string;
               const newCaps = getCaps(v);
-              set({ model: v, modelType: newCaps.kind });
+              const patch: Record<string, any> = { model: v, modelType: newCaps.kind };
+              if (v === 'kling-2.6/motion-control') {
+                patch.mode = '720p';
+              } else if (data.model === 'kling-2.6/motion-control') {
+                patch.mode = 'std';
+              }
+              if (newCaps.supportsCharacterOrientation) {
+                patch.characterOrientation = 'video';
+              }
+              set(patch);
             }}
             options={MODEL_OPTIONS}
           />
@@ -929,12 +1019,19 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             <div className="flex flex-col gap-2">
               <FieldLabel>Modo</FieldLabel>
               <MultiUseSelect
-                value={data.mode || 'std'}
+                value={data.mode || (data.model === 'kling-2.6/motion-control' ? '720p' : 'std')}
                 onChange={(val) => set({ mode: val as string })}
-                options={[
-                  { label: 'Standard', value: 'std' },
-                  { label: 'Pro', value: 'pro' },
-                ]}
+                options={
+                  data.model === 'kling-2.6/motion-control'
+                    ? [
+                        { label: '720p', value: '720p' },
+                        { label: '1080p', value: '1080p' },
+                      ]
+                    : [
+                        { label: 'Standard', value: 'std' },
+                        { label: 'Pro', value: 'pro' },
+                      ]
+                }
               />
             </div>
           )}
@@ -944,15 +1041,13 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             <div className="flex flex-col gap-2">
               <FieldLabel>Orientación</FieldLabel>
               <MultiUseSelect
-                value={data.characterOrientation || 'front'}
+                value={data.characterOrientation || 'video'}
                 onChange={(val) =>
                   set({ characterOrientation: val as string })
                 }
                 options={[
-                  { label: 'Frontal', value: 'front' },
-                  { label: 'Izquierda', value: 'left' },
-                  { label: 'Derecha', value: 'right' },
-                  { label: 'Espalda', value: 'back' },
+                  { label: 'Video', value: 'video' },
+                  { label: 'Image', value: 'image' },
                 ]}
               />
             </div>
@@ -1082,73 +1177,21 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                   </div>
                 )}
 
-                {/* -- Kling 3.0 video specific -- */}
-                {caps.supportsMultiPrompt && (
-                  <div className="flex flex-col gap-1.5">
-                    <FieldLabel>Multi Prompt (JSON)</FieldLabel>
-                    <SmallInput
-                      value={data.multiPrompt || ''}
-                      onChange={(v) => set({ multiPrompt: v })}
-                      placeholder='[{"prompt":"..."}]'
-                    />
-                  </div>
-                )}
-                {caps.supportsMultiShots && (
-                  <div className="flex flex-col gap-1.5">
-                    <FieldLabel>Multi Shots (JSON)</FieldLabel>
-                    <SmallInput
-                      value={data.multiShots || ''}
-                      onChange={(v) => set({ multiShots: v })}
-                      placeholder='[{"shot":"..."}]'
-                    />
-                  </div>
-                )}
-                {caps.supportsKlingElements && (
-                  <div className="flex flex-col gap-1.5">
-                    <FieldLabel>Kling Elements (JSON)</FieldLabel>
-                    <SmallInput
-                      value={data.klingElements || ''}
-                      onChange={(v) => set({ klingElements: v })}
-                      placeholder='[{"element":"..."}]'
-                    />
-                  </div>
-                )}
-
                 {/* -- Kling motion-control: background source (3.0 only) -- */}
                 {caps.supportsBackgroundSource && (
                   <div className="flex flex-col gap-1.5">
                     <FieldLabel>Background Source</FieldLabel>
-                    <SmallInput
-                      value={data.backgroundSource || ''}
-                      onChange={(v) => set({ backgroundSource: v })}
-                      placeholder="e.g. original"
+                    <MultiUseSelect
+                      value={data.backgroundSource || 'input_video'}
+                      onChange={(val) => set({ backgroundSource: val as string })}
+                      options={[
+                        { label: 'Input Video', value: 'input_video' },
+                        { label: 'Input Image', value: 'input_image' },
+                      ]}
                     />
                   </div>
                 )}
 
-                {/* -- Callbacks (shared) -- */}
-                {caps.supportsCallbacks && (
-                  <>
-                    <div className="flex flex-col gap-1.5">
-                      <FieldLabel>Callback URL</FieldLabel>
-                      <SmallInput
-                        value={data.callBackUrl || ''}
-                        onChange={(v) => set({ callBackUrl: v })}
-                        placeholder="https://..."
-                      />
-                    </div>
-                    {caps.provider === 'market' && (
-                      <div className="flex flex-col gap-1.5">
-                        <FieldLabel>Progress Callback URL</FieldLabel>
-                        <SmallInput
-                          value={data.progressCallBackUrl || ''}
-                          onChange={(v) => set({ progressCallBackUrl: v })}
-                          placeholder="https://..."
-                        />
-                      </div>
-                    )}
-                  </>
-                )}
               </div>
             )}
           </>

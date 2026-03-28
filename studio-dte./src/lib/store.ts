@@ -39,13 +39,9 @@ const DEFAULT_MODEL_DATA = {
   seeds: '',
   nFrames: '',
   characterIdList: '',
-  characterOrientation: '',
-  backgroundSource: '',
-  multiPrompt: '',
-  multiShots: '',
-  klingElements: '',
-  callBackUrl: '',
-  progressCallBackUrl: '',
+  characterOrientation: 'video',
+  backgroundSource: 'input_video',
+  negativePrompt: '',
 };
 
 const DEFAULT_OUTPUT_DATA = {
@@ -61,6 +57,15 @@ const DEFAULT_ENHANCER_DATA = {
   isEnhancing: false,
 };
 
+const DEFAULT_MULTI_PROMPT_DATA = {
+  segments: [{ prompt: '', duration: 3 }],
+};
+
+const DEFAULT_ELEMENT_DATA = {
+  name: '',
+  description: '',
+};
+
 export function getDefaultData(type: string): Record<string, any> {
   switch (type) {
     case 'prompt':
@@ -73,6 +78,10 @@ export function getDefaultData(type: string): Record<string, any> {
       return { ...DEFAULT_ENHANCER_DATA };
     case 'image':
       return { imageUrl: null };
+    case 'multiPrompt':
+      return { segments: DEFAULT_MULTI_PROMPT_DATA.segments.map((s) => ({ ...s })) };
+    case 'element':
+      return { ...DEFAULT_ELEMENT_DATA };
     default:
       return {};
   }
@@ -174,19 +183,37 @@ function getConnectionColor(
     color = 'pink';
     if (
       targetHandle === 'ref-image' ||
+      targetHandle === 'ref-image-2' ||
       targetHandle === 'ref-video' ||
-      targetHandle === 'media-in'
+      targetHandle === 'media-in' ||
+      targetHandle === 'elements'
+    )
+      warning = true;
+  }
+
+  if (sourceNode?.type === 'multiPrompt') {
+    color = 'pink';
+    if (targetHandle !== 'multi-prompt')
+      warning = true;
+  }
+
+  if (sourceNode?.type === 'element') {
+    if (
+      targetHandle !== 'elements'
     )
       warning = true;
   }
 
   if (sourceNode?.type === 'image') {
     if (targetHandle === 'prompt') warning = true;
+    if (targetHandle === 'negative-prompt') warning = true;
     if (targetHandle === 'ref-video') warning = true;
+    if (targetHandle === 'multi-prompt') warning = true;
   }
 
   if (sourceNode?.type === 'output') {
     if (targetHandle === 'prompt') warning = true;
+    if (targetHandle === 'negative-prompt') warning = true;
   }
 
   return { color, warning };

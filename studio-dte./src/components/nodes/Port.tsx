@@ -7,7 +7,7 @@ const portColors = {
   pink: 'bg-[#FF2D55] shadow-[0_0_10px_rgba(255,45,85,0.5)]',
 };
 
-export function Port({ type, id, color, icon, className }: { type: 'source' | 'target', id: string, color: 'green' | 'pink', icon?: ReactNode, className?: string }) {
+export function Port({ type, id, color, icon, label, className }: { type: 'source' | 'target', id: string, color: 'green' | 'pink', icon?: ReactNode, label?: string, className?: string }) {
   const isInput = type === 'target';
 
   return (
@@ -33,8 +33,12 @@ export function Port({ type, id, color, icon, className }: { type: 'source' | 't
         )}
       />
 
-      {icon && isInput && (
+      {icon && isInput && !label && (
         <div className="text-white/40 ml-3 flex items-center justify-center">{icon}</div>
+      )}
+
+      {label && isInput && (
+        <span className="ml-3 text-[10px] text-white/40 font-medium uppercase tracking-wider whitespace-nowrap">{label}</span>
       )}
     </div>
   );

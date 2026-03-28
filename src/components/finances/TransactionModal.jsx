@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, Receipt, Save, X } from 'lucide-react';
+import { AlertCircle, Receipt, Save, X, Search, ChevronDown, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { FINANCE_CATEGORY_OPTIONS, getProjectDisplayName } from '@/utils/finance';
@@ -33,6 +33,8 @@ const TransactionModal = ({
     const [form, setForm] = useState(getEmptyForm(defaultType));
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [projectSearch, setProjectSearch] = useState('');
+    const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
     useEffect(() => {
         if (!open) return;
@@ -56,7 +58,20 @@ const TransactionModal = ({
         }
 
         setError('');
+        setProjectDropdownOpen(false);
+        setProjectSearch('');
     }, [defaultType, initialValues, open]);
+
+    // Close project dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (projectDropdownOpen && !event.target.closest('.project-dropdown-container')) {
+                setProjectDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [projectDropdownOpen]);
 
     const categoryOptions = useMemo(
         () => FINANCE_CATEGORY_OPTIONS[form.type] || [],
@@ -252,21 +267,102 @@ const TransactionModal = ({
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-2">
-                                <label className="space-y-2 text-sm font-medium text-neutral-700">
-                                    Proyecto asociado
-                                    <select
-                                        value={form.project_id}
-                                        onChange={(event) => handleChange('project_id', event.target.value)}
-                                        className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 outline-none transition focus:border-neutral-400"
-                                    >
-                                        <option value="">Sin proyecto</option>
-                                        {projects.map((project) => (
-                                            <option key={project.id} value={project.id}>
-                                                {getProjectDisplayName(project)}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
+                                {/* Selector de Proyecto con Búsqueda */}
+                                <div className="space-y-2 project-dropdown-container">
+                                    <label className="text-sm font-medium text-neutral-700">Proyecto asociado</label>
+                                    <div className="relative">
+                                        <button
+                                            type="button"
+                                            onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                                            className="w-full flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-left outline-none transition focus:border-neutral-400 hover:border-neutral-300"
+                                        >
+                                            <span className={form.project_id ? 'text-neutral-900' : 'text-neutral-400'}>
+                                                {form.project_id 
+                                                    ? getProjectDisplayName(projects.find(p => p.id === form.project_id))
+                                                    : 'Seleccionar proyecto...'
+                                                }
+                                            </span>
+                                            <ChevronDown size={16} className={`text-neutral-400 transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`} />
+                                        </button>
+                                        
+                                        <AnimatePresence>
+                                            {projectDropdownOpen && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: -8 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -8 }}
+                                                    className="absolute z-50 mt-1 w-full rounded-2xl border border-neutral-200 bg-white shadow-lg overflow-hidden"
+                                                >
+                                                    {/* Search input */}
+                                                    <div className="border-b border-neutral-100 p-2">
+                                                        <div className="relative">
+                                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                                            <input
+                                                                type="text"
+                                                                value={projectSearch}
+                                                                onChange={(e) => setProjectSearch(e.target.value)}
+                                                                placeholder="Buscar proyecto..."
+                                                                className="w-full rounded-xl border border-neutral-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-neutral-400"
+                                                                autoFocus
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* Project list */}
+                                                    <div className="max-h-48 overflow-y-auto">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                handleChange('project_id', '');
+                                                                setProjectDropdownOpen(false);
+                                                                setProjectSearch('');
+                                                            }}
+                                                            className={`w-full px-4 py-2.5 text-left text-sm hover:bg-neutral-50 flex items-center gap-2 ${!form.project_id ? 'bg-skyblue/10 text-skyblue' : 'text-neutral-600'}`}
+                                                        >
+                                                            <span className="text-neutral-400">—</span>
+                                                            Sin proyecto
+                                                        </button>
+                                                        
+                                                        {projects
+                                                            .filter(p => {
+                                                                if (!projectSearch.trim()) return true;
+                                                                const search = projectSearch.toLowerCase();
+                                                                const name = (p.name || p.title || '').toLowerCase();
+                                                                return name.includes(search);
+                                                            })
+                                                            .map(project => (
+                                                                <button
+                                                                    key={project.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        handleChange('project_id', project.id);
+                                                                        setProjectDropdownOpen(false);
+                                                                        setProjectSearch('');
+                                                                    }}
+                                                                    className={`w-full px-4 py-2.5 text-left text-sm hover:bg-neutral-50 flex items-center gap-2 ${form.project_id === project.id ? 'bg-skyblue/10 text-skyblue' : 'text-neutral-900'}`}
+                                                                >
+                                                                    <Building2 size={14} className={form.project_id === project.id ? 'text-skyblue' : 'text-neutral-400'} />
+                                                                    {getProjectDisplayName(project)}
+                                                                </button>
+                                                            ))
+                                                        }
+                                                        
+                                                        {projects.filter(p => {
+                                                            if (!projectSearch.trim()) return true;
+                                                            const search = projectSearch.toLowerCase();
+                                                            const name = (p.name || p.title || '').toLowerCase();
+                                                            return name.includes(search);
+                                                        }).length === 0 && (
+                                                            <div className="px-4 py-3 text-sm text-neutral-400 text-center">
+                                                                No se encontraron proyectos
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                </div>
 
                                 <label className="space-y-2 text-sm font-medium text-neutral-700">
                                     Factura asociada

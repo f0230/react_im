@@ -4,6 +4,12 @@
 @tailwind components;
 @tailwind utilities;
 
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
 body {
   font-family: 'Inter', sans-serif;
   margin: 0;

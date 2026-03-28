@@ -27,6 +27,8 @@ import ModelNode from './components/nodes/ModelNode';
 import ImageNode from './components/nodes/ImageNode';
 import OutputNode from './components/nodes/OutputNode';
 import EnhancerNode from './components/nodes/EnhancerNode';
+import MultiPromptNode from './components/nodes/MultiPromptNode';
+import ElementNode from './components/nodes/ElementNode';
 import WorkflowEdge from './components/edges/WorkflowEdge';
 import { useWorkflowStore, getDefaultData } from './lib/store';
 
@@ -36,6 +38,8 @@ const nodeTypes: NodeTypes = {
   image: ImageNode,
   output: OutputNode,
   enhancer: EnhancerNode,
+  multiPrompt: MultiPromptNode,
+  element: ElementNode,
 };
 
 const edgeTypes = {
@@ -104,7 +108,7 @@ export default function App() {
 
 
   const duplicateNode = useCallback(() => {
-    const nodeId = deleteNodeIdRef.current || menu?.id;
+    const nodeId = deleteNodeIdRef.current;
     if (!nodeId) return;
     const nodeToDuplicate = nodes.find((n) => n.id === nodeId);
     if (nodeToDuplicate) {
@@ -124,10 +128,10 @@ export default function App() {
     }
     deleteNodeIdRef.current = undefined;
     setMenu(null);
-  }, [menu, nodes, setNodes, pushSnapshot]);
+  }, [nodes, setNodes, pushSnapshot]);
 
   const deleteNode = useCallback(() => {
-    const nodeId = deleteNodeIdRef.current || menu?.id;
+    const nodeId = deleteNodeIdRef.current;
     if (!nodeId) return;
     pushSnapshot();
     setNodes((nds) => nds.filter((n) => n.id !== nodeId));
@@ -136,7 +140,7 @@ export default function App() {
     );
     deleteNodeIdRef.current = undefined;
     setMenu(null);
-  }, [menu, setNodes, setEdges, pushSnapshot]);
+  }, [setNodes, setEdges, pushSnapshot]);
 
   // Paste image → new Image node
   useEffect(() => {
@@ -382,6 +386,7 @@ export default function App() {
       {/* Canvas Area */}
       <div className="flex-1 relative z-10">
         <ReactFlow
+          proOptions={{ hideAttribution: true }}
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
