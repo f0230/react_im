@@ -5,6 +5,7 @@ import { cn, copyImageToClipboard, downloadImage } from '@/lib/utils';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import Noise from '@/components/ui/Noise';
 import { getStudioCredits } from '@/utils/studioTypes';
+import NodeStatusIndicator from './NodeStatusIndicator';
 
 const GRID_RATIO = 9 / 16;
 
@@ -40,38 +41,42 @@ export default function ImageGrid({ tasks, onSelect, onUseAsReference, onDismiss
 function TaskCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismiss }) {
     if (task.status === 'generating') {
         return (
-            <AspectRatio ratio={GRID_RATIO} className="overflow-hidden rounded-xl border border-white/10 bg-[#0b0b0b]">
-                <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-white/[0.04] via-transparent to-black/40">
-                    <Noise patternSize={120} patternScaleX={1.2} patternScaleY={1.2} patternRefreshInterval={3} patternAlpha={24} />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(227,255,49,0.08),transparent_60%)]" />
-                    <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
-                    <div className="relative z-10 flex flex-col items-center justify-center">
-                        <Loader2 className="mb-3 h-8 w-8 animate-spin text-banana" />
-                        <span className="text-xs font-medium uppercase tracking-[0.22em] text-white/55">Generando</span>
-                        <GenerationTimer task={task} />
+            <NodeStatusIndicator status="loading" loadingVariant="border">
+                <AspectRatio ratio={GRID_RATIO} className="overflow-hidden bg-[#0b0b0b]">
+                    <div className="relative flex h-full w-full flex-col items-center justify-center bg-gradient-to-b from-white/[0.04] via-transparent to-black/40">
+                        <Noise patternSize={120} patternScaleX={1.2} patternScaleY={1.2} patternRefreshInterval={3} patternAlpha={24} />
+                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(227,255,49,0.08),transparent_60%)]" />
+                        <div className="absolute inset-0 animate-pulse bg-white/[0.03]" />
+                        <div className="relative z-10 flex flex-col items-center justify-center">
+                            <Loader2 className="mb-3 h-8 w-8 animate-spin text-banana" />
+                            <span className="text-xs font-medium uppercase tracking-[0.22em] text-white/55">Generando</span>
+                            <GenerationTimer task={task} />
+                        </div>
                     </div>
-                </div>
-            </AspectRatio>
+                </AspectRatio>
+            </NodeStatusIndicator>
         );
     }
 
     if (task.status === 'failed') {
         return (
-            <AspectRatio ratio={GRID_RATIO} className="overflow-hidden rounded-xl bg-red-950/60">
-                <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
-                    <AlertCircle className="mb-2 h-7 w-7 text-red-400" />
-                    <span className="mb-1 text-xs font-bold uppercase tracking-widest text-red-400">Fallo</span>
-                    <p className="line-clamp-3 text-[10px] text-red-300/70">{task.error}</p>
-                    {onDismiss && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
-                            className="mt-3 flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-1.5 text-[11px] font-medium text-red-300 transition-colors hover:bg-red-500/40"
-                        >
-                            <X size={12} /> Cerrar
-                        </button>
-                    )}
-                </div>
-            </AspectRatio>
+            <NodeStatusIndicator status="error">
+                <AspectRatio ratio={GRID_RATIO} className="overflow-hidden bg-red-950/60">
+                    <div className="flex h-full w-full flex-col items-center justify-center p-4 text-center">
+                        <AlertCircle className="mb-2 h-7 w-7 text-red-400" />
+                        <span className="mb-1 text-xs font-bold uppercase tracking-widest text-red-400">Fallo</span>
+                        <p className="line-clamp-3 text-[10px] text-red-300/70">{task.error}</p>
+                        {onDismiss && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
+                                className="mt-3 flex items-center gap-1 rounded-lg bg-red-500/20 px-3 py-1.5 text-[11px] font-medium text-red-300 transition-colors hover:bg-red-500/40"
+                            >
+                                <X size={12} /> Cerrar
+                            </button>
+                        )}
+                    </div>
+                </AspectRatio>
+            </NodeStatusIndicator>
         );
     }
 
@@ -101,26 +106,31 @@ function ImageCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismi
         setImgError(false);
     }, [task.imageUrl]);
 
+    const nodeStatus = imgError ? 'error' : isLoading ? 'loading' : 'success';
+
     if (imgError) {
         return (
-            <AspectRatio ratio={GRID_RATIO} className="overflow-hidden rounded-xl bg-white/5">
-                <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center">
-                    <ImageOff className="h-7 w-7 text-white/20" />
-                    <span className="text-[11px] font-medium text-white/30">URL expirada</span>
-                    {onDismiss && (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
-                            className="mt-1 flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] text-white/50 transition-colors hover:bg-white/20"
-                        >
-                            <X size={11} /> Cerrar
-                        </button>
-                    )}
-                </div>
-            </AspectRatio>
+            <NodeStatusIndicator status="error">
+                <AspectRatio ratio={GRID_RATIO} className="overflow-hidden bg-white/5">
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center">
+                        <ImageOff className="h-7 w-7 text-white/20" />
+                        <span className="text-[11px] font-medium text-white/30">URL expirada</span>
+                        {onDismiss && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDismiss(task.id); }}
+                                className="mt-1 flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5 text-[11px] text-white/50 transition-colors hover:bg-white/20"
+                            >
+                                <X size={11} /> Cerrar
+                            </button>
+                        )}
+                    </div>
+                </AspectRatio>
+            </NodeStatusIndicator>
         );
     }
 
     return (
+        <NodeStatusIndicator status={nodeStatus} loadingVariant="overlay">
         <AspectRatio
             ref={ref}
             ratio={GRID_RATIO}
@@ -234,6 +244,7 @@ function ImageCard({ task, shouldPrioritize, onSelect, onUseAsReference, onDismi
                 {getResolutionBadge(task)}
             </div>
         </AspectRatio>
+        </NodeStatusIndicator>
     );
 }
 
