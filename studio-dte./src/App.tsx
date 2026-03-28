@@ -55,11 +55,29 @@ export default function App() {
       id: 'model-1',
       type: 'model',
       position: { x: 700, y: 250 },
-      data: { 
+      data: {
         model: 'nano-banana-pro',
-        modelType: 'image', 
-        resolution: '1K', 
+        modelType: 'image',
         aspectRatio: '1:1',
+        resolution: '1K',
+        duration: '5',
+        outputFormat: 'png',
+        googleSearch: false,
+        mode: 'std',
+        sound: false,
+        removeWatermark: false,
+        uploadMethod: 'url',
+        enableTranslation: false,
+        enableFallback: true,
+        generationType: 'auto',
+        seeds: '',
+        nFrames: '',
+        characterIdList: '',
+        multiPrompt: '',
+        multiShots: '',
+        klingElements: '',
+        callBackUrl: '',
+        progressCallBackUrl: '',
       },
     },
     {
@@ -68,7 +86,7 @@ export default function App() {
       position: { x: 1100, y: 250 },
       data: { status: 'idle', resultUrl: null },
     },
-  ]);
+  ] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [menu, setMenu] = useState<{ id: string, top: number, left: number } | null>(null);
 
@@ -179,11 +197,29 @@ export default function App() {
       position: { x: Math.random() * 200 + 300, y: Math.random() * 200 + 300 },
       data: { 
         ...(type === 'prompt' ? { text: '' } : {}),
-        ...(type === 'model' ? { 
+        ...(type === 'model' ? {
           model: 'nano-banana-pro',
-          modelType: 'image', 
-          resolution: '1K', 
-          aspectRatio: '1:1'
+          modelType: 'image',
+          aspectRatio: '1:1',
+          resolution: '1K',
+          duration: '5',
+          outputFormat: 'png',
+          googleSearch: false,
+          mode: 'std',
+          sound: false,
+          removeWatermark: false,
+          uploadMethod: 'url',
+          enableTranslation: false,
+          enableFallback: true,
+          generationType: 'auto',
+          seeds: '',
+          nFrames: '',
+          characterIdList: '',
+          multiPrompt: '',
+          multiShots: '',
+          klingElements: '',
+          callBackUrl: '',
+          progressCallBackUrl: '',
         } : {}),
         ...(type === 'image' ? { imageUrl: null } : {}),
         ...(type === 'output' ? { status: 'idle', resultUrl: null } : {}),

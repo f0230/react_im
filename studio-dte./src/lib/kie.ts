@@ -7,12 +7,6 @@ function apiKey(): string {
   return key;
 }
 
-function authHeaders(json = true): Record<string, string> {
-  const h: Record<string, string> = { Authorization: `Bearer ${apiKey()}` };
-  if (json) h['Content-Type'] = 'application/json';
-  return h;
-}
-
 /** Parse KIE JSON response, handling text/mixed responses */
 async function parseJson(res: Response): Promise<any> {
   const text = await res.text();
@@ -64,8 +58,16 @@ export async function uploadImage(base64DataUrl: string): Promise<string> {
 export async function createMarketTask(
   model: string,
   input: Record<string, any>,
+  options?: {
+    callBackUrl?: string;
+    progressCallBackUrl?: string;
+  },
 ): Promise<string> {
   const key = apiKey();
+
+  const body: Record<string, any> = { model, input };
+  if (options?.callBackUrl) body.callBackUrl = options.callBackUrl;
+  if (options?.progressCallBackUrl) body.progressCallBackUrl = options.progressCallBackUrl;
 
   const createRes = await fetch(`${KIE_API}/jobs/createTask`, {
     method: 'POST',
@@ -73,7 +75,7 @@ export async function createMarketTask(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${key}`,
     },
-    body: JSON.stringify({ model, input }),
+    body: JSON.stringify(body),
   });
 
   const data = await parseJson(createRes);
@@ -139,13 +141,18 @@ export async function pollMarketTask(taskId: string): Promise<{ urls: string[] }
 }
 
 // ---------------------------------------------------------------------------
-// Veo 3.1 Dedicated API
+// Veo 3 Dedicated API
 // ---------------------------------------------------------------------------
 export async function createVeoTask(params: {
   prompt: string;
   model: string;
   imageUrls?: string[];
   aspectRatio?: string;
+  seeds?: number[];
+  enableTranslation?: boolean;
+  enableFallback?: boolean;
+  generationType?: string;
+  callBackUrl?: string;
 }): Promise<string> {
   const key = apiKey();
 
@@ -155,11 +162,35 @@ export async function createVeoTask(params: {
     aspect_ratio: params.aspectRatio || '16:9',
   };
 
-  if (params.imageUrls?.length) {
-    body.imageUrls = params.imageUrls;
+  // Generation type: explicit override or auto-detect from imageUrls
+  if (params.generationType) {
+    body.generationType = params.generationType;
+  } else if (params.imageUrls?.length) {
     body.generationType = 'REFERENCE_2_VIDEO';
   } else {
     body.generationType = 'TEXT_2_VIDEO';
+  }
+
+  if (params.imageUrls?.length) {
+    body.imageUrls = params.imageUrls;
+  }
+
+  // Seeds — only send if non-empty array
+  if (params.seeds?.length) {
+    body.seeds = params.seeds;
+  }
+
+  // Translation & fallback
+  if (params.enableTranslation !== undefined) {
+    body.enableTranslation = params.enableTranslation;
+  }
+  if (params.enableFallback !== undefined) {
+    body.enableFallback = params.enableFallback;
+  }
+
+  // Callback
+  if (params.callBackUrl) {
+    body.callBackUrl = params.callBackUrl;
   }
 
   const res = await fetch(`${KIE_API}/veo/generate`, {
