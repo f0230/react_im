@@ -2,7 +2,7 @@ import { Sparkles, Loader2, Type, Image as ImageIcon } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { enhancePrompt } from '../../lib/prompt-enhancer';
 import toast from 'react-hot-toast';
@@ -11,6 +11,18 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
   const { updateNodeData, getEdges, getNodes } = useReactFlow();
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [isDescribing, setIsDescribing] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(80, el.scrollHeight)}px`;
+  }, []);
+
+  useEffect(() => {
+    autoResize();
+  }, [data.text, autoResize]);
 
   const handleEnhance = async () => {
     const currentText = data.text as string;
@@ -162,10 +174,15 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
 
       <div className="relative">
         <textarea
-          className="nodrag w-full bg-white/5 border border-white/10 rounded-[16px] p-4 text-[15px] leading-relaxed text-white placeholder:text-white/30 focus:outline-none focus:bg-white/10 focus:border-[#0A84FF] focus:ring-4 focus:ring-[#0A84FF]/20 resize-none h-32 transition-all duration-300"
+          ref={textareaRef}
+          className="nodrag w-full bg-white/5 border border-white/10 rounded-[16px] p-4 text-[15px] leading-relaxed text-white placeholder:text-white/30 focus:outline-none focus:bg-white/10 focus:border-[#0A84FF] focus:ring-4 focus:ring-[#0A84FF]/20 resize-none transition-all duration-300"
+          style={{ minHeight: 80 }}
           placeholder="Tu prompt"
           value={data.text || ''}
-          onChange={(e) => updateNodeData(id, { text: e.target.value })}
+          onChange={(e) => {
+            updateNodeData(id, { text: e.target.value });
+            autoResize();
+          }}
         />
       </div>
 

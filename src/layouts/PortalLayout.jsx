@@ -8,6 +8,11 @@ import { AlertCircle } from 'lucide-react';
 import useCycleLockedVisibility from '../hooks/useCycleLockedVisibility';
 import { UnreadCountsProvider } from '@/context/UnreadCountsContext';
 
+const detectHoverRevealSupport = () => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+};
+
 const PortalLayout = () => {
     const {
         user,
@@ -28,14 +33,11 @@ const PortalLayout = () => {
         if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
         return window.matchMedia('(min-width: 768px)').matches;
     });
+    const [supportsHoverReveal, setSupportsHoverReveal] = useState(() => detectHoverRevealSupport());
     const [isStudioNavbarVisible, setIsStudioNavbarVisible] = useState(() => {
         if (typeof window === 'undefined') return true;
-        const supportsHoverReveal =
-            typeof window.matchMedia === 'function' &&
-            window.matchMedia('(hover: hover) and (pointer: fine)').matches;
         const isInitialStudioRoute = window.location.pathname.startsWith('/dashboard/studio');
-
-        return !(isInitialStudioRoute && supportsHoverReveal);
+        return !(isInitialStudioRoute && detectHoverRevealSupport());
     });
 
     const isAuthReady = typeof authReady === 'boolean' ? authReady : !loading;
@@ -75,10 +77,29 @@ const PortalLayout = () => {
     }, []);
 
     useEffect(() => {
-        if (!isStudioRoute) {
-            setIsStudioNavbarVisible(true);
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+            return undefined;
         }
-    }, [isStudioRoute]);
+
+        const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+        const syncHoverReveal = () => setSupportsHoverReveal(mediaQuery.matches);
+
+        syncHoverReveal();
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', syncHoverReveal);
+            return () => mediaQuery.removeEventListener('change', syncHoverReveal);
+        }
+
+        mediaQuery.addListener(syncHoverReveal);
+        return () => mediaQuery.removeListener(syncHoverReveal);
+    }, []);
+
+    const shouldAutoHideStudioNavbar = isStudioRoute && supportsHoverReveal;
+
+    useEffect(() => {
+        setIsStudioNavbarVisible(!shouldAutoHideStudioNavbar);
+    }, [shouldAutoHideStudioNavbar]);
 
     const isRouteAllowed = useMemo(() => {
         if (!profile?.role) return true;
@@ -173,7 +194,7 @@ const PortalLayout = () => {
         );
     }
 
-    const dashboardNavbarOffset = isStudioRoute
+    const dashboardNavbarOffset = shouldAutoHideStudioNavbar
         ? (isStudioNavbarVisible ? (isDesktopViewport ? 45 : 56) : 0)
         : (isDesktopViewport ? 45 : 56);
 
@@ -184,7 +205,7 @@ const PortalLayout = () => {
         >
             <UnreadCountsProvider>
                 <DashboardNavbar
-                    autoHideInStudio={isStudioRoute}
+                    autoHideInStudio={shouldAutoHideStudioNavbar}
                     onVisibilityChange={setIsStudioNavbarVisible}
                 />
 

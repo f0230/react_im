@@ -19,6 +19,7 @@ import {
   pollVeoTask,
 } from '../../lib/kie';
 import toast from 'react-hot-toast';
+import { ElasticSwitch } from '../ui/elastic-switch';
 
 // ---------------------------------------------------------------------------
 // Model capabilities registry
@@ -397,6 +398,7 @@ function buildMarketInput(
 // ---------------------------------------------------------------------------
 // Tiny UI primitives (node-scoped, match dark theme)
 // ---------------------------------------------------------------------------
+// ElasticSwitch wrapper for backward compatibility
 function Toggle({
   value,
   onChange,
@@ -405,24 +407,13 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      className={cn(
-        'nodrag relative w-8 h-[18px] rounded-full transition-colors duration-200 shrink-0',
-        value ? 'bg-[#0A84FF]' : 'bg-white/15',
-      )}
-    >
-      <span
-        className={cn(
-          'absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow transition-transform duration-200',
-          value ? 'translate-x-[16px]' : 'translate-x-[2px]',
-        )}
-      />
-    </button>
+    <ElasticSwitch
+      isOn={value}
+      onChange={onChange}
+      size="sm"
+    />
   );
 }
-
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <label className="text-[11px] text-white/50 uppercase tracking-widest font-semibold">

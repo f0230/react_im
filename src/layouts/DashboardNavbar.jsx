@@ -3,6 +3,7 @@ import OptimizedImage from '../components/OptimizedImage'; // Adjust path if nee
 import logo from '../assets/Group 255.svg'; // Check path
 import { useAuth } from '../context/AuthContext';
 import { Menu } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useUnreadCounts } from '@/context/UnreadCountsContext';
 import MessageIcon from '@/components/notifications/MessageIcon';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -14,6 +15,14 @@ import DashboardMenu from './DashboardMenu';
 import ToolsPopover from '@/components/ToolsPopover';
 import { PrefetchLink } from '@/components/navigation/PrefetchLink';
 
+const detectHoverRevealSupport = () => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+        return false;
+    }
+
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+};
+
 const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [scrolled, setScrolled] = useState(false);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
@@ -21,11 +30,12 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isMessagesOpen, setIsMessagesOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-    const [supportsHoverReveal, setSupportsHoverReveal] = useState(false);
+    const [supportsHoverReveal, setSupportsHoverReveal] = useState(() => detectHoverRevealSupport());
     const [isRevealHotspotActive, setIsRevealHotspotActive] = useState(false);
     const [isNavbarHovered, setIsNavbarHovered] = useState(false);
     const [isNavbarFocused, setIsNavbarFocused] = useState(false);
     const { user, profile } = useAuth();
+    const location = useLocation();
     const {
         counts,
         teamPreviews,
@@ -57,11 +67,6 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     }, []);
 
     useEffect(() => {
-        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-            setSupportsHoverReveal(false);
-            return undefined;
-        }
-
         const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
         const syncHoverReveal = () => setSupportsHoverReveal(mediaQuery.matches);
 
@@ -75,6 +80,17 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
         mediaQuery.addListener(syncHoverReveal);
         return () => mediaQuery.removeListener(syncHoverReveal);
     }, []);
+
+    useEffect(() => {
+        setIsToolsOpen(false);
+        setIsMenuOpen(false);
+        setIsProfileOpen(false);
+        setIsMessagesOpen(false);
+        setIsNotificationsOpen(false);
+        setIsRevealHotspotActive(false);
+        setIsNavbarHovered(false);
+        setIsNavbarFocused(false);
+    }, [location.pathname, autoHideInStudio]);
 
     const hasOpenPopover =
         isToolsOpen ||
