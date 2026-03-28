@@ -3,7 +3,6 @@ import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import OpenAI from 'openai';
 import { enhancePrompt } from '../../lib/prompt-enhancer';
 import toast from 'react-hot-toast';
 
@@ -83,38 +82,23 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
       return;
     }
 
-    // For images, use OpenAI vision
+    // For images, use server-side vision endpoint (avoids CORS + CDN access issues)
     setIsDescribing(true);
     try {
-      // Pass URL directly to OpenAI (avoids CORS); base64 only needed for data: URLs
-      const imageDataUrl = mediaUrl;
-
-      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-      if (!apiKey) throw new Error('VITE_OPENAI_API_KEY is not configured');
-      const ai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
-      const response = await ai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Describe this image in vivid detail for use as an AI image/video generation prompt. Be specific about composition, lighting, colors, subjects, style, and mood. Return ONLY the prompt text, no explanations or prefixes.',
-              },
-              {
-                type: 'image_url',
-                image_url: { url: imageDataUrl },
-              },
-            ],
-          },
-        ],
-        max_tokens: 500,
+      const res = await fetch('/api/studio-describe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: mediaUrl }),
       });
 
-      const text = response.choices[0]?.message?.content?.trim();
-      if (text) {
-        updateNodeData(id, { text });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || 'Server error');
+      }
+
+      const { description } = await res.json();
+      if (description) {
+        updateNodeData(id, { text: description });
         toast.success('Media described');
       }
     } catch (error) {
