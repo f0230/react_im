@@ -49,7 +49,7 @@ export default function OutputNode({ id, data }: { id: string, data: any }) {
             data.resultType === 'video' ? (
               <video src={data.resultUrl} controls autoPlay loop className="w-full h-full object-cover" />
             ) : (
-              <img src={data.resultUrl} alt="Generated Output" className="w-full h-full object-cover" />
+              <img src={data.resultUrl} alt="Generated Output" className="w-full h-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
             )
           ) : data.status === 'error' ? (
             <div className="flex flex-col items-center justify-center p-6 text-center">
