@@ -163,18 +163,26 @@ export default function App() {
           const reader = new FileReader();
           reader.onload = (event) => {
             const imageUrl = event.target?.result as string;
-            const newNodeId = `image-${Date.now()}`;
-            const newNode = {
-              id: newNodeId,
-              type: 'image',
-              position: {
-                x: Math.random() * 200 + 300,
-                y: Math.random() * 200 + 300,
-              },
-              data: { imageUrl },
+
+            // Detect aspect ratio before creating the node
+            const img = new Image();
+            img.onload = () => {
+              const aspectRatio = img.naturalWidth / img.naturalHeight;
+              const newNodeId = `image-${Date.now()}`;
+              const newNode = {
+                id: newNodeId,
+                type: 'image',
+                position: {
+                  x: Math.random() * 300 + 200,
+                  y: Math.random() * 200 + 150,
+                },
+                data: { imageUrl, aspectRatio },
+              };
+              pushSnapshot();
+              setNodes((nds) => [...nds, newNode]);
+              toast.success('Image pasted as reference node');
             };
-            pushSnapshot();
-            setNodes((nds) => [...nds, newNode]);
+            img.src = imageUrl;
           };
           reader.readAsDataURL(file);
           break;

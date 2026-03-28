@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Lock, Unlock } from 'lucide-react';
 import { formatFinanceCurrency, formatFinancePeriodRange } from '@/utils/finance';
 
-const PeriodCard = ({ period }) => {
+const PeriodCard = ({ period, onSelect }) => {
     const navigate = useNavigate();
     const isClosed = period.status === 'closed';
 
@@ -13,7 +13,7 @@ const PeriodCard = ({ period }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ scale: 1.01 }}
-            onClick={() => navigate(`/dashboard/finances/periods/${period.id}`)}
+            onClick={() => onSelect ? onSelect(period.id) : navigate(`/dashboard/finances/periods/${period.id}`)}
             className="cursor-pointer rounded-3xl border border-neutral-200 bg-white p-5 shadow-sm transition-colors hover:border-neutral-300"
         >
             <div className="flex items-center justify-between mb-4">

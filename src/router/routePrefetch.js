@@ -38,13 +38,7 @@ export const routeKeys = Object.freeze({
     projectReports: 'projectReports',
     projectIntegrations: 'projectIntegrations',
     invoices: 'invoices',
-    financesOverview: 'financesOverview',
-    financesLedger: 'financesLedger',
-    financesPeriod: 'financesPeriod',
-    financesSettings: 'financesSettings',
-    financesCashflow: 'financesCashflow',
-    financesProjects: 'financesProjects',
-    financesReports: 'financesReports',
+    financesDashboard: 'financesDashboard',
     inbox: 'inbox',
     teamChat: 'teamChat',
     clientChat: 'clientChat',
@@ -81,13 +75,7 @@ const routeImporters = {
     [routeKeys.projectReports]: once(() => import('@/pages/dashboard/projects/ProjectReports')),
     [routeKeys.projectIntegrations]: once(() => import('@/pages/dashboard/projects/ProjectIntegrations')),
     [routeKeys.invoices]: once(() => import('@/pages/dashboard/invoices/Invoices')),
-    [routeKeys.financesOverview]: once(() => import('@/pages/dashboard/finances/FinancesOverview')),
-    [routeKeys.financesLedger]: once(() => import('@/pages/dashboard/finances/FinancesLedger')),
-    [routeKeys.financesPeriod]: once(() => import('@/pages/dashboard/finances/FinancesPeriod')),
-    [routeKeys.financesSettings]: once(() => import('@/pages/dashboard/finances/FinancesSettings')),
-    [routeKeys.financesCashflow]: once(() => import('@/pages/dashboard/finances/FinancesCashflow')),
-    [routeKeys.financesProjects]: once(() => import('@/pages/dashboard/finances/FinancesProjectProfitability')),
-    [routeKeys.financesReports]: once(() => import('@/pages/dashboard/finances/FinancesReports')),
+    [routeKeys.financesDashboard]: once(() => import('@/pages/dashboard/finances/FinancesDashboard')),
     [routeKeys.inbox]: once(() => import('@/pages/dashboard/inbox/Inbox')),
     [routeKeys.teamChat]: once(() => import('@/pages/dashboard/chat/TeamChat')),
     [routeKeys.clientChat]: once(() => import('@/pages/dashboard/chat/ClientChat')),
@@ -122,9 +110,7 @@ const pathKeyMap = new Map([
     ['/dashboard/reports', routeKeys.projectReports],
     ['/dashboard/integrations', routeKeys.projectIntegrations],
     ['/dashboard/invoices', routeKeys.invoices],
-    ['/dashboard/finances', routeKeys.financesOverview],
-    ['/dashboard/finances/ledger', routeKeys.financesLedger],
-    ['/dashboard/finances/settings', routeKeys.financesSettings],
+    ['/dashboard/finances', routeKeys.financesDashboard],
     ['/dashboard/projects', routeKeys.projects],
     ['/dashboard/inbox', routeKeys.inbox],
     ['/dashboard/team-chat', routeKeys.teamChat],
@@ -168,9 +154,7 @@ const resolveRouteKey = (to) => {
     if (path.startsWith('/brief/')) return routeKeys.brief;
     if (path.startsWith('/meet/')) return routeKeys.scheduleCall;
     if (path.startsWith('/dashboard/clients/')) return routeKeys.clientDetail;
-    if (path.startsWith('/dashboard/finances/periods/')) return routeKeys.financesPeriod;
-    if (path.startsWith('/dashboard/finances/ledger')) return routeKeys.financesLedger;
-    if (path.startsWith('/dashboard/finances/settings')) return routeKeys.financesSettings;
+    if (path.startsWith('/dashboard/finances')) return routeKeys.financesDashboard;
     if (path.startsWith('/dashboard/projects/') && path.endsWith('/integrations')) return routeKeys.projectIntegrations;
     if (path.startsWith('/dashboard/projects/')) return routeKeys.projects;
 

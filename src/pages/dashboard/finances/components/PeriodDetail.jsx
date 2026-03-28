@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, Lock, Receipt, Unlock, Wallet, Download, X, Eye, Users, Landmark, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Lock, Unlock, Receipt, Wallet, Download, X, Eye, Users, Landmark, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
@@ -19,20 +18,19 @@ import {
     getPersonDisplayName,
 } from '@/utils/finance';
 
-const FinancesPeriod = () => {
-    const { periodId } = useParams();
-    const { profile, user, loading } = useAuth();
+const PeriodDetail = ({ periodId, config, profileMap: sharedProfileMap, currency, refetch: parentRefetch, onBack, onOpenLedger }) => {
+    const { user } = useAuth();
     const [fetching, setFetching] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [period, setPeriod] = useState(null);
     const [transactions, setTransactions] = useState([]);
     const [distributions, setDistributions] = useState([]);
-    const [config, setConfig] = useState(null);
-    const [profileMap, setProfileMap] = useState({});
     const [invoices, setInvoices] = useState([]);
+    const [localProfileMap, setLocalProfileMap] = useState({});
 
-    const isAdmin = profile?.role === 'admin';
+    // Merge shared profiles with any distribution-specific profiles fetched locally
+    const profileMap = useMemo(() => ({ ...sharedProfileMap, ...localProfileMap }), [sharedProfileMap, localProfileMap]);
 
     const fetchPeriod = useCallback(async () => {
         if (!periodId) return;
@@ -44,7 +42,6 @@ const FinancesPeriod = () => {
             { data: periodData, error: periodError },
             { data: transactionsData, error: transactionsError },
             { data: distributionsData, error: distributionsError },
-            { data: configData, error: configError },
             { data: invoicesData, error: invoicesError },
         ] = await Promise.all([
             supabase.from('finance_periods').select('*').eq('id', periodId).maybeSingle(),
@@ -59,99 +56,78 @@ const FinancesPeriod = () => {
                 .eq('period_id', periodId)
                 .order('recipient_type', { ascending: true })
                 .order('created_at', { ascending: true }),
-            supabase.from('finance_config').select('*').limit(1).maybeSingle(),
             supabase.from('invoices').select('id, invoice_number, description, amount, currency, project_id, status, paid_at, updated_at, created_at').eq('status', 'paid').order('updated_at', { ascending: false }),
         ]);
 
-        if (periodError || transactionsError || distributionsError || configError || invoicesError) {
-            const message = periodError?.message || transactionsError?.message || distributionsError?.message || configError?.message || invoicesError?.message;
-            console.error('Error fetching finance period:', { periodError, transactionsError, distributionsError, configError, invoicesError });
-            setError(message || 'No pudimos cargar el período.');
+        if (periodError || transactionsError || distributionsError || invoicesError) {
+            const message = periodError?.message || transactionsError?.message || distributionsError?.message || invoicesError?.message;
+            setError(message || 'No pudimos cargar el periodo.');
             setFetching(false);
             return;
         }
 
-        const profileIds = Array.from(new Set((distributionsData || []).map((distribution) => distribution.profile_id).filter(Boolean)));
-        let nextProfileMap = {};
+        // Fetch profiles for distribution recipients not already in shared profileMap
+        const profileIds = Array.from(new Set((distributionsData || []).map((d) => d.profile_id).filter(Boolean)));
+        const missingIds = profileIds.filter((id) => !sharedProfileMap[id]);
 
-        if (profileIds.length > 0) {
-            const { data: profilesData, error: profilesError } = await supabase
+        if (missingIds.length > 0) {
+            const { data: profilesData } = await supabase
                 .from('profiles')
                 .select('id, full_name, email')
-                .in('id', profileIds);
+                .in('id', missingIds);
 
-            if (profilesError) {
-                console.error('Error fetching distribution profiles:', profilesError);
-            } else {
-                nextProfileMap = (profilesData || []).reduce((acc, item) => {
-                    acc[item.id] = item;
-                    return acc;
-                }, {});
+            if (profilesData) {
+                setLocalProfileMap(profilesData.reduce((acc, p) => { acc[p.id] = p; return acc; }, {}));
             }
         }
 
         setPeriod(periodData || null);
         setTransactions(transactionsData || []);
         setDistributions(distributionsData || []);
-        setConfig(configData || null);
-        setProfileMap(nextProfileMap);
         setInvoices(invoicesData || []);
         setFetching(false);
-    }, [periodId]);
+    }, [periodId, sharedProfileMap]);
 
     useEffect(() => {
-        if (!isAdmin) return;
         void fetchPeriod();
-    }, [fetchPeriod, isAdmin]);
+    }, [fetchPeriod]);
 
     const totals = useMemo(() => {
-        const currency = transactions[0]?.currency || config?.default_currency || 'USD';
+        const cur = transactions[0]?.currency || config?.default_currency || currency || 'USD';
         const income = transactions
-            .filter((transaction) => transaction.type === 'income')
-            .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+            .filter((t) => t.type === 'income')
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
         const expenses = transactions
-            .filter((transaction) => transaction.type === 'expense')
-            .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-
-        return {
-            income,
-            expenses,
-            net: income - expenses,
-            currency,
-        };
-    }, [config?.default_currency, transactions]);
+            .filter((t) => t.type === 'expense')
+            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        return { income, expenses, net: income - expenses, currency: cur };
+    }, [config?.default_currency, currency, transactions]);
 
     const missingFounderAssignments = useMemo(() => (
         !config?.francisco_profile_id || !config?.federico_profile_id
     ), [config?.federico_profile_id, config?.francisco_profile_id]);
 
     const paidInvoicesPendingImport = useMemo(() => {
-        const importedIds = new Set(transactions.map((transaction) => transaction.invoice_id).filter(Boolean));
-        return invoices.filter((invoice) => (
-            !importedIds.has(invoice.id)
-            && isDateWithinPeriod(getInvoicePaymentDate(invoice), period?.start_date, period?.end_date)
+        const importedIds = new Set(transactions.map((t) => t.invoice_id).filter(Boolean));
+        return invoices.filter((inv) => (
+            !importedIds.has(inv.id)
+            && isDateWithinPeriod(getInvoicePaymentDate(inv), period?.start_date, period?.end_date)
         ));
     }, [invoices, period?.end_date, period?.start_date, transactions]);
 
-    // ─── Pre-visualización de cierre ──────────────────────────────────────────
+    // ─── Close period preview ────────────────────────────────────────────
     const [previewOpen, setPreviewOpen] = useState(false);
     const [workers, setWorkers] = useState([]);
     const [workerContributions, setWorkerContributions] = useState([]);
 
     const fetchWorkers = useCallback(async () => {
-        const { data: workersData } = await supabase
-            .from('profiles')
-            .select('id, full_name, email')
-            .eq('role', 'worker');
-        setWorkers(workersData || []);
+        const { data } = await supabase.from('profiles').select('id, full_name, email').eq('role', 'worker');
+        setWorkers(data || []);
     }, []);
 
     const fetchWorkerContributions = useCallback(async () => {
         if (!periodId) return;
-        const { data } = await supabase
-            .from('finance_worker_contributions')
-            .select('*')
-            .eq('period_id', periodId);
+        const { data } = await supabase.from('finance_worker_contributions').select('*').eq('period_id', periodId);
         setWorkerContributions(data || []);
     }, [periodId]);
 
@@ -162,7 +138,6 @@ const FinancesPeriod = () => {
         }
     }, [previewOpen, fetchWorkers, fetchWorkerContributions]);
 
-    // Calcular distribuciones propuestas para la pre-visualización
     const previewDistributions = useMemo(() => {
         if (!config || totals.net <= 0) return null;
 
@@ -172,12 +147,11 @@ const FinancesPeriod = () => {
         const workersPool = netProfit * (config.pct_workers ?? 15) / 100;
         const companyAmount = netProfit * (config.pct_company ?? 15) / 100;
 
-        // Calcular distribución a workers según weights
         const totalWeight = workerContributions.reduce((sum, wc) => sum + Number(wc.contribution_weight || 0), 0);
-        
-        const workerBreakdown = totalWeight > 0 
-            ? workerContributions.map(wc => {
-                const worker = workers.find(w => w.id === wc.worker_id);
+
+        const workerBreakdown = totalWeight > 0
+            ? workerContributions.map((wc) => {
+                const worker = workers.find((w) => w.id === wc.worker_id);
                 const share = (wc.contribution_weight / totalWeight) * workersPool;
                 return {
                     name: getPersonDisplayName(worker) || 'Worker desconocido',
@@ -198,7 +172,6 @@ const FinancesPeriod = () => {
         };
     }, [config, totals.net, workerContributions, workers]);
 
-    // Validaciones para cerrar período
     const canClosePeriod = useMemo(() => {
         if (paidInvoicesPendingImport.length > 0) return false;
         if (previewDistributions && previewDistributions.workersPool.amount > 0 && !previewDistributions.hasWorkerWeights) return false;
@@ -208,10 +181,10 @@ const FinancesPeriod = () => {
     const handleClosePeriod = async () => {
         if (!period?.id || submitting) return;
         if (!canClosePeriod) {
-            setError('No se puede cerrar el período. Revisa las alertas de validación.');
+            setError('No se puede cerrar el periodo. Revisa las alertas de validacion.');
             return;
         }
-        if (!window.confirm('¿Estás seguro? Esta acción no se puede deshacer.')) return;
+        if (!window.confirm('Estas seguro? Esta accion no se puede deshacer.')) return;
 
         setSubmitting(true);
         setError('');
@@ -220,17 +193,16 @@ const FinancesPeriod = () => {
         const { error: closeError } = await supabase.rpc('close_period', { p_period_id: period.id });
 
         if (closeError) {
-            console.error('Error closing finance period:', closeError);
-            setError(closeError.message || 'No pudimos cerrar el período.');
+            setError(closeError.message || 'No pudimos cerrar el periodo.');
             setSubmitting(false);
             return;
         }
 
         setSubmitting(false);
         await fetchPeriod();
+        parentRefetch?.();
     };
 
-    // Descargar resumen de cierre
     const downloadClosingSummary = () => {
         if (!period || distributions.length === 0) return;
 
@@ -238,12 +210,8 @@ const FinancesPeriod = () => {
             periodo: period.name,
             fechaCierre: new Date().toISOString(),
             rangoFechos: formatFinancePeriodRange(period.start_date, period.end_date),
-            totales: {
-                ingresos: totals.income,
-                gastos: totals.expenses,
-                gananciaNeta: totals.net,
-            },
-            distribuciones: distributions.map(d => ({
+            totales: { ingresos: totals.income, gastos: totals.expenses, gananciaNeta: totals.net },
+            distribuciones: distributions.map((d) => ({
                 tipo: d.recipient_type,
                 monto: d.amount_earned,
                 moneda: d.currency,
@@ -270,7 +238,6 @@ const FinancesPeriod = () => {
             .eq('id', distribution.id);
 
         if (updateError) {
-            console.error('Error updating distribution payment:', updateError);
             setError(updateError.message || 'No pudimos actualizar el pago.');
             return;
         }
@@ -278,40 +245,40 @@ const FinancesPeriod = () => {
         await fetchPeriod();
     };
 
-    if (loading || (isAdmin && fetching)) {
-        return <LoadingFallback type="spinner" />;
-    }
+    // ─── Loading / not found ─────────────────────────────────────────────
+    if (fetching) return <LoadingFallback type="spinner" />;
 
-    if (!loading && !isAdmin) {
-        return <Navigate to="/dashboard" replace />;
-    }
-
-    if (!period && !fetching) {
+    if (!period) {
         return (
             <div className="rounded-[32px] border border-neutral-200 bg-white p-8 text-neutral-900 shadow-sm">
-                <p className="text-lg font-semibold">No encontramos ese período.</p>
-                <Link to="/dashboard/finances" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-neutral-600 hover:text-neutral-900">
+                <p className="text-lg font-semibold">No encontramos ese periodo.</p>
+                <button
+                    type="button"
+                    onClick={onBack}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-neutral-600 hover:text-neutral-900"
+                >
                     <ArrowLeft size={15} />
-                    Volver a finanzas
-                </Link>
+                    Volver a periodos
+                </button>
             </div>
         );
     }
 
     return (
         <div className="pb-16 font-product text-neutral-900">
-            <Link
-                to="/dashboard/finances"
+            <button
+                type="button"
+                onClick={onBack}
                 className="inline-flex items-center gap-2 text-sm font-semibold text-neutral-500 transition hover:text-neutral-900"
             >
                 <ArrowLeft size={15} />
-                Volver a finanzas
-            </Link>
+                Volver a periodos
+            </button>
 
             <div className="mt-5 flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
                 <div>
                     <div className="flex items-center gap-3">
-                        {period?.status === 'closed' ? (
+                        {period.status === 'closed' ? (
                             <span className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-white">
                                 <Lock size={12} />
                                 Cerrado
@@ -322,15 +289,15 @@ const FinancesPeriod = () => {
                                 Abierto
                             </span>
                         )}
-                        <p className="text-xs uppercase tracking-[0.35em] text-neutral-400">Período financiero</p>
+                        <p className="text-xs uppercase tracking-[0.35em] text-neutral-400">Periodo financiero</p>
                     </div>
-                    <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">{period?.name}</h1>
+                    <h1 className="mt-3 text-4xl font-black tracking-tight md:text-5xl">{period.name}</h1>
                     <p className="mt-3 text-lg text-neutral-500">
-                        {formatFinancePeriodRange(period?.start_date, period?.end_date)}
+                        {formatFinancePeriodRange(period.start_date, period.end_date)}
                     </p>
                 </div>
 
-                {period?.status === 'open' && (
+                {period.status === 'open' && (
                     <button
                         type="button"
                         onClick={() => setPreviewOpen(true)}
@@ -341,8 +308,8 @@ const FinancesPeriod = () => {
                         Pre-visualizar cierre
                     </button>
                 )}
-                
-                {period?.status === 'closed' && (
+
+                {period.status === 'closed' && (
                     <button
                         type="button"
                         onClick={downloadClosingSummary}
@@ -360,20 +327,20 @@ const FinancesPeriod = () => {
                 </div>
             )}
 
-            {period?.status === 'open' && missingFounderAssignments && (
+            {period.status === 'open' && missingFounderAssignments && (
                 <div className="mt-6 flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-700">
                     <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                     <div>
-                        Definí en configuración quién es Francisco y quién es Federico antes de cerrar el período, así el reparto de admins queda correctamente asignado.
+                        Defini en configuracion quien es Francisco y quien es Federico antes de cerrar el periodo, asi el reparto de admins queda correctamente asignado.
                     </div>
                 </div>
             )}
 
-            {period?.status === 'open' && paidInvoicesPendingImport.length > 0 && (
+            {period.status === 'open' && paidInvoicesPendingImport.length > 0 && (
                 <div className="mt-6 flex items-start gap-3 rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-700">
                     <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                     <div>
-                        Hay {paidInvoicesPendingImport.length} factura(s) marcada(s) como `paid` dentro de este período que todavía no entraron al ledger automáticamente. El cierre queda bloqueado hasta que esa sincronización quede resuelta.
+                        Hay {paidInvoicesPendingImport.length} factura(s) marcada(s) como `paid` dentro de este periodo que todavia no entraron al ledger automaticamente. El cierre queda bloqueado hasta que esa sincronizacion quede resuelta.
                     </div>
                 </div>
             )}
@@ -381,13 +348,13 @@ const FinancesPeriod = () => {
             <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <FinanceKpiCard
                     icon={Wallet}
-                    label="Ingresos del período"
+                    label="Ingresos del periodo"
                     value={formatFinanceCurrency(totals.income, totals.currency)}
                     color="text-emerald-600"
                 />
                 <FinanceKpiCard
                     icon={Wallet}
-                    label="Gastos del período"
+                    label="Gastos del periodo"
                     value={formatFinanceCurrency(totals.expenses, totals.currency)}
                     color="text-rose-500"
                 />
@@ -401,13 +368,13 @@ const FinancesPeriod = () => {
                     icon={Wallet}
                     label="Movimientos"
                     value={transactions.length}
-                    sub={period?.status === 'closed' ? `Cerrado el ${formatFinanceDate(period?.closed_at)}` : 'Aún abierto para sumar movimientos.'}
+                    sub={period.status === 'closed' ? `Cerrado el ${formatFinanceDate(period.closed_at)}` : 'Aun abierto para sumar movimientos.'}
                 />
                 <FinanceKpiCard
                     icon={Receipt}
                     label="Facturas paid pendientes"
                     value={paidInvoicesPendingImport.length}
-                    sub="Cobros del período que todavía no fueron pasados a ingresos."
+                    sub="Cobros del periodo que todavia no fueron pasados a ingresos."
                     color={paidInvoicesPendingImport.length > 0 ? 'text-amber-600' : 'text-neutral-900'}
                 />
             </div>
@@ -417,10 +384,10 @@ const FinancesPeriod = () => {
                     <section className="rounded-[32px] border border-neutral-200 bg-white p-6 shadow-sm">
                         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                             <div>
-                                <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Facturación del período</p>
-                                <h2 className="mt-2 text-2xl font-black">Sincronización de facturas cobradas</h2>
+                                <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Facturacion del periodo</p>
+                                <h2 className="mt-2 text-2xl font-black">Sincronizacion de facturas cobradas</h2>
                                 <p className="mt-2 text-sm text-neutral-500">
-                                    Las facturas cobradas deberían entrar solas al ledger. Si ves elementos acá, es una alerta para revisar sincronización antes del cierre.
+                                    Las facturas cobradas deberian entrar solas al ledger. Si ves elementos aca, es una alerta para revisar sincronizacion antes del cierre.
                                 </p>
                             </div>
                         </div>
@@ -428,7 +395,7 @@ const FinancesPeriod = () => {
                         <div className="mt-6 space-y-3">
                             {paidInvoicesPendingImport.length === 0 && (
                                 <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-5 text-sm text-neutral-500">
-                                    Este período no tiene facturas cobradas pendientes de sincronización.
+                                    Este periodo no tiene facturas cobradas pendientes de sincronizacion.
                                 </div>
                             )}
 
@@ -443,7 +410,7 @@ const FinancesPeriod = () => {
                                     <div className="font-semibold text-emerald-600">
                                         {formatFinanceCurrency(invoice.amount, invoice.currency)}
                                     </div>
-                                    <div className="text-sm text-neutral-500">Pendiente de sincronización automática</div>
+                                    <div className="text-sm text-neutral-500">Pendiente de sincronizacion automatica</div>
                                 </div>
                             ))}
                         </div>
@@ -451,7 +418,7 @@ const FinancesPeriod = () => {
 
                     <WorkerWeightEditor
                         periodId={periodId}
-                        disabled={period?.status === 'closed'}
+                        disabled={period.status === 'closed'}
                         onSaved={fetchPeriod}
                     />
 
@@ -459,17 +426,21 @@ const FinancesPeriod = () => {
                         <div className="flex items-center justify-between gap-4">
                             <div>
                                 <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Movimientos asociados</p>
-                                <h2 className="mt-2 text-2xl font-black">Ledger del período</h2>
+                                <h2 className="mt-2 text-2xl font-black">Ledger del periodo</h2>
                             </div>
-                            <Link to="/dashboard/finances/ledger" className="text-sm font-semibold text-neutral-600 hover:text-neutral-900">
+                            <button
+                                type="button"
+                                onClick={onOpenLedger}
+                                className="text-sm font-semibold text-neutral-600 hover:text-neutral-900"
+                            >
                                 Abrir ledger completo
-                            </Link>
+                            </button>
                         </div>
 
                         <div className="mt-6 space-y-3">
                             {transactions.length === 0 && (
                                 <div className="rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-5 text-sm text-neutral-500">
-                                    No hay movimientos vinculados a este período todavía.
+                                    No hay movimientos vinculados a este periodo todavia.
                                 </div>
                             )}
 
@@ -486,7 +457,7 @@ const FinancesPeriod = () => {
                                         </span>
                                     </div>
                                     <div>
-                                        <p className="font-semibold text-neutral-900">{transaction.description || 'Sin descripción'}</p>
+                                        <p className="font-semibold text-neutral-900">{transaction.description || 'Sin descripcion'}</p>
                                         <p className="text-sm text-neutral-500">
                                             {transaction.project ? getProjectDisplayName(transaction.project) : 'Sin proyecto asociado'}
                                         </p>
@@ -505,12 +476,12 @@ const FinancesPeriod = () => {
                     <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Distribuciones</p>
                     <h2 className="mt-2 text-2xl font-black">Resultado del cierre</h2>
                     <p className="mt-2 text-sm text-neutral-500">
-                        Cuando el período está abierto, esta lista queda vacía. Al cerrar, se calculan automáticamente los montos para admins, workers y empresa.
+                        Cuando el periodo esta abierto, esta lista queda vacia. Al cerrar, se calculan automaticamente los montos para admins, workers y empresa.
                     </p>
 
                     {distributions.length === 0 && (
                         <div className="mt-6 rounded-2xl border border-dashed border-neutral-200 bg-neutral-50 px-4 py-5 text-sm text-neutral-500">
-                            Todavía no hay distribuciones generadas.
+                            Todavia no hay distribuciones generadas.
                         </div>
                     )}
 
@@ -520,7 +491,7 @@ const FinancesPeriod = () => {
                             : profileMap[distribution.profile_id]?.full_name || profileMap[distribution.profile_id]?.email || 'Perfil sin asignar';
 
                         const admins = distributions.filter((d) => d.recipient_type === 'admin');
-                        const workers = distributions.filter((d) => d.recipient_type === 'worker');
+                        const workerDists = distributions.filter((d) => d.recipient_type === 'worker');
                         const company = distributions.filter((d) => d.recipient_type === 'company');
 
                         const DistributionGroup = ({ title, subtitle, items, accent }) => items.length === 0 ? null : (
@@ -535,7 +506,7 @@ const FinancesPeriod = () => {
                                             key={distribution.id}
                                             distribution={distribution}
                                             label={getLabel(distribution)}
-                                            disabled={period?.status !== 'closed'}
+                                            disabled={period.status !== 'closed'}
                                             onSavePayment={handleSaveDistributionPayment}
                                         />
                                     ))}
@@ -545,31 +516,16 @@ const FinancesPeriod = () => {
 
                         return (
                             <>
-                                <DistributionGroup
-                                    title="Admins"
-                                    subtitle="reparto personal"
-                                    items={admins}
-                                    accent="border-skyblue/30 text-skyblue"
-                                />
-                                <DistributionGroup
-                                    title="Equipo"
-                                    subtitle="plata reservada para workers"
-                                    items={workers}
-                                    accent="border-violet-200 text-violet-500"
-                                />
-                                <DistributionGroup
-                                    title="DTE"
-                                    subtitle="fondo empresa"
-                                    items={company}
-                                    accent="border-amber-200 text-amber-600"
-                                />
+                                <DistributionGroup title="Admins" subtitle="reparto personal" items={admins} accent="border-skyblue/30 text-skyblue" />
+                                <DistributionGroup title="Equipo" subtitle="plata reservada para workers" items={workerDists} accent="border-violet-200 text-violet-500" />
+                                <DistributionGroup title="DTE" subtitle="fondo empresa" items={company} accent="border-amber-200 text-amber-600" />
                             </>
                         );
                     })()}
                 </section>
             </div>
 
-            {/* ─── Modal de Pre-visualización de Cierre ───────────────────────── */}
+            {/* ─── Close Period Preview Modal ──────────────────────────────────── */}
             <AnimatePresence>
                 {previewOpen && (
                     <motion.div
@@ -584,14 +540,14 @@ const FinancesPeriod = () => {
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 12, scale: 0.98 }}
                             className="mx-auto w-full max-w-3xl rounded-[32px] bg-white shadow-2xl"
-                            onClick={e => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-start justify-between gap-4 border-b border-neutral-200 px-6 py-5">
                                 <div>
-                                    <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Pre-visualización</p>
-                                    <h2 className="mt-2 text-2xl font-black text-neutral-900">Confirmar cierre de período</h2>
+                                    <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Pre-visualizacion</p>
+                                    <h2 className="mt-2 text-2xl font-black text-neutral-900">Confirmar cierre de periodo</h2>
                                     <p className="mt-1 text-sm text-neutral-500">
-                        Estás por cerrar el período <strong>{period?.name}</strong>. Esta acción no se puede deshacer.
+                                        Estas por cerrar el periodo <strong>{period.name}</strong>. Esta accion no se puede deshacer.
                                     </p>
                                 </div>
                                 <button
@@ -603,7 +559,6 @@ const FinancesPeriod = () => {
                             </div>
 
                             <div className="p-6 space-y-6">
-                                {/* Resumen del período */}
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="rounded-2xl bg-emerald-50 p-4 text-center">
                                         <p className="text-xs uppercase tracking-[0.2em] text-emerald-600">Ingresos</p>
@@ -619,16 +574,13 @@ const FinancesPeriod = () => {
                                     </div>
                                 </div>
 
-                                {/* Desglose de distribuciones */}
                                 {previewDistributions && totals.net > 0 && (
                                     <div className="rounded-2xl border border-neutral-200 p-5">
                                         <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                            <PieChart size={18} className="text-skyblue" />
-                                            Distribución propuesta
+                                            Distribucion propuesta
                                         </h3>
-                                        
+
                                         <div className="space-y-3">
-                                            {/* Francisco */}
                                             <div className="flex items-center justify-between p-3 rounded-xl bg-skyblue/5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-8 w-8 rounded-full bg-skyblue/20 flex items-center justify-center">
@@ -642,7 +594,6 @@ const FinancesPeriod = () => {
                                                 <p className="font-bold text-skyblue">{formatFinanceCurrency(previewDistributions.francisco.amount)}</p>
                                             </div>
 
-                                            {/* Federico */}
                                             <div className="flex items-center justify-between p-3 rounded-xl bg-skyblue/5">
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-8 w-8 rounded-full bg-skyblue/20 flex items-center justify-center">
@@ -656,7 +607,6 @@ const FinancesPeriod = () => {
                                                 <p className="font-bold text-skyblue">{formatFinanceCurrency(previewDistributions.federico.amount)}</p>
                                             </div>
 
-                                            {/* Workers pool */}
                                             <div className="rounded-xl border border-violet-200 bg-violet-50/50">
                                                 <div className="flex items-center justify-between p-3">
                                                     <div className="flex items-center gap-3">
@@ -670,7 +620,7 @@ const FinancesPeriod = () => {
                                                     </div>
                                                     <p className="font-bold text-violet-600">{formatFinanceCurrency(previewDistributions.workersPool.amount)}</p>
                                                 </div>
-                                                
+
                                                 {previewDistributions.workersPool.breakdown.length > 0 && (
                                                     <div className="px-3 pb-3">
                                                         <div className="border-t border-violet-200 pt-2 space-y-1">
@@ -683,18 +633,17 @@ const FinancesPeriod = () => {
                                                         </div>
                                                     </div>
                                                 )}
-                                                
+
                                                 {!previewDistributions.hasWorkerWeights && previewDistributions.workersPool.amount > 0 && (
                                                     <div className="px-3 pb-3">
                                                         <p className="text-xs text-amber-600 flex items-center gap-1">
                                                             <AlertTriangle size={12} />
-                                                            No hay weights asignados. El pool quedará sin distribuir.
+                                                            No hay weights asignados. El pool quedara sin distribuir.
                                                         </p>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            {/* Empresa */}
                                             <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50">
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-8 w-8 rounded-full bg-amber-200 flex items-center justify-center">
@@ -709,7 +658,6 @@ const FinancesPeriod = () => {
                                             </div>
                                         </div>
 
-                                        {/* Verificación */}
                                         <div className="mt-4 pt-4 border-t border-neutral-200">
                                             <div className="flex items-center justify-between text-sm">
                                                 <span className="text-neutral-500">Total a distribuir:</span>
@@ -728,25 +676,23 @@ const FinancesPeriod = () => {
 
                                 {totals.net <= 0 && (
                                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-700 text-sm">
-                                        <strong>Atención:</strong> La ganancia neta es {totals.net === 0 ? 'cero' : 'negativa'}. 
-                                        No se generarán distribuciones positivas para este período.
+                                        <strong>Atencion:</strong> La ganancia neta es {totals.net === 0 ? 'cero' : 'negativa'}.
+                                        No se generaran distribuciones positivas para este periodo.
                                     </div>
                                 )}
 
-                                {/* Alertas de validación */}
                                 {!canClosePeriod && (
                                     <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-600 text-sm space-y-1">
-                                        <p className="font-semibold">No se puede cerrar el período:</p>
+                                        <p className="font-semibold">No se puede cerrar el periodo:</p>
                                         {paidInvoicesPendingImport.length > 0 && (
-                                            <p>• Hay {paidInvoicesPendingImport.length} facturas pendientes de sincronización</p>
+                                            <p>- Hay {paidInvoicesPendingImport.length} facturas pendientes de sincronizacion</p>
                                         )}
                                         {previewDistributions && !previewDistributions.hasWorkerWeights && previewDistributions.workersPool.amount > 0 && (
-                                            <p>• No hay weights asignados a workers</p>
+                                            <p>- No hay weights asignados a workers</p>
                                         )}
                                     </div>
                                 )}
 
-                                {/* Botones de acción */}
                                 <div className="flex gap-3 pt-2">
                                     <button
                                         type="button"
@@ -774,4 +720,4 @@ const FinancesPeriod = () => {
     );
 };
 
-export default FinancesPeriod;
+export default PeriodDetail;

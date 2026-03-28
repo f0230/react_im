@@ -1,6 +1,6 @@
 // App.jsx
 import React, { Suspense, useEffect, useState, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
 import { BRAND_LOADER_CYCLE_MS } from "@/components/ui/loadingFallback.constants";
@@ -33,13 +33,7 @@ const ProjectReports = lazyRoute(routeKeys.projectReports);
 const ProjectIntegrations = lazyRoute(routeKeys.projectIntegrations);
 const ClientAppointments = lazyRoute(routeKeys.clientAppointments);
 const Invoices = lazyRoute(routeKeys.invoices);
-const FinancesOverview = lazyRoute(routeKeys.financesOverview);
-const FinancesLedger = lazyRoute(routeKeys.financesLedger);
-const FinancesPeriod = lazyRoute(routeKeys.financesPeriod);
-const FinancesSettings = lazyRoute(routeKeys.financesSettings);
-const FinancesCashflow = lazyRoute(routeKeys.financesCashflow);
-const FinancesProjectProfitability = lazyRoute(routeKeys.financesProjects);
-const FinancesReports = lazyRoute(routeKeys.financesReports);
+const FinancesDashboard = lazyRoute(routeKeys.financesDashboard);
 const Inbox = lazyRoute(routeKeys.inbox);
 const TeamChat = lazyRoute(routeKeys.teamChat);
 const ClientChat = lazyRoute(routeKeys.clientChat);
@@ -51,6 +45,11 @@ const Studio = lazyRoute(routeKeys.studio);
 const StudioDTE = lazyRoute(routeKeys.studioDte);
 const HeroPanchoPreview = lazy(() => import('@/pages/HeroPanchoPreview'));
 const PortalLayout = lazy(() => import('@/layouts/PortalLayout'));
+
+const FinancesPeriodRedirect = () => {
+  const { periodId } = useParams();
+  return <Navigate to={`/dashboard/finances?tab=periodos&period=${periodId}`} replace />;
+};
 
 const AppContent = () => {
   const { isNavbarOpen } = useUI();
@@ -181,10 +180,13 @@ const AppContent = () => {
             <Route path="reports" element={<ProjectReports />} />
             <Route path="integrations" element={<ProjectIntegrations />} />
             <Route path="invoices" element={<Invoices />} />
-            <Route path="finances" element={<FinancesOverview />} />
-            <Route path="finances/ledger" element={<FinancesLedger />} />
-            <Route path="finances/periods/:periodId" element={<FinancesPeriod />} />
-            <Route path="finances/settings" element={<FinancesSettings />} />
+            <Route path="finances" element={<FinancesDashboard />} />
+            <Route path="finances/ledger" element={<Navigate to="/dashboard/finances?tab=ledger" replace />} />
+            <Route path="finances/periods/:periodId" element={<FinancesPeriodRedirect />} />
+            <Route path="finances/settings" element={<Navigate to="/dashboard/finances" replace />} />
+            <Route path="finances/cashflow" element={<Navigate to="/dashboard/finances?tab=cashflow" replace />} />
+            <Route path="finances/projects" element={<Navigate to="/dashboard/finances?tab=proyectos" replace />} />
+            <Route path="finances/reports" element={<Navigate to="/dashboard/finances?tab=reportes" replace />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:projectId" element={<Navigate to="tasks" replace />} />
             <Route path="projects/:projectId/services" element={<Navigate to="/dashboard/tasks" replace />} />
