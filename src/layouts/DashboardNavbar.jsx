@@ -25,6 +25,7 @@ const detectHoverRevealSupport = () => {
 
 const NAVBAR_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
 const NAVBAR_HIDE_DELAY_MS = 180;
+const NAVBAR_REVEAL_DELAY_MS = 900;
 
 const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [scrolled, setScrolled] = useState(false);
@@ -38,6 +39,7 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [isNavbarHovered, setIsNavbarHovered] = useState(false);
     const [isNavbarFocused, setIsNavbarFocused] = useState(false);
     const hideIntentTimeoutRef = useRef(null);
+    const revealIntentTimeoutRef = useRef(null);
     const { user, profile } = useAuth();
     const location = useLocation();
     const {
@@ -62,13 +64,30 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
         }
     };
 
+    const clearRevealIntent = () => {
+        if (revealIntentTimeoutRef.current) {
+            window.clearTimeout(revealIntentTimeoutRef.current);
+            revealIntentTimeoutRef.current = null;
+        }
+    };
+
     const scheduleHideIntent = () => {
         clearHideIntent();
+        clearRevealIntent();
         hideIntentTimeoutRef.current = window.setTimeout(() => {
             setIsRevealHotspotActive(false);
             setIsNavbarHovered(false);
             hideIntentTimeoutRef.current = null;
         }, NAVBAR_HIDE_DELAY_MS);
+    };
+
+    const scheduleRevealIntent = () => {
+        clearHideIntent();
+        clearRevealIntent();
+        revealIntentTimeoutRef.current = window.setTimeout(() => {
+            setIsRevealHotspotActive(true);
+            revealIntentTimeoutRef.current = null;
+        }, NAVBAR_REVEAL_DELAY_MS);
     };
 
     useEffect(() => {
@@ -102,7 +121,10 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     }, []);
 
     useEffect(() => {
-        return () => clearHideIntent();
+        return () => {
+            clearHideIntent();
+            clearRevealIntent();
+        };
     }, []);
 
     useEffect(() => {
@@ -112,6 +134,7 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
         setIsMessagesOpen(false);
         setIsNotificationsOpen(false);
         clearHideIntent();
+        clearRevealIntent();
         setIsRevealHotspotActive(false);
         setIsNavbarHovered(false);
         setIsNavbarFocused(false);
@@ -142,11 +165,13 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                 <div
                     aria-hidden="true"
                     className="fixed inset-x-0 top-0 z-30 h-5"
-                    onMouseEnter={() => {
-                        clearHideIntent();
-                        setIsRevealHotspotActive(true);
+                    onMouseEnter={scheduleRevealIntent}
+                    onMouseLeave={() => {
+                        clearRevealIntent();
+                        if (isNavbarVisible) {
+                            scheduleHideIntent();
+                        }
                     }}
-                    onMouseLeave={scheduleHideIntent}
                 />
             )}
 
@@ -157,11 +182,13 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                 style={{ transitionTimingFunction: NAVBAR_EASING }}
                 onMouseEnter={() => {
                     clearHideIntent();
+                    clearRevealIntent();
                     setIsNavbarHovered(true);
                 }}
                 onMouseLeave={scheduleHideIntent}
                 onFocusCapture={() => {
                     clearHideIntent();
+                    clearRevealIntent();
                     setIsNavbarFocused(true);
                 }}
                 onBlurCapture={(event) => {

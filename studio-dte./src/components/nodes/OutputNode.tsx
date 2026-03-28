@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
+import { CopyButton } from '../ui/copy-button';
 import { createUpscaleTask, pollMarketTask } from '../../lib/kie';
 import toast from 'react-hot-toast';
 
@@ -105,7 +106,7 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
 
         {/* Preview */}
         <div
-          className="w-full bg-white/5 border border-white/10 rounded-[16px] flex flex-col items-center justify-center text-white/50 overflow-hidden relative transition-all duration-500"
+          className="w-full bg-white/5 border border-white/10 rounded-[16px] flex flex-col items-center justify-center text-white/50 overflow-hidden relative transition-all duration-500 group/preview"
           style={getAspectRatioStyle()}
         >
           {data.status === 'loading' ? (
@@ -114,11 +115,22 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
               <span className="text-[13px] font-medium animate-pulse text-white/70">Generating...</span>
             </div>
           ) : hasResult ? (
-            data.resultType === 'video' ? (
-              <video src={data.resultUrl} controls autoPlay loop className="w-full h-full object-cover" />
-            ) : (
-              <img src={data.resultUrl} alt="Generated Output" className="w-full h-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
-            )
+            <>
+              {data.resultType === 'video' ? (
+                <video src={data.resultUrl} controls autoPlay loop className="w-full h-full object-cover" />
+              ) : (
+                <img src={data.resultUrl} alt="Generated Output" className="w-full h-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
+              )}
+              {/* Copy URL button — appears on hover */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-200">
+                <CopyButton
+                  value={data.resultUrl as string}
+                  size="sm"
+                  className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-lg h-7 w-7 text-white/70 hover:text-white hover:bg-black/70"
+                  onClick={() => toast.success('URL copied')}
+                />
+              </div>
+            </>
           ) : data.status === 'error' ? (
             <div className="flex flex-col items-center justify-center p-6 text-center">
               <div className="text-[#FF3B30] text-[13px] font-semibold mb-2">Generation failed</div>

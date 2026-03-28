@@ -86,17 +86,8 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
     // For images, use OpenAI vision
     setIsDescribing(true);
     try {
-      // Convert to base64 if it's a remote URL
-      let imageDataUrl = mediaUrl;
-      if (mediaUrl.startsWith('http')) {
-        const response = await fetch(mediaUrl);
-        const blob = await response.blob();
-        imageDataUrl = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.readAsDataURL(blob);
-        });
-      }
+      // Pass URL directly to OpenAI (avoids CORS); base64 only needed for data: URLs
+      const imageDataUrl = mediaUrl;
 
       const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
       if (!apiKey) throw new Error('VITE_OPENAI_API_KEY is not configured');
