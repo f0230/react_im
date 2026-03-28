@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Globe, Sparkles, Link as LinkIcon, X, Plus } from 'lucide-react';
+import { Globe, Sparkles, Workflow, Link as LinkIcon, X, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
@@ -14,14 +14,21 @@ const DEFAULT_TOOLS = [
     },
     {
         id: 'studio-ia',
-        name: 'Studio IA',
+        name: 'Estudio IA',
         url: '/dashboard/studio',
         icon: 'Sparkles',
         color: 'bg-gradient-to-br from-[#e3ff31] to-[#47D065] text-black'
+    },
+    {
+        id: 'workflows',
+        name: 'Workflows',
+        url: '/dashboard/studio/workflow',
+        icon: 'Workflow',
+        color: 'bg-gradient-to-br from-neutral-200 to-white text-black'
     }
 ];
 
-const ICONS = { Sparkles, Globe, LinkIcon };
+const ICONS = { Sparkles, Workflow, Globe, LinkIcon };
 
 const ToolsOverlay = ({ isOpen, onClose }) => {
     const [tools, setTools] = useState([]);

@@ -5,13 +5,14 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import {
+  Copy,
+  Trash2,
   Undo2,
   Redo2,
   Download,
   Upload,
   RotateCcw,
 } from 'lucide-react';
-import { ContextMenu } from './components/ui/context-menu';
 import {
   ReactFlow,
   Background,
@@ -63,38 +64,22 @@ export default function App() {
   } = useWorkflowStore();
 
   const [menu, setMenu] = useState<{
-    id?: string;
+    id: string;
     top: number;
     left: number;
-    nodeType?: string;
-    mode: 'node' | 'canvas';
   } | null>(null);
-  const deleteNodeIdRef = useRef<string | undefined>(undefined);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node) => {
       event.preventDefault();
-      deleteNodeIdRef.current = node.id;
+      const pane = document.querySelector('.react-flow') as HTMLElement;
+      const bounds = pane.getBoundingClientRect();
       setMenu({
         id: node.id,
-        top: event.clientY,
-        left: event.clientX,
-        nodeType: node.type,
-        mode: 'node',
-      });
-    },
-    [setMenu],
-  );
-
-  const onPaneContextMenu = useCallback(
-    (event: React.MouseEvent) => {
-      event.preventDefault();
-      setMenu({
-        top: event.clientY,
-        left: event.clientX,
-        mode: 'canvas',
+        top: event.clientY - bounds.top,
+        left: event.clientX - bounds.left,
       });
     },
     [setMenu],
@@ -102,11 +87,9 @@ export default function App() {
 
   const onPaneClick = useCallback(() => setMenu(null), [setMenu]);
 
-
   const duplicateNode = useCallback(() => {
-    const nodeId = deleteNodeIdRef.current || menu?.id;
-    if (!nodeId) return;
-    const nodeToDuplicate = nodes.find((n) => n.id === nodeId);
+    if (!menu) return;
+    const nodeToDuplicate = nodes.find((n) => n.id === menu.id);
     if (nodeToDuplicate) {
       pushSnapshot();
       const newNodeId = `${nodeToDuplicate.type}-${Date.now()}`;
@@ -122,19 +105,16 @@ export default function App() {
       };
       setNodes((nds) => [...nds, newNode]);
     }
-    deleteNodeIdRef.current = undefined;
     setMenu(null);
   }, [menu, nodes, setNodes, pushSnapshot]);
 
   const deleteNode = useCallback(() => {
-    const nodeId = deleteNodeIdRef.current || menu?.id;
-    if (!nodeId) return;
+    if (!menu) return;
     pushSnapshot();
-    setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+    setNodes((nds) => nds.filter((n) => n.id !== menu.id));
     setEdges((eds) =>
-      eds.filter((e) => e.source !== nodeId && e.target !== nodeId),
+      eds.filter((e) => e.source !== menu.id && e.target !== menu.id),
     );
-    deleteNodeIdRef.current = undefined;
     setMenu(null);
   }, [menu, setNodes, setEdges, pushSnapshot]);
 
@@ -388,7 +368,6 @@ export default function App() {
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeContextMenu={onNodeContextMenu}
-          onPaneContextMenu={onPaneContextMenu}
           onPaneClick={onPaneClick}
           onNodeDragStart={onPaneClick}
           nodeTypes={nodeTypes}
@@ -402,19 +381,59 @@ export default function App() {
             color="rgba(255,255,255,0.04)"
           />
 
-          <ContextMenu
-            x={menu?.left || 0}
-            y={menu?.top || 0}
-            isOpen={!!menu}
-            onClose={() => setMenu(null)}
-            mode={menu?.mode || 'canvas'}
-            nodeType={menu?.nodeType}
-            nodeLabel={menu?.id}
-            onDuplicate={menu?.mode === 'node' ? duplicateNode : undefined}
-            onDelete={menu?.mode === 'node' ? deleteNode : undefined}
-            onAddNode={menu?.mode === 'canvas' ? addNode : undefined}
-          />
+          <Panel position="bottom-center" className="mb-6">
+            <div className="bg-white/8 backdrop-blur-2xl rounded-full border border-white/10 p-2 flex items-center gap-2 shadow-xl shadow-black/20">
+              <button
+                onClick={() => addNode('prompt')}
+                className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              >
+                Prompt
+              </button>
+              <div className="w-px h-4 bg-white/10" />
+              <button
+                onClick={() => addNode('image')}
+                className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              >
+                Image Ref
+              </button>
+              <div className="w-px h-4 bg-white/10" />
+              <button
+                onClick={() => addNode('model')}
+                className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              >
+                AI Model
+              </button>
+              <div className="w-px h-4 bg-white/10" />
+              <button
+                onClick={() => addNode('output')}
+                className="px-4 py-2 text-[13px] font-medium text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-all"
+              >
+                Output
+              </button>
+            </div>
+          </Panel>
 
+          {menu && (
+            <div
+              className="absolute z-50 bg-[#1a1a1e]/90 backdrop-blur-xl border border-white/10 shadow-xl rounded-xl py-1 min-w-[160px] overflow-hidden"
+              style={{ top: menu.top, left: menu.left }}
+            >
+              <button
+                onClick={duplicateNode}
+                className="w-full text-left px-4 py-2 text-[13px] font-medium text-white/70 hover:bg-white/10 hover:text-white flex items-center gap-2 transition-colors"
+              >
+                <Copy size={14} />
+                Duplicar
+              </button>
+              <button
+                onClick={deleteNode}
+                className="w-full text-left px-4 py-2 text-[13px] font-medium text-[#FF3B30]/80 hover:bg-[#FF3B30]/10 hover:text-[#FF3B30] flex items-center gap-2 transition-colors"
+              >
+                <Trash2 size={14} />
+                Eliminar
+              </button>
+            </div>
+          )}
         </ReactFlow>
       </div>
     </div>

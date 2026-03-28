@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutGrid, Plus, Sparkles, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
+import { LayoutGrid, Plus, Sparkles, Workflow, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
 import PopoverPanel from './ui/PopoverPanel';
 import { MOBILE_POPOVER_BACKDROP_CLASS, POPOVER_PANEL_CLASS } from './ui/popoverStyles';
 import { cn } from '../lib/utils';
@@ -15,15 +15,23 @@ const DEFAULT_TOOLS = [
     },
     {
         id: 'studio-ia',
-        name: 'Studio IA',
+        name: 'Estudio IA',
         url: '/dashboard/studio',
         icon: 'Sparkles',
         color: 'bg-gradient-to-br from-[#e3ff31] to-[#47D065] text-black'
+    },
+    {
+        id: 'workflows',
+        name: 'Workflows',
+        url: '/dashboard/studio/workflow',
+        icon: 'Workflow',
+        color: 'bg-gradient-to-br from-neutral-200 to-white text-black'
     }
 ];
 
 const ICONS = {
     Sparkles,
+    Workflow,
     Globe,
     LinkIcon
 };

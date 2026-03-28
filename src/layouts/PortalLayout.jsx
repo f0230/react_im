@@ -13,6 +13,8 @@ const detectHoverRevealSupport = () => {
     return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 };
 
+const NAVBAR_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
 const PortalLayout = () => {
     const {
         user,
@@ -131,7 +133,6 @@ const PortalLayout = () => {
                 (p) => p.startsWith('/dashboard/settings'),
                 (p) => p.startsWith('/dashboard/profile'),
                 (p) => p.startsWith('/dashboard/studio'),
-                (p) => p.startsWith('/dashboard/studio/banana'),
                 (p) => p.startsWith('/dashboard/studio/workflow'),
             ],
             admin: [
@@ -210,11 +211,15 @@ const PortalLayout = () => {
                 />
 
                 <main
-                    className={`relative animate-fade-in pt-[var(--dashboard-navbar-offset)] ${
+                    className={`relative animate-fade-in ${
                         isStudioRoute
                             ? 'w-full max-w-none px-0'
                             : 'max-w-[1440px] px-4 md:px-10 mx-auto'
                     }`}
+                    style={{
+                        paddingTop: 'var(--dashboard-navbar-offset)',
+                        transition: `padding-top 360ms ${NAVBAR_EASING}`,
+                    }}
                 >
                     <Outlet />
                 </main>

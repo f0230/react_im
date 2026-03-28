@@ -2,15 +2,25 @@ import { useState } from 'react';
 import {
   Image as ImageIcon,
   Download,
-  ArrowDownToLine,
+  ArrowUpFromLine,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
-import { getDownloadUrl } from '../../lib/kie';
+import { createUpscaleTask, pollMarketTask } from '../../lib/kie';
+import toast from 'react-hot-toast';
+
+const UPSCALE_FACTORS_IMAGE = ['2', '4', '8'];
+const UPSCALE_FACTORS_VIDEO = ['2', '4'];
 
 export default function OutputNode({ id, data }: { id: string; data: any }) {
   const [downloading, setDownloading] = useState(false);
+  const [upscaling, setUpscaling] = useState(false);
+  const [showFactors, setShowFactors] = useState(false);
+
+  const isVideo = data.resultType === 'video';
+  const factors = isVideo ? UPSCALE_FACTORS_VIDEO : UPSCALE_FACTORS_IMAGE;
 
   const getAspectRatioStyle = () => {
     if (!data.resultAspectRatio) return { aspectRatio: '16 / 9' };
@@ -18,30 +28,52 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
     return { aspectRatio: ratio };
   };
 
-  const handleDownload = async (hq = false) => {
+  const downloadBlob = async (url: string, suffix = '') => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const ext = isVideo ? 'mp4' : 'png';
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = `studio-dte-${data.taskId || Date.now()}${suffix}.${ext}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  };
+
+  const handleDownload = async () => {
     if (!data.resultUrl || downloading) return;
     setDownloading(true);
     try {
-      let url = data.resultUrl as string;
-      if (hq) {
-        url = await getDownloadUrl(url);
-      }
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const ext = data.resultType === 'video' ? 'mp4' : 'png';
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `studio-dte-${data.taskId || Date.now()}.${ext}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
+      await downloadBlob(data.resultUrl as string);
     } catch (e) {
       console.error('Download failed:', e);
       window.open(data.resultUrl, '_blank');
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleUpscale = async (factor: string) => {
+    if (!data.resultUrl || upscaling) return;
+    setShowFactors(false);
+    setUpscaling(true);
+    const type = isVideo ? 'video' : 'image';
+    try {
+      toast(`Upscaling ${type} ${factor}x...`, { icon: '⬆️' });
+      const taskId = await createUpscaleTask(data.resultUrl as string, type, factor);
+      const result = await pollMarketTask(taskId);
+      const upscaledUrl = result.urls[0];
+      if (!upscaledUrl) throw new Error('No upscaled URL returned');
+      await downloadBlob(upscaledUrl, `-${factor}x`);
+      toast.success(`${factor}x upscale complete!`);
+    } catch (e) {
+      console.error('Upscale failed:', e);
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg.length > 80 ? msg.slice(0, 80) + '...' : msg);
+    } finally {
+      setUpscaling(false);
     }
   };
 
@@ -125,21 +157,37 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
             {/* Download buttons */}
             <div className="flex gap-2">
               <button
-                onClick={() => handleDownload(false)}
-                disabled={downloading}
+                onClick={handleDownload}
+                disabled={downloading || upscaling}
                 className="flex-1 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-[12px] font-medium rounded-[10px] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
               >
                 {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
                 Download
               </button>
-              <button
-                onClick={() => handleDownload(true)}
-                disabled={downloading}
-                className="flex-1 py-2 bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 border border-[#0A84FF]/30 text-[#0A84FF] hover:text-white text-[12px] font-medium rounded-[10px] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                {downloading ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />}
-                HQ
-              </button>
+              <div className="relative flex-1">
+                <button
+                  onClick={() => !upscaling && setShowFactors(!showFactors)}
+                  disabled={upscaling}
+                  className="w-full py-2 bg-[#BF5AF2]/10 hover:bg-[#BF5AF2]/20 border border-[#BF5AF2]/30 text-[#BF5AF2] hover:text-white text-[12px] font-medium rounded-[10px] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {upscaling ? <Loader2 size={12} className="animate-spin" /> : <ArrowUpFromLine size={12} />}
+                  {upscaling ? 'Upscaling...' : 'Upscale'}
+                  {!upscaling && <ChevronDown size={10} />}
+                </button>
+                {showFactors && (
+                  <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#1C1C1E] border border-white/10 rounded-[10px] overflow-hidden shadow-xl z-50">
+                    {factors.map((f) => (
+                      <button
+                        key={f}
+                        onClick={() => handleUpscale(f)}
+                        className="nodrag w-full px-3 py-2 text-[12px] text-white/70 hover:text-white hover:bg-[#BF5AF2]/20 transition-colors text-center font-medium"
+                      >
+                        {f}x
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}

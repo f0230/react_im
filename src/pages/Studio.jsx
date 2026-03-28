@@ -400,7 +400,7 @@ export default function Studio() {
 
     return (
         <div
-            className="relative flex flex-col overflow-hidden bg-[#0a0a0a] text-white"
+            className="relative flex flex-col overflow-hidden bg-[#0a0a0a] text-white transition-[height,min-height] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
             style={{
                 zoom: 0.8,
                 height: 'calc((100dvh - var(--dashboard-navbar-offset)) / 0.8)',

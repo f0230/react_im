@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import OptimizedImage from '../components/OptimizedImage'; // Adjust path if needed
 import logo from '../assets/Group 255.svg'; // Check path
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +23,9 @@ const detectHoverRevealSupport = () => {
     return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 };
 
+const NAVBAR_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
+const NAVBAR_HIDE_DELAY_MS = 180;
+
 const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [scrolled, setScrolled] = useState(false);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
@@ -34,6 +37,7 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [isRevealHotspotActive, setIsRevealHotspotActive] = useState(false);
     const [isNavbarHovered, setIsNavbarHovered] = useState(false);
     const [isNavbarFocused, setIsNavbarFocused] = useState(false);
+    const hideIntentTimeoutRef = useRef(null);
     const { user, profile } = useAuth();
     const location = useLocation();
     const {
@@ -50,6 +54,22 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     // Get avatar from Google metadata (faster) or profile table
     const avatarUrl = user?.user_metadata?.avatar_url || profile?.avatar_url;
     const initial = (user?.user_metadata?.full_name || profile?.full_name || 'U').charAt(0);
+
+    const clearHideIntent = () => {
+        if (hideIntentTimeoutRef.current) {
+            window.clearTimeout(hideIntentTimeoutRef.current);
+            hideIntentTimeoutRef.current = null;
+        }
+    };
+
+    const scheduleHideIntent = () => {
+        clearHideIntent();
+        hideIntentTimeoutRef.current = window.setTimeout(() => {
+            setIsRevealHotspotActive(false);
+            setIsNavbarHovered(false);
+            hideIntentTimeoutRef.current = null;
+        }, NAVBAR_HIDE_DELAY_MS);
+    };
 
     useEffect(() => {
         const handleScroll = () => {
@@ -82,11 +102,16 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     }, []);
 
     useEffect(() => {
+        return () => clearHideIntent();
+    }, []);
+
+    useEffect(() => {
         setIsToolsOpen(false);
         setIsMenuOpen(false);
         setIsProfileOpen(false);
         setIsMessagesOpen(false);
         setIsNotificationsOpen(false);
+        clearHideIntent();
         setIsRevealHotspotActive(false);
         setIsNavbarHovered(false);
         setIsNavbarFocused(false);
@@ -116,22 +141,29 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
             {shouldAutoHide && (
                 <div
                     aria-hidden="true"
-                    className="fixed inset-x-0 top-0 z-30 h-4"
-                    onMouseEnter={() => setIsRevealHotspotActive(true)}
-                    onMouseLeave={() => setIsRevealHotspotActive(false)}
+                    className="fixed inset-x-0 top-0 z-30 h-5"
+                    onMouseEnter={() => {
+                        clearHideIntent();
+                        setIsRevealHotspotActive(true);
+                    }}
+                    onMouseLeave={scheduleHideIntent}
                 />
             )}
 
             <div
-                className={`fixed top-0 left-0 right-0 z-40 transition-transform duration-300 ${
-                    isNavbarVisible ? 'translate-y-0 pointer-events-auto' : '-translate-y-full pointer-events-none'
+                className={`fixed top-0 left-0 right-0 z-40 transition-[transform,opacity] duration-400 ${
+                    isNavbarVisible ? 'translate-y-0 opacity-100 pointer-events-auto' : '-translate-y-full opacity-0 pointer-events-none'
                 }`}
-                onMouseEnter={() => setIsNavbarHovered(true)}
-                onMouseLeave={() => {
-                    setIsNavbarHovered(false);
-                    setIsRevealHotspotActive(false);
+                style={{ transitionTimingFunction: NAVBAR_EASING }}
+                onMouseEnter={() => {
+                    clearHideIntent();
+                    setIsNavbarHovered(true);
                 }}
-                onFocusCapture={() => setIsNavbarFocused(true)}
+                onMouseLeave={scheduleHideIntent}
+                onFocusCapture={() => {
+                    clearHideIntent();
+                    setIsNavbarFocused(true);
+                }}
                 onBlurCapture={(event) => {
                     if (!event.currentTarget.contains(event.relatedTarget)) {
                         setIsNavbarFocused(false);
@@ -140,8 +172,9 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
             >
                 <header
                     className={`transition-all duration-300 border-b bg-black ${
-                        scrolled ? 'bg-black/80 backdrop-blur-md border-white/10' : 'border-transparent'
+                        scrolled ? 'bg-black/80 backdrop-blur-md border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.22)]' : 'border-transparent'
                     }`}
+                    style={{ transitionTimingFunction: NAVBAR_EASING }}
                 >
                     <div className="mx-auto px-4 md:px-10 flex items-center justify-between min-h-[56px] md:min-h-[45px] max-w-[1350px]">
                         {/* Logo */}

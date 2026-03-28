@@ -50,7 +50,6 @@ export const routeKeys = Object.freeze({
     clientAppointments: 'clientAppointments',
     settings: 'settings',
     studio: 'studio',
-    bananaStudio: 'bananaStudio',
     studioDte: 'studioDte',
 });
 
@@ -91,7 +90,6 @@ const routeImporters = {
     [routeKeys.clientAppointments]: once(() => import('@/pages/dashboard/projects/ClientAppointments')),
     [routeKeys.settings]: once(() => import('@/pages/dashboard/settings/Settings')),
     [routeKeys.studio]: once(() => import('@/pages/Studio')),
-    [routeKeys.bananaStudio]: once(() => import('@/pages/dashboard/studio/BananaStudio')),
     [routeKeys.studioDte]: once(() => import('@/pages/dashboard/studio/StudioDTE')),
 };
 
@@ -131,7 +129,6 @@ const pathKeyMap = new Map([
     ['/dashboard/settings', routeKeys.settings],
     ['/dashboard/profile', routeKeys.settings],
     ['/dashboard/studio', routeKeys.studio],
-    ['/dashboard/studio/banana', routeKeys.bananaStudio],
     ['/dashboard/studio/workflow', routeKeys.studioDte],
 ]);
 

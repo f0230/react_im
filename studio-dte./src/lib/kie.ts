@@ -220,28 +220,19 @@ export async function createVeoTask(params: {
 }
 
 // ---------------------------------------------------------------------------
-// Download URL (HQ) — Common API
+// Topaz Upscale (Image & Video)
 // ---------------------------------------------------------------------------
-export async function getDownloadUrl(resultUrl: string): Promise<string> {
-  try {
-    const key = apiKey();
-    const res = await fetch(`${KIE_API}/common/download-url`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({ url: resultUrl }),
-    });
-    const data = await parseJson(res);
-    const dlUrl =
-      data.data?.downloadUrl || data.data?.url || data.downloadUrl;
-    if (typeof dlUrl === 'string' && dlUrl) return dlUrl;
-  } catch {
-    // fallback below
-  }
-  // Fallback: return the original URL
-  return resultUrl;
+export async function createUpscaleTask(
+  url: string,
+  type: 'image' | 'video',
+  upscaleFactor: string = '2',
+): Promise<string> {
+  const model = type === 'video' ? 'topaz/video-upscale' : 'topaz/image-upscale';
+  const inputKey = type === 'video' ? 'video_url' : 'image_url';
+  return createMarketTask(model, {
+    [inputKey]: url,
+    upscale_factor: upscaleFactor,
+  });
 }
 
 export async function pollVeoTask(taskId: string): Promise<{ urls: string[] }> {
