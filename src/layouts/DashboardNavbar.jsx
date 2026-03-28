@@ -14,7 +14,7 @@ import DashboardMenu from './DashboardMenu';
 import ToolsPopover from '@/components/ToolsPopover';
 import { PrefetchLink } from '@/components/navigation/PrefetchLink';
 
-const DashboardNavbar = ({ autoHideInStudio = false }) => {
+const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [scrolled, setScrolled] = useState(false);
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -90,6 +90,10 @@ const DashboardNavbar = ({ autoHideInStudio = false }) => {
         isNavbarHovered ||
         isNavbarFocused ||
         hasOpenPopover;
+
+    useEffect(() => {
+        onVisibilityChange?.(isNavbarVisible);
+    }, [isNavbarVisible, onVisibilityChange]);
 
     return (
         <>

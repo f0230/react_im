@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Outlet, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import DashboardNavbar from './DashboardNavbar';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +24,19 @@ const PortalLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const isStudioRoute = location.pathname.startsWith('/dashboard/studio');
+    const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+        return window.matchMedia('(min-width: 768px)').matches;
+    });
+    const [isStudioNavbarVisible, setIsStudioNavbarVisible] = useState(() => {
+        if (typeof window === 'undefined') return true;
+        const supportsHoverReveal =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+        const isInitialStudioRoute = window.location.pathname.startsWith('/dashboard/studio');
+
+        return !(isInitialStudioRoute && supportsHoverReveal);
+    });
 
     const isAuthReady = typeof authReady === 'boolean' ? authReady : !loading;
     const showAuthLoader = useCycleLockedVisibility(!isAuthReady, BRAND_LOADER_CYCLE_MS);
@@ -41,6 +54,31 @@ const PortalLayout = () => {
             document.documentElement.classList.remove('dashboard-mobile-compact');
         };
     }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+            return undefined;
+        }
+
+        const mediaQuery = window.matchMedia('(min-width: 768px)');
+        const syncViewport = () => setIsDesktopViewport(mediaQuery.matches);
+
+        syncViewport();
+
+        if (typeof mediaQuery.addEventListener === 'function') {
+            mediaQuery.addEventListener('change', syncViewport);
+            return () => mediaQuery.removeEventListener('change', syncViewport);
+        }
+
+        mediaQuery.addListener(syncViewport);
+        return () => mediaQuery.removeListener(syncViewport);
+    }, []);
+
+    useEffect(() => {
+        if (!isStudioRoute) {
+            setIsStudioNavbarVisible(true);
+        }
+    }, [isStudioRoute]);
 
     const isRouteAllowed = useMemo(() => {
         if (!profile?.role) return true;
@@ -135,15 +173,25 @@ const PortalLayout = () => {
         );
     }
 
+    const dashboardNavbarOffset = isStudioRoute
+        ? (isStudioNavbarVisible ? (isDesktopViewport ? 45 : 56) : 0)
+        : (isDesktopViewport ? 45 : 56);
+
     return (
-        <div className={`min-h-screen font-product ${isStudioRoute ? 'bg-black' : 'bg-[#f2f2f2]'}`}>
+        <div
+            className={`min-h-screen font-product ${isStudioRoute ? 'bg-black' : 'bg-[#f2f2f2]'}`}
+            style={{ '--dashboard-navbar-offset': `${dashboardNavbarOffset}px` }}
+        >
             <UnreadCountsProvider>
-                <DashboardNavbar autoHideInStudio={isStudioRoute} />
+                <DashboardNavbar
+                    autoHideInStudio={isStudioRoute}
+                    onVisibilityChange={setIsStudioNavbarVisible}
+                />
 
                 <main
-                    className={`relative animate-fade-in ${
+                    className={`relative animate-fade-in pt-[var(--dashboard-navbar-offset)] ${
                         isStudioRoute
-                            ? 'w-full max-w-none px-0 pt-0'
+                            ? 'w-full max-w-none px-0'
                             : 'max-w-[1440px] px-4 md:px-10 mx-auto'
                     }`}
                 >
