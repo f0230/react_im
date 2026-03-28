@@ -7,38 +7,48 @@ import OpenAI from 'openai';
 import { enhancePrompt } from '../../lib/prompt-enhancer';
 import toast from 'react-hot-toast';
 
+/** Convert any image data URL to PNG via canvas (handles SVG, HEIC, etc.) */
+function normalizeImageToPng(dataUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('Canvas not available'));
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Failed to load image for conversion'));
+    img.src = dataUrl;
+  });
+}
+
 async function describeImage(imageUrl: string): Promise<string> {
-  // data: URLs are already local — call OpenAI directly from browser
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  if (!apiKey) throw new Error('VITE_OPENAI_API_KEY is not configured');
+
+  let finalUrl = imageUrl;
+
+  // data: URLs — normalize to PNG so OpenAI accepts any format (SVG, HEIC, etc.)
   if (imageUrl.startsWith('data:')) {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) throw new Error('VITE_OPENAI_API_KEY is not configured');
-    const ai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
-    const res = await ai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: 'Describe this image in vivid detail for use as an AI image/video generation prompt. Be specific about composition, lighting, colors, subjects, style, and mood. Return ONLY the prompt text, no explanations or prefixes.' },
-          { type: 'image_url', image_url: { url: imageUrl, detail: 'low' } },
-        ],
-      }],
-      max_tokens: 500,
-    });
-    return res.choices[0]?.message?.content?.trim() ?? '';
+    finalUrl = await normalizeImageToPng(imageUrl);
   }
 
-  // Remote URLs — route through server to avoid CDN restrictions
-  const response = await fetch('/api/studio-describe', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ imageUrl }),
+  const ai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+  const res = await ai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Describe this image in vivid detail for use as an AI image/video generation prompt. Be specific about composition, lighting, colors, subjects, style, and mood. Return ONLY the prompt text, no explanations or prefixes.' },
+        { type: 'image_url', image_url: { url: finalUrl, detail: 'low' } },
+      ],
+    }],
+    max_tokens: 500,
   });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(err.error || `Server error ${response.status}`);
-  }
-  const { description } = await response.json();
-  return description ?? '';
+  return res.choices[0]?.message?.content?.trim() ?? '';
 }
 
 export default function PromptNode({ id, data }: { id: string; data: any }) {
