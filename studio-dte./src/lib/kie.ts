@@ -19,9 +19,12 @@ async function parseJson(res: Response): Promise<any> {
 }
 
 // ---------------------------------------------------------------------------
-// File Upload (stream — matches banana-image-studio approach)
+// File Upload (stream — works for images and videos)
 // ---------------------------------------------------------------------------
-export async function uploadImage(base64DataUrl: string): Promise<string> {
+export async function uploadFile(
+  base64DataUrl: string,
+  uploadPath = 'images/studio-dte',
+): Promise<string> {
   const key = apiKey();
 
   // Convert base64 data URL to blob
@@ -32,7 +35,7 @@ export async function uploadImage(base64DataUrl: string): Promise<string> {
 
   const formData = new FormData();
   formData.append('file', blob, fileName);
-  formData.append('uploadPath', 'images/studio-dte');
+  formData.append('uploadPath', uploadPath);
   formData.append('fileName', fileName);
 
   const uploadRes = await fetch(`${KIE_UPLOAD}/file-stream-upload`, {
@@ -51,6 +54,10 @@ export async function uploadImage(base64DataUrl: string): Promise<string> {
   if (typeof fileUrl !== 'string') throw new Error('No file URL in upload response');
   return fileUrl;
 }
+
+/** Backwards-compatible alias for uploadFile */
+export const uploadImage = (base64DataUrl: string) =>
+  uploadFile(base64DataUrl, 'images/studio-dte');
 
 // ---------------------------------------------------------------------------
 // Market API  (Nano Banana, Kling, Sora 2)
@@ -210,6 +217,31 @@ export async function createVeoTask(params: {
   const id = data.data?.taskId || data.data?.tid || data.taskId || data.tid;
   if (!id) throw new Error('No taskId en la respuesta de Veo');
   return id.toString();
+}
+
+// ---------------------------------------------------------------------------
+// Download URL (HQ) — Common API
+// ---------------------------------------------------------------------------
+export async function getDownloadUrl(resultUrl: string): Promise<string> {
+  try {
+    const key = apiKey();
+    const res = await fetch(`${KIE_API}/common/download-url`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({ url: resultUrl }),
+    });
+    const data = await parseJson(res);
+    const dlUrl =
+      data.data?.downloadUrl || data.data?.url || data.downloadUrl;
+    if (typeof dlUrl === 'string' && dlUrl) return dlUrl;
+  } catch {
+    // fallback below
+  }
+  // Fallback: return the original URL
+  return resultUrl;
 }
 
 export async function pollVeoTask(taskId: string): Promise<{ urls: string[] }> {

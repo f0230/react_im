@@ -49,7 +49,7 @@ export default function App() {
       id: 'prompt-1',
       type: 'prompt',
       position: { x: 250, y: 300 },
-      data: { text: '' },
+      data: { text: '', mediaContextUrl: null, mediaContextType: null, mediaContextSourceNodeId: null },
     },
     {
       id: 'model-1',
@@ -73,6 +73,8 @@ export default function App() {
         seeds: '',
         nFrames: '',
         characterIdList: '',
+        characterOrientation: '',
+        backgroundSource: '',
         multiPrompt: '',
         multiShots: '',
         klingElements: '',
@@ -84,7 +86,7 @@ export default function App() {
       id: 'output-1',
       type: 'output',
       position: { x: 1100, y: 250 },
-      data: { status: 'idle', resultUrl: null },
+      data: { status: 'idle', resultUrl: null, resultType: null, taskId: null, provider: null },
     },
   ] as Node[]);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -174,16 +176,37 @@ export default function App() {
   const onConnect = useCallback(
     (params: Connection) => {
       const sourceNode = nodes.find(n => n.id === params.source);
+      const th = params.targetHandle || '';
+
       let color = 'green';
+      let warning = false;
+
+      // Text sources → pink edges
       if (sourceNode?.type === 'prompt' || sourceNode?.type === 'enhancer') {
         color = 'pink';
+        // Text to media port = type mismatch
+        if (th === 'ref-image' || th === 'ref-video' || th === 'media-in') {
+          warning = true;
+        }
       }
 
-      setEdges((eds) => addEdge({ 
-        ...params, 
+      // Image source to text-only port = mismatch
+      if (sourceNode?.type === 'image') {
+        if (th === 'prompt') warning = true;
+        if (th === 'ref-video') warning = true;
+      }
+
+      // Output → prompt text port = mismatch (media→text)
+      if (sourceNode?.type === 'output') {
+        if (th === 'prompt') warning = true;
+        // output→media-in, output→ref-image, output→ref-video are all valid
+      }
+
+      setEdges((eds) => addEdge({
+        ...params,
         type: 'default',
         animated: true,
-        data: { color }
+        data: { color, warning }
       }, eds));
     },
     [setEdges, nodes],
@@ -196,7 +219,7 @@ export default function App() {
       type,
       position: { x: Math.random() * 200 + 300, y: Math.random() * 200 + 300 },
       data: { 
-        ...(type === 'prompt' ? { text: '' } : {}),
+        ...(type === 'prompt' ? { text: '', mediaContextUrl: null, mediaContextType: null, mediaContextSourceNodeId: null } : {}),
         ...(type === 'model' ? {
           model: 'nano-banana-pro',
           modelType: 'image',
@@ -215,6 +238,8 @@ export default function App() {
           seeds: '',
           nFrames: '',
           characterIdList: '',
+          characterOrientation: '',
+          backgroundSource: '',
           multiPrompt: '',
           multiShots: '',
           klingElements: '',
@@ -222,7 +247,7 @@ export default function App() {
           progressCallBackUrl: '',
         } : {}),
         ...(type === 'image' ? { imageUrl: null } : {}),
-        ...(type === 'output' ? { status: 'idle', resultUrl: null } : {}),
+        ...(type === 'output' ? { status: 'idle', resultUrl: null, resultType: null, taskId: null, provider: null } : {}),
         ...(type === 'enhancer' ? { enhancedText: '', isEnhancing: false } : {}),
       },
     };

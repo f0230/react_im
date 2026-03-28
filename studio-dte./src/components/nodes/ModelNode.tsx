@@ -11,7 +11,7 @@ import BaseNode, { cn } from './BaseNode';
 import { Port } from './Port';
 import MultiUseSelect from '../MultiUseSelect';
 import {
-  uploadImage,
+  uploadFile,
   createMarketTask,
   pollMarketTask,
   createVeoTask,
@@ -42,10 +42,14 @@ interface ModelCaps {
   supportsUploadMethod?: boolean;
   supportsCharacterIds?: boolean;
   supportsMultiPrompt?: boolean;
+  supportsMultiShots?: boolean;
   supportsKlingElements?: boolean;
+  supportsCharacterOrientation?: boolean;
+  supportsBackgroundSource?: boolean;
 }
 
 const MODEL_CAPS: Record<string, ModelCaps> = {
+  /* ---- Image models ---- */
   'google/nano-banana': {
     kind: 'image',
     provider: 'market',
@@ -76,16 +80,36 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsResolution: true,
     supportsOutputFormat: true,
   },
-  'kling-2.6': {
+
+  /* ---- Kling 2.6 variants ---- */
+  'kling-2.6/text-to-video': {
     kind: 'video',
     provider: 'market',
-    supportsReferenceImage: true,
     supportsAspectRatio: true,
     supportsDuration: true,
     supportsSound: true,
     supportsCallbacks: true,
   },
-  'kling-3.0': {
+  'kling-2.6/image-to-video': {
+    kind: 'video',
+    provider: 'market',
+    supportsReferenceImage: true,
+    supportsDuration: true,
+    supportsSound: true,
+    supportsCallbacks: true,
+  },
+  'kling-2.6/motion-control': {
+    kind: 'video',
+    provider: 'market',
+    supportsReferenceImage: true,
+    supportsReferenceVideo: true,
+    supportsMode: true,
+    supportsCharacterOrientation: true,
+    supportsCallbacks: true,
+  },
+
+  /* ---- Kling 3.0 variants ---- */
+  'kling-3.0/video': {
     kind: 'video',
     provider: 'market',
     supportsReferenceImage: true,
@@ -94,10 +118,33 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsSound: true,
     supportsMode: true,
     supportsMultiPrompt: true,
+    supportsMultiShots: true,
     supportsKlingElements: true,
     supportsCallbacks: true,
   },
-  'sora-2': {
+  'kling-3.0/motion-control': {
+    kind: 'video',
+    provider: 'market',
+    supportsReferenceImage: true,
+    supportsReferenceVideo: true,
+    supportsMode: true,
+    supportsCharacterOrientation: true,
+    supportsBackgroundSource: true,
+    supportsCallbacks: true,
+  },
+
+  /* ---- Sora 2 variants ---- */
+  'sora-2-text-to-video': {
+    kind: 'video',
+    provider: 'market',
+    supportsAspectRatio: true,
+    supportsFrameCount: true,
+    supportsRemoveWatermark: true,
+    supportsUploadMethod: true,
+    supportsCharacterIds: true,
+    supportsCallbacks: true,
+  },
+  'sora-2-image-to-video': {
     kind: 'video',
     provider: 'market',
     supportsReferenceImage: true,
@@ -108,6 +155,8 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsCharacterIds: true,
     supportsCallbacks: true,
   },
+
+  /* ---- Veo ---- */
   veo3: {
     kind: 'video',
     provider: 'veo',
@@ -147,9 +196,13 @@ const MODEL_OPTIONS = [
   {
     label: 'Video Models',
     options: [
-      { label: 'Kling 2.6', value: 'kling-2.6' },
-      { label: 'Kling 3.0', value: 'kling-3.0' },
-      { label: 'Sora 2', value: 'sora-2' },
+      { label: 'Kling 2.6 Text', value: 'kling-2.6/text-to-video' },
+      { label: 'Kling 2.6 Image', value: 'kling-2.6/image-to-video' },
+      { label: 'Kling 2.6 Motion', value: 'kling-2.6/motion-control' },
+      { label: 'Kling 3.0 Video', value: 'kling-3.0/video' },
+      { label: 'Kling 3.0 Motion', value: 'kling-3.0/motion-control' },
+      { label: 'Sora 2 Text', value: 'sora-2-text-to-video' },
+      { label: 'Sora 2 Image', value: 'sora-2-image-to-video' },
       { label: 'Veo 3', value: 'veo3' },
       { label: 'Veo 3 Fast', value: 'veo3_fast' },
     ],
@@ -191,6 +244,7 @@ function buildMarketInput(
   model: string,
   prompt: string,
   imageUrl: string | null,
+  videoUrl: string | null,
   data: Record<string, any>,
 ): { apiModel: string; input: Record<string, any> } {
   const aspectRatio = (data.aspectRatio || '1:1') as string;
@@ -246,20 +300,35 @@ function buildMarketInput(
       return { apiModel: 'nano-banana-pro', input };
     }
 
-    /* ---- Kling ---- */
-    case 'kling-2.6':
-      if (imageUrl) {
-        return {
-          apiModel: 'kling-2.6/image-to-video',
-          input: { prompt, image_urls: [imageUrl], sound, duration },
-        };
-      }
+    /* ---- Kling 2.6 ---- */
+    case 'kling-2.6/text-to-video':
       return {
         apiModel: 'kling-2.6/text-to-video',
         input: { prompt, sound, aspect_ratio: aspectRatio, duration },
       };
 
-    case 'kling-3.0': {
+    case 'kling-2.6/image-to-video':
+      return {
+        apiModel: 'kling-2.6/image-to-video',
+        input: {
+          prompt,
+          image_urls: imageUrl ? [imageUrl] : [],
+          sound,
+          duration,
+        },
+      };
+
+    case 'kling-2.6/motion-control': {
+      const input: Record<string, any> = { prompt, mode };
+      if (imageUrl) input.input_urls = [imageUrl];
+      if (videoUrl) input.video_urls = [videoUrl];
+      if (data.characterOrientation)
+        input.character_orientation = data.characterOrientation;
+      return { apiModel: 'kling-2.6/motion-control', input };
+    }
+
+    /* ---- Kling 3.0 ---- */
+    case 'kling-3.0/video': {
       const input: Record<string, any> = {
         prompt,
         sound,
@@ -279,8 +348,19 @@ function buildMarketInput(
       return { apiModel: 'kling-3.0/video', input };
     }
 
+    case 'kling-3.0/motion-control': {
+      const input: Record<string, any> = { prompt, mode };
+      if (imageUrl) input.input_urls = [imageUrl];
+      if (videoUrl) input.video_urls = [videoUrl];
+      if (data.characterOrientation)
+        input.character_orientation = data.characterOrientation;
+      if (data.backgroundSource)
+        input.background_source = data.backgroundSource;
+      return { apiModel: 'kling-3.0/motion-control', input };
+    }
+
     /* ---- Sora 2 ---- */
-    case 'sora-2': {
+    case 'sora-2-text-to-video': {
       const input: Record<string, any> = {
         prompt,
         aspect_ratio: aspectRatio,
@@ -288,15 +368,23 @@ function buildMarketInput(
         upload_method: uploadMethod,
       };
       if (nFrames) input.n_frames = nFrames;
-
       const charIds = parseCsv(data.characterIdList);
       if (charIds.length) input.character_id_list = charIds;
-
-      if (imageUrl) {
-        input.image_urls = [imageUrl];
-        return { apiModel: 'sora-2-image-to-video', input };
-      }
       return { apiModel: 'sora-2-text-to-video', input };
+    }
+
+    case 'sora-2-image-to-video': {
+      const input: Record<string, any> = {
+        prompt,
+        image_urls: imageUrl ? [imageUrl] : [],
+        aspect_ratio: aspectRatio,
+        remove_watermark: removeWatermark,
+        upload_method: uploadMethod,
+      };
+      if (nFrames) input.n_frames = nFrames;
+      const charIds = parseCsv(data.characterIdList);
+      if (charIds.length) input.character_id_list = charIds;
+      return { apiModel: 'sora-2-image-to-video', input };
     }
 
     default:
@@ -379,6 +467,20 @@ function SmallInput({
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+/** Convert a remote URL to a base64 data URL */
+async function toBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new Promise<string>((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 export default function ModelNode({ id, data }: { id: string; data: any }) {
@@ -388,6 +490,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
 
   const caps = getCaps(data.model);
   const isVideo = caps.kind === 'video';
+  const isMotionControl = !!caps.supportsReferenceVideo;
 
   const hasAdvanced =
     caps.supportsCallbacks ||
@@ -399,7 +502,9 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     caps.supportsUploadMethod ||
     caps.supportsCharacterIds ||
     caps.supportsMultiPrompt ||
+    caps.supportsMultiShots ||
     caps.supportsKlingElements ||
+    caps.supportsBackgroundSource ||
     caps.provider === 'veo'; // generationType
 
   // Shorthand updater
@@ -417,6 +522,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
 
     const inputEdges = edges.filter((e) => e.target === id);
 
+    // -- Prompt --
     const promptEdge = inputEdges.find((e) => e.targetHandle === 'prompt');
     const promptNode = promptEdge
       ? nodes.find((n) => n.id === promptEdge.source)
@@ -425,6 +531,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       promptNode?.data?.text ||
       '') as string;
 
+    // -- Reference image --
     const refImageEdge = inputEdges.find(
       (e) => e.targetHandle === 'ref-image',
     );
@@ -436,9 +543,41 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       (refImageNode?.data?.resultUrl as string) ||
       null;
 
+    // -- Reference video --
+    const refVideoEdge = inputEdges.find(
+      (e) => e.targetHandle === 'ref-video',
+    );
+    const refVideoNode = refVideoEdge
+      ? nodes.find((n) => n.id === refVideoEdge.source)
+      : null;
+    let refVideoDataUrl: string | null =
+      (refVideoNode?.data?.resultUrl as string) ||
+      (refVideoNode?.data?.videoUrl as string) ||
+      (refVideoNode?.data?.imageUrl as string) ||
+      null;
+
+    const selectedModel = data.model as string;
+    const selectedCaps = getCaps(selectedModel);
+
+    // -- Validations --
     if (!promptText) {
       alert('Por favor, conecta un nodo de Prompt con texto antes de generar.');
       return;
+    }
+
+    if (selectedCaps.supportsReferenceVideo) {
+      if (!refImageDataUrl) {
+        alert(
+          'Motion Control requiere una imagen de referencia conectada al puerto ref-image.',
+        );
+        return;
+      }
+      if (!refVideoDataUrl) {
+        alert(
+          'Motion Control requiere un video de referencia conectado al puerto ref-video.',
+        );
+        return;
+      }
     }
 
     // Set output nodes to loading
@@ -460,30 +599,40 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     );
 
     try {
-      // Convert remote URL ref images to base64
-      if (refImageDataUrl && refImageDataUrl.startsWith('http')) {
-        try {
-          const response = await fetch(refImageDataUrl);
-          const blob = await response.blob();
-          const reader = new FileReader();
-          refImageDataUrl = await new Promise<string>((resolve) => {
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(blob);
-          });
-        } catch (e) {
-          console.error('Error fetching reference image:', e);
-        }
-      }
-
-      // Upload ref image to KIE
+      // -- Upload reference image --
       let uploadedImageUrl: string | null = null;
       if (refImageDataUrl) {
-        uploadedImageUrl = await uploadImage(refImageDataUrl);
+        if (refImageDataUrl.startsWith('http')) {
+          try {
+            refImageDataUrl = await toBase64(refImageDataUrl);
+          } catch (e) {
+            console.error('Error fetching reference image:', e);
+          }
+        }
+        uploadedImageUrl = await uploadFile(
+          refImageDataUrl,
+          'images/studio-dte',
+        );
+      }
+
+      // -- Upload reference video --
+      let uploadedVideoUrl: string | null = null;
+      if (refVideoDataUrl && selectedCaps.supportsReferenceVideo) {
+        if (refVideoDataUrl.startsWith('http')) {
+          try {
+            refVideoDataUrl = await toBase64(refVideoDataUrl);
+          } catch (e) {
+            console.error('Error fetching reference video:', e);
+          }
+        }
+        uploadedVideoUrl = await uploadFile(
+          refVideoDataUrl,
+          'videos/studio-dte',
+        );
       }
 
       let resultUrl = '';
-      const selectedModel = data.model as string;
-      const selectedCaps = getCaps(selectedModel);
+      let taskId = '';
 
       if (selectedCaps.provider === 'veo') {
         // ---- Veo dedicated API ----
@@ -491,7 +640,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
         const seeds = parseSeeds(data.seeds);
         const genType = (data.generationType || 'auto') as string;
 
-        const taskId = await createVeoTask({
+        taskId = await createVeoTask({
           prompt: promptText,
           model: selectedModel,
           imageUrls: uploadedImageUrl ? [uploadedImageUrl] : undefined,
@@ -499,8 +648,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
           seeds: seeds.length ? seeds : undefined,
           enableTranslation: data.enableTranslation ?? false,
           enableFallback: data.enableFallback ?? true,
-          generationType:
-            genType !== 'auto' ? genType : undefined,
+          generationType: genType !== 'auto' ? genType : undefined,
           callBackUrl: data.callBackUrl || undefined,
         });
         const result = await pollVeoTask(taskId);
@@ -511,9 +659,10 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
           selectedModel,
           promptText,
           uploadedImageUrl,
+          uploadedVideoUrl,
           data,
         );
-        const taskId = await createMarketTask(apiModel, input, {
+        taskId = await createMarketTask(apiModel, input, {
           callBackUrl: data.callBackUrl || undefined,
           progressCallBackUrl: data.progressCallBackUrl || undefined,
         });
@@ -540,6 +689,8 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                 resultUrl,
                 resultType,
                 resultAspectRatio: actualAspectRatio,
+                taskId,
+                provider: selectedCaps.provider,
               },
             };
           }
@@ -579,14 +730,19 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       <div className="flex flex-col gap-4">
         {/* ---------- Input Ports ---------- */}
         <div className="flex flex-col gap-2 relative -ml-4">
-          <Port type="target" id="prompt" color="pink" icon={<Type size={14} />} />
+          <Port
+            type="target"
+            id="prompt"
+            color="pink"
+            icon={<Type size={14} />}
+          />
           <Port
             type="target"
             id="ref-image"
             color="green"
             icon={<ImageIcon size={14} />}
           />
-          {isVideo && (
+          {caps.supportsReferenceVideo && (
             <Port
               type="target"
               id="ref-video"
@@ -614,12 +770,10 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
 
         {/* ---------- Basic Controls ---------- */}
         <div className="grid grid-cols-2 gap-4 mt-1">
-          {/* Aspect Ratio / Image Size — virtually all models */}
+          {/* Aspect Ratio / Image Size */}
           {caps.supportsAspectRatio && (
             <div className="flex flex-col gap-2">
-              <FieldLabel>
-                {caps.kind === 'image' ? 'Proporción' : 'Proporción'}
-              </FieldLabel>
+              <FieldLabel>Proporción</FieldLabel>
               <MultiUseSelect
                 value={data.aspectRatio || '1:1'}
                 onChange={(val) => set({ aspectRatio: val as string })}
@@ -674,7 +828,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             </div>
           )}
 
-          {/* Duration (Kling) */}
+          {/* Duration (Kling video, not motion-control) */}
           {caps.supportsDuration && (
             <div className="flex flex-col gap-2">
               <FieldLabel>Duración</FieldLabel>
@@ -682,7 +836,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                 value={data.duration || '5'}
                 onChange={(val) => set({ duration: val as string })}
                 options={
-                  data.model === 'kling-3.0'
+                  data.model?.startsWith('kling-3.0')
                     ? [
                         { label: '3s', value: '3' },
                         { label: '5s', value: '5' },
@@ -698,7 +852,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             </div>
           )}
 
-          {/* Mode (Kling 3.0) */}
+          {/* Mode (Kling 3.0 video + all motion-control) */}
           {caps.supportsMode && (
             <div className="flex flex-col gap-2">
               <FieldLabel>Modo</FieldLabel>
@@ -708,6 +862,25 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                 options={[
                   { label: 'Standard', value: 'std' },
                   { label: 'Pro', value: 'pro' },
+                ]}
+              />
+            </div>
+          )}
+
+          {/* Character Orientation (motion-control) */}
+          {caps.supportsCharacterOrientation && (
+            <div className="flex flex-col gap-2">
+              <FieldLabel>Orientación</FieldLabel>
+              <MultiUseSelect
+                value={data.characterOrientation || 'front'}
+                onChange={(val) =>
+                  set({ characterOrientation: val as string })
+                }
+                options={[
+                  { label: 'Frontal', value: 'front' },
+                  { label: 'Izquierda', value: 'left' },
+                  { label: 'Derecha', value: 'right' },
+                  { label: 'Espalda', value: 'back' },
                 ]}
               />
             </div>
@@ -837,26 +1010,26 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                   </div>
                 )}
 
-                {/* -- Kling 3.0 specific -- */}
+                {/* -- Kling 3.0 video specific -- */}
                 {caps.supportsMultiPrompt && (
-                  <>
-                    <div className="flex flex-col gap-1.5">
-                      <FieldLabel>Multi Prompt (JSON)</FieldLabel>
-                      <SmallInput
-                        value={data.multiPrompt || ''}
-                        onChange={(v) => set({ multiPrompt: v })}
-                        placeholder='[{"prompt":"..."}]'
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <FieldLabel>Multi Shots (JSON)</FieldLabel>
-                      <SmallInput
-                        value={data.multiShots || ''}
-                        onChange={(v) => set({ multiShots: v })}
-                        placeholder='[{"shot":"..."}]'
-                      />
-                    </div>
-                  </>
+                  <div className="flex flex-col gap-1.5">
+                    <FieldLabel>Multi Prompt (JSON)</FieldLabel>
+                    <SmallInput
+                      value={data.multiPrompt || ''}
+                      onChange={(v) => set({ multiPrompt: v })}
+                      placeholder='[{"prompt":"..."}]'
+                    />
+                  </div>
+                )}
+                {caps.supportsMultiShots && (
+                  <div className="flex flex-col gap-1.5">
+                    <FieldLabel>Multi Shots (JSON)</FieldLabel>
+                    <SmallInput
+                      value={data.multiShots || ''}
+                      onChange={(v) => set({ multiShots: v })}
+                      placeholder='[{"shot":"..."}]'
+                    />
+                  </div>
                 )}
                 {caps.supportsKlingElements && (
                   <div className="flex flex-col gap-1.5">
@@ -865,6 +1038,18 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                       value={data.klingElements || ''}
                       onChange={(v) => set({ klingElements: v })}
                       placeholder='[{"element":"..."}]'
+                    />
+                  </div>
+                )}
+
+                {/* -- Kling motion-control: background source (3.0 only) -- */}
+                {caps.supportsBackgroundSource && (
+                  <div className="flex flex-col gap-1.5">
+                    <FieldLabel>Background Source</FieldLabel>
+                    <SmallInput
+                      value={data.backgroundSource || ''}
+                      onChange={(v) => set({ backgroundSource: v })}
+                      placeholder="e.g. original"
                     />
                   </div>
                 )}

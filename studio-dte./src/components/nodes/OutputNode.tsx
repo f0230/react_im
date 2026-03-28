@@ -1,16 +1,51 @@
-import { Image as ImageIcon, CheckCircle2, Loader2, Download } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Image as ImageIcon,
+  Download,
+  ArrowDownToLine,
+  Loader2,
+} from 'lucide-react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
+import { getDownloadUrl } from '../../lib/kie';
 
-export default function OutputNode({ id, data }: { id: string, data: any }) {
-  // Determine aspect ratio style based on resultAspectRatio
+export default function OutputNode({ id, data }: { id: string; data: any }) {
+  const [downloading, setDownloading] = useState(false);
+
   const getAspectRatioStyle = () => {
     if (!data.resultAspectRatio) return { aspectRatio: '16 / 9' };
-    
-    // Convert "16:9" to "16 / 9" for CSS
     const ratio = data.resultAspectRatio.replace(':', ' / ');
     return { aspectRatio: ratio };
   };
+
+  const handleDownload = async (hq = false) => {
+    if (!data.resultUrl || downloading) return;
+    setDownloading(true);
+    try {
+      let url = data.resultUrl as string;
+      if (hq) {
+        url = await getDownloadUrl(url);
+      }
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const ext = data.resultType === 'video' ? 'mp4' : 'png';
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `studio-dte-${data.taskId || Date.now()}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error('Download failed:', e);
+      window.open(data.resultUrl, '_blank');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const hasResult = data.status === 'success' && data.resultUrl;
 
   return (
     <BaseNode id={id} className="w-80 p-4">
@@ -36,6 +71,7 @@ export default function OutputNode({ id, data }: { id: string, data: any }) {
           </div>
         </div>
 
+        {/* Preview */}
         <div
           className="w-full bg-white/5 border border-white/10 rounded-[16px] flex flex-col items-center justify-center text-white/50 overflow-hidden relative transition-all duration-500"
           style={getAspectRatioStyle()}
@@ -45,7 +81,7 @@ export default function OutputNode({ id, data }: { id: string, data: any }) {
               <div className="w-10 h-10 border-[3px] border-white/10 border-t-[#0A84FF] rounded-full animate-spin shadow-[0_0_15px_rgba(10,132,255,0.2)]" />
               <span className="text-[13px] font-medium animate-pulse text-white/70">Generating...</span>
             </div>
-          ) : data.status === 'success' && data.resultUrl ? (
+          ) : hasResult ? (
             data.resultType === 'video' ? (
               <video src={data.resultUrl} controls autoPlay loop className="w-full h-full object-cover" />
             ) : (
@@ -63,9 +99,54 @@ export default function OutputNode({ id, data }: { id: string, data: any }) {
             </>
           )}
         </div>
+
+        {/* Metadata + Actions */}
+        {hasResult && (
+          <>
+            {/* Metadata row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {data.resultType && (
+                <span className="text-[10px] font-medium text-white/40 bg-white/5 border border-white/10 rounded-full px-2 py-0.5 uppercase tracking-wider">
+                  {data.resultType}
+                </span>
+              )}
+              {data.provider && (
+                <span className="text-[10px] font-medium text-white/40 bg-white/5 border border-white/10 rounded-full px-2 py-0.5 uppercase tracking-wider">
+                  {data.provider}
+                </span>
+              )}
+              {data.taskId && (
+                <span className="text-[10px] font-mono text-white/30 truncate max-w-[120px]" title={data.taskId}>
+                  {data.taskId}
+                </span>
+              )}
+            </div>
+
+            {/* Download buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDownload(false)}
+                disabled={downloading}
+                className="flex-1 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-[12px] font-medium rounded-[10px] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {downloading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                Download
+              </button>
+              <button
+                onClick={() => handleDownload(true)}
+                disabled={downloading}
+                className="flex-1 py-2 bg-[#0A84FF]/10 hover:bg-[#0A84FF]/20 border border-[#0A84FF]/30 text-[#0A84FF] hover:text-white text-[12px] font-medium rounded-[10px] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {downloading ? <Loader2 size={12} className="animate-spin" /> : <ArrowDownToLine size={12} />}
+                HQ
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
-      {data.status === 'success' && data.resultUrl && (
+      {/* Source port for chaining — always visible when there's a result */}
+      {hasResult && (
         <div className="absolute right-0 top-1/2 -translate-y-1/2">
           <Port type="source" id="out" color="green" icon={<Download size={14} />} />
         </div>
