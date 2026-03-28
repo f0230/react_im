@@ -1,6 +1,7 @@
 /**
- * Serverless endpoint: describes an image using OpenAI vision (server-side).
- * Handles CORS and CDN URL access issues that occur in browser.
+ * Serverless endpoint: describes an image using OpenAI vision.
+ * Passes URLs directly to OpenAI — avoids re-fetching the image.
+ * For data: URLs (local uploads), sends base64 directly.
  *
  * POST /api/studio-describe
  * Body: { imageUrl: string }
@@ -21,24 +22,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing imageUrl' });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
-
-  let finalImageUrl = imageUrl;
-
-  // For remote URLs, fetch server-side and convert to base64 (avoids CDN access issues)
-  if (imageUrl.startsWith('http')) {
-    try {
-      const imgRes = await fetch(imageUrl);
-      if (!imgRes.ok) throw new Error(`Image fetch failed: HTTP ${imgRes.status}`);
-      const arrayBuffer = await imgRes.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      const contentType = imgRes.headers.get('content-type') || 'image/png';
-      finalImageUrl = `data:${contentType};base64,${base64}`;
-    } catch (err) {
-      return res.status(502).json({ error: `Could not fetch image: ${err.message}` });
-    }
-  }
 
   try {
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -59,7 +44,7 @@ export default async function handler(req, res) {
               },
               {
                 type: 'image_url',
-                image_url: { url: finalImageUrl },
+                image_url: { url: imageUrl, detail: 'low' },
               },
             ],
           },
@@ -68,12 +53,13 @@ export default async function handler(req, res) {
       }),
     });
 
+    const data = await openaiRes.json();
+
     if (!openaiRes.ok) {
-      const err = await openaiRes.text();
-      return res.status(502).json({ error: `OpenAI error: ${err}` });
+      console.error('[studio-describe] OpenAI error:', JSON.stringify(data));
+      return res.status(502).json({ error: data.error?.message || 'OpenAI error' });
     }
 
-    const data = await openaiRes.json();
     const description = data.choices?.[0]?.message?.content?.trim();
     if (!description) return res.status(502).json({ error: 'Empty response from OpenAI' });
 

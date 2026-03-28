@@ -3,8 +3,43 @@ import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import OpenAI from 'openai';
 import { enhancePrompt } from '../../lib/prompt-enhancer';
 import toast from 'react-hot-toast';
+
+async function describeImage(imageUrl: string): Promise<string> {
+  // data: URLs are already local — call OpenAI directly from browser
+  if (imageUrl.startsWith('data:')) {
+    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+    if (!apiKey) throw new Error('VITE_OPENAI_API_KEY is not configured');
+    const ai = new OpenAI({ apiKey, dangerouslyAllowBrowser: true });
+    const res = await ai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Describe this image in vivid detail for use as an AI image/video generation prompt. Be specific about composition, lighting, colors, subjects, style, and mood. Return ONLY the prompt text, no explanations or prefixes.' },
+          { type: 'image_url', image_url: { url: imageUrl, detail: 'low' } },
+        ],
+      }],
+      max_tokens: 500,
+    });
+    return res.choices[0]?.message?.content?.trim() ?? '';
+  }
+
+  // Remote URLs — route through server to avoid CDN restrictions
+  const response = await fetch('/api/studio-describe', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageUrl }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(err.error || `Server error ${response.status}`);
+  }
+  const { description } = await response.json();
+  return description ?? '';
+}
 
 export default function PromptNode({ id, data }: { id: string; data: any }) {
   const { updateNodeData, getEdges, getNodes } = useReactFlow();
@@ -82,28 +117,18 @@ export default function PromptNode({ id, data }: { id: string; data: any }) {
       return;
     }
 
-    // For images, use server-side vision endpoint (avoids CORS + CDN access issues)
+    // For images, describe using OpenAI vision
     setIsDescribing(true);
     try {
-      const res = await fetch('/api/studio-describe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: mediaUrl }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(err.error || 'Server error');
-      }
-
-      const { description } = await res.json();
+      const description = await describeImage(mediaUrl);
       if (description) {
         updateNodeData(id, { text: description });
         toast.success('Media described');
       }
     } catch (error) {
       console.error('Failed to describe media:', error);
-      toast.error('Failed to describe media');
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to describe media: ${msg}`);
     } finally {
       setIsDescribing(false);
     }
