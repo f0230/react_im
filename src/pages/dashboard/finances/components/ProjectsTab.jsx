@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
+import MultiUseSelect from '@/components/MultiUseSelect';
 import { formatFinanceCurrency, formatFinanceDate } from '@/utils/finance';
 
 const containerVariants = {
@@ -22,6 +23,9 @@ const itemVariants = {
     hidden: { opacity: 0, y: 16 },
     visible: { opacity: 1, y: 0 },
 };
+
+const financeSelectButtonClass = 'min-w-[190px] rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 shadow-sm hover:border-neutral-300';
+const financeSelectListClass = 'border border-neutral-200 bg-white text-neutral-900';
 
 const ProjectsTab = ({ transactions, invoices, projects, periods, distributions, workerProfiles }) => {
     const [selectedPeriod, setSelectedPeriod] = useState('all');
@@ -86,6 +90,19 @@ const ProjectsTab = ({ transactions, invoices, projects, periods, distributions,
         };
     }, [filteredProjects]);
 
+    const periodOptions = useMemo(() => ([
+        { value: 'all', label: 'Todos los períodos' },
+        ...periods.map((period) => ({ value: period.id, label: period.name })),
+    ]), [periods]);
+
+    const statusOptions = useMemo(() => ([
+        { value: 'all', label: 'Todos los estados' },
+        { value: 'active', label: 'Activo' },
+        { value: 'completed', label: 'Completado' },
+        { value: 'on_hold', label: 'En pausa' },
+        { value: 'cancelled', label: 'Cancelado' },
+    ]), []);
+
     return (
         <div className="space-y-6 font-product text-neutral-900">
             {/* Header */}
@@ -110,17 +127,24 @@ const ProjectsTab = ({ transactions, invoices, projects, periods, distributions,
                     <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Buscar proyecto..." className="w-full rounded-2xl border border-neutral-200 bg-white py-3 pl-11 pr-4 outline-none transition focus:border-neutral-400" />
                 </div>
                 <div className="flex gap-3">
-                    <select value={selectedPeriod} onChange={(e) => setSelectedPeriod(e.target.value)} className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-neutral-400">
-                        <option value="all">Todos los períodos</option>
-                        {periods.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-neutral-400">
-                        <option value="all">Todos los estados</option>
-                        <option value="active">Activo</option>
-                        <option value="completed">Completado</option>
-                        <option value="on_hold">En pausa</option>
-                        <option value="cancelled">Cancelado</option>
-                    </select>
+                    <MultiUseSelect
+                        theme="light"
+                        options={periodOptions}
+                        value={selectedPeriod}
+                        onChange={setSelectedPeriod}
+                        placeholder="Todos los períodos"
+                        buttonClassName={financeSelectButtonClass}
+                        listClassName={financeSelectListClass}
+                    />
+                    <MultiUseSelect
+                        theme="light"
+                        options={statusOptions}
+                        value={statusFilter}
+                        onChange={setStatusFilter}
+                        placeholder="Todos los estados"
+                        buttonClassName={financeSelectButtonClass}
+                        listClassName={financeSelectListClass}
+                    />
                 </div>
             </motion.div>
 

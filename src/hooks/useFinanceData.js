@@ -4,7 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 
 /**
  * Centralized finance data hook.
- * Single parallel fetch replaces 7 page-level fetches.
+ * Single parallel fetch replaces scattered page-level fetches.
  */
 const useFinanceData = () => {
     const { profile } = useAuth();
@@ -16,6 +16,7 @@ const useFinanceData = () => {
     const [invoices, setInvoices] = useState([]);
     const [projects, setProjects] = useState([]);
     const [distributions, setDistributions] = useState([]);
+    const [companyFundMovements, setCompanyFundMovements] = useState([]);
     const [profiles, setProfiles] = useState([]);
 
     const isAdmin = profile?.role === 'admin';
@@ -32,6 +33,7 @@ const useFinanceData = () => {
                 { data: invoicesData, error: invoicesError },
                 { data: projectsData, error: projectsError },
                 { data: distributionsData, error: distributionsError },
+                { data: companyFundMovementsData, error: companyFundMovementsError },
                 { data: profilesData, error: profilesError },
             ] = await Promise.all([
                 // 1. Config
@@ -65,6 +67,12 @@ const useFinanceData = () => {
                     .from('finance_distributions')
                     .select('*')
                     .order('period_id'),
+                // 7. Company fund ledger
+                supabase
+                    .from('finance_company_fund_movements')
+                    .select('*')
+                    .order('movement_date', { ascending: false })
+                    .order('created_at', { ascending: false }),
                 // 7. Profiles (admins + workers)
                 supabase
                     .from('profiles')
@@ -73,14 +81,15 @@ const useFinanceData = () => {
                     .order('full_name', { ascending: true }),
             ]);
 
-            if (configError || periodsError || transactionsError || invoicesError || projectsError || distributionsError || profilesError) {
+            if (configError || periodsError || transactionsError || invoicesError || projectsError || distributionsError || companyFundMovementsError || profilesError) {
                 const message =
                     configError?.message || periodsError?.message || transactionsError?.message ||
                     invoicesError?.message || projectsError?.message || distributionsError?.message ||
+                    companyFundMovementsError?.message ||
                     profilesError?.message;
                 console.error('useFinanceData fetch error:', {
                     configError, periodsError, transactionsError,
-                    invoicesError, projectsError, distributionsError, profilesError,
+                    invoicesError, projectsError, distributionsError, companyFundMovementsError, profilesError,
                 });
                 setError(message || 'No pudimos cargar los datos financieros.');
                 return;
@@ -92,6 +101,7 @@ const useFinanceData = () => {
             setInvoices(invoicesData || []);
             setProjects(projectsData || []);
             setDistributions(distributionsData || []);
+            setCompanyFundMovements(companyFundMovementsData || []);
             setProfiles(profilesData || []);
         } catch (err) {
             console.error('useFinanceData unexpected error:', err);
@@ -129,10 +139,27 @@ const useFinanceData = () => {
             .filter((t) => t.type === 'expense')
             .reduce((sum, t) => sum + Number(t.amount || 0), 0);
         const pendingPayouts = distributions.reduce(
-            (sum, d) => sum + Number(d.amount_pending || 0), 0,
+            (sum, d) => sum + (d.recipient_type === 'company' ? 0 : Number(d.amount_pending || 0)), 0,
         );
-        return { income, expenses, net: income - expenses, pendingPayouts, currency };
-    }, [currency, distributions, transactions]);
+        const companyFundBalances = companyFundMovements.reduce((acc, movement) => {
+            const movementCurrency = movement.currency || currency;
+            const signedAmount = movement.movement_type === 'credit'
+                ? Number(movement.amount || 0)
+                : -Number(movement.amount || 0);
+            acc[movementCurrency] = (acc[movementCurrency] || 0) + signedAmount;
+            return acc;
+        }, {});
+
+        return {
+            income,
+            expenses,
+            net: income - expenses,
+            pendingPayouts,
+            currency,
+            companyFundBalances,
+            companyFundBalance: Number(companyFundBalances[currency] || 0),
+        };
+    }, [companyFundMovements, currency, distributions, transactions]);
 
     // Periods with live totals (open=live data, closed=snapshot)
     const periodsWithTotals = useMemo(() => {
@@ -174,6 +201,7 @@ const useFinanceData = () => {
         projects,
         distributions,
         profiles,
+        companyFundMovements,
         // Derived
         currency,
         adminProfiles,

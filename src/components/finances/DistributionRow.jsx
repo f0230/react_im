@@ -2,6 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Landmark, Save } from 'lucide-react';
 import { formatFinanceCurrency } from '@/utils/finance';
 
+const DISTRIBUTION_SOURCE_LABELS = {
+    admin_percentage: 'Pool admin del período',
+    worker_points: 'Pool worker del período',
+    company_fund_release: 'Bonus desde fondo empresa',
+    legacy_manual_weight: 'Legacy por weights manuales',
+    legacy_company_distribution: 'Legacy empresa',
+};
+
 const DistributionRow = ({ distribution, label, onSavePayment, disabled = false }) => {
     const [amountPaid, setAmountPaid] = useState(distribution.amount_paid?.toString() || '0');
     const [saving, setSaving] = useState(false);
@@ -18,6 +26,7 @@ const DistributionRow = ({ distribution, label, onSavePayment, disabled = false 
     };
 
     const isCompany = distribution.recipient_type === 'company';
+    const sourceLabel = DISTRIBUTION_SOURCE_LABELS[distribution.calculation_source] || distribution.calculation_source;
 
     return (
         <div className="grid gap-4 rounded-3xl border border-neutral-200 bg-white p-4 md:grid-cols-[1.4fr,1fr,1fr,1fr,auto] md:items-center">
@@ -29,6 +38,11 @@ const DistributionRow = ({ distribution, label, onSavePayment, disabled = false 
                 <p className="mt-1 text-xs uppercase tracking-[0.25em] text-neutral-400">
                     {distribution.recipient_type}
                 </p>
+                {sourceLabel && (
+                    <p className="mt-1 text-xs text-neutral-500">
+                        {sourceLabel}
+                    </p>
+                )}
             </div>
 
             <div>

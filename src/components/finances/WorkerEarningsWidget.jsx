@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Coins, Loader2, Wallet, ChevronDown, TrendingUp, Calendar, User } from 'lucide-react';
+import { Coins, Loader2, Wallet, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import MultiUseSelect from '@/components/MultiUseSelect';
 import { formatFinanceCurrency, getPersonDisplayName } from '@/utils/finance';
+
+const darkFinanceSelectButtonClass = 'min-w-[190px] rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white hover:border-white/20';
+const darkFinanceSelectListClass = 'border border-white/10 bg-[#171717] text-white';
 
 const WorkerEarningsWidget = () => {
     const { user, profile } = useAuth();
@@ -159,6 +163,24 @@ const WorkerEarningsWidget = () => {
         return workers.find(w => w.id === selectedWorker);
     }, [isAdmin, selectedWorker, workers]);
 
+    const workerOptions = useMemo(() => {
+        const ownId = user?.id || '';
+        return [
+            { value: ownId, label: `Yo (${profile?.full_name || 'Admin'})` },
+            ...workers
+                .filter((worker) => worker.id !== ownId)
+                .map((worker) => ({
+                    value: worker.id,
+                    label: `${getPersonDisplayName(worker)} (${worker.role})`,
+                })),
+        ];
+    }, [profile?.full_name, user?.id, workers]);
+
+    const yearOptions = useMemo(() => ([
+        { value: 'all', label: 'Todos los años' },
+        ...availableYears.map((year) => ({ value: String(year), label: String(year) })),
+    ]), [availableYears]);
+
     if (!['admin', 'worker'].includes(profile?.role)) {
         return null;
     }
@@ -183,37 +205,27 @@ const WorkerEarningsWidget = () => {
                 <div className="flex flex-wrap gap-2">
                     {/* Selector de worker (solo admins) */}
                     {isAdmin && workers.length > 0 && (
-                        <div className="relative">
-                            <select
-                                value={selectedWorker || user?.id || ''}
-                                onChange={(e) => setSelectedWorker(e.target.value)}
-                                className="appearance-none rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 pr-10 text-sm text-white outline-none transition focus:border-white/30"
-                            >
-                                <option value={user?.id} className="bg-[#111]">Yo ({profile?.full_name || 'Admin'})</option>
-                                {workers.filter(w => w.id !== user?.id).map(worker => (
-                                    <option key={worker.id} value={worker.id} className="bg-[#111]">
-                                        {getPersonDisplayName(worker)} ({worker.role})
-                                    </option>
-                                ))}
-                            </select>
-                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-                        </div>
+                        <MultiUseSelect
+                            options={workerOptions}
+                            value={selectedWorker || user?.id || ''}
+                            onChange={setSelectedWorker}
+                            placeholder="Seleccionar persona"
+                            searchable
+                            searchPlaceholder="Buscar persona..."
+                            buttonClassName={darkFinanceSelectButtonClass}
+                            listClassName={darkFinanceSelectListClass}
+                        />
                     )}
 
                     {/* Selector de año */}
-                    <div className="relative">
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(e.target.value)}
-                            className="appearance-none rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 pr-10 text-sm text-white outline-none transition focus:border-white/30"
-                        >
-                            <option value="all" className="bg-[#111]">Todos los años</option>
-                            {availableYears.map(year => (
-                                <option key={year} value={year} className="bg-[#111]">{year}</option>
-                            ))}
-                        </select>
-                        <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-                    </div>
+                    <MultiUseSelect
+                        options={yearOptions}
+                        value={selectedYear}
+                        onChange={setSelectedYear}
+                        placeholder="Todos los años"
+                        buttonClassName={darkFinanceSelectButtonClass}
+                        listClassName={darkFinanceSelectListClass}
+                    />
                 </div>
             </div>
 

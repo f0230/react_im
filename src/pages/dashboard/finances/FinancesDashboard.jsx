@@ -34,6 +34,7 @@ const FinancesDashboard = () => {
     const {
         config, periods, transactions, invoices, projects, distributions,
         profiles, currency, adminProfiles, workerProfiles, summaryKpis,
+        companyFundMovements,
         periodsWithTotals, profileMap, loading, error, isAdmin, refetch,
     } = data;
 
@@ -66,47 +67,56 @@ const FinancesDashboard = () => {
     const sharedProps = {
         config, periods, transactions, invoices, projects, distributions,
         profiles, currency, adminProfiles, workerProfiles, summaryKpis,
+        companyFundMovements,
         periodsWithTotals, profileMap, refetch,
     };
 
     return (
-        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6 space-y-6">
-            {/* ─── Header ────────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-product font-bold text-neutral-900">
-                    Finanzas DTE
-                </h1>
-                <button
-                    onClick={() => setSettingsOpen(true)}
-                    className="p-2 rounded-xl text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-                    title="Configuración"
-                >
-                    <Settings2 size={20} />
-                </button>
-            </div>
+        <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-3 py-4 sm:px-4 lg:px-5">
+            <div className="rounded-[28px] border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p className="text-[11px] uppercase tracking-[0.32em] text-neutral-400">Administración financiera</p>
+                        <h1 className="mt-1.5 text-2xl font-product font-bold tracking-tight text-neutral-900 sm:text-[30px]">
+                            Finanzas DTE
+                        </h1>
+                        <p className="mt-1.5 max-w-3xl text-sm text-neutral-500">
+                            Caja, períodos, ledger, fondo empresa y compensaciones en una vista más compacta para operar mejor desde desktop y mobile.
+                        </p>
+                    </div>
 
-            {/* ─── Tab Bar ───────────────────────────────────────────────── */}
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-neutral-200">
-                {TABS.map((tab) => (
                     <button
-                        key={tab.key}
-                        onClick={() => setTab(tab.key)}
-                        className={`relative px-4 py-2.5 text-xs uppercase tracking-[0.2em] font-inter whitespace-nowrap transition-colors ${
-                            activeTab === tab.key
-                                ? 'text-neutral-900 font-semibold'
-                                : 'text-neutral-500 hover:text-neutral-700'
-                        }`}
+                        onClick={() => setSettingsOpen(true)}
+                        className="inline-flex items-center justify-center gap-2 self-start rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+                        title="Configuración"
                     >
-                        {tab.label}
-                        {activeTab === tab.key && (
-                            <motion.div
-                                layoutId="finance-tab-underline"
-                                className="absolute bottom-0 left-0 right-0 h-[2px] bg-neutral-900 rounded-full"
-                                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                            />
-                        )}
+                        <Settings2 size={16} />
+                        Configuración
                     </button>
-                ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                    {TABS.map((tab) => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setTab(tab.key)}
+                            className={`relative rounded-2xl px-3.5 py-2 text-[11px] uppercase tracking-[0.22em] font-inter whitespace-nowrap transition-colors sm:px-4 ${
+                                activeTab === tab.key
+                                    ? 'bg-neutral-900 text-white'
+                                    : 'bg-neutral-100 text-neutral-500 hover:bg-neutral-200 hover:text-neutral-800'
+                            }`}
+                        >
+                            {tab.label}
+                            {activeTab === tab.key && (
+                                <motion.div
+                                    layoutId="finance-tab-pill"
+                                    className="absolute inset-0 -z-10 rounded-2xl bg-neutral-900"
+                                    transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                                />
+                            )}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* ─── Tab Content ───────────────────────────────────────────── */}

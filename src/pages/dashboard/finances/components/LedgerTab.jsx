@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Edit3, Plus, Receipt, Search, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
+import MultiUseSelect from '@/components/MultiUseSelect';
 import TransactionModal from '@/components/finances/TransactionModal';
 import {
     formatFinanceCurrency,
@@ -10,6 +11,9 @@ import {
     getInvoicePaymentDate,
     getProjectDisplayName,
 } from '@/utils/finance';
+
+const financeSelectButtonClass = 'rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 shadow-sm hover:border-neutral-300';
+const financeSelectListClass = 'border border-neutral-200 bg-white text-neutral-900';
 
 const LedgerTab = ({ transactions, periods, projects, invoices, currency, refetch }) => {
     const [searchTerm, setSearchTerm] = useState('');
@@ -56,6 +60,17 @@ const LedgerTab = ({ transactions, periods, projects, invoices, currency, refetc
         const importedIds = new Set(transactions.map((t) => t.invoice_id).filter(Boolean));
         return invoices.filter((inv) => inv.status === 'paid' && !importedIds.has(inv.id));
     }, [invoices, transactions]);
+
+    const typeOptions = useMemo(() => ([
+        { value: 'all', label: 'Todos los tipos' },
+        { value: 'income', label: 'Solo ingresos' },
+        { value: 'expense', label: 'Solo gastos' },
+    ]), []);
+
+    const periodOptions = useMemo(() => ([
+        { value: 'all', label: 'Todos los períodos' },
+        ...periods.map((period) => ({ value: period.id, label: period.name })),
+    ]), [periods]);
 
     const openNewTransaction = (type) => {
         setEditingTransaction(null);
@@ -151,26 +166,25 @@ const LedgerTab = ({ transactions, periods, projects, invoices, currency, refetc
                         />
                     </label>
 
-                    <select
+                    <MultiUseSelect
+                        theme="light"
+                        options={typeOptions}
                         value={typeFilter}
-                        onChange={(e) => setTypeFilter(e.target.value)}
-                        className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-neutral-400"
-                    >
-                        <option value="all">Todos los tipos</option>
-                        <option value="income">Solo ingresos</option>
-                        <option value="expense">Solo gastos</option>
-                    </select>
+                        onChange={setTypeFilter}
+                        placeholder="Todos los tipos"
+                        buttonClassName={financeSelectButtonClass}
+                        listClassName={financeSelectListClass}
+                    />
 
-                    <select
+                    <MultiUseSelect
+                        theme="light"
+                        options={periodOptions}
                         value={periodFilter}
-                        onChange={(e) => setPeriodFilter(e.target.value)}
-                        className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 outline-none transition focus:border-neutral-400"
-                    >
-                        <option value="all">Todos los períodos</option>
-                        {periods.map((period) => (
-                            <option key={period.id} value={period.id}>{period.name}</option>
-                        ))}
-                    </select>
+                        onChange={setPeriodFilter}
+                        placeholder="Todos los períodos"
+                        buttonClassName={financeSelectButtonClass}
+                        listClassName={financeSelectListClass}
+                    />
                 </div>
 
                 <div className="mt-6 overflow-x-auto">
@@ -214,6 +228,11 @@ const LedgerTab = ({ transactions, periods, projects, invoices, currency, refetc
                                             {getFinanceCategoryLabel(transaction.type, transaction.category)}
                                             {transaction.project ? ` · ${getProjectDisplayName(transaction.project)}` : ''}
                                         </p>
+                                        {transaction.funding_source === 'company_fund' && (
+                                            <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-600">
+                                                Fondo empresa
+                                            </p>
+                                        )}
                                         {transaction.invoice?.invoice_number && (
                                             <p className="mt-1 text-sm text-neutral-500">
                                                 Factura: {transaction.invoice.invoice_number}
@@ -233,10 +252,11 @@ const LedgerTab = ({ transactions, periods, projects, invoices, currency, refetc
                                         <button
                                             type="button"
                                             onClick={() => openEditTransaction(transaction)}
-                                            className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-900"
+                                            disabled={transaction.period?.status === 'closed'}
+                                            className="inline-flex items-center gap-2 rounded-2xl border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-600 transition hover:border-neutral-300 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
                                             <Edit3 size={14} />
-                                            Editar
+                                            {transaction.period?.status === 'closed' ? 'Cerrado' : 'Editar'}
                                         </button>
                                     </td>
                                 </tr>

@@ -30,6 +30,7 @@ const ProjectInvoices = () => {
   const [project, setProject] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState(null);
+  const [statusError, setStatusError] = useState('');
 
   const isAdmin = profile?.role === 'admin';
   const isClient = profile?.role === 'client';
@@ -140,6 +141,7 @@ const ProjectInvoices = () => {
     if (!previousInvoice || previousInvoice.status === nextStatus) return;
     const nextPaidAt = nextStatus === 'paid' ? new Date().toISOString() : null;
 
+    setStatusError('');
     setStatusUpdatingId(invoiceId);
     setInvoices((prev) => prev.map((inv) => (
       inv.id === invoiceId ? { ...inv, status: nextStatus, paid_at: nextPaidAt } : inv
@@ -155,6 +157,7 @@ const ProjectInvoices = () => {
       setInvoices((prev) => prev.map((inv) => (
         inv.id === invoiceId ? { ...inv, status: previousInvoice.status, paid_at: previousInvoice.paid_at || null } : inv
       )));
+      setStatusError(error.message || 'No pudimos actualizar la factura.');
     }
 
     setStatusUpdatingId(null);
@@ -168,6 +171,12 @@ const ProjectInvoices = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {statusError && (
+        <div className="rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-600">
+          {statusError}
+        </div>
+      )}
+
       {/* Header / Summary */}
       <div className="flex flex-col md:flex-row gap-6 items-start justify-between">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto">

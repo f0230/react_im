@@ -38,6 +38,7 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [isRevealHotspotActive, setIsRevealHotspotActive] = useState(false);
     const [isNavbarHovered, setIsNavbarHovered] = useState(false);
     const [isNavbarFocused, setIsNavbarFocused] = useState(false);
+    const [imgError, setImgError] = useState(false);
     const hideIntentTimeoutRef = useRef(null);
     const revealIntentTimeoutRef = useRef(null);
     const { user, profile } = useAuth();
@@ -53,9 +54,9 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
         markNotificationRead,
     } = useUnreadCounts();
 
-    // Get avatar from Google metadata (faster) or profile table
-    const avatarUrl = user?.user_metadata?.avatar_url || profile?.avatar_url;
-    const initial = (user?.user_metadata?.full_name || profile?.full_name || 'U').charAt(0);
+    // Get avatar from profile table (user-uploaded) or Google metadata
+    const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
+    const initial = (profile?.full_name || user?.user_metadata?.full_name || 'U').charAt(0);
 
     const clearHideIntent = () => {
         if (hideIntentTimeoutRef.current) {
@@ -289,14 +290,20 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                                         setIsMessagesOpen(false);
                                         setIsNotificationsOpen(false);
                                         setIsMenuOpen(false);
+                                        setImgError(false); // Reset error when opening
                                     }}
                                     className="flex items-center group"
                                 >
-                                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 relative transition-transform group-hover:scale-105">
-                                        {avatarUrl ? (
-                                            <img src={avatarUrl} alt="Profile" className="w-full h-full object-cover" />
+                                    <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 relative transition-transform group-hover:scale-105 bg-skyblue">
+                                        {avatarUrl && !imgError ? (
+                                            <img 
+                                                src={avatarUrl} 
+                                                alt="Profile" 
+                                                className="w-full h-full object-cover"
+                                                onError={() => setImgError(true)}
+                                            />
                                         ) : (
-                                            <div className="w-full h-full bg-skyblue flex items-center justify-center text-xs font-bold text-white">
+                                            <div className="w-full h-full flex items-center justify-center text-xs font-bold text-white">
                                                 {initial}
                                             </div>
                                         )}

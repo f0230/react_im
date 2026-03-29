@@ -170,7 +170,7 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
                     'bg-[#1c1c1e]/95 backdrop-blur-2xl border border-white/8',
                     'shadow-[0_32px_100px_rgba(0,0,0,0.55)] z-50 origin-top flex flex-col',
                 ].join(' ')}
-                backdropClassName="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+                backdropClassName="fixed inset-x-0 top-[56px] bottom-0 bg-black/50 backdrop-blur-md z-40"
                 initial={{ opacity: 0, scale: 0.92, y: -8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.92, y: -8 }}
@@ -222,7 +222,7 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
                         </form>
                     ) : (
                         /* Grid estilo App Library iOS */
-                        <div className="grid grid-cols-4 gap-x-3 gap-y-5 px-1">
+                        <div className="grid grid-cols-4 gap-x-6 gap-y-5 px-2">
                             {tools.map((tool) => {
                                 const IconComp = getIcon(tool.icon);
                                 const isLight = tool.id === 'studio-ia' || tool.id === 'workflows';

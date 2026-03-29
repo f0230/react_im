@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, Receipt, Save, X, Search, ChevronDown, Building2 } from 'lucide-react';
+import { AlertCircle, Receipt, Save, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import MultiUseSelect from '@/components/MultiUseSelect';
 import { FINANCE_CATEGORY_OPTIONS, getProjectDisplayName } from '@/utils/finance';
 
 const getEmptyForm = (defaultType = 'income') => ({
@@ -15,9 +16,13 @@ const getEmptyForm = (defaultType = 'income') => ({
     project_id: '',
     invoice_id: '',
     period_id: '',
+    funding_source: 'external',
     paid_to: '',
     notes: '',
 });
+
+const financeSelectButtonClass = 'rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 shadow-sm hover:border-neutral-300';
+const financeSelectListClass = 'border border-neutral-200 bg-white text-neutral-900';
 
 const TransactionModal = ({
     open,
@@ -33,8 +38,6 @@ const TransactionModal = ({
     const [form, setForm] = useState(getEmptyForm(defaultType));
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
-    const [projectSearch, setProjectSearch] = useState('');
-    const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
 
     useEffect(() => {
         if (!open) return;
@@ -50,6 +53,7 @@ const TransactionModal = ({
                 project_id: initialValues.project_id || '',
                 invoice_id: initialValues.invoice_id || '',
                 period_id: initialValues.period_id || '',
+                funding_source: initialValues.funding_source || 'external',
                 paid_to: initialValues.paid_to || '',
                 notes: initialValues.notes || '',
             });
@@ -58,20 +62,7 @@ const TransactionModal = ({
         }
 
         setError('');
-        setProjectDropdownOpen(false);
-        setProjectSearch('');
     }, [defaultType, initialValues, open]);
-
-    // Close project dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (projectDropdownOpen && !event.target.closest('.project-dropdown-container')) {
-                setProjectDropdownOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [projectDropdownOpen]);
 
     const categoryOptions = useMemo(
         () => FINANCE_CATEGORY_OPTIONS[form.type] || [],
@@ -83,6 +74,48 @@ const TransactionModal = ({
         return invoices.filter((invoice) => invoice.project_id === form.project_id);
     }, [form.project_id, invoices]);
 
+    const typeOptions = useMemo(() => ([
+        { value: 'income', label: 'Ingreso' },
+        { value: 'expense', label: 'Gasto' },
+    ]), []);
+
+    const currencyOptions = useMemo(() => ([
+        { value: 'USD', label: 'USD' },
+        { value: 'UYU', label: 'UYU' },
+        { value: 'EUR', label: 'EUR' },
+    ]), []);
+
+    const projectOptions = useMemo(() => ([
+        { value: '', label: 'Sin proyecto' },
+        ...projects.map((project) => ({
+            value: project.id,
+            label: getProjectDisplayName(project),
+            searchText: `${project.name || ''} ${project.title || ''}`,
+        })),
+    ]), [projects]);
+
+    const invoiceOptions = useMemo(() => ([
+        { value: '', label: 'Sin factura' },
+        ...filteredInvoices.map((invoice) => ({
+            value: invoice.id,
+            label: invoice.invoice_number || invoice.description || invoice.id,
+            searchText: `${invoice.invoice_number || ''} ${invoice.description || ''}`,
+        })),
+    ]), [filteredInvoices]);
+
+    const periodOptions = useMemo(() => ([
+        { value: '', label: 'Sin período' },
+        ...periods.map((period) => ({
+            value: period.id,
+            label: period.name,
+        })),
+    ]), [periods]);
+
+    const fundingSourceOptions = useMemo(() => ([
+        { value: 'external', label: 'Caja externa / fuera del fondo' },
+        { value: 'company_fund', label: 'Consumir fondo empresa' },
+    ]), []);
+
     const handleChange = (field, value) => {
         setForm((prev) => {
             if (field === 'type') {
@@ -90,6 +123,7 @@ const TransactionModal = ({
                     ...prev,
                     type: value,
                     category: FINANCE_CATEGORY_OPTIONS[value]?.[0]?.value || '',
+                    funding_source: value === 'expense' ? prev.funding_source : 'external',
                 };
             }
 
@@ -121,6 +155,7 @@ const TransactionModal = ({
             project_id: form.project_id || null,
             invoice_id: form.invoice_id || null,
             period_id: form.period_id || null,
+            funding_source: form.type === 'expense' ? form.funding_source || 'external' : 'external',
             paid_to: form.type === 'expense' ? form.paid_to?.trim() || null : null,
             notes: form.notes?.trim() || null,
         };
@@ -202,29 +237,26 @@ const TransactionModal = ({
                             <div className="grid gap-4 md:grid-cols-2">
                                 <label className="space-y-2 text-sm font-medium text-neutral-700">
                                     Tipo
-                                    <select
+                                    <MultiUseSelect
+                                        theme="light"
+                                        options={typeOptions}
                                         value={form.type}
-                                        onChange={(event) => handleChange('type', event.target.value)}
-                                        className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 outline-none transition focus:border-neutral-400"
-                                    >
-                                        <option value="income">Ingreso</option>
-                                        <option value="expense">Gasto</option>
-                                    </select>
+                                        onChange={(value) => handleChange('type', value)}
+                                        buttonClassName={financeSelectButtonClass}
+                                        listClassName={financeSelectListClass}
+                                    />
                                 </label>
 
                                 <label className="space-y-2 text-sm font-medium text-neutral-700">
                                     Categoría
-                                    <select
+                                    <MultiUseSelect
+                                        theme="light"
+                                        options={categoryOptions}
                                         value={form.category}
-                                        onChange={(event) => handleChange('category', event.target.value)}
-                                        className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 outline-none transition focus:border-neutral-400"
-                                    >
-                                        {categoryOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={(value) => handleChange('category', value)}
+                                        buttonClassName={financeSelectButtonClass}
+                                        listClassName={financeSelectListClass}
+                                    />
                                 </label>
                             </div>
 
@@ -244,15 +276,14 @@ const TransactionModal = ({
 
                                 <label className="space-y-2 text-sm font-medium text-neutral-700">
                                     Moneda
-                                    <select
+                                    <MultiUseSelect
+                                        theme="light"
+                                        options={currencyOptions}
                                         value={form.currency}
-                                        onChange={(event) => handleChange('currency', event.target.value)}
-                                        className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 outline-none transition focus:border-neutral-400"
-                                    >
-                                        <option value="USD">USD</option>
-                                        <option value="UYU">UYU</option>
-                                        <option value="EUR">EUR</option>
-                                    </select>
+                                        onChange={(value) => handleChange('currency', value)}
+                                        buttonClassName={financeSelectButtonClass}
+                                        listClassName={financeSelectListClass}
+                                    />
                                 </label>
 
                                 <label className="space-y-2 text-sm font-medium text-neutral-700">
@@ -267,148 +298,78 @@ const TransactionModal = ({
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-2">
-                                {/* Selector de Proyecto con Búsqueda */}
-                                <div className="space-y-2 project-dropdown-container">
+                                <div className="space-y-2">
                                     <label className="text-sm font-medium text-neutral-700">Proyecto asociado</label>
-                                    <div className="relative">
-                                        <button
-                                            type="button"
-                                            onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-                                            className="w-full flex items-center justify-between rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-left outline-none transition focus:border-neutral-400 hover:border-neutral-300"
-                                        >
-                                            <span className={form.project_id ? 'text-neutral-900' : 'text-neutral-400'}>
-                                                {form.project_id 
-                                                    ? getProjectDisplayName(projects.find(p => p.id === form.project_id))
-                                                    : 'Seleccionar proyecto...'
-                                                }
-                                            </span>
-                                            <ChevronDown size={16} className={`text-neutral-400 transition-transform ${projectDropdownOpen ? 'rotate-180' : ''}`} />
-                                        </button>
-                                        
-                                        <AnimatePresence>
-                                            {projectDropdownOpen && (
-                                                <motion.div
-                                                    initial={{ opacity: 0, y: -8 }}
-                                                    animate={{ opacity: 1, y: 0 }}
-                                                    exit={{ opacity: 0, y: -8 }}
-                                                    className="absolute z-50 mt-1 w-full rounded-2xl border border-neutral-200 bg-white shadow-lg overflow-hidden"
-                                                >
-                                                    {/* Search input */}
-                                                    <div className="border-b border-neutral-100 p-2">
-                                                        <div className="relative">
-                                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                                            <input
-                                                                type="text"
-                                                                value={projectSearch}
-                                                                onChange={(e) => setProjectSearch(e.target.value)}
-                                                                placeholder="Buscar proyecto..."
-                                                                className="w-full rounded-xl border border-neutral-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-neutral-400"
-                                                                autoFocus
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {/* Project list */}
-                                                    <div className="max-h-48 overflow-y-auto">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                handleChange('project_id', '');
-                                                                setProjectDropdownOpen(false);
-                                                                setProjectSearch('');
-                                                            }}
-                                                            className={`w-full px-4 py-2.5 text-left text-sm hover:bg-neutral-50 flex items-center gap-2 ${!form.project_id ? 'bg-skyblue/10 text-skyblue' : 'text-neutral-600'}`}
-                                                        >
-                                                            <span className="text-neutral-400">—</span>
-                                                            Sin proyecto
-                                                        </button>
-                                                        
-                                                        {projects
-                                                            .filter(p => {
-                                                                if (!projectSearch.trim()) return true;
-                                                                const search = projectSearch.toLowerCase();
-                                                                const name = (p.name || p.title || '').toLowerCase();
-                                                                return name.includes(search);
-                                                            })
-                                                            .map(project => (
-                                                                <button
-                                                                    key={project.id}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        handleChange('project_id', project.id);
-                                                                        setProjectDropdownOpen(false);
-                                                                        setProjectSearch('');
-                                                                    }}
-                                                                    className={`w-full px-4 py-2.5 text-left text-sm hover:bg-neutral-50 flex items-center gap-2 ${form.project_id === project.id ? 'bg-skyblue/10 text-skyblue' : 'text-neutral-900'}`}
-                                                                >
-                                                                    <Building2 size={14} className={form.project_id === project.id ? 'text-skyblue' : 'text-neutral-400'} />
-                                                                    {getProjectDisplayName(project)}
-                                                                </button>
-                                                            ))
-                                                        }
-                                                        
-                                                        {projects.filter(p => {
-                                                            if (!projectSearch.trim()) return true;
-                                                            const search = projectSearch.toLowerCase();
-                                                            const name = (p.name || p.title || '').toLowerCase();
-                                                            return name.includes(search);
-                                                        }).length === 0 && (
-                                                            <div className="px-4 py-3 text-sm text-neutral-400 text-center">
-                                                                No se encontraron proyectos
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </motion.div>
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
+                                    <MultiUseSelect
+                                        theme="light"
+                                        options={projectOptions}
+                                        value={form.project_id}
+                                        onChange={(value) => handleChange('project_id', value)}
+                                        placeholder="Seleccionar proyecto..."
+                                        searchable
+                                        searchPlaceholder="Buscar proyecto..."
+                                        emptyMessage="No se encontraron proyectos."
+                                        buttonClassName={financeSelectButtonClass}
+                                        listClassName={financeSelectListClass}
+                                    />
                                 </div>
 
                                 <label className="space-y-2 text-sm font-medium text-neutral-700">
                                     Factura asociada
-                                    <select
+                                    <MultiUseSelect
+                                        theme="light"
+                                        options={invoiceOptions}
                                         value={form.invoice_id}
-                                        onChange={(event) => handleChange('invoice_id', event.target.value)}
-                                        className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 outline-none transition focus:border-neutral-400"
-                                    >
-                                        <option value="">Sin factura</option>
-                                        {filteredInvoices.map((invoice) => (
-                                            <option key={invoice.id} value={invoice.id}>
-                                                {invoice.invoice_number || invoice.description || invoice.id}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={(value) => handleChange('invoice_id', value)}
+                                        placeholder="Sin factura"
+                                        searchable
+                                        searchPlaceholder="Buscar factura..."
+                                        emptyMessage="No encontramos facturas para este proyecto."
+                                        buttonClassName={financeSelectButtonClass}
+                                        listClassName={financeSelectListClass}
+                                    />
                                 </label>
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-2">
                                 <label className="space-y-2 text-sm font-medium text-neutral-700">
                                     Período contable
-                                    <select
+                                    <MultiUseSelect
+                                        theme="light"
+                                        options={periodOptions}
                                         value={form.period_id}
-                                        onChange={(event) => handleChange('period_id', event.target.value)}
-                                        className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 outline-none transition focus:border-neutral-400"
-                                    >
-                                        <option value="">Sin período</option>
-                                        {periods.map((period) => (
-                                            <option key={period.id} value={period.id}>
-                                                {period.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={(value) => handleChange('period_id', value)}
+                                        placeholder="Sin período"
+                                        buttonClassName={financeSelectButtonClass}
+                                        listClassName={financeSelectListClass}
+                                    />
                                 </label>
 
                                 {form.type === 'expense' ? (
-                                    <label className="space-y-2 text-sm font-medium text-neutral-700">
-                                        Pagado a
-                                        <input
-                                            type="text"
-                                            value={form.paid_to}
-                                            onChange={(event) => handleChange('paid_to', event.target.value)}
-                                            className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 outline-none transition focus:border-neutral-400"
-                                            placeholder="Proveedor, worker, herramienta..."
-                                        />
-                                    </label>
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <label className="space-y-2 text-sm font-medium text-neutral-700">
+                                            Fuente del gasto
+                                            <MultiUseSelect
+                                                theme="light"
+                                                options={fundingSourceOptions}
+                                                value={form.funding_source}
+                                                onChange={(value) => handleChange('funding_source', value)}
+                                                buttonClassName={financeSelectButtonClass}
+                                                listClassName={financeSelectListClass}
+                                            />
+                                        </label>
+
+                                        <label className="space-y-2 text-sm font-medium text-neutral-700">
+                                            Pagado a
+                                            <input
+                                                type="text"
+                                                value={form.paid_to}
+                                                onChange={(event) => handleChange('paid_to', event.target.value)}
+                                                className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 outline-none transition focus:border-neutral-400"
+                                                placeholder="Proveedor, worker, herramienta..."
+                                            />
+                                        </label>
+                                    </div>
                                 ) : (
                                     <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-500">
                                         Podés vincular este ingreso a un proyecto o una factura para mantener trazabilidad.
@@ -441,7 +402,11 @@ const TransactionModal = ({
                             <div className="flex flex-col gap-3 border-t border-neutral-200 pt-5 md:flex-row md:items-center md:justify-between">
                                 <div className="flex items-center gap-2 text-sm text-neutral-500">
                                     <Receipt size={15} />
-                                    <span>Este módulo solo registra movimientos manuales, no procesa pagos.</span>
+                                    <span>
+                                        {form.type === 'expense' && form.funding_source === 'company_fund'
+                                            ? 'Si usás fondo empresa, el saldo operativo se descuenta automáticamente.'
+                                            : 'Este módulo solo registra movimientos manuales, no procesa pagos.'}
+                                    </span>
                                 </div>
 
                                 <div className="flex gap-3">

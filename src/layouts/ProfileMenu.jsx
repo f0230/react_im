@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,14 @@ import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
 const ProfileMenu = ({ isOpen, onClose }) => {
     const { user, profile, signOut } = useAuth();
     const navigate = useNavigate();
+    const [imgError, setImgError] = useState(false);
+
+    // Reset error when popover opens
+    useEffect(() => {
+        if (isOpen) {
+            setImgError(false);
+        }
+    }, [isOpen]);
 
     const handleSignOut = async () => {
         onClose();
@@ -16,10 +24,11 @@ const ProfileMenu = ({ isOpen, onClose }) => {
         navigate('/');
     };
 
-    // Prefer Google metadata for avatar/name as it's often more up to date or readily available
-    const avatarUrl = user?.user_metadata?.avatar_url || profile?.avatar_url;
-    const fullName = user?.user_metadata?.full_name || profile?.full_name || 'Usuario';
+    // Prefer profile avatar_url from Supabase (set by user in Settings)
+    const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
+    const fullName = profile?.full_name || user?.user_metadata?.full_name || 'Usuario';
     const email = user?.email || profile?.email;
+    const initial = fullName.charAt(0).toUpperCase();
 
     return (
         <PopoverPanel
@@ -32,12 +41,17 @@ const ProfileMenu = ({ isOpen, onClose }) => {
             {/* User Info Header */}
             <div className="p-4 border-b border-white/5 bg-white/5">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
-                        {avatarUrl ? (
-                            <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-skyblue">
+                        {avatarUrl && !imgError ? (
+                            <img 
+                                src={avatarUrl} 
+                                alt="Avatar" 
+                                className="w-full h-full object-cover"
+                                onError={() => setImgError(true)}
+                            />
                         ) : (
-                            <div className="w-full h-full bg-skyblue flex items-center justify-center text-white font-bold">
-                                {fullName.charAt(0)}
+                            <div className="w-full h-full flex items-center justify-center text-white font-bold">
+                                {initial}
                             </div>
                         )}
                     </div>

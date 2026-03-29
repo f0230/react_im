@@ -43,6 +43,7 @@ const Invoices = () => {
     const [editingInvoice, setEditingInvoice] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusUpdatingId, setStatusUpdatingId] = useState(null);
+    const [statusError, setStatusError] = useState('');
 
     const isAdmin = profile?.role === 'admin';
     const statusOptions = ['pending', 'paid', 'overdue', 'cancelled'];
@@ -233,6 +234,7 @@ const Invoices = () => {
         if (!previousInvoice || previousInvoice.status === nextStatus) return;
         const nextPaidAt = nextStatus === 'paid' ? new Date().toISOString() : null;
 
+        setStatusError('');
         setStatusUpdatingId(invoiceId);
         setInvoices((prev) => prev.map((inv) => (
             inv.id === invoiceId ? { ...inv, status: nextStatus, paid_at: nextPaidAt } : inv
@@ -248,6 +250,7 @@ const Invoices = () => {
             setInvoices((prev) => prev.map((inv) => (
                 inv.id === invoiceId ? { ...inv, status: previousInvoice.status, paid_at: previousInvoice.paid_at || null } : inv
             )));
+            setStatusError(error.message || 'No pudimos actualizar la factura.');
         }
 
         setStatusUpdatingId(null);
@@ -276,6 +279,12 @@ const Invoices = () => {
                     </button>
                 )}
             </div>
+
+            {statusError && (
+                <div className="mb-6 rounded-[24px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-600">
+                    {statusError}
+                </div>
+            )}
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
