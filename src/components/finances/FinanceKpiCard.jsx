@@ -1,19 +1,55 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
-const FinanceKpiCard = ({ icon: Icon, label, value, sub, color = 'text-neutral-900' }) => (
-    <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col gap-2 rounded-[24px] border border-neutral-200 bg-white p-4 shadow-sm"
+const FinanceKpiRow = ({
+    icon: Icon,
+    label,
+    value,
+    sub,
+    color = 'text-neutral-900',
+    className,
+    showChevron = false,
+}) => (
+    <div
+        className={cn(
+            'inline-flex min-h-9 items-center gap-2 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-sm',
+            className,
+        )}
     >
-        <div className="flex items-center justify-between">
-            <span className="text-[11px] text-neutral-500 uppercase tracking-[0.22em] font-inter">{label}</span>
-            {Icon && <Icon size={16} className="text-neutral-400" />}
-        </div>
-        <p className={`text-xl font-bold font-product sm:text-2xl ${color}`}>{value}</p>
-        {sub && <p className="text-[11px] leading-relaxed text-neutral-500">{sub}</p>}
-    </motion.div>
+        {Icon && <Icon size={15} className="shrink-0 text-neutral-400" />}
+        <span className="truncate text-neutral-500">{label}</span>
+        <span className={cn('font-mono text-[15px] font-semibold tabular-nums', color)}>{value}</span>
+        {sub ? <span className="truncate text-xs text-neutral-400">{sub}</span> : null}
+        {showChevron ? <ChevronDown size={14} className="shrink-0 text-neutral-300" /> : null}
+    </div>
 );
+
+const FinanceKpiCard = (props) => {
+    const { popover, label } = props;
+
+    if (!popover) {
+        return <FinanceKpiRow {...props} />;
+    }
+
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    className="inline-flex rounded-full text-left outline-none transition hover:bg-neutral-50 focus-visible:ring-2 focus-visible:ring-neutral-300"
+                    aria-label={`Ver detalle de ${label}`}
+                >
+                    <FinanceKpiRow {...props} showChevron className={cn('cursor-pointer', props.className)} />
+                    <span className="sr-only">{label}</span>
+                </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="max-w-sm">
+                {typeof popover === 'function' ? popover() : popover}
+            </PopoverContent>
+        </Popover>
+    );
+};
 
 export default FinanceKpiCard;

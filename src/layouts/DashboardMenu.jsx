@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, Users, Briefcase, FileText, MessageSquare, Calendar, TrendingUp, Wallet, BarChart3, PieChart, Receipt, Settings, ChevronDown } from 'lucide-react';
+import React from 'react';
+import { LayoutDashboard, Users, Briefcase, FileText, MessageSquare, Calendar, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PopoverPanel from '../components/ui/PopoverPanel';
 import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
 
 const DashboardMenu = ({ isOpen, onClose }) => {
     const { profile } = useAuth();
-    const [financeExpanded, setFinanceExpanded] = useState(false);
     const role = profile?.role || 'client';
     const isClientLeader = profile?.is_client_leader;
     
@@ -38,19 +37,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
             { icon: Calendar, label: 'Citas', path: '/dashboard/appointments' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturacion', path: '/dashboard/invoices' },
-            { 
-                icon: TrendingUp, 
-                label: 'Finanzas', 
-                path: '/dashboard/finances',
-                children: [
-                    { icon: Wallet, label: 'Resumen', path: '/dashboard/finances' },
-                    { icon: BarChart3, label: 'Cash Flow', path: '/dashboard/finances/cashflow' },
-                    { icon: PieChart, label: 'Proyectos', path: '/dashboard/finances/projects' },
-                    { icon: Receipt, label: 'Ledger', path: '/dashboard/finances/ledger' },
-                    { icon: TrendingUp, label: 'Reportes', path: '/dashboard/finances/reports' },
-                    { icon: Settings, label: 'Configuración', path: '/dashboard/finances/settings' },
-                ]
-            },
+            { icon: TrendingUp, label: 'Finanzas', path: '/dashboard/finances' },
         ],
     };
 
@@ -60,47 +47,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         navLinks = navLinks.filter((item) => !['/dashboard/messages', '/dashboard/invoices'].includes(item.path));
     }
 
-    const renderMenuItem = (item, index) => {
-        if (item.children) {
-            return (
-                <div key={item.path} className="space-y-0.5">
-                    <button
-                        onClick={() => setFinanceExpanded(!financeExpanded)}
-                        className={`
-                            w-full flex items-center gap-2.5 px-3 py-2 rounded-[15px] transition-all duration-200 group
-                            text-neutral-700 hover:bg-white/5 hover:text-black
-                        `}
-                    >
-                        <item.icon size={18} className="transition-colors text-current" />
-                        <span className="font-product text-sm flex-1 text-left">{item.label}</span>
-                        <ChevronDown size={14} className={`transition-transform ${financeExpanded ? 'rotate-180' : ''}`} />
-                    </button>
-                    
-                    {financeExpanded && (
-                        <div className="ml-6 space-y-0.5 border-l border-white/10 pl-2">
-                            {item.children.map((child, idx) => (
-                                <PrefetchNavLink
-                                    key={child.path}
-                                    to={child.path}
-                                    end={child.path === '/dashboard/finances'}
-                                    onClick={onClose}
-                                    className={({ isActive }) => `
-                                        flex items-center gap-2.5 px-3 py-2 rounded-[15px] transition-all duration-200
-                                        ${isActive
-                                            ? 'bg-white text-black font-bold'
-                                            : 'text-neutral-600 hover:bg-white/5 hover:text-black'}
-                                    `}
-                                >
-                                    <child.icon size={16} className="transition-colors text-current" />
-                                    <span className="font-product text-sm">{child.label}</span>
-                                </PrefetchNavLink>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
+    const renderMenuItem = (item) => {
         return (
             <PrefetchNavLink
                 key={item.path}

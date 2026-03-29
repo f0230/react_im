@@ -3,10 +3,10 @@ import { CheckCircle2, Landmark, Save } from 'lucide-react';
 import { formatFinanceCurrency } from '@/utils/finance';
 
 const DISTRIBUTION_SOURCE_LABELS = {
-    admin_percentage: 'Pool admin del período',
-    worker_points: 'Pool worker del período',
-    company_fund_release: 'Bonus desde fondo empresa',
-    legacy_manual_weight: 'Legacy por weights manuales',
+    admin_percentage: 'Pool admin',
+    worker_points: 'Pool worker',
+    company_fund_release: 'Bonus desde fondo',
+    legacy_manual_weight: 'Legacy manual',
     legacy_company_distribution: 'Legacy empresa',
 };
 
@@ -26,41 +26,34 @@ const DistributionRow = ({ distribution, label, onSavePayment, disabled = false 
     };
 
     const isCompany = distribution.recipient_type === 'company';
-    const sourceLabel = DISTRIBUTION_SOURCE_LABELS[distribution.calculation_source] || distribution.calculation_source;
+    const sourceLabel = DISTRIBUTION_SOURCE_LABELS[distribution.calculation_source] || 'Otro origen';
 
     return (
-        <div className="grid gap-4 rounded-3xl border border-neutral-200 bg-white p-4 md:grid-cols-[1.4fr,1fr,1fr,1fr,auto] md:items-center">
+        <div className="grid items-center gap-3 rounded-2xl border border-neutral-200 px-3 py-2.5 md:grid-cols-[minmax(0,1.4fr),140px,140px,140px,110px]">
             <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                    {isCompany ? <Landmark size={16} className="text-amber-500" /> : <CheckCircle2 size={16} className="text-skyblue" />}
-                    <p className="truncate font-semibold text-neutral-900">{label}</p>
+                    {isCompany ? <Landmark size={14} className="text-amber-600" /> : <CheckCircle2 size={14} className="text-sky-600" />}
+                    <p className="truncate text-sm font-semibold text-neutral-900">{label}</p>
                 </div>
-                <p className="mt-1 text-xs uppercase tracking-[0.25em] text-neutral-400">
-                    {distribution.recipient_type}
-                </p>
-                {sourceLabel && (
-                    <p className="mt-1 text-xs text-neutral-500">
-                        {sourceLabel}
-                    </p>
-                )}
+                <p className="mt-1 text-xs text-neutral-500">{sourceLabel}</p>
             </div>
 
-            <div>
-                <p className="text-[11px] uppercase tracking-[0.25em] text-neutral-400">Ganado</p>
-                <p className="mt-1 font-semibold text-neutral-900">
+            <div className="text-sm">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">Ganado</p>
+                <p className="mt-1 font-mono font-semibold tabular-nums text-neutral-900">
                     {formatFinanceCurrency(distribution.amount_earned, distribution.currency)}
                 </p>
             </div>
 
-            <div>
-                <p className="text-[11px] uppercase tracking-[0.25em] text-neutral-400">Pendiente</p>
-                <p className={`mt-1 font-semibold ${Number(distribution.amount_pending) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+            <div className="text-sm">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">Pendiente</p>
+                <p className={`mt-1 font-mono font-semibold tabular-nums ${Number(distribution.amount_pending) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                     {formatFinanceCurrency(distribution.amount_pending, distribution.currency)}
                 </p>
             </div>
 
-            <label className="space-y-2">
-                <span className="text-[11px] uppercase tracking-[0.25em] text-neutral-400">Pagado</span>
+            <label className="space-y-1">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">Pagado</span>
                 <input
                     type="number"
                     min="0"
@@ -68,7 +61,7 @@ const DistributionRow = ({ distribution, label, onSavePayment, disabled = false 
                     value={amountPaid}
                     onChange={(event) => setAmountPaid(event.target.value)}
                     disabled={disabled}
-                    className="w-full rounded-2xl border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-neutral-400 disabled:cursor-not-allowed disabled:bg-neutral-100"
+                    className="h-9 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-900 outline-none transition focus:border-neutral-400 disabled:cursor-not-allowed disabled:bg-neutral-100"
                 />
             </label>
 
@@ -76,10 +69,10 @@ const DistributionRow = ({ distribution, label, onSavePayment, disabled = false 
                 type="button"
                 onClick={handleSave}
                 disabled={disabled || saving}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-xl bg-neutral-900 px-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-                <Save size={14} />
-                {saving ? 'Guardando' : 'Guardar'}
+                <Save size={13} />
+                {saving ? '...' : 'Guardar'}
             </button>
         </div>
     );

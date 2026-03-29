@@ -4,6 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import MultiUseSelect from '@/components/MultiUseSelect';
+import {
+    getDynamicWorkersTarget,
+    WORKERS_TARGET_REFERENCE_ACTIVE_WORKERS,
+} from '@/components/finances/workersTarget';
 
 const RECOMMENDED_SPLIT = {
     pct_francisco: 40,
@@ -70,6 +74,18 @@ const SettingsModal = ({ open, onClose, config, adminProfiles = [], onSaved }) =
         { value: 'EUR', label: 'EUR' },
     ]), []);
 
+    const workersTargetExamples = useMemo(() => {
+        const baseTargetWeightedPoints = Number(form.workers_target_weighted_points || config?.workers_target_weighted_points || 100);
+
+        return [2, WORKERS_TARGET_REFERENCE_ACTIVE_WORKERS, 6].map((activeWorkersCount) => ({
+            activeWorkersCount,
+            targetWeightedPoints: getDynamicWorkersTarget({
+                baseTargetWeightedPoints,
+                activeWorkersCount,
+            }),
+        }));
+    }, [config?.workers_target_weighted_points, form.workers_target_weighted_points]);
+
     const handleSave = async (event) => {
         event.preventDefault();
         setSaving(true);
@@ -98,7 +114,7 @@ const SettingsModal = ({ open, onClose, config, adminProfiles = [], onSaved }) =
         };
 
         if (payload.workers_target_weighted_points <= 0) {
-            setError('El target de puntos ponderados debe ser mayor a 0.');
+            setError('El target base de puntos ponderados debe ser mayor a 0.');
             setSaving(false);
             return;
         }
@@ -216,12 +232,12 @@ const SettingsModal = ({ open, onClose, config, adminProfiles = [], onSaved }) =
                             <section className="rounded-2xl border border-neutral-200 bg-white p-5">
                                 <h3 className="text-lg font-black">Activación del pool workers</h3>
                                 <p className="mt-2 text-sm text-neutral-500">
-                                    El porcentaje workers ahora funciona como techo. El 100% de ese pool solo se habilita cuando el período alcanza este target de puntos ponderados.
+                                    El porcentaje workers funciona como techo. Este valor es el target base para un período de referencia con {WORKERS_TARGET_REFERENCE_ACTIVE_WORKERS} workers activos; después se escala automáticamente según cuántos workers tengan work logs aprobados.
                                 </p>
 
                                 <div className="mt-4 grid gap-4 md:grid-cols-[220px,1fr]">
                                     <label className="space-y-2 text-sm font-medium text-neutral-700">
-                                        Target puntos ponderados
+                                        Target base puntos ponderados
                                         <input
                                             type="number"
                                             min="1"
@@ -233,8 +249,20 @@ const SettingsModal = ({ open, onClose, config, adminProfiles = [], onSaved }) =
                                     </label>
 
                                     <div className="rounded-2xl bg-neutral-50 px-4 py-4 text-sm text-neutral-600">
-                                        Ejemplo: si el pool máximo workers del período es 15% y el target es 100 puntos,
-                                        entonces con 25 puntos ponderados se habilita 25% del pool, con 100 o más se habilita el 100%.
+                                        <p>
+                                            El target efectivo se calcula con los workers que realmente participaron en el período.
+                                            Con base {Number(form.workers_target_weighted_points || 100).toFixed(2)}:
+                                        </p>
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {workersTargetExamples.map((example) => (
+                                                <span key={example.activeWorkersCount} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-neutral-700">
+                                                    {example.activeWorkersCount} activo(s): {example.targetWeightedPoints.toFixed(2)} pts
+                                                </span>
+                                            ))}
+                                        </div>
+                                        <p className="mt-2 text-xs text-neutral-500">
+                                            Si el período llega o supera ese target efectivo, se habilita el 100% del pool workers.
+                                        </p>
                                     </div>
                                 </div>
                             </section>

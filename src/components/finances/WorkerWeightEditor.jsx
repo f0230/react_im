@@ -21,19 +21,30 @@ import {
 } from '@/utils/finance';
 
 const TASK_CATEGORY_LABELS = {
-    campanas: 'Campañas',
-    contenido: 'Contenido',
-    custom: 'Custom / transicional',
-    dev: 'Desarrollo',
-    digital: 'Digital',
-    diseno: 'Diseño',
-    estrategia: 'Estrategia',
-    espacios: 'Espacios',
-    gestion: 'Gestión',
-    marca: 'Marca',
-    producto: 'Producto',
-    social: 'Social / community',
-    video: 'Video / motion',
+    // Paid Media
+    paid_media: 'Paid Media / Performance',
+    
+    // Organic Social
+    social_media: 'Social Media',
+    
+    // Contenido
+    copywriting: 'Copywriting',
+    
+    // Creatividad
+    design: 'Diseño Gráfico',
+    video: 'Video & Motion',
+    
+    // Tech
+    web_digital: 'Web & Digital',
+    
+    // Estrategia
+    strategy: 'Estrategia & Consultoría',
+    
+    // Gestión
+    project_management: 'Project Management',
+    
+    // Especializado
+    custom: 'Custom / Especializado',
 };
 
 const getEmptyForm = (dateFallback) => ({
@@ -324,6 +335,8 @@ const WorkerWeightEditor = ({
         };
     }, [logs.length, workerRows]);
 
+    const activeWorkersCount = workerRows.length;
+
     const workerOptions = useMemo(() => ([
         { value: '', label: 'Seleccionar worker...' },
         ...workers.map((worker) => ({
@@ -344,9 +357,9 @@ const WorkerWeightEditor = ({
     const taskTypeOptions = useMemo(() => (
         taskTypes.map((taskType) => ({
             value: taskType.id,
-            label: `${taskType.name} (${taskType.base_points} pts)`,
+            label: taskType.name,
             displayLabel: taskType.name,
-            helperLabel: `${TASK_CATEGORY_LABELS[taskType.category] || taskType.category || 'General'} · ${Number(taskType.base_points || 0).toFixed(2)} pts`,
+            helperLabel: `${TASK_CATEGORY_LABELS[taskType.category] || taskType.category || 'General'} · ${Number(taskType.base_points || 0).toFixed(0)} pts`,
             description: taskType.description || '',
             category: taskType.category || 'otros',
             searchText: `${TASK_CATEGORY_LABELS[taskType.category] || taskType.category || ''} ${taskType.name} ${taskType.code || ''} ${taskType.description || ''}`,
@@ -642,7 +655,7 @@ const WorkerWeightEditor = ({
                     <p className="text-xs uppercase tracking-[0.3em] text-neutral-400">Workers pool</p>
                     <h2 className="mt-1.5 text-[1.55rem] font-black leading-tight text-neutral-900 md:text-[1.7rem]">Compensación basada en trabajo real</h2>
                     <p className="mt-1.5 max-w-3xl text-sm leading-5 text-neutral-500">
-                        Este período ya no usa weights manuales. El porcentaje workers funciona como techo; el monto efectivamente ganado sale de tipos de tarea, criticidad, seniority y del valor relativo de cada proyecto dentro del período.
+                        Este período ya no usa weights manuales. El porcentaje workers funciona como techo; el monto efectivamente ganado sale de tipos de tarea, criticidad, seniority, valor relativo de proyecto y del target dinámico según workers activos.
                     </p>
                 </div>
                 <div className="rounded-[18px] bg-neutral-100 px-3.5 py-2 text-sm text-neutral-600">
@@ -800,10 +813,15 @@ const WorkerWeightEditor = ({
                 <div className="min-w-0 rounded-[18px] border border-neutral-200 bg-neutral-50 p-2.5">
                     <div className="flex items-center gap-2 text-neutral-500">
                         <Sparkles size={14} />
-                        <span className="text-[10px] uppercase tracking-[0.22em]">Target</span>
+                        <span className="text-[10px] uppercase tracking-[0.22em]">Target efectivo</span>
                     </div>
                     <p className="mt-1.5 text-base font-black leading-tight text-neutral-900 md:text-lg">
                         {Number(workersTargetWeightedPoints || 0).toFixed(2)}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-4 text-neutral-500">
+                        {activeWorkersCount > 0
+                            ? `${activeWorkersCount} worker(s) activo(s) con logs aprobados.`
+                            : 'Escala cuando aparezcan workers con logs aprobados.'}
                     </p>
                 </div>
                 <div className="min-w-0 rounded-[18px] border border-neutral-200 bg-neutral-50 p-2.5">
@@ -818,8 +836,9 @@ const WorkerWeightEditor = ({
             </div>
 
             <div className="mt-3 rounded-[18px] border border-violet-200 bg-violet-50/40 px-3.5 py-2.5 text-sm leading-5 text-neutral-600">
-                Este período lleva <span className="font-semibold text-neutral-900">{Number(totalWeightedPoints || 0).toFixed(2)} puntos ponderados</span> sobre un target de{' '}
-                <span className="font-semibold text-neutral-900">{Number(workersTargetWeightedPoints || 0).toFixed(2)}</span>.
+                Este período lleva <span className="font-semibold text-neutral-900">{Number(totalWeightedPoints || 0).toFixed(2)} puntos ponderados</span> sobre un target dinámico de{' '}
+                <span className="font-semibold text-neutral-900">{Number(workersTargetWeightedPoints || 0).toFixed(2)}</span>,
+                calculado con <span className="font-semibold text-neutral-900">{activeWorkersCount}</span> worker(s) activo(s).
                 El reparto estimado entre personas hoy suma{' '}
                 <span className="font-semibold text-neutral-900">{formatFinanceCurrency(summary.amount, currency)}</span>, que coincide con el pool ganado.
             </div>
@@ -920,18 +939,32 @@ const WorkerWeightEditor = ({
                                 optionClassName={financeSelectOptionClass}
                             />
                             {selectedTaskTypes.length > 0 && (
-                                <div className="space-y-1">
+                                <div className="space-y-2 rounded-[14px] border border-neutral-100 bg-neutral-50/50 p-2.5">
                                     <p className="text-[11px] leading-none text-neutral-500">
-                                        {selectedTaskTypesSummary.count} tarea(s) · {selectedTaskTypesSummary.totalBasePoints.toFixed(2)} pts base
+                                        {selectedTaskTypesSummary.count} tarea(s) seleccionada(s) · {selectedTaskTypesSummary.totalBasePoints.toFixed(2)} pts base
                                     </p>
-                                    <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+                                    <div className="space-y-1.5">
                                         {selectedTaskTypes.map((taskType) => (
-                                            <span
+                                            <div
                                                 key={taskType.id}
-                                                className={taskChipClass}
+                                                className="rounded-lg border border-white bg-white px-2.5 py-2 shadow-sm"
                                             >
-                                                {taskType.name}
-                                            </span>
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-[11px] font-medium text-neutral-900">
+                                                            {taskType.name}
+                                                        </p>
+                                                        {taskType.description && (
+                                                            <p className="mt-0.5 text-[10px] leading-relaxed text-neutral-500 line-clamp-2">
+                                                                {taskType.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium text-neutral-600">
+                                                        {Number(taskType.base_points || 0).toFixed(0)} pts
+                                                    </span>
+                                                </div>
+                                            </div>
                                         ))}
                                     </div>
                                 </div>

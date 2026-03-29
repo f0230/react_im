@@ -10,7 +10,14 @@ import { formatTime, formatTimestamp, getInitial, normalizePhone } from '@/utils
 import ChatAudioPlayer from '@/components/chat/ChatAudioPlayer';
 import { formatPhoneForDisplay } from '@/utils/phone-format';
 
-const WHATSAPP_THREAD_REQUIRED_COLUMNS = ['id', 'wa_id', 'client_name', 'client_phone', 'last_message', 'last_message_at'];
+const INBOX_TAGS = [
+    { id: 'urgent', label: 'Urgente', color: '#ef4444' },
+    { id: 'followup', label: 'Seguimiento', color: '#f59e0b' },
+    { id: 'prospect', label: 'Prospecto', color: '#10b981' },
+    { id: 'client', label: 'Cliente', color: '#3b82f6' },
+];
+
+const WHATSAPP_THREAD_REQUIRED_COLUMNS = ['id', 'wa_id', 'client_name', 'client_phone', 'last_message', 'last_message_at', 'status', 'label'];
 const buildWhatsappThreadColumns = ({ supportsAiToggle, supportsThreadClientId }) => [
     ...WHATSAPP_THREAD_REQUIRED_COLUMNS.slice(0, 2),
     ...(supportsThreadClientId ? ['client_id'] : []),
@@ -73,6 +80,7 @@ const Inbox = () => {
     const [isClientModalOpen, setIsClientModalOpen] = useState(false);
     const [clientIdByWa, setClientIdByWa] = useState({});
     const [composerHeight, setComposerHeight] = useState(88);
+    const [contextMenu, setContextMenu] = useState(null); // { x, y, waId }
     const fileInputRef = React.useRef(null);
     const composerRef = useRef(null);
     const inputRef = React.useRef(null);
@@ -93,6 +101,7 @@ const Inbox = () => {
     const filteredThreads = useMemo(() => {
         const term = searchTerm.trim().toLowerCase();
         return threads.filter((thread) => {
+            if (thread.status === 'closed') return false;
             if (!term) return true;
             return [
                 thread.client_name,
@@ -325,6 +334,39 @@ const Inbox = () => {
             setAiToggleLoading(false);
         }
     }, [aiToggleLoading, selectedClientId, selectedThread?.ai_enabled, selectedThread?.id, selectedThreadId, supportsAiToggle, updateThread]);
+
+    const handleCloseThread = useCallback(async (waId) => {
+        setThreads((prev) => prev.map((t) => t.wa_id === waId ? { ...t, status: 'closed' } : t));
+        if (selectedThreadId === waId) setSelectedThreadId(null);
+        await supabase.from('whatsapp_threads').update({ status: 'closed' }).eq('wa_id', waId);
+        setContextMenu(null);
+    }, [selectedThreadId, setSelectedThreadId]);
+
+    const handleTagThread = useCallback(async (waId, tagId) => {
+        const thread = threads.find((t) => t.wa_id === waId);
+        const newLabel = thread?.label === tagId ? null : tagId;
+        setThreads((prev) => prev.map((t) => t.wa_id === waId ? { ...t, label: newLabel } : t));
+        setContextMenu(null);
+        await supabase.from('whatsapp_threads').update({ label: newLabel }).eq('wa_id', waId);
+    }, [threads]);
+
+    const handleContextMenu = useCallback((event, waId) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setContextMenu({ x: event.clientX, y: event.clientY, waId });
+    }, []);
+
+    useEffect(() => {
+        if (!contextMenu) return;
+        const close = () => setContextMenu(null);
+        const onKey = (e) => e.key === 'Escape' && setContextMenu(null);
+        document.addEventListener('click', close);
+        document.addEventListener('keydown', onKey);
+        return () => {
+            document.removeEventListener('click', close);
+            document.removeEventListener('keydown', onKey);
+        };
+    }, [contextMenu]);
 
     const handleFileUpload = async (event) => {
         const file = event.target.files?.[0];
@@ -665,21 +707,31 @@ const Inbox = () => {
                         {filteredThreads.map((thread) => {
                             const displayName = thread.client_name || formatPhoneForDisplay(thread.client_phone) || formatPhoneForDisplay(thread.wa_id) || 'Cliente';
                             const isActive = thread.wa_id === selectedThreadId;
+                            const tag = INBOX_TAGS.find((t) => t.id === thread.label);
                             return (
                                 <button
                                     key={thread.wa_id}
                                     onClick={() => setSelectedThreadId(thread.wa_id)}
+                                    onContextMenu={(e) => handleContextMenu(e, thread.wa_id)}
                                     className={`chat-sidebar-item w-full text-left rounded-xl px-3 py-2.5 ${isActive
                                         ? 'chat-sidebar-active text-white'
                                         : 'hover:bg-neutral-50'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div
-                                            className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold shrink-0 ${isActive ? 'chat-avatar-active' : 'chat-avatar'
-                                                }`}
-                                        >
-                                            {getInitial(displayName)}
+                                        <div className="relative shrink-0">
+                                            <div
+                                                className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold ${isActive ? 'chat-avatar-active' : 'chat-avatar'
+                                                    }`}
+                                            >
+                                                {getInitial(displayName)}
+                                            </div>
+                                            {tag && (
+                                                <span
+                                                    className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border-2 border-white"
+                                                    style={{ backgroundColor: tag.color }}
+                                                />
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center justify-between gap-2">
@@ -690,9 +742,16 @@ const Inbox = () => {
                                                     {formatTimestamp(thread.last_message_at)}
                                                 </span>
                                             </div>
-                                            <p className={`text-[11px] truncate ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
-                                                {thread.last_message || 'Sin mensajes'}
-                                            </p>
+                                            <div className="flex items-center gap-1.5">
+                                                {tag && (
+                                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full" style={{ backgroundColor: tag.color + '22', color: tag.color }}>
+                                                        {tag.label}
+                                                    </span>
+                                                )}
+                                                <p className={`text-[11px] truncate ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
+                                                    {thread.last_message || 'Sin mensajes'}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </button>
@@ -945,6 +1004,36 @@ const Inbox = () => {
                     )}
                 </div>
             </div>
+            {contextMenu && (
+                <div
+                    className="fixed z-[100] min-w-[180px] rounded-xl bg-white shadow-xl border border-neutral-100 py-1 text-sm"
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-neutral-400 font-medium">Clasificar</div>
+                    {INBOX_TAGS.map((tag) => (
+                        <button
+                            key={tag.id}
+                            onClick={() => handleTagThread(contextMenu.waId, tag.id)}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 transition-colors text-left"
+                        >
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: tag.color }} />
+                            <span className="text-neutral-700">{tag.label}</span>
+                            {threads.find((t) => t.wa_id === contextMenu.waId)?.label === tag.id && (
+                                <span className="ml-auto text-neutral-400 text-xs">✓</span>
+                            )}
+                        </button>
+                    ))}
+                    <div className="my-1 border-t border-neutral-100" />
+                    <button
+                        onClick={() => handleCloseThread(contextMenu.waId)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 hover:bg-red-50 transition-colors text-left text-red-600"
+                    >
+                        <X size={14} />
+                        Cerrar conversación
+                    </button>
+                </div>
+            )}
             {isClientModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
                     <div className="relative w-full max-w-5xl h-[85svh] rounded-3xl bg-white shadow-2xl border border-neutral-200 overflow-hidden flex flex-col">

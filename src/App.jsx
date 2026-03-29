@@ -181,12 +181,12 @@ const AppContent = () => {
             <Route path="integrations" element={<ProjectIntegrations />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="finances" element={<FinancesDashboard />} />
-            <Route path="finances/ledger" element={<Navigate to="/dashboard/finances?tab=ledger" replace />} />
+            <Route path="finances/ledger" element={<Navigate to="/dashboard/finances?tab=dashboard" replace />} />
             <Route path="finances/periods/:periodId" element={<FinancesPeriodRedirect />} />
             <Route path="finances/settings" element={<Navigate to="/dashboard/finances" replace />} />
-            <Route path="finances/cashflow" element={<Navigate to="/dashboard/finances?tab=cashflow" replace />} />
-            <Route path="finances/projects" element={<Navigate to="/dashboard/finances?tab=proyectos" replace />} />
-            <Route path="finances/reports" element={<Navigate to="/dashboard/finances?tab=reportes" replace />} />
+            <Route path="finances/cashflow" element={<Navigate to="/dashboard/finances?tab=reportes&view=cashflow" replace />} />
+            <Route path="finances/projects" element={<Navigate to="/dashboard/finances?tab=reportes&view=proyectos" replace />} />
+            <Route path="finances/reports" element={<Navigate to="/dashboard/finances?tab=reportes&view=mensual" replace />} />
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:projectId" element={<Navigate to="tasks" replace />} />
             <Route path="projects/:projectId/services" element={<Navigate to="/dashboard/tasks" replace />} />

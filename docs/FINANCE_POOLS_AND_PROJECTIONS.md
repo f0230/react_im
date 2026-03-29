@@ -112,11 +112,20 @@ company_pool_base = net_profit * pct_company
 Luego se calcula la activación real del pool workers:
 
 ```txt
-pool_utilization_ratio = min(total_weighted_points / workers_target_weighted_points, 1)
+effective_target_weighted_points =
+    workers_target_weighted_points * max(active_workers, 1) / 4
+
+pool_utilization_ratio = min(total_weighted_points / effective_target_weighted_points, 1)
 
 workers_pool_earned = workers_pool_cap * pool_utilization_ratio
 workers_pool_unallocated = workers_pool_cap - workers_pool_earned
 ```
+
+Donde:
+
+- `workers_target_weighted_points` es el target base configurado
+- `active_workers` es la cantidad de workers con work logs aprobados en el período
+- el `4` funciona como equipo de referencia para no romper la calibración histórica del target actual
 
 Y el crédito final al fondo empresa:
 
@@ -179,13 +188,15 @@ Supongamos:
 
 - ganancia neta del período: `US$ 1.000`
 - split recomendado: `70% admins / 15% workers / 15% empresa`
-- target workers: `100 puntos ponderados`
+- target base workers: `100 puntos ponderados`
+- workers activos: `4`
 
 Entonces:
 
 - `pool admins = US$ 700`
 - `workers_pool_cap = US$ 150`
 - `base empresa = US$ 150`
+- `target efectivo = 100`
 
 Ahora veamos cómo cambia según el trabajo real del período:
 
@@ -213,17 +224,18 @@ Supongamos de nuevo:
 
 - neto: `US$ 1.000`
 - cap workers: `US$ 150`
-- target: `100 pts`
+- target base: `100 pts`
 - solo hay un worker activo
+- target efectivo: `25 pts`
 
 ### Caso A: ese worker produjo 20 puntos ponderados
 
-- utilización: `20%`
-- pool workers ganado: `US$ 30`
+- utilización: `80%`
+- pool workers ganado: `US$ 120`
 - share del worker: `100%`
-- cobro del worker: `US$ 30`
+- cobro del worker: `US$ 120`
 
-No cobra `US$ 150`, porque el período no justificó activar todo el pool.
+No cobra `US$ 150`, porque el período todavía no llegó al target efectivo de ese escenario.
 
 ### Caso B: ese worker produjo 100 puntos ponderados
 
@@ -232,7 +244,7 @@ No cobra `US$ 150`, porque el período no justificó activar todo el pool.
 - share del worker: `100%`
 - cobro del worker: `US$ 150`
 
-Acá sí se lleva todo el pool workers, porque el volumen ponderado del período llegó al target.
+Acá sí se lleva todo el pool workers, porque el volumen ponderado del período superó el target efectivo.
 
 ---
 

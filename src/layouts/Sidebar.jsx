@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Briefcase, FileText, LogOut, Menu, X, MessageSquare, ChevronDown, ChevronRight, TrendingUp, Wallet, Receipt, BarChart3, PieChart, Settings } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Users, Briefcase, FileText, LogOut, Menu, X, MessageSquare, TrendingUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Sidebar = () => {
     const { profile, signOut } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
-    const [financeExpanded, setFinanceExpanded] = useState(false);
     const navigate = useNavigate();
-    const location = useLocation();
 
     const handleSignOut = async () => {
         setIsOpen(false);
@@ -18,9 +16,6 @@ const Sidebar = () => {
 
     const role = profile?.role || 'client';
     const isClientLeader = profile?.is_client_leader;
-
-    // Check if current path is under finances
-    const isFinanceActive = location.pathname.startsWith('/dashboard/finances');
 
     const menuItems = {
         client: [
@@ -41,19 +36,7 @@ const Sidebar = () => {
             { icon: MessageSquare, label: 'Mensajería', path: '/dashboard/messages' },
             { icon: Briefcase, label: 'Proyectos', path: '/dashboard/projects' },
             { icon: FileText, label: 'Facturación', path: '/dashboard/invoices' },
-            { 
-                icon: TrendingUp, 
-                label: 'Finanzas', 
-                path: '/dashboard/finances',
-                children: [
-                    { icon: Wallet, label: 'Resumen', path: '/dashboard/finances' },
-                    { icon: BarChart3, label: 'Cash Flow', path: '/dashboard/finances/cashflow' },
-                    { icon: PieChart, label: 'Proyectos', path: '/dashboard/finances/projects' },
-                    { icon: Receipt, label: 'Ledger', path: '/dashboard/finances/ledger' },
-                    { icon: TrendingUp, label: 'Reportes', path: '/dashboard/finances/reports' },
-                    { icon: Settings, label: 'Configuración', path: '/dashboard/finances/settings' },
-                ]
-            },
+            { icon: TrendingUp, label: 'Finanzas', path: '/dashboard/finances' },
             { icon: FileText, label: 'Reportes', path: '/dashboard/reports' },
         ]
     };
@@ -65,53 +48,6 @@ const Sidebar = () => {
     }
 
     const renderMenuItem = (item) => {
-        // Item with children (submenu)
-        if (item.children) {
-            const isActive = location.pathname === item.path || item.children.some(c => location.pathname === c.path);
-            
-            return (
-                <div key={item.path}>
-                    <button
-                        onClick={() => setFinanceExpanded(!financeExpanded)}
-                        className={`
-                            w-full flex items-center gap-3 px-4 py-3.5 rounded-[26px] transition-all duration-300 group
-                            ${isActive || financeExpanded
-                                ? 'bg-white text-black font-bold shadow-lg shadow-white/5'
-                                : 'text-gray-400 hover:bg-white/5 hover:text-white'}
-                        `}
-                    >
-                        <item.icon size={22} className={`transition-colors ${isActive ? "text-skyblue" : "group-hover:text-white"}`} />
-                        <span className="text-[15px] flex-1 text-left">{item.label}</span>
-                        {financeExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                    </button>
-                    
-                    {/* Submenu */}
-                    {(financeExpanded || isActive) && (
-                        <div className="ml-4 mt-1 space-y-1">
-                            {item.children.map(child => (
-                                <NavLink
-                                    key={child.path}
-                                    to={child.path}
-                                    end={child.path === '/dashboard/finances'}
-                                    className={({ isActive: childActive }) => `
-                                        flex items-center gap-3 px-4 py-2.5 rounded-[20px] transition-all duration-200 text-sm
-                                        ${childActive
-                                            ? 'bg-white/10 text-white font-semibold'
-                                            : 'text-gray-500 hover:bg-white/5 hover:text-gray-300'}
-                                    `}
-                                    onClick={() => setIsOpen(false)}
-                                >
-                                    <child.icon size={16} />
-                                    <span>{child.label}</span>
-                                </NavLink>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        // Regular item
         return (
             <NavLink
                 key={item.path}
