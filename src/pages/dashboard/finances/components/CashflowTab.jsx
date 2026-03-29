@@ -62,6 +62,7 @@ const CashflowTab = ({ transactions, invoices, config, periods }) => {
             .reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
         const timeline = [];
+        const todayStr = today.toISOString().split('T')[0];
         for (let i = 0; i <= 90; i++) {
             const date = new Date(today);
             date.setDate(date.getDate() + i);
@@ -73,15 +74,19 @@ const CashflowTab = ({ transactions, invoices, config, periods }) => {
             });
             const dayIncome = dayInvoices.reduce((sum, inv) => sum + Number(inv.amount || 0), 0);
 
-            const dayExpenses = transactions.filter((t) => {
-                if (t.type !== 'expense') return false;
-                return new Date(t.transaction_date).toISOString().split('T')[0] === dateStr;
-            });
+            // Only count FUTURE expenses — past ones are already in currentBalance
+            const isFuture = dateStr > todayStr;
+            const dayExpenses = isFuture
+                ? transactions.filter((t) => {
+                    if (t.type !== 'expense') return false;
+                    return new Date(t.transaction_date).toISOString().split('T')[0] === dateStr;
+                })
+                : [];
             const dayExpense = dayExpenses.reduce((sum, t) => sum + Number(t.amount || 0), 0);
 
             const projectedBalance =
                 i === 0
-                    ? currentBalance + dayIncome - dayExpense
+                    ? currentBalance + dayIncome
                     : (timeline[i - 1]?.projectedBalance || currentBalance) + dayIncome - dayExpense;
 
             timeline.push({ date: dateStr, dateObj: new Date(date), dayIncome, dayExpense, projectedBalance, invoices: dayInvoices, expenses: dayExpenses });

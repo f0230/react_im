@@ -21,7 +21,7 @@ DECLARE
     v_period_id UUID;
     v_description TEXT;
 BEGIN
-    v_transaction_date := COALESCE(NEW.paid_at, NEW.updated_at, NEW.created_at)::DATE;
+    v_transaction_date := COALESCE(NEW.due_date, NEW.paid_at, NEW.updated_at, NEW.created_at)::DATE;
 
     SELECT id
     INTO v_period_id
@@ -138,14 +138,14 @@ SELECT
             CONCAT('Cobro factura ', i.invoice_number)
     END,
     'client_payment',
-    COALESCE(i.paid_at, i.updated_at, i.created_at)::DATE,
+    COALESCE(i.due_date, i.paid_at, i.updated_at, i.created_at)::DATE,
     i.project_id,
     i.id,
     (
         SELECT fp.id
         FROM finance_periods fp
-        WHERE fp.start_date <= COALESCE(i.paid_at, i.updated_at, i.created_at)::DATE
-          AND fp.end_date >= COALESCE(i.paid_at, i.updated_at, i.created_at)::DATE
+        WHERE fp.start_date <= COALESCE(i.due_date, i.paid_at, i.updated_at, i.created_at)::DATE
+          AND fp.end_date >= COALESCE(i.due_date, i.paid_at, i.updated_at, i.created_at)::DATE
         ORDER BY fp.start_date DESC
         LIMIT 1
     ),

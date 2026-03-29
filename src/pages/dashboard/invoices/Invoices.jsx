@@ -6,6 +6,7 @@ import {
     FileText,
     CreditCard,
     Download,
+    Edit3,
     Receipt,
     Clock,
     CheckCircle2,
@@ -39,6 +40,7 @@ const Invoices = () => {
     const [invoiceFinancePeriodMap, setInvoiceFinancePeriodMap] = useState({});
     const [selectedProject, setSelectedProject] = useState(projectIdParam || 'all');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingInvoice, setEditingInvoice] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusUpdatingId, setStatusUpdatingId] = useState(null);
 
@@ -139,14 +141,16 @@ const Invoices = () => {
         }
     }, [projectIdParam]);
 
+    const getUsdAmount = (inv) => parseFloat(inv.amount_usd) || parseFloat(inv.amount) || 0;
+
     const stats = useMemo(() => {
-        const total = invoices.reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
+        const total = invoices.reduce((acc, inv) => acc + getUsdAmount(inv), 0);
         const paid = invoices
             .filter(inv => inv.status === 'paid')
-            .reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
+            .reduce((acc, inv) => acc + getUsdAmount(inv), 0);
         const pending = invoices
             .filter(inv => inv.status === 'pending' || inv.status === 'overdue')
-            .reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0);
+            .reduce((acc, inv) => acc + getUsdAmount(inv), 0);
 
         return { total, paid, pending };
     }, [invoices]);
@@ -434,8 +438,15 @@ const Invoices = () => {
                                                 </td>
                                                 <td className="px-10 py-8">
                                                     <div className="flex flex-col">
-                                                        <span className="text-lg font-black text-neutral-900">${parseFloat(inv.amount).toLocaleString()}</span>
-                                                        <span className="text-[10px] text-neutral-400 font-bold">{inv.currency}</span>
+                                                        <span className="text-lg font-black text-neutral-900">${getUsdAmount(inv).toLocaleString()}</span>
+                                                        {inv.currency !== 'USD' && (
+                                                            <span className="text-[10px] text-neutral-400 font-bold">
+                                                                {inv.currency} {parseFloat(inv.amount).toLocaleString()} · TC {inv.exchange_rate}
+                                                            </span>
+                                                        )}
+                                                        {inv.currency === 'USD' && (
+                                                            <span className="text-[10px] text-neutral-400 font-bold">USD</span>
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td className="px-10 py-8">
@@ -468,9 +479,19 @@ const Invoices = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-10 py-8 text-right">
-                                                    <button className="p-3 rounded-2xl bg-neutral-50 text-neutral-400 hover:bg-black hover:text-white transition-all border border-neutral-100 hover:border-black shadow-sm group-hover:scale-110 active:scale-95">
-                                                        <Download size={18} />
-                                                    </button>
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {isAdmin && (
+                                                            <button
+                                                                onClick={() => { setEditingInvoice(inv); setIsModalOpen(true); }}
+                                                                className="p-3 rounded-2xl bg-neutral-50 text-neutral-400 hover:bg-black hover:text-white transition-all border border-neutral-100 hover:border-black shadow-sm group-hover:scale-110 active:scale-95"
+                                                            >
+                                                                <Edit3 size={18} />
+                                                            </button>
+                                                        )}
+                                                        <button className="p-3 rounded-2xl bg-neutral-50 text-neutral-400 hover:bg-black hover:text-white transition-all border border-neutral-100 hover:border-black shadow-sm group-hover:scale-110 active:scale-95">
+                                                            <Download size={18} />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </motion.tr>
                                         ))
@@ -498,14 +519,16 @@ const Invoices = () => {
 
             <CreateInvoiceModal
                 isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={() => { setIsModalOpen(false); setEditingInvoice(null); }}
                 onCreated={() => {
                     fetchInvoices();
                     setIsModalOpen(false);
+                    setEditingInvoice(null);
                 }}
                 projects={projects}
                 clients={clients}
                 initialProjectId={selectedProject !== 'all' ? selectedProject : ''}
+                editingInvoice={editingInvoice}
             />
         </div>
     );

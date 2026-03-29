@@ -1,12 +1,10 @@
-import React, { lazy, Suspense, useMemo } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import { Settings2, TrendingUp, TrendingDown, Wallet, Clock } from 'lucide-react';
+import { Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
 import useFinanceData from '@/hooks/useFinanceData';
 import LoadingFallback from '@/components/ui/LoadingFallback';
-import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
-import { formatFinanceCurrency } from '@/utils/finance';
 
 // Lazy tab components (code-split per tab)
 const OverviewTab = lazy(() => import('./components/OverviewTab'));
@@ -85,33 +83,6 @@ const FinancesDashboard = () => {
                 >
                     <Settings2 size={20} />
                 </button>
-            </div>
-
-            {/* ─── Global KPIs ───────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <FinanceKpiCard
-                    icon={TrendingUp}
-                    label="INGRESOS"
-                    value={formatFinanceCurrency(summaryKpis.income, currency)}
-                />
-                <FinanceKpiCard
-                    icon={TrendingDown}
-                    label="GASTOS"
-                    value={formatFinanceCurrency(summaryKpis.expenses, currency)}
-                    color="text-rose-600"
-                />
-                <FinanceKpiCard
-                    icon={Wallet}
-                    label="NETO"
-                    value={formatFinanceCurrency(summaryKpis.net, currency)}
-                    color={summaryKpis.net >= 0 ? 'text-emerald-600' : 'text-rose-600'}
-                />
-                <FinanceKpiCard
-                    icon={Clock}
-                    label="PENDIENTE"
-                    value={formatFinanceCurrency(summaryKpis.pendingPayouts, currency)}
-                    color="text-amber-600"
-                />
             </div>
 
             {/* ─── Tab Bar ───────────────────────────────────────────────── */}

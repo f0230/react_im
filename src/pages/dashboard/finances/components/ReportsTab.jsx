@@ -57,6 +57,7 @@ const ReportsTab = ({ transactions, periods, config }) => {
                 });
             } else {
                 const monthTx = transactions.filter((t) => {
+                    if (t.period_id) return false;
                     const d = new Date(t.transaction_date);
                     return d.getFullYear() === selectedYear && d.getMonth() === monthIndex;
                 });

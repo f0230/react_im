@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, Plus, Sparkles, Workflow, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
 import PopoverPanel from './ui/PopoverPanel';
-import { MOBILE_POPOVER_BACKDROP_CLASS, POPOVER_PANEL_CLASS } from './ui/popoverStyles';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
 
@@ -10,22 +9,22 @@ const DEFAULT_TOOLS = [
         id: 'ai-studio',
         name: 'DMS',
         url: 'https://aistudio.google.com/apps/drive/17FfeYIGkOd36xqDwEw5DIKxmWE3ikzUV?showPreview=true&showAssistant=true&fullscreenApplet=true',
-        icon: 'Sparkles', // Storing icon name for persistence
-        color: 'bg-gradient-to-br from-blue-500 to-purple-600'
+        icon: 'Sparkles',
+        color: 'from-blue-500 to-purple-600'
     },
     {
         id: 'studio-ia',
         name: 'Estudio IA',
         url: '/dashboard/studio',
         icon: 'Sparkles',
-        color: 'bg-gradient-to-br from-[#e3ff31] to-[#47D065] text-black'
+        color: 'from-[#e3ff31] to-[#47D065]'
     },
     {
         id: 'workflows',
         name: 'Workflows',
         url: '/dashboard/studio/workflow',
         icon: 'Workflow',
-        color: 'bg-gradient-to-br from-neutral-200 to-white text-black'
+        color: 'from-neutral-300 to-white'
     }
 ];
 
@@ -133,8 +132,8 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
                             className="group flex flex-col items-center gap-1"
                         >
                             <div className={cn(
-                                "w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md transition-transform duration-200 group-hover:scale-105 group-active:scale-95",
-                                tool.color || "bg-neutral-700"
+                                "w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md transition-transform duration-200 group-hover:scale-105 group-active:scale-95 bg-gradient-to-br",
+                                tool.color || "from-neutral-600 to-neutral-700"
                             )}>
                                 <IconComp size={17} />
                             </div>
@@ -165,79 +164,87 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
             <PopoverPanel
                 isOpen={isOpen}
                 onClose={closePopover}
-                className={POPOVER_PANEL_CLASS}
-                backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
-                initial={{ opacity: 0, scale: 0.9, y: -10, filter: 'blur(10px)' }}
-                animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 0.9, y: -10, filter: 'blur(10px)' }}
-                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                className={[
+                    'fixed left-3 right-3 top-[61px] z-50 min-h-[280px] rounded-[32px]',
+                    'max-h-[calc(100dvh-73px)] overflow-y-auto lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-2 lg:w-[380px] lg:min-h-0 lg:max-h-[480px] lg:overflow-hidden',
+                    'bg-[#1c1c1e]/95 backdrop-blur-2xl border border-white/8',
+                    'shadow-[0_32px_100px_rgba(0,0,0,0.55)] z-50 origin-top flex flex-col',
+                ].join(' ')}
+                backdropClassName="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+                initial={{ opacity: 0, scale: 0.92, y: -8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: -8 }}
+                transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
             >
-                {/* Header */}
-                <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center justify-between bg-white/5">
-                    <div className="flex items-center gap-2 text-neutral-700">
-                        <LayoutGrid size={16} />
-                        <span className="text-sm font-semibold">Herramientas</span>
+                {/* Header estilo App Library */}
+                <div className="pt-5 pb-4 px-6 flex items-center justify-center">
+                    <div className="flex items-center gap-2 text-white/90">
+                        <LayoutGrid size={15} strokeWidth={2.5} />
+                        <span className="text-[15px] font-semibold tracking-tight">Herramientas</span>
                     </div>
                 </div>
 
-                <div className="p-4">
-
-
+                <div className="px-5 pb-6">
                     {/* Add Tool Form */}
                     {isAdding ? (
-                        <form onSubmit={handleAddTool} className="flex flex-col gap-3 mb-2 animate-in fade-in zoom-in duration-200">
+                        <form onSubmit={handleAddTool} className="flex flex-col gap-3 mb-4 animate-in fade-in zoom-in duration-200 bg-[#2c2c2e]/80 rounded-2xl p-4 border border-white/5">
                             <input
                                 type="text"
-                                placeholder="Tool Name"
+                                placeholder="Nombre de la app"
                                 value={newTool.name}
                                 onChange={(e) => setNewTool({ ...newTool, name: e.target.value })}
-                                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-neutral-700 placeholder:text-neutral-500 focus:outline-none focus:border-white/30 transition-colors"
+                                className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/25 transition-colors"
                                 autoFocus
                             />
                             <input
                                 type="text"
-                                placeholder="URL (e.g., google.com)"
+                                placeholder="URL (ej: google.com)"
                                 value={newTool.url}
                                 onChange={(e) => setNewTool({ ...newTool, url: e.target.value })}
-                                className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-neutral-700 placeholder:text-neutral-500 focus:outline-none focus:border-white/30 transition-colors"
+                                className="bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/25 transition-colors"
                             />
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-2 mt-1">
                                 <button
                                     type="button"
                                     onClick={() => setIsAdding(false)}
-                                    className="flex-1 bg-white/5 hover:bg-white/10 text-neutral-700 text-sm py-2 rounded-xl transition-colors"
+                                    className="flex-1 bg-white/5 hover:bg-white/10 text-white/70 text-sm font-medium py-2.5 rounded-xl transition-colors"
                                 >
-                                    Cancel
+                                    Cancelar
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={!newTool.name || !newTool.url}
-                                    className="flex-1 bg-white text-black text-sm font-medium py-2 rounded-xl hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 bg-white text-black text-sm font-semibold py-2.5 rounded-xl hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                 >
-                                    Add Tool
+                                    Agregar
                                 </button>
                             </div>
                         </form>
                     ) : (
-                        /* Grid */
-                        <div className="grid grid-cols-4 gap-5 max-h-[400px] overflow-y-auto px-1 py-2 custom-scrollbar">
+                        /* Grid estilo App Library iOS */
+                        <div className="grid grid-cols-4 gap-x-3 gap-y-5 px-1">
                             {tools.map((tool) => {
                                 const IconComp = getIcon(tool.icon);
+                                const isLight = tool.id === 'studio-ia' || tool.id === 'workflows';
                                 return (
                                     <a
                                         key={tool.id}
                                         href={tool.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="group flex flex-col items-center gap-1.5 relative"
+                                        className="group flex flex-col items-center gap-2 relative"
                                     >
+                                        {/* Icono grande con fondo tipo carpeta iOS */}
                                         <div className={cn(
-                                            "w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-md transition-transform duration-200 group-hover:scale-105 group-active:scale-95",
-                                            tool.color || "bg-neutral-700"
+                                            "w-[62px] h-[62px] rounded-[18px] flex items-center justify-center transition-all duration-200 group-hover:scale-105 group-active:scale-95 shadow-lg",
+                                            "bg-gradient-to-br",
+                                            tool.color || "from-neutral-600 to-neutral-700",
+                                            isLight ? "text-black" : "text-white"
                                         )}>
-                                            <IconComp size={17} />
+                                            <IconComp size={26} strokeWidth={1.8} />
                                         </div>
-                                        <span className="text-[10px] text-neutral-700 text-center font-medium truncate w-full px-0.5 group-hover:text-black transition-colors">
+                                        {/* Label debajo */}
+                                        <span className="text-[11px] text-white/80 text-center font-medium w-full truncate group-hover:text-white transition-colors">
                                             {tool.name}
                                         </span>
                                     </a>
@@ -247,13 +254,13 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
                             {/* Add New Trigger */}
                             <button
                                 onClick={() => setIsAdding(true)}
-                                className="group flex flex-col items-center gap-1.5"
+                                className="group flex flex-col items-center gap-2"
                             >
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-neutral-700 bg-white/5 border-2 border-dashed border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-200 group-hover:scale-105 group-active:scale-95">
-                                    <Plus size={17} />
+                                <div className="w-[62px] h-[62px] rounded-[18px] flex items-center justify-center text-white/50 bg-[#2c2c2e] border border-dashed border-white/20 hover:border-white/40 hover:bg-[#3a3a3c] transition-all duration-200 group-hover:scale-105 group-active:scale-95">
+                                    <Plus size={24} strokeWidth={2} />
                                 </div>
-                                <span className="text-[10px] text-neutral-700 text-center font-medium truncate w-full px-0.5 group-hover:text-black transition-colors">
-                                    New
+                                <span className="text-[11px] text-white/50 text-center font-medium w-full group-hover:text-white/70 transition-colors">
+                                    Nueva
                                 </span>
                             </button>
                         </div>

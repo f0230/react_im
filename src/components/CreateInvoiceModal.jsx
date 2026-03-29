@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, DollarSign, Calendar, FileText, Briefcase, User, Receipt, Download, AlertCircle } from 'lucide-react';
+import { X, DollarSign, Calendar, FileText, Briefcase, Receipt, Download, AlertCircle, Save, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
+import { fetchExchangeRates, convertToUsd, CURRENCY_OPTIONS } from '@/services/exchangeRateService';
 import MultiUseSelect from './MultiUseSelect';
 
 
@@ -12,11 +13,14 @@ const CreateInvoiceModal = ({
     onCreated,
     projects = [],
     clients = [],
-    initialProjectId = ''
+    initialProjectId = '',
+    editingInvoice = null,
 }) => {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState(null);
+    const isEditing = !!editingInvoice;
     const [formData, setFormData] = useState({
         project_id: initialProjectId,
         client_id: '',
@@ -29,24 +33,38 @@ const CreateInvoiceModal = ({
     });
 
     useEffect(() => {
-        if (isOpen) {
-            // Auto-generate invoice number (simple version)
+        if (!isOpen) return;
+        setError(null);
+
+        if (editingInvoice) {
+            setFormData({
+                project_id: editingInvoice.project_id || '',
+                client_id: editingInvoice.client_id || '',
+                invoice_number: editingInvoice.invoice_number || '',
+                description: editingInvoice.description || '',
+                amount: editingInvoice.amount ?? '',
+                currency: editingInvoice.currency || 'USD',
+                due_date: editingInvoice.due_date ? new Date(editingInvoice.due_date).toISOString().split('T')[0] : '',
+                status: editingInvoice.status || 'pending',
+            });
+        } else {
             const random = Math.floor(1000 + Math.random() * 9000);
             const year = new Date().getFullYear();
-
             setFormData(prev => ({
                 ...prev,
                 project_id: initialProjectId || (projects.length > 0 ? projects[0].id : ''),
+                client_id: '',
                 invoice_number: `INV-${year}-${random}`,
-                due_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 15 days from now
+                due_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
                 amount: '',
-                description: ''
+                description: '',
+                status: 'pending',
             }));
-            setError(null);
         }
-    }, [isOpen, initialProjectId, projects]);
+    }, [isOpen, initialProjectId, projects, editingInvoice]);
 
     useEffect(() => {
+        if (isEditing) return;
         if (formData.project_id) {
             const project = projects.find(p => p.id === formData.project_id);
             if (project) {
@@ -57,19 +75,17 @@ const CreateInvoiceModal = ({
                 }
             }
         }
-    }, [formData.project_id, projects]);
+    }, [formData.project_id, projects, isEditing]);
 
     const filteredClients = useMemo(() => {
         if (!formData.project_id) return clients;
         const project = projects.find(p => p.id === formData.project_id);
         if (!project) return clients;
 
-        // Try to get clients from project_clients (multi-client projects)
         if (project.project_clients && project.project_clients.length > 0) {
             return project.project_clients.map(pc => pc.clients).filter(Boolean);
         }
 
-        // Fallback to project.client_id
         if (project.client_id) {
             return clients.filter(c => c.id === project.client_id);
         }
@@ -107,35 +123,90 @@ const CreateInvoiceModal = ({
 
         try {
             if (!formData.project_id) {
-                throw new Error('Seleccioná un proyecto para asignar la factura.');
+                throw new Error('Selecciona un proyecto para asignar la factura.');
             }
 
-            const { data, error: insertError } = await supabase
-                .from('invoices')
-                .insert([{
-                    ...formData,
-                    description: (formData.description || '').trim(),
-                    amount: parseFloat(formData.amount) || 0,
-                    paid_at: formData.status === 'paid' ? new Date().toISOString() : null,
-                }])
-                .select()
-                .single();
+            const amount = parseFloat(formData.amount) || 0;
+            let amountUsd = amount;
+            let exchangeRate = 1;
 
-            if (insertError) throw insertError;
+            if (formData.currency !== 'USD') {
+                const rates = await fetchExchangeRates();
+                const conversion = convertToUsd(amount, formData.currency, rates);
+                amountUsd = conversion.amountUsd;
+                exchangeRate = conversion.exchangeRate;
+            }
 
-            if (onCreated) onCreated(data);
+            const payload = {
+                ...formData,
+                client_id: formData.client_id || null,
+                description: (formData.description || '').trim(),
+                amount,
+                amount_usd: amountUsd,
+                exchange_rate: exchangeRate,
+            };
+
+            if (isEditing) {
+                const wasPaid = editingInvoice.status === 'paid';
+                const nowPaid = formData.status === 'paid';
+                if (nowPaid && !wasPaid) {
+                    payload.paid_at = new Date().toISOString();
+                } else if (!nowPaid && wasPaid) {
+                    payload.paid_at = null;
+                }
+
+                const { data, error: updateError } = await supabase
+                    .from('invoices')
+                    .update(payload)
+                    .eq('id', editingInvoice.id)
+                    .select()
+                    .single();
+
+                if (updateError) throw updateError;
+                if (onCreated) onCreated(data);
+            } else {
+                payload.paid_at = formData.status === 'paid' ? new Date().toISOString() : null;
+
+                const { data, error: insertError } = await supabase
+                    .from('invoices')
+                    .insert([payload])
+                    .select()
+                    .single();
+
+                if (insertError) throw insertError;
+                if (onCreated) onCreated(data);
+            }
+
             onClose();
         } catch (err) {
-            console.error('Error creating invoice:', err);
-            setError(err.message || 'Error al crear la factura');
+            console.error('Error saving invoice:', err);
+            setError(err.message || 'Error al guardar la factura');
         } finally {
             setLoading(false);
         }
     };
 
-    const labelClass = "text-xs font-black uppercase tracking-widest text-neutral-400 mb-2 block";
-    const inputClass = "w-full bg-white border border-neutral-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-black outline-none transition-all";
-    const selectClass = "w-full bg-white border border-neutral-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-black outline-none appearance-none transition-all";
+    const handleDelete = async () => {
+        if (!editingInvoice) return;
+        setDeleting(true);
+        setError(null);
+
+        try {
+            const { error: deleteError } = await supabase
+                .from('invoices')
+                .delete()
+                .eq('id', editingInvoice.id);
+
+            if (deleteError) throw deleteError;
+            if (onCreated) onCreated(null);
+            onClose();
+        } catch (err) {
+            console.error('Error deleting invoice:', err);
+            setError(err.message || 'Error al eliminar la factura');
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     return (
         <AnimatePresence>
@@ -159,10 +230,10 @@ const CreateInvoiceModal = ({
                                 <div>
                                     <h2 className="text-3xl font-black text-neutral-900 tracking-tight flex items-center gap-3">
                                         <Receipt className="text-skyblue" size={32} />
-                                        {t('dashboard.invoices.create.title')}
+                                        {isEditing ? 'Editar factura' : t('dashboard.invoices.create.title')}
                                     </h2>
                                     <p className="text-neutral-500 font-medium mt-1">
-                                        {t('dashboard.invoices.create.description')}
+                                        {isEditing ? editingInvoice.invoice_number : t('dashboard.invoices.create.description')}
                                     </p>
                                 </div>
                                 <button
@@ -191,21 +262,32 @@ const CreateInvoiceModal = ({
                                         />
                                     </div>
 
-                                    {/* Amount */}
+                                    {/* Amount + Currency */}
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-4 flex items-center gap-2">
                                             <DollarSign size={12} />
-                                            {t('dashboard.invoices.create.amount')} (USD)
+                                            {t('dashboard.invoices.create.amount')}
                                         </label>
-                                        <input
-                                            required
-                                            type="number"
-                                            step="0.01"
-                                            value={formData.amount}
-                                            onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                                            className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-[20px] font-bold focus:ring-2 focus:ring-black outline-none transition-all"
-                                            placeholder="0.00"
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                required
+                                                type="number"
+                                                step="0.01"
+                                                value={formData.amount}
+                                                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                                className="flex-1 px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-[20px] font-bold focus:ring-2 focus:ring-black outline-none transition-all"
+                                                placeholder="0.00"
+                                            />
+                                            <select
+                                                value={formData.currency}
+                                                onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                                                className="w-24 px-3 py-4 bg-neutral-50 border border-neutral-100 rounded-[20px] font-bold text-sm focus:ring-2 focus:ring-black outline-none transition-all text-center"
+                                            >
+                                                {CURRENCY_OPTIONS.map(c => (
+                                                    <option key={c.value} value={c.value}>{c.value}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
 
                                     {/* Project Select */}
@@ -235,7 +317,7 @@ const CreateInvoiceModal = ({
                                             value={formData.description}
                                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-[20px] font-bold focus:ring-2 focus:ring-black outline-none transition-all resize-none"
-                                            placeholder="Descripción del trabajo..."
+                                            placeholder="Descripcion del trabajo..."
                                         />
                                     </div>
 
@@ -275,23 +357,39 @@ const CreateInvoiceModal = ({
                                     </div>
                                 )}
 
-                                <button
-                                    disabled={loading}
-                                    type="submit"
-                                    className="w-full py-4 bg-black text-white rounded-[20px] font-bold shadow-xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                                >
-                                    {loading ? (
-                                        <>
-                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            {t('dashboard.invoices.create.processing')}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Download size={20} />
-                                            {t('dashboard.invoices.create.submit')}
-                                        </>
+                                <div className="flex gap-3">
+                                    {isEditing && (
+                                        <button
+                                            type="button"
+                                            disabled={deleting}
+                                            onClick={handleDelete}
+                                            className="px-5 py-4 bg-red-50 text-red-500 rounded-[20px] font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50 border border-red-100"
+                                        >
+                                            {deleting ? (
+                                                <div className="w-5 h-5 border-2 border-red-300 border-t-red-500 rounded-full animate-spin" />
+                                            ) : (
+                                                <Trash2 size={18} />
+                                            )}
+                                        </button>
                                     )}
-                                </button>
+                                    <button
+                                        disabled={loading}
+                                        type="submit"
+                                        className="flex-1 py-4 bg-black text-white rounded-[20px] font-bold shadow-xl hover:bg-neutral-800 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                {t('dashboard.invoices.create.processing')}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {isEditing ? <Save size={20} /> : <Download size={20} />}
+                                                {isEditing ? 'Guardar cambios' : t('dashboard.invoices.create.submit')}
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </motion.div>
