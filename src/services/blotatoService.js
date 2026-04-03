@@ -26,15 +26,32 @@ export async function syncBlotatoAccounts(projectId) {
   return data;
 }
 
-export async function fetchProjectAccounts(projectId) {
+export async function fetchProjectConfig(projectId) {
   const { data, error } = await supabase
     .from('project_blotato_config')
-    .select('connected_accounts')
+    .select('connected_accounts, assigned_account_ids')
     .eq('project_id', projectId)
     .maybeSingle();
 
   if (error) throw error;
-  return data?.connected_accounts || [];
+  return {
+    allAccounts: data?.connected_accounts || [],
+    assignedAccountIds: data?.assigned_account_ids || []
+  };
+}
+
+export async function saveAssignedAccounts(projectId, accountIds) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from('project_blotato_config')
+    .upsert({
+      project_id: projectId,
+      assigned_account_ids: accountIds,
+      created_by: user?.id,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'project_id' });
+
+  if (error) throw error;
 }
 
 export async function createPost({
@@ -42,11 +59,8 @@ export async function createPost({
   projectId,
   contentText,
   mediaUrls,
-  accountId,
-  platform,
-  targetConfig,
-  scheduling,
-  additionalPosts
+  accounts,   // [{ id, platform, targetConfig }]
+  scheduling
 }) {
   const token = await getToken();
   const res = await fetch(`${API_BASE}/blotato?action=create-post`, {
@@ -60,11 +74,8 @@ export async function createPost({
       projectId,
       contentText,
       mediaUrls,
-      accountId,
-      platform,
-      targetConfig,
-      scheduling,
-      additionalPosts
+      accounts,
+      scheduling
     })
   });
 

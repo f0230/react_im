@@ -11,6 +11,7 @@
  *   DELETE ?action=update-post&postId=...  → Cancel a post
  */
 
+import { randomUUID } from 'crypto';
 import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
 
 const BLOTATO_API_BASE = 'https://backend.blotato.com/v2';
@@ -260,12 +261,17 @@ async function handleCreatePost(req, res, supabase) {
   }
 
   const body = req.body || {};
-  const { serviceId, projectId, contentText, mediaUrls = [], accountId, platform, targetConfig = {}, scheduling = {}, additionalPosts = [] } = body;
+  // accounts: [{ id, platform, targetConfig }] — one entry per Blotato account to post to
+  const { serviceId, projectId, contentText, mediaUrls = [], accounts = [], scheduling = {} } = body;
 
-  if (!serviceId || !projectId) return res.status(400).json({ error: 'serviceId and projectId are required' });
+  if (!projectId) return res.status(400).json({ error: 'projectId is required' });
   if (!contentText?.trim()) return res.status(400).json({ error: 'contentText is required' });
-  if (!accountId || !platform) return res.status(400).json({ error: 'accountId and platform are required' });
-  if (!PLATFORM_TARGET_TYPES[platform]) return res.status(400).json({ error: `Unsupported platform: ${platform}` });
+  if (!accounts.length) return res.status(400).json({ error: 'at least one account is required' });
+
+  for (const acc of accounts) {
+    if (!acc.id || !acc.platform) return res.status(400).json({ error: 'each account must have id and platform' });
+    if (!PLATFORM_TARGET_TYPES[acc.platform]) return res.status(400).json({ error: `Unsupported platform: ${acc.platform}` });
+  }
 
   const auth = await authenticate(req, supabase);
   if (auth.error) return res.status(auth.status).json({ error: auth.error });
@@ -276,73 +282,92 @@ async function handleCreatePost(req, res, supabase) {
   const apiKey = process.env.BLOTATO_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'BLOTATO_API_KEY not configured in environment' });
 
-  try {
-    const blotatoPayload = {
-      post: {
-        accountId,
-        content: {
-          text: contentText.trim(),
-          mediaUrls: mediaUrls || [],
-          platform: PLATFORM_TARGET_TYPES[platform],
-          ...(additionalPosts.length > 0 && { additionalPosts })
-        },
-        target: getTargetConfig(platform, targetConfig)
-      }
-    };
-
-    if (scheduling.type === 'scheduled' && scheduling.time) {
-      blotatoPayload.scheduledTime = scheduling.time;
-    } else if (scheduling.type === 'nextSlot') {
-      blotatoPayload.useNextFreeSlot = true;
-    }
-
-    const blotatoRes = await fetch(`${BLOTATO_API_BASE}/posts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'blotato-api-key': apiKey },
-      body: JSON.stringify(blotatoPayload)
-    });
-
-    const blotatoData = await blotatoRes.json();
-    if (!blotatoRes.ok) return res.status(blotatoRes.status).json({ error: 'Blotato API error', detail: blotatoData });
-
-    const submissionId = blotatoData.postSubmissionId;
-    let initialStatus = 'draft';
-    let scheduledTime = null;
-
-    if (scheduling.type === 'immediate') {
-      initialStatus = 'publishing';
-    } else if (scheduling.type === 'scheduled' && scheduling.time) {
-      initialStatus = 'scheduled';
-      scheduledTime = scheduling.time;
-    } else if (scheduling.type === 'nextSlot') {
-      initialStatus = 'scheduled';
-    }
-
-    const { data: postRecord, error: insertError } = await supabase
-      .from('service_posts')
-      .insert({
-        service_id: serviceId,
-        project_id: projectId,
-        content_text: contentText.trim(),
-        media_urls: mediaUrls || [],
-        account_id: accountId,
-        platform,
-        target_config: targetConfig,
-        status: initialStatus,
-        blotato_submission_id: submissionId,
-        scheduled_time: scheduledTime,
-        created_by: auth.user.id
-      })
-      .select()
-      .single();
-
-    if (insertError) throw insertError;
-
-    return res.status(200).json({ ok: true, post: postRecord, blotatoSubmissionId: submissionId, status: initialStatus });
-  } catch (error) {
-    console.error('Blotato create post error:', error);
-    return res.status(500).json({ error: 'Failed to create post', detail: error.message });
+  // Determine scheduling params once (same for all accounts)
+  let initialStatus = 'draft';
+  let scheduledTime = null;
+  if (scheduling.type === 'immediate') {
+    initialStatus = 'publishing';
+  } else if (scheduling.type === 'scheduled' && scheduling.time) {
+    initialStatus = 'scheduled';
+    scheduledTime = scheduling.time;
+  } else if (scheduling.type === 'nextSlot') {
+    initialStatus = 'scheduled';
   }
+
+  // Group ID shared across all posts created in this batch
+  const postGroupId = randomUUID();
+  const createdPosts = [];
+  const errors = [];
+
+  for (const { id: accountId, platform, targetConfig = {} } of accounts) {
+    try {
+      const blotatoPayload = {
+        post: {
+          accountId,
+          content: {
+            text: contentText.trim(),
+            mediaUrls: mediaUrls || [],
+            platform: PLATFORM_TARGET_TYPES[platform]
+          },
+          target: getTargetConfig(platform, targetConfig)
+        }
+      };
+
+      if (scheduling.type === 'scheduled' && scheduling.time) {
+        blotatoPayload.scheduledTime = scheduling.time;
+      } else if (scheduling.type === 'nextSlot') {
+        blotatoPayload.useNextFreeSlot = true;
+      }
+
+      const blotatoRes = await fetch(`${BLOTATO_API_BASE}/posts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'blotato-api-key': apiKey },
+        body: JSON.stringify(blotatoPayload)
+      });
+
+      const blotatoData = await blotatoRes.json();
+      if (!blotatoRes.ok) {
+        errors.push({ accountId, platform, error: 'Blotato API error', detail: blotatoData });
+        continue;
+      }
+
+      const { data: postRecord, error: insertError } = await supabase
+        .from('service_posts')
+        .insert({
+          service_id: serviceId || null,
+          project_id: projectId,
+          post_group_id: postGroupId,
+          content_text: contentText.trim(),
+          media_urls: mediaUrls || [],
+          account_id: accountId,
+          platform,
+          target_config: targetConfig,
+          status: initialStatus,
+          blotato_submission_id: blotatoData.postSubmissionId,
+          scheduled_time: scheduledTime,
+          created_by: auth.user.id
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      createdPosts.push(postRecord);
+    } catch (err) {
+      console.error(`Error creating post for account ${accountId}:`, err);
+      errors.push({ accountId, platform, error: err.message });
+    }
+  }
+
+  if (createdPosts.length === 0) {
+    return res.status(500).json({ error: 'All posts failed to create', errors });
+  }
+
+  return res.status(200).json({
+    ok: true,
+    posts: createdPosts,
+    postGroupId,
+    errors: errors.length > 0 ? errors : undefined
+  });
 }
 
 async function handleUpdatePost(req, res, supabase) {
