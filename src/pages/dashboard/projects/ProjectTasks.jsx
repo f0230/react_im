@@ -41,6 +41,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import { SocialCalendar } from '@/components/projects/SocialCalendar';
+import { Share2 } from 'lucide-react';
 
 // Figma logo inline SVG component
 function FigmaLogo({ size = 14, className = '' }) {
@@ -231,6 +233,9 @@ const ProjectTasks = () => {
   const [plannerError, setPlannerError] = useState('');
   const [plannerNotice, setPlannerNotice] = useState('');
   const [isPlannerFocusOpen, setIsPlannerFocusOpen] = useState(false);
+  
+  // Project-level tab: 'tareas' | 'publicaciones'
+  const [projectTab, setProjectTab] = useState('tareas');
 
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -1100,17 +1105,48 @@ const ProjectTasks = () => {
             )}
           </div>
 
+          {/* Tab nav: Tareas / Publicaciones */}
+          <div className="px-4 py-3 border-b border-neutral-200/50 bg-white/30 shrink-0">
+            <div className="flex items-center gap-1 bg-neutral-200/50 p-1 rounded-2xl">
+              <button
+                onClick={() => setProjectTab('tareas')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black rounded-xl transition-all ${
+                  projectTab === 'tareas'
+                    ? 'bg-white text-neutral-800 shadow-sm'
+                    : 'text-neutral-400 hover:text-neutral-600'
+                }`}
+              >
+                <Layers size={11} />
+                Tareas
+              </button>
+              <button
+                onClick={() => setProjectTab('publicaciones')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[11px] font-black rounded-xl transition-all ${
+                  projectTab === 'publicaciones'
+                    ? 'bg-white text-neutral-800 shadow-sm'
+                    : 'text-neutral-400 hover:text-neutral-600'
+                }`}
+              >
+                <Share2 size={11} />
+                Publicaciones
+              </button>
+            </div>
+          </div>
+
+          {projectTab === 'tareas' && (
           <div className="flex-1 flex flex-col min-h-0 bg-[#EBEBEB]">
             <div className="p-5 md:p-6 pb-2 flex items-center justify-between">
               <div>
                 <h3 className="text-lg md:text-xl font-bold text-neutral-800">Tareas</h3>
                 <p className="text-[9px] md:text-[10px] text-neutral-500 uppercase tracking-wide">Seguimiento en curso</p>
               </div>
-              {canManage && (
-                <button onClick={() => setIsCreateServiceOpen(!isCreateServiceOpen)} className="p-2 rounded-full bg-black text-white hover:bg-neutral-800 transition-all shadow-md">
-                  {isCreateServiceOpen ? <X size={14} /> : <Plus size={14} />}
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {canManage && (
+                  <button onClick={() => setIsCreateServiceOpen(!isCreateServiceOpen)} className="p-2 rounded-full bg-black text-white hover:bg-neutral-800 transition-all shadow-md">
+                    {isCreateServiceOpen ? <X size={14} /> : <Plus size={14} />}
+                  </button>
+                )}
+              </div>
             </div>
 
             <AnimatePresence>
@@ -1221,6 +1257,7 @@ const ProjectTasks = () => {
               )}
             </div>
           </div>
+          )}
         </motion.div>
 
         {/* RIGHT COLUMN - DETAIL & COMMENTS */}
@@ -1231,7 +1268,10 @@ const ProjectTasks = () => {
           transition={PANEL_SPRING}
           className={`flex-1 flex flex-col bg-[#EBEBEB] rounded-[24px] md:rounded-[32px] overflow-hidden transition-all h-full ${isPlannerFocusOpen ? 'flex' : (mobileView === 'list' ? 'hidden md:flex' : 'flex')}`}
         >
-          {selectedService ? (
+          {/* Publicaciones tab: full social calendar */}
+          {projectTab === 'publicaciones' && !isPlannerFocusOpen ? (
+            <SocialCalendar projectId={selectedProject?.id} canManage={canManage} />
+          ) : selectedService ? (
             <motion.div
               key={`${selectedService.id}-${isPlannerFocusOpen ? 'focus' : 'default'}`}
               initial={{ opacity: 0, x: isPlannerFocusOpen ? 110 : 34 }}
@@ -1987,6 +2027,7 @@ const ProjectTasks = () => {
           )}
         </motion.div>
       </div>
+      
     </div>
   );
 };

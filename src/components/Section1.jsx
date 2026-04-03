@@ -67,7 +67,7 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
                 <AnimatedContent distance={40} direction="vertical" reverse config={{ tension: 120, friction: 14 }} initialOpacity={0} animateOpacity delay={400}>
                   <div className="mx-auto flex flex-nowrap items-end justify-center gap-2 whitespace-nowrap px-3 sm:gap-3 md:gap-4" style={{ color: "#3E3E3E" }}>
                     <span className="text-[26px] font-normal leading-none tracking-[-0.04em] sm:text-[36px] md:text-[45px] lg:text-[45px]" style={{ color: "#3E3E3E" }}>
-                      impulsa tu
+                      {t("section1.titleLine")}
                     </span>
                     <span className="inline-block text-[26px] font-bold leading-none tracking-[-0.04em] sm:text-[36px] md:text-[45px] lg:text-[45px]">
                       <RotatingText
