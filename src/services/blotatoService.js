@@ -13,7 +13,7 @@ async function getToken() {
 
 export async function syncBlotatoAccounts(projectId) {
   const token = await getToken();
-  const res = await fetch(`${API_BASE}/blotato-sync-accounts?projectId=${projectId}`, {
+  const res = await fetch(`${API_BASE}/blotato?action=sync-accounts&projectId=${projectId}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -49,7 +49,7 @@ export async function createPost({
   additionalPosts
 }) {
   const token = await getToken();
-  const res = await fetch(`${API_BASE}/blotato-create-post`, {
+  const res = await fetch(`${API_BASE}/blotato?action=create-post`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -75,7 +75,7 @@ export async function createPost({
 
 export async function checkPostStatus(postId) {
   const token = await getToken();
-  const res = await fetch(`${API_BASE}/blotato-check-status?postId=${postId}`, {
+  const res = await fetch(`${API_BASE}/blotato?action=check-status&postId=${postId}`, {
     method: 'GET',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -90,7 +90,7 @@ export async function checkPostStatus(postId) {
 
 export async function updatePost(postId, updates) {
   const token = await getToken();
-  const res = await fetch(`${API_BASE}/blotato-update-post?postId=${postId}`, {
+  const res = await fetch(`${API_BASE}/blotato?action=update-post&postId=${postId}`, {
     method: 'PATCH',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -106,7 +106,7 @@ export async function updatePost(postId, updates) {
 
 export async function cancelPost(postId) {
   const token = await getToken();
-  const res = await fetch(`${API_BASE}/blotato-update-post?postId=${postId}`, {
+  const res = await fetch(`${API_BASE}/blotato?action=update-post&postId=${postId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
