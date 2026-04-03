@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, Briefcase, FileText, Folder, Pencil, Plus, Users } from 'lucide-react';
+import { BarChart3, Briefcase, CalendarDays, FileText, Folder, Pencil, Plus, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
@@ -533,6 +533,14 @@ const Projects = () => {
                 icon: BarChart3,
                 color: 'indigo',
                 suffix: 'reports',
+            },
+            {
+                key: 'content-planning',
+                label: t('dashboard.projects.detail.tabs.contentPlanning'),
+                description: t('dashboard.projects.cards.contentPlanning'),
+                icon: CalendarDays,
+                color: 'blue',
+                suffix: 'content-planning',
             },
         ];
 

@@ -379,6 +379,7 @@
       "cards": {
         "services": "Tasks, deliverables, and next steps.",
         "reports": "Progress and results reports.",
+        "contentPlanning": "Editorial calendar, publishing flow, and Blotato scheduling.",
         "invoices": "Invoice history and payments."
       },
       "create": {
@@ -482,6 +483,7 @@
         "tabs": {
           "services": "Tasks",
           "reports": "Reports",
+          "contentPlanning": "Content",
           "invoices": "Invoices"
         }
       }

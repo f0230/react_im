@@ -161,7 +161,10 @@ export function CreatePostModal({
 
     // Validate platform-specific required fields
     const facebookAccountsWithoutPage = accounts.filter(
-      a => a.platform === 'facebook' && a.subaccounts?.length > 0 && !subaccountSelections[a.id]
+      a => a.platform === 'facebook'
+        && a.subaccounts?.length > 0
+        && !a.targetConfig?.pageId
+        && !subaccountSelections[a.id]
     );
     if (facebookAccountsWithoutPage.length > 0) {
       setError('Selecciona una página de Facebook para cada cuenta');
@@ -178,7 +181,10 @@ export function CreatePostModal({
 
     try {
       const accountsPayload = accounts.map(account => {
-        const targetConfig = { ...(platformConfigs[account.platform] || {}) };
+        const targetConfig = {
+          ...(account.targetConfig || {}),
+          ...(platformConfigs[account.platform] || {})
+        };
         if (subaccountSelections[account.id]) {
           targetConfig.pageId = subaccountSelections[account.id];
         }
@@ -384,11 +390,15 @@ export function CreatePostModal({
                 <div className="flex flex-wrap gap-2">
                   {accounts.map(account => (
                     <div
-                      key={account.id}
+                      key={`${account.id}-${account.targetConfig?.pageId || 'base'}`}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 bg-neutral-100 rounded-lg"
                     >
                       <PlatformIcon platform={account.platform} size={13} />
-                      <span className="text-xs font-medium text-neutral-700">@{account.username}</span>
+                      <span className="text-xs font-medium text-neutral-700">
+                        {account.targetConfig?.pageId
+                          ? (account.targetConfig?.pageName || account.fullname || account.username)
+                          : (account.username ? `@${account.username}` : (account.fullname || account.platform))}
+                      </span>
                     </div>
                   ))}
                 </div>

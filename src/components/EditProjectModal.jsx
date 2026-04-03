@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Camera, Link as LinkIcon, Save, MessageSquare } from 'lucide-react';
+import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
+import { BlotatoConfigModal } from '@/components/projects/BlotatoConfigModal';
 
 const EditProjectModal = ({
     isOpen,
@@ -25,6 +27,12 @@ const EditProjectModal = ({
     const [error, setError] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [linkedChannel, setLinkedChannel] = useState(null);
+    const [isBlotatoConfigOpen, setIsBlotatoConfigOpen] = useState(false);
+    const {
+        allAccounts,
+        assignedAccounts,
+        syncing: blotatoSyncing,
+    } = useBlotatoAccounts(project?.id);
 
     useEffect(() => {
         if (isOpen && project) {
@@ -264,6 +272,32 @@ const EditProjectModal = ({
                                                 </div>
                                             </div>
 
+                                            <div className="rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <Share2 size={16} className="text-neutral-400 shrink-0" />
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Blotato</p>
+                                                        <p className="text-xs font-semibold text-neutral-700 truncate">
+                                                            {assignedAccounts.length > 0
+                                                                ? `${assignedAccounts.length} destino${assignedAccounts.length !== 1 ? 's' : ''} asignado${assignedAccounts.length !== 1 ? 's' : ''}`
+                                                                : allAccounts.length > 0
+                                                                    ? `${allAccounts.length} cuenta${allAccounts.length !== 1 ? 's' : ''} disponible${allAccounts.length !== 1 ? 's' : ''}`
+                                                                    : 'Sin cuentas sincronizadas'}
+                                                        </p>
+                                                        <p className="text-[11px] text-neutral-400">
+                                                            Configurá qué cuentas usa este proyecto para publicar contenido.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsBlotatoConfigOpen(true)}
+                                                    className="shrink-0 text-[11px] font-semibold text-neutral-600 hover:text-black underline underline-offset-2 transition"
+                                                >
+                                                    {blotatoSyncing ? 'Sincronizando…' : 'Configurar →'}
+                                                </button>
+                                            </div>
+
                                             {/* TeamChat Channel */}
                                             <div className="rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3 flex items-center justify-between gap-3">
                                                 <div className="flex items-center gap-2 min-w-0">
@@ -313,6 +347,14 @@ const EditProjectModal = ({
                                                 </button>
                                             </div>
                                         </form>
+
+                                        {project?.id && (
+                                            <BlotatoConfigModal
+                                                projectId={project.id}
+                                                isOpen={isBlotatoConfigOpen}
+                                                onClose={() => setIsBlotatoConfigOpen(false)}
+                                            />
+                                        )}
                                     </div>
                                 </motion.div>
                             </div>

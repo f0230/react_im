@@ -29,24 +29,29 @@ export async function syncBlotatoAccounts(projectId) {
 export async function fetchProjectConfig(projectId) {
   const { data, error } = await supabase
     .from('project_blotato_config')
-    .select('connected_accounts, assigned_account_ids')
+    .select('connected_accounts, assigned_account_ids, assigned_accounts')
     .eq('project_id', projectId)
     .maybeSingle();
 
   if (error) throw error;
   return {
     allAccounts: data?.connected_accounts || [],
-    assignedAccountIds: data?.assigned_account_ids || []
+    assignedAccountIds: data?.assigned_account_ids || [],
+    assignedAccounts: data?.assigned_accounts || []
   };
 }
 
-export async function saveAssignedAccounts(projectId, accountIds) {
+export async function saveAssignedAccounts(projectId, assignedAccounts) {
   const { data: { user } } = await supabase.auth.getUser();
+  const accountIds = Array.from(
+    new Set((assignedAccounts || []).map((account) => account?.id).filter(Boolean))
+  );
   const { error } = await supabase
     .from('project_blotato_config')
     .upsert({
       project_id: projectId,
       assigned_account_ids: accountIds,
+      assigned_accounts: assignedAccounts || [],
       created_by: user?.id,
       updated_at: new Date().toISOString()
     }, { onConflict: 'project_id' });

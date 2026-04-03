@@ -16,6 +16,7 @@ import {
 export function useBlotatoAccounts(projectId) {
   const [allAccounts, setAllAccounts] = useState([]);
   const [assignedAccountIds, setAssignedAccountIds] = useState([]);
+  const [assignedAccounts, setAssignedAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -25,9 +26,25 @@ export function useBlotatoAccounts(projectId) {
     if (!projectId) return;
     try {
       setLoading(true);
-      const { allAccounts: all, assignedAccountIds: assigned } = await fetchProjectConfig(projectId);
+      const {
+        allAccounts: all,
+        assignedAccountIds: assigned,
+        assignedAccounts: assignedTargets
+      } = await fetchProjectConfig(projectId);
       setAllAccounts(all);
       setAssignedAccountIds(assigned);
+      setAssignedAccounts(
+        assignedTargets?.length
+          ? assignedTargets
+          : all.filter((account) => assigned.includes(account.id)).map((account) => ({
+              id: account.id,
+              platform: account.platform,
+              username: account.username || '',
+              fullname: account.fullname || '',
+              profileImageUrl: account.profileImageUrl || '',
+              targetConfig: {},
+            }))
+      );
       setError(null);
     } catch (err) {
       console.error('Error loading Blotato config:', err);
@@ -54,13 +71,14 @@ export function useBlotatoAccounts(projectId) {
     }
   }, [projectId]);
 
-  const saveAssignments = useCallback(async (accountIds) => {
+  const saveAssignments = useCallback(async (accountTargets) => {
     if (!projectId) return;
     try {
       setSaving(true);
       setError(null);
-      await saveAssignedAccounts(projectId, accountIds);
-      setAssignedAccountIds(accountIds);
+      await saveAssignedAccounts(projectId, accountTargets);
+      setAssignedAccounts(accountTargets);
+      setAssignedAccountIds(Array.from(new Set((accountTargets || []).map((account) => account?.id).filter(Boolean))));
     } catch (err) {
       console.error('Error saving account assignments:', err);
       setError(err.message);
@@ -75,10 +93,8 @@ export function useBlotatoAccounts(projectId) {
   }, [loadConfig]);
 
   // Cuentas asignadas a este proyecto
-  const assignedAccounts = allAccounts.filter(a => assignedAccountIds.includes(a.id));
-
   // Para publicar: usa las asignadas; si ninguna fue configurada aún, usa todas
-  const accountsForPosting = assignedAccountIds.length > 0 ? assignedAccounts : allAccounts;
+  const accountsForPosting = assignedAccounts.length > 0 ? assignedAccounts : allAccounts;
 
   // Agrupar por plataforma (todas)
   const allAccountsByPlatform = allAccounts.reduce((acc, a) => {
@@ -95,7 +111,7 @@ export function useBlotatoAccounts(projectId) {
     assignedAccountIds,
     allAccountsByPlatform,
     // Derived
-    hasAssignments: assignedAccountIds.length > 0,
+    hasAssignments: assignedAccounts.length > 0 || assignedAccountIds.length > 0,
     // Status
     loading,
     syncing,

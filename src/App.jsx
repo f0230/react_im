@@ -29,6 +29,7 @@ const Clients = lazyRoute(routeKeys.clients);
 const ClientDetail = lazyRoute(routeKeys.clientDetail);
 const Projects = lazyRoute(routeKeys.projects);
 const ProjectTasks = lazyRoute(routeKeys.projectTasks);
+const ProjectContentPlanning = lazyRoute(routeKeys.projectContentPlanning);
 const ProjectReports = lazyRoute(routeKeys.projectReports);
 const ProjectIntegrations = lazyRoute(routeKeys.projectIntegrations);
 const ClientAppointments = lazyRoute(routeKeys.clientAppointments);
@@ -72,17 +73,19 @@ const AppContent = () => {
     const publicCandidates = ["/servicios", "/dte", "/contacto", "/nosotros"];
 
     let routes = publicCandidates;
-    if (isAuthenticated || isDashboardPath) {
+      if (isAuthenticated || isDashboardPath) {
       if (path.startsWith("/dashboard/reports")) {
         routes = ["/dashboard/projects", "/dashboard/tasks"];
+      } else if (path.startsWith("/dashboard/content-planning")) {
+        routes = ["/dashboard/projects", "/dashboard/tasks", "/dashboard/reports"];
       } else if (path.startsWith("/dashboard/tasks")) {
-        routes = ["/dashboard/projects", "/dashboard/reports"];
+        routes = ["/dashboard/projects", "/dashboard/reports", "/dashboard/content-planning"];
       } else if (path.startsWith("/dashboard/projects")) {
-        routes = ["/dashboard/tasks", "/dashboard/reports"];
+        routes = ["/dashboard/tasks", "/dashboard/reports", "/dashboard/content-planning"];
       } else if (path.startsWith("/dashboard/inbox") || path.startsWith("/dashboard/messages")) {
         routes = ["/dashboard/projects", "/dashboard/reports"];
       } else {
-        routes = ["/dashboard/projects", "/dashboard/tasks", "/dashboard/reports"];
+        routes = ["/dashboard/projects", "/dashboard/tasks", "/dashboard/reports", "/dashboard/content-planning"];
       }
     }
 
@@ -177,6 +180,7 @@ const AppContent = () => {
             <Route path="clients" element={<Clients />} />
             <Route path="clients/:clientId" element={<ClientDetail />} />
             <Route path="tasks" element={<ProjectTasks />} />
+            <Route path="content-planning" element={<ProjectContentPlanning />} />
             <Route path="reports" element={<ProjectReports />} />
             <Route path="integrations" element={<ProjectIntegrations />} />
             <Route path="invoices" element={<Invoices />} />

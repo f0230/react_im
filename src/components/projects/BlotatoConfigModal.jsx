@@ -16,8 +16,7 @@ import { PlatformIcon } from './PlatformIcon';
 export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
   const {
     allAccounts,
-    assignedAccountIds,
-    allAccountsByPlatform,
+    assignedAccounts,
     loading,
     syncing,
     saving,
@@ -30,13 +29,51 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
   const [selected, setSelected] = useState(new Set());
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  const selectableTargets = allAccounts.flatMap((account) => {
+    if (['facebook', 'linkedin'].includes(account.platform) && account.subaccounts?.length > 0) {
+      return account.subaccounts.map((subaccount) => ({
+        key: `${account.id}::${subaccount.id}`,
+        accountId: account.id,
+        platform: account.platform,
+        username: account.username,
+        fullname: account.fullname,
+        profileImageUrl: account.profileImageUrl,
+        label: subaccount.name,
+        helper: `Page ID: ${subaccount.id}`,
+        targetConfig: { pageId: subaccount.id, pageName: subaccount.name },
+      }));
+    }
+
+    return [{
+      key: account.id,
+      accountId: account.id,
+      platform: account.platform,
+      username: account.username,
+      fullname: account.fullname,
+      profileImageUrl: account.profileImageUrl,
+      label: account.fullname || account.username,
+      helper: account.username ? `@${account.username}` : `Account ID: ${account.id}`,
+      targetConfig: {},
+    }];
+  });
+
+  const targetsByPlatform = selectableTargets.reduce((acc, target) => {
+    if (!acc[target.platform]) acc[target.platform] = [];
+    acc[target.platform].push(target);
+    return acc;
+  }, {});
+
   // Sync local state when modal opens or assignedAccountIds changes
   useEffect(() => {
     if (isOpen) {
-      setSelected(new Set(assignedAccountIds));
+      const selectedKeys = assignedAccounts.map((account) => {
+        const pageId = account?.targetConfig?.pageId;
+        return pageId ? `${account.id}::${pageId}` : account.id;
+      });
+      setSelected(new Set(selectedKeys));
       setSaveSuccess(false);
     }
-  }, [isOpen, assignedAccountIds]);
+  }, [isOpen, assignedAccounts]);
 
   const toggle = (id) => {
     setSelected(prev => {
@@ -58,7 +95,18 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
 
   const handleSave = async () => {
     try {
-      await saveAssignments(Array.from(selected));
+      const selectedTargets = selectableTargets
+        .filter((target) => selected.has(target.key))
+        .map((target) => ({
+          id: target.accountId,
+          platform: target.platform,
+          username: target.username || '',
+          fullname: target.fullname || '',
+          profileImageUrl: target.profileImageUrl || '',
+          targetConfig: target.targetConfig || {},
+        }));
+
+      await saveAssignments(selectedTargets);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch {
@@ -66,11 +114,17 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
     }
   };
 
-  const hasChanges = JSON.stringify([...selected].sort()) !== JSON.stringify([...assignedAccountIds].sort());
+  const assignedKeys = assignedAccounts
+    .map((account) => {
+      const pageId = account?.targetConfig?.pageId;
+      return pageId ? `${account.id}::${pageId}` : account.id;
+    })
+    .sort();
+  const hasChanges = JSON.stringify([...selected].sort()) !== JSON.stringify(assignedKeys);
 
   if (!isOpen) return null;
 
-  const platforms = Object.keys(allAccountsByPlatform);
+  const platforms = Object.keys(targetsByPlatform);
 
   return (
     <AnimatePresence>
@@ -78,7 +132,7 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[220] flex items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
@@ -97,6 +151,7 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
               </p>
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
             >
@@ -108,10 +163,11 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
           <div className="flex items-center justify-between px-6 py-3 bg-neutral-50 border-b border-neutral-100">
             <span className="text-xs text-neutral-500 font-medium">
               {allAccounts.length > 0
-                ? `${allAccounts.length} cuenta${allAccounts.length !== 1 ? 's' : ''} disponible${allAccounts.length !== 1 ? 's' : ''} en Blotato`
+                ? `${selectableTargets.length} destino${selectableTargets.length !== 1 ? 's' : ''} disponible${selectableTargets.length !== 1 ? 's' : ''} en Blotato`
                 : 'Sincronizá para ver las cuentas disponibles'}
             </span>
             <button
+              type="button"
               onClick={handleSync}
               disabled={syncing}
               className="flex items-center gap-1.5 text-xs font-bold text-neutral-600 hover:text-black transition-colors"
@@ -132,7 +188,7 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
                 <AlertCircle size={14} />
                 {error}
               </div>
-            ) : allAccounts.length === 0 ? (
+            ) : selectableTargets.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center px-6">
                 <div className="w-12 h-12 rounded-2xl bg-neutral-100 flex items-center justify-center mb-3">
                   <Users size={20} className="text-neutral-300" />
@@ -153,22 +209,27 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
                       </span>
                     </div>
                     <div className="space-y-1.5">
-                      {allAccountsByPlatform[platform].map(account => {
-                        const isSelected = selected.has(account.id);
+                      {targetsByPlatform[platform].map(target => {
+                        const isSelected = selected.has(target.key);
                         return (
                           <button
-                            key={account.id}
-                            onClick={() => toggle(account.id)}
-                            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
+                            type="button"
+                            key={target.key}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              toggle(target.key);
+                            }}
+                            className={`w-full cursor-pointer flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${
                               isSelected
                                 ? 'bg-black border-black'
                                 : 'bg-white border-neutral-150 hover:border-neutral-300'
                             }`}
                           >
                             {/* Avatar */}
-                            {account.profileImageUrl ? (
+                            {target.profileImageUrl ? (
                               <img
-                                src={account.profileImageUrl}
+                                src={target.profileImageUrl}
                                 alt=""
                                 className="w-9 h-9 rounded-full object-cover shrink-0"
                               />
@@ -176,17 +237,17 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
                               <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-sm font-black ${
                                 isSelected ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500'
                               }`}>
-                                {(account.fullname || account.username || '?')[0].toUpperCase()}
+                                {(target.fullname || target.username || '?')[0].toUpperCase()}
                               </div>
                             )}
 
                             {/* Info */}
                             <div className="flex-1 min-w-0">
                               <p className={`text-sm font-bold truncate ${isSelected ? 'text-white' : 'text-neutral-800'}`}>
-                                {account.fullname || account.username}
+                                {target.label}
                               </p>
                               <p className={`text-[11px] ${isSelected ? 'text-white/60' : 'text-neutral-400'}`}>
-                                @{account.username}
+                                {target.helper}
                               </p>
                             </div>
 
@@ -208,12 +269,14 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
                 {/* Select all / none shortcuts */}
                 <div className="flex items-center justify-between pt-2 border-t border-neutral-100">
                   <button
-                    onClick={() => setSelected(new Set(allAccounts.map(a => a.id)))}
+                    type="button"
+                    onClick={() => setSelected(new Set(selectableTargets.map((target) => target.key)))}
                     className="text-[11px] font-bold text-neutral-400 hover:text-neutral-700 transition-colors"
                   >
                     Seleccionar todas
                   </button>
                   <button
+                    type="button"
                     onClick={() => setSelected(new Set())}
                     className="text-[11px] font-bold text-neutral-400 hover:text-neutral-700 transition-colors"
                   >
@@ -248,12 +311,14 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
                 </motion.span>
               )}
               <button
+                type="button"
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-bold text-neutral-500 hover:text-neutral-700 transition-colors"
               >
                 Cerrar
               </button>
               <button
+                type="button"
                 onClick={handleSave}
                 disabled={saving || !hasChanges}
                 className="flex items-center gap-2 px-5 py-2 bg-black text-white rounded-xl text-sm font-black disabled:opacity-40 disabled:cursor-not-allowed hover:bg-neutral-800 transition-all shadow-sm"

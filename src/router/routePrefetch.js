@@ -35,6 +35,7 @@ export const routeKeys = Object.freeze({
     clientDetail: 'clientDetail',
     projects: 'projects',
     projectTasks: 'projectTasks',
+    projectContentPlanning: 'projectContentPlanning',
     projectReports: 'projectReports',
     projectIntegrations: 'projectIntegrations',
     invoices: 'invoices',
@@ -72,6 +73,7 @@ const routeImporters = {
     [routeKeys.clientDetail]: once(() => import('@/pages/dashboard/crm/ClientDetail')),
     [routeKeys.projects]: once(() => import('@/pages/dashboard/projects/Projects')),
     [routeKeys.projectTasks]: once(() => import('@/pages/dashboard/projects/ProjectTasks')),
+    [routeKeys.projectContentPlanning]: once(() => import('@/pages/dashboard/projects/ProjectContentPlanning')),
     [routeKeys.projectReports]: once(() => import('@/pages/dashboard/projects/ProjectReports')),
     [routeKeys.projectIntegrations]: once(() => import('@/pages/dashboard/projects/ProjectIntegrations')),
     [routeKeys.invoices]: once(() => import('@/pages/dashboard/invoices/Invoices')),
@@ -107,6 +109,7 @@ const pathKeyMap = new Map([
     ['/dashboard', routeKeys.dashboardHome],
     ['/dashboard/clients', routeKeys.clients],
     ['/dashboard/tasks', routeKeys.projectTasks],
+    ['/dashboard/content-planning', routeKeys.projectContentPlanning],
     ['/dashboard/reports', routeKeys.projectReports],
     ['/dashboard/integrations', routeKeys.projectIntegrations],
     ['/dashboard/invoices', routeKeys.invoices],
@@ -155,6 +158,7 @@ const resolveRouteKey = (to) => {
     if (path.startsWith('/meet/')) return routeKeys.scheduleCall;
     if (path.startsWith('/dashboard/clients/')) return routeKeys.clientDetail;
     if (path.startsWith('/dashboard/finances')) return routeKeys.financesDashboard;
+    if (path.startsWith('/dashboard/content-planning')) return routeKeys.projectContentPlanning;
     if (path.startsWith('/dashboard/projects/') && path.endsWith('/integrations')) return routeKeys.projectIntegrations;
     if (path.startsWith('/dashboard/projects/')) return routeKeys.projects;
 
