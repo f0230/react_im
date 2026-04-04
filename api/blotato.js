@@ -99,6 +99,16 @@ function getBlotatoErrorMessage(payload, platform) {
   return message;
 }
 
+function getPublishedTimestamp(post, blotatoData) {
+  return (
+    normalizeOptionalString(blotatoData?.publishedAt)
+    || normalizeOptionalString(blotatoData?.published_at)
+    || normalizeOptionalString(post?.scheduled_time)
+    || normalizeOptionalString(post?.published_at)
+    || new Date().toISOString()
+  );
+}
+
 function ensurePlatformConsistency(contentPlatform, targetType) {
   if (contentPlatform !== targetType) {
     throw new Error(`content.platform must match target.targetType for ${contentPlatform}`);
@@ -293,7 +303,7 @@ async function handleCheckStatus(req, res, supabase) {
     switch (blotatoData.status) {
       case 'published':
         newStatus = 'published';
-        updates.published_at = new Date().toISOString();
+        updates.published_at = getPublishedTimestamp(post, blotatoData);
         updates.public_url = blotatoData.publicUrl || null;
         break;
       case 'failed':

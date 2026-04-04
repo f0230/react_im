@@ -48,8 +48,14 @@ function parsePostDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function getPublishedDisplayDate(post) {
+  return parsePostDate(post.scheduled_time)
+    || parsePostDate(post.published_at)
+    || parsePostDate(post.created_at);
+}
+
 function getPostTimeline(post) {
-  const publishedAt = parsePostDate(post.published_at);
+  const publishedAt = getPublishedDisplayDate(post);
   const scheduledTime = parsePostDate(post.scheduled_time);
   const updatedAt = parsePostDate(post.updated_at);
   const createdAt = parsePostDate(post.created_at);
@@ -87,7 +93,7 @@ function sortPostsDesc(a, b) {
 
 function getPostDateLabel(post, { compact = false } = {}) {
   const pattern = compact ? "d MMM · HH:mm" : "d 'de' MMMM · HH:mm";
-  const publishedAt = parsePostDate(post.published_at);
+  const publishedAt = getPublishedDisplayDate(post);
   const scheduledTime = parsePostDate(post.scheduled_time);
   const updatedAt = parsePostDate(post.updated_at);
   const createdAt = parsePostDate(post.created_at);
@@ -197,7 +203,7 @@ function PostDrawer({ post, onClose }) {
 
   const createdAt = parsePostDate(post.created_at);
   const scheduledTime = parsePostDate(post.scheduled_time);
-  const publishedAt = parsePostDate(post.published_at);
+  const publishedAt = getPublishedDisplayDate(post);
 
   return (
     <motion.div
