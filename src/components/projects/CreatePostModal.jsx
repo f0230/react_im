@@ -90,9 +90,17 @@ const ACCEPTED_MEDIA = 'image/jpeg,image/png,image/gif,image/webp,video/mp4,vide
 const ACCEPTED_IMAGE_MEDIA = 'image/jpeg,image/png,image/gif,image/webp';
 const INPUT_CLASSNAME = 'w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-2.5 text-sm text-neutral-700 outline-none transition-colors placeholder:text-neutral-400 focus:border-black';
 const TEXTAREA_CLASSNAME = `${INPUT_CLASSNAME} resize-none`;
+const INSTAGRAM_VIDEO_MAX_BYTES = 100 * 1024 * 1024;
+const INSTAGRAM_COVER_MAX_BYTES = 8 * 1024 * 1024;
+const INSTAGRAM_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/quicktime']);
 
 function isVideoUrl(url = '') {
   return /\.(mp4|mov|webm)$/i.test(url);
+}
+
+function formatBytes(bytes = 0) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function parseCollaborators(value) {
@@ -207,7 +215,9 @@ export function CreatePostModal({
   const [instagramCoverUpload, setInstagramCoverUpload] = useState({
     uploading: false,
     error: null,
-    fileName: ''
+    fileName: '',
+    mimeType: '',
+    sizeBytes: 0
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -224,7 +234,7 @@ export function CreatePostModal({
     setPlatformConfigs({});
     setSubaccountSelections({});
     setOpenPlatformSections({});
-    setInstagramCoverUpload({ uploading: false, error: null, fileName: '' });
+    setInstagramCoverUpload({ uploading: false, error: null, fileName: '', mimeType: '', sizeBytes: 0 });
     setError(null);
   }, [isOpen, initialContent, initialDate]);
 
@@ -275,6 +285,8 @@ export function CreatePostModal({
     : accounts;
 
   const activePlatforms = [...new Set(activeAccounts.map((account) => account.platform))];
+  const hasInstagramTarget = activePlatforms.includes('instagram');
+  const primaryVideoItem = uploadedVideoItems[0] || null;
 
   useEffect(() => {
     if (contentFormat === 'story' && !supportsStoryFormat) {
@@ -316,7 +328,9 @@ export function CreatePostModal({
       url: null,
       uploading: true,
       error: null,
-      isVideo: file.type.startsWith('video/')
+      isVideo: file.type.startsWith('video/'),
+      mimeType: file.type || '',
+      sizeBytes: Number(file.size || 0)
     }));
 
     setMediaItems((prev) => [...prev, ...placeholders]);
@@ -356,7 +370,9 @@ export function CreatePostModal({
     setInstagramCoverUpload({
       uploading: true,
       error: null,
-      fileName: file.name
+      fileName: file.name,
+      mimeType: file.type || '',
+      sizeBytes: Number(file.size || 0)
     });
 
     try {
@@ -365,13 +381,17 @@ export function CreatePostModal({
       setInstagramCoverUpload({
         uploading: false,
         error: null,
-        fileName: file.name
+        fileName: file.name,
+        mimeType: file.type || '',
+        sizeBytes: Number(file.size || 0)
       });
     } catch (uploadError) {
       setInstagramCoverUpload({
         uploading: false,
         error: uploadError.message,
-        fileName: file.name
+        fileName: file.name,
+        mimeType: file.type || '',
+        sizeBytes: Number(file.size || 0)
       });
     } finally {
       event.target.value = '';
@@ -387,7 +407,9 @@ export function CreatePostModal({
     setInstagramCoverUpload({
       uploading: false,
       error: null,
-      fileName: ''
+      fileName: '',
+      mimeType: '',
+      sizeBytes: 0
     });
   };
 
@@ -459,6 +481,20 @@ export function CreatePostModal({
       return 'Instagram permite hasta 3 colaboradores.';
     }
 
+    if (hasInstagramTarget && primaryVideoItem) {
+      if (primaryVideoItem.mimeType && !INSTAGRAM_VIDEO_MIME_TYPES.has(primaryVideoItem.mimeType)) {
+        return 'Instagram acepta reels y videos solo en formato MP4 o MOV. Vuelve a subir el archivo en uno de esos formatos.';
+      }
+
+      if (primaryVideoItem.sizeBytes > INSTAGRAM_VIDEO_MAX_BYTES) {
+        return `Instagram permite videos de hasta 100 MB. El archivo actual pesa ${formatBytes(primaryVideoItem.sizeBytes)}.`;
+      }
+    }
+
+    if (hasInstagramTarget && contentFormat === 'reel' && instagramCoverUpload.sizeBytes > INSTAGRAM_COVER_MAX_BYTES) {
+      return `La portada del reel para Instagram no puede superar 8 MB. La portada actual pesa ${formatBytes(instagramCoverUpload.sizeBytes)}.`;
+    }
+
     if (activeAccounts.some((account) => account.platform === 'pinterest') && !platformConfigs.pinterest?.boardId?.trim()) {
       return 'Completa el Board ID de Pinterest.';
     }
@@ -492,6 +528,14 @@ export function CreatePostModal({
             targetConfig.mediaType = 'reel';
           } else {
             delete targetConfig.mediaType;
+          }
+
+          if (uploadedVideoCount > 0) {
+            delete targetConfig.altText;
+          }
+
+          if (targetConfig.shareToFeed !== true) {
+            delete targetConfig.shareToFeed;
           }
         }
 
@@ -529,8 +573,10 @@ export function CreatePostModal({
       });
 
       if (result.errors?.length) {
-        const failedPlatforms = result.errors.map((item) => getPlatformName(item.platform)).join(', ');
-        setError(`Se creo la publicacion en ${result.posts.length} cuenta(s), pero fallaron: ${failedPlatforms}.`);
+        const failedDetails = result.errors
+          .map((item) => `${getPlatformName(item.platform)}: ${item.error}`)
+          .join(' · ');
+        setError(`Se creo la publicacion en ${result.posts.length} cuenta(s), pero hubo fallos. ${failedDetails}`);
         return;
       }
 
@@ -845,6 +891,10 @@ export function CreatePostModal({
 
                       {contentFormat === 'reel' ? (
                         <>
+                          <p className="rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-xs text-neutral-600">
+                            Para Instagram, el reel conviene subirlo en MP4 o MOV y con un peso menor a 100 MB. Si Instagram rechaza sin detalle, normalmente viene por formato, tamaño o salud de la cuenta conectada.
+                          </p>
+
                           <div className="space-y-2">
                             <label className="text-sm font-medium text-neutral-700">Portada del reel</label>
                             <input
@@ -869,6 +919,11 @@ export function CreatePostModal({
                                     <p className="text-xs text-neutral-500">
                                       Se sube como archivo y luego se envia a Blotato como `coverImageUrl`.
                                     </p>
+                                    {instagramCoverUpload.sizeBytes > 0 ? (
+                                      <p className="text-[11px] text-neutral-400">
+                                        {formatBytes(instagramCoverUpload.sizeBytes)} · maximo recomendado 8 MB
+                                      </p>
+                                    ) : null}
                                   </div>
                                   <div className="flex shrink-0 items-center gap-2">
                                     <button

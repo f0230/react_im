@@ -36,10 +36,6 @@ function normalizeOptionalString(value) {
   return trimmed || undefined;
 }
 
-function normalizeBoolean(value) {
-  return typeof value === 'boolean' ? value : undefined;
-}
-
 function normalizeCollaborators(value) {
   const rawValues = Array.isArray(value)
     ? value
@@ -60,6 +56,47 @@ function normalizeMediaUrls(mediaUrls = []) {
   return mediaUrls
     .map((url) => normalizeOptionalString(url))
     .filter(Boolean);
+}
+
+function isVideoMediaUrl(url = '') {
+  return /\.(mp4|mov|webm)(\?.*)?$/i.test(String(url || ''));
+}
+
+function stringifyBlotatoError(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value.trim();
+  if (Array.isArray(value)) {
+    return value.map((item) => stringifyBlotatoError(item)).filter(Boolean).join(' · ');
+  }
+  if (typeof value === 'object') {
+    return [
+      value.errorMessage,
+      value.message,
+      value.error,
+      value.detail,
+      value.reason,
+      value.description,
+    ]
+      .map((item) => stringifyBlotatoError(item))
+      .filter(Boolean)
+      .join(' · ');
+  }
+  return String(value).trim();
+}
+
+function getFallbackPlatformError(platform) {
+  if (platform === 'instagram') {
+    return 'Instagram rechazo la publicacion sin detalle. Revisa que la cuenta siga conectada en Blotato y que el video sea MP4 o MOV, publico y menor a 100 MB.';
+  }
+  return 'La plataforma rechazo la publicacion y no devolvio un detalle util.';
+}
+
+function getBlotatoErrorMessage(payload, platform) {
+  const message = stringifyBlotatoError(payload);
+  if (!message || /^(undefined|null|no error)$/i.test(message)) {
+    return getFallbackPlatformError(platform);
+  }
+  return message;
 }
 
 function ensurePlatformConsistency(contentPlatform, targetType) {
@@ -116,16 +153,17 @@ function getTargetConfig(platform, customConfig = {}, mediaUrls = []) {
     case 'linkedin':
       return customConfig.pageId ? { ...base, pageId: customConfig.pageId } : base;
     case 'instagram': {
+      const hasVideoMedia = mediaUrls.some((url) => isVideoMediaUrl(url));
       const requestedMediaType = normalizeOptionalString(customConfig.mediaType);
       const mediaType = requestedMediaType === 'story'
         ? 'story'
         : requestedMediaType === 'reel'
           ? 'reel'
           : undefined;
-      const altText = normalizeOptionalString(customConfig.altText);
+      const altText = hasVideoMedia ? undefined : normalizeOptionalString(customConfig.altText);
       const collaborators = normalizeCollaborators(customConfig.collaborators);
       const coverImageUrl = normalizeOptionalString(customConfig.coverImageUrl);
-      const shareToFeed = normalizeBoolean(customConfig.shareToFeed);
+      const shareToFeed = customConfig.shareToFeed === true ? true : undefined;
       const audioName = normalizeOptionalString(customConfig.audioName);
 
       return {
@@ -260,7 +298,7 @@ async function handleCheckStatus(req, res, supabase) {
         break;
       case 'failed':
         newStatus = 'failed';
-        updates.error_message = blotatoData.errorMessage || 'Unknown error';
+        updates.error_message = getBlotatoErrorMessage(blotatoData, post.platform);
         break;
       case 'in-progress':
         if (post.status === 'draft') newStatus = 'publishing';
@@ -414,7 +452,12 @@ async function handleCreatePost(req, res, supabase) {
 
       const blotatoData = await blotatoRes.json();
       if (!blotatoRes.ok) {
-        errors.push({ accountId, platform, error: 'Blotato API error', detail: blotatoData });
+        errors.push({
+          accountId,
+          platform,
+          error: getBlotatoErrorMessage(blotatoData, platform),
+          detail: blotatoData
+        });
         continue;
       }
 
