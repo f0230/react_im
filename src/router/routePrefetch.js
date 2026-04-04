@@ -108,6 +108,7 @@ const pathKeyMap = new Map([
     ['/meet', routeKeys.scheduleCall],
     ['/dashboard', routeKeys.dashboardHome],
     ['/dashboard/clients', routeKeys.clients],
+    ['/dashboard/services', routeKeys.projectTasks],
     ['/dashboard/tasks', routeKeys.projectTasks],
     ['/dashboard/content-planning', routeKeys.projectContentPlanning],
     ['/dashboard/reports', routeKeys.projectReports],
@@ -159,6 +160,7 @@ const resolveRouteKey = (to) => {
     if (path.startsWith('/dashboard/clients/')) return routeKeys.clientDetail;
     if (path.startsWith('/dashboard/finances')) return routeKeys.financesDashboard;
     if (path.startsWith('/dashboard/content-planning')) return routeKeys.projectContentPlanning;
+    if (path.startsWith('/dashboard/projects/') && path.endsWith('/services')) return routeKeys.projectTasks;
     if (path.startsWith('/dashboard/projects/') && path.endsWith('/integrations')) return routeKeys.projectIntegrations;
     if (path.startsWith('/dashboard/projects/')) return routeKeys.projects;
 

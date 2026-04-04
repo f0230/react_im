@@ -30,6 +30,44 @@ const PLATFORM_TARGET_TYPES = {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+function normalizeOptionalString(value) {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
+function normalizeBoolean(value) {
+  return typeof value === 'boolean' ? value : undefined;
+}
+
+function normalizeCollaborators(value) {
+  const rawValues = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(',')
+      : [];
+
+  const collaborators = rawValues
+    .map((item) => String(item || '').replace(/^@+/, '').trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  return collaborators.length > 0 ? collaborators : undefined;
+}
+
+function normalizeMediaUrls(mediaUrls = []) {
+  if (!Array.isArray(mediaUrls)) return [];
+  return mediaUrls
+    .map((url) => normalizeOptionalString(url))
+    .filter(Boolean);
+}
+
+function ensurePlatformConsistency(contentPlatform, targetType) {
+  if (contentPlatform !== targetType) {
+    throw new Error(`content.platform must match target.targetType for ${contentPlatform}`);
+  }
+}
+
 function getQueryParam(req, name) {
   const value = req?.query?.[name];
   if (value === null || value === undefined) return '';
@@ -58,23 +96,48 @@ async function verifyProjectAccess(supabase, projectId, userId) {
   return { ok: true };
 }
 
-function getTargetConfig(platform, customConfig = {}) {
+function getTargetConfig(platform, customConfig = {}, mediaUrls = []) {
   const base = { targetType: PLATFORM_TARGET_TYPES[platform] };
   switch (platform) {
-    case 'facebook':
-      return { ...base, pageId: customConfig.pageId };
-    case 'linkedin':
-      return customConfig.pageId ? { ...base, pageId: customConfig.pageId } : base;
-    case 'instagram':
+    case 'facebook': {
+      const pageId = normalizeOptionalString(customConfig.pageId);
+      if (!pageId) throw new Error('Facebook posts require target.pageId');
+
+      const mediaType = normalizeOptionalString(customConfig.mediaType);
+      const link = normalizeOptionalString(customConfig.link);
+
       return {
         ...base,
-        mediaType: customConfig.mediaType || 'reel',
-        altText: customConfig.altText,
-        collaborators: customConfig.collaborators,
-        coverImageUrl: customConfig.coverImageUrl,
-        shareToFeed: customConfig.shareToFeed,
-        audioName: customConfig.audioName
+        pageId,
+        ...(['video', 'reel'].includes(mediaType) ? { mediaType } : {}),
+        ...(link ? { link } : {})
       };
+    }
+    case 'linkedin':
+      return customConfig.pageId ? { ...base, pageId: customConfig.pageId } : base;
+    case 'instagram': {
+      const requestedMediaType = normalizeOptionalString(customConfig.mediaType);
+      const mediaType = requestedMediaType === 'story'
+        ? 'story'
+        : requestedMediaType === 'reel'
+          ? 'reel'
+          : undefined;
+      const altText = normalizeOptionalString(customConfig.altText);
+      const collaborators = normalizeCollaborators(customConfig.collaborators);
+      const coverImageUrl = normalizeOptionalString(customConfig.coverImageUrl);
+      const shareToFeed = normalizeBoolean(customConfig.shareToFeed);
+      const audioName = normalizeOptionalString(customConfig.audioName);
+
+      return {
+        ...base,
+        ...(mediaType ? { mediaType } : {}),
+        ...(altText ? { altText: altText.slice(0, 1000) } : {}),
+        ...(collaborators ? { collaborators } : {}),
+        ...(mediaType === 'reel' && coverImageUrl ? { coverImageUrl } : {}),
+        ...(mediaType === 'reel' && shareToFeed !== undefined ? { shareToFeed } : {}),
+        ...(mediaType === 'reel' && audioName ? { audioName } : {})
+      };
+    }
     case 'tiktok':
       return {
         ...base,
@@ -113,6 +176,39 @@ function getTargetConfig(platform, customConfig = {}) {
     default:
       return base;
   }
+}
+
+function buildBlotatoPostDraft({ accountId, platform, contentText, mediaUrls = [], targetConfig = {} }) {
+  const targetType = PLATFORM_TARGET_TYPES[platform];
+  if (!targetType) throw new Error(`Unsupported platform: ${platform}`);
+
+  const normalizedMediaUrls = normalizeMediaUrls(mediaUrls);
+  const draft = {
+    accountId,
+    content: {
+      text: contentText.trim(),
+      mediaUrls: normalizedMediaUrls,
+      platform: targetType
+    },
+    target: getTargetConfig(platform, targetConfig, normalizedMediaUrls)
+  };
+
+  ensurePlatformConsistency(draft.content.platform, draft.target.targetType);
+  return draft;
+}
+
+function buildBlotatoPostPayload({ accountId, platform, contentText, mediaUrls = [], targetConfig = {}, scheduling = {} }) {
+  const payload = {
+    post: buildBlotatoPostDraft({ accountId, platform, contentText, mediaUrls, targetConfig })
+  };
+
+  if (scheduling.type === 'scheduled' && scheduling.time) {
+    payload.scheduledTime = scheduling.time;
+  } else if (scheduling.type === 'nextSlot') {
+    payload.useNextFreeSlot = true;
+  }
+
+  return payload;
 }
 
 // ─── Action handlers ─────────────────────────────────────────────────────────
@@ -301,23 +397,14 @@ async function handleCreatePost(req, res, supabase) {
 
   for (const { id: accountId, platform, targetConfig = {} } of accounts) {
     try {
-      const blotatoPayload = {
-        post: {
-          accountId,
-          content: {
-            text: contentText.trim(),
-            mediaUrls: mediaUrls || [],
-            platform: PLATFORM_TARGET_TYPES[platform]
-          },
-          target: getTargetConfig(platform, targetConfig)
-        }
-      };
-
-      if (scheduling.type === 'scheduled' && scheduling.time) {
-        blotatoPayload.scheduledTime = scheduling.time;
-      } else if (scheduling.type === 'nextSlot') {
-        blotatoPayload.useNextFreeSlot = true;
-      }
+      const blotatoPayload = buildBlotatoPostPayload({
+        accountId,
+        platform,
+        contentText,
+        mediaUrls,
+        targetConfig,
+        scheduling
+      });
 
       const blotatoRes = await fetch(`${BLOTATO_API_BASE}/posts`, {
         method: 'POST',
@@ -445,13 +532,13 @@ async function handleUpdatePost(req, res, supabase) {
 
       if (contentText !== undefined || mediaUrls !== undefined) {
         patchPayload.patch.draft = {
-          accountId: post.account_id,
-          content: {
-            text: contentText !== undefined ? contentText : post.content_text,
+          ...buildBlotatoPostDraft({
+            accountId: post.account_id,
+            platform: post.platform,
+            contentText: contentText !== undefined ? contentText : post.content_text,
             mediaUrls: mediaUrls !== undefined ? mediaUrls : post.media_urls,
-            platform: post.platform
-          },
-          target: { targetType: post.platform }
+            targetConfig: post.target_config || {}
+          })
         };
       }
 

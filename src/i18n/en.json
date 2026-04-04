@@ -377,10 +377,23 @@
       },
       "createdAt": "Created: {{date}}",
       "cards": {
-        "services": "Tasks, deliverables, and next steps.",
+        "services": "Services, deliverables, and next steps.",
         "reports": "Progress and results reports.",
         "contentPlanning": "Editorial calendar, publishing flow, and Blotato scheduling.",
         "invoices": "Invoice history and payments."
+      },
+      "servicesHub": {
+        "subtitle": "Track the projects currently in progress",
+        "selectProjectTitle": "Select a project",
+        "selectProjectDescription": "Open the services view from the project card you want to review.",
+        "notFoundTitle": "We couldn't find this project",
+        "notFoundDescription": "It may no longer exist or you may not have access to this view.",
+        "backToProjects": "Go to projects",
+        "cards": {
+          "adsCampaign": "Ad campaign",
+          "mailing": "Mailing",
+          "meetings": "Meetings"
+        }
       },
       "create": {
         "title": "Create project",
@@ -481,7 +494,7 @@
         "title": "Project details",
         "back": "Back to project",
         "tabs": {
-          "services": "Tasks",
+          "services": "Services",
           "reports": "Reports",
           "contentPlanning": "Content",
           "invoices": "Invoices"

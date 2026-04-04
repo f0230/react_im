@@ -25,6 +25,25 @@ const getInitials = (value) => {
         .toUpperCase();
 };
 
+const getProjectServicesHref = (projectId) => `/dashboard/projects/${projectId}/services`;
+
+const getProjectSectionHref = (projectId, suffix) => {
+    if (!projectId) return null;
+    if (suffix === 'tasks') return getProjectServicesHref(projectId);
+    return `/dashboard/${suffix}?projectId=${projectId}`;
+};
+
+const getProjectPreviewState = (project) => ({
+    projectPreview: {
+        id: project?.id || null,
+        title: project?.title || null,
+        name: project?.name || null,
+        project_name: project?.project_name || null,
+        avatar_url: project?.avatar_url || null,
+        profile_image_url: project?.profile_image_url || null,
+    },
+});
+
 const gradientClasses = [
     'from-lime-400 to-emerald-600',
     'from-sky-400 to-indigo-600',
@@ -602,6 +621,12 @@ const Projects = () => {
         }));
     }, [allClientUsers, clientCompanyMap, clientSelection, isAdmin, userId]);
 
+    const openProjectServices = useCallback((project) => {
+        const projectId = project?.id;
+        if (!projectId) return;
+        navigate(getProjectServicesHref(projectId), { state: getProjectPreviewState(project) });
+    }, [navigate]);
+
     if (loading) return <LoadingFallback type="spinner" />;
 
     return (
@@ -672,7 +697,7 @@ const Projects = () => {
                                     <div className="flex min-w-0 flex-col items-center gap-4 md:flex-row md:gap-5">
                                         <div
                                             role="button"
-                                            onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
+                                            onClick={() => openProjectServices(project)}
                                             className={`relative shrink-0 ${projectId ? 'cursor-pointer' : ''}`}
                                         >
                                             {projectAvatar ? (
@@ -703,7 +728,7 @@ const Projects = () => {
                                         <div className="flex w-full min-w-0 flex-1 flex-col items-center gap-3 md:items-start md:gap-4">
                                             <div className="group/title flex w-full min-w-0 items-center justify-center gap-2 md:justify-start">
                                                 <h3
-                                                    onClick={() => projectId && navigate(`/dashboard/tasks?projectId=${projectId}`)}
+                                                    onClick={() => openProjectServices(project)}
                                                     className={`max-w-full break-words text-xl font-bold leading-tight text-neutral-800 md:text-3xl ${projectId ? 'cursor-pointer transition-colors hover:text-neutral-600' : ''}`}
                                                 >
                                                     {title}
@@ -848,8 +873,13 @@ const Projects = () => {
                                             key={key}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                if (projectId) {
-                                                    navigate(`/dashboard/${suffix}?projectId=${projectId}`);
+                                                if (suffix === 'tasks') {
+                                                    openProjectServices(project);
+                                                    return;
+                                                }
+                                                const nextHref = getProjectSectionHref(projectId, suffix);
+                                                if (nextHref) {
+                                                    navigate(nextHref);
                                                 }
                                             }}
                                             className="group relative flex h-[208px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[10px] bg-white/40 backdrop-blur-md border border-white/60 p-4 text-center md:h-auto md:min-w-[140px] md:flex-1 hover:bg-white/50 hover:border-white/80 transition-all"

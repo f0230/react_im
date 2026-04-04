@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -126,7 +127,7 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
 
   const platforms = Object.keys(targetsByPlatform);
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -215,6 +216,9 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
                           <button
                             type="button"
                             key={target.key}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                            }}
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
@@ -332,6 +336,8 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
       </motion.div>
     </AnimatePresence>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
 export default BlotatoConfigModal;

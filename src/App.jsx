@@ -192,9 +192,9 @@ const AppContent = () => {
             <Route path="finances/projects" element={<Navigate to="/dashboard/finances?tab=reportes&view=proyectos" replace />} />
             <Route path="finances/reports" element={<Navigate to="/dashboard/finances?tab=reportes&view=mensual" replace />} />
             <Route path="projects" element={<Projects />} />
-            <Route path="projects/:projectId" element={<Navigate to="tasks" replace />} />
-            <Route path="projects/:projectId/services" element={<Navigate to="/dashboard/tasks" replace />} />
-            <Route path="services" element={<Navigate to="/dashboard/tasks" replace />} />
+            <Route path="projects/:projectId" element={<Navigate to="services" replace />} />
+            <Route path="projects/:projectId/services" element={<ProjectTasks />} />
+            <Route path="services" element={<ProjectTasks />} />
             <Route path="projects/:projectId/reports" element={<Navigate to="/dashboard/reports" replace />} />
             <Route path="projects/:projectId/integrations" element={<ProjectIntegrations />} />
             <Route path="projects/:projectId/invoices" element={<Navigate to="/dashboard/invoices" replace />} />
