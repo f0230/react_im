@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Briefcase } from 'lucide-react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,8 @@ import { useTranslation } from 'react-i18next';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
+import MeetingHistory from '@/components/projects/MeetingHistory';
+import { isMeetingsCard } from '@/config/notion';
 
 const PANEL_SPRING = {
   type: 'spring',
@@ -54,6 +56,7 @@ const ProjectTasks = () => {
 
   const [selectedProject, setSelectedProject] = useState(() => previewProject || null);
   const [loading, setLoading] = useState(() => !previewProject);
+  const [activeServiceKey, setActiveServiceKey] = useState(null);
 
   const serviceCards = useMemo(
     () => [
@@ -205,36 +208,63 @@ const ProjectTasks = () => {
         </motion.div>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {serviceCards.map((card, index) => (
-            <motion.div
-              key={card.key}
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...PANEL_SPRING, delay: index * 0.04 }}
-              className="min-h-[190px] rounded-[30px] border border-white/70 bg-[#e7e7e7] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] md:min-h-[210px] md:p-8"
-            >
-              <div className="flex h-full items-center gap-5 md:gap-7">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[#f7cfcf] p-2 shadow-sm md:h-14 md:w-14 md:rounded-[14px]">
-                  {projectLogo ? (
-                    <img
-                      src={projectLogo}
-                      alt={projectTitle}
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-700">
-                      {projectInitials}
-                    </span>
-                  )}
-                </div>
+          {serviceCards.map((card, index) => {
+            const isMeeting = isMeetingsCard(card.key);
+            const isActive = activeServiceKey === card.key;
+            return (
+              <motion.div
+                key={card.key}
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...PANEL_SPRING, delay: index * 0.04 }}
+                onClick={isMeeting ? () => setActiveServiceKey(isActive ? null : card.key) : undefined}
+                className={[
+                  'min-h-[190px] rounded-[30px] border bg-[#e7e7e7] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] md:min-h-[210px] md:p-8',
+                  isMeeting ? 'cursor-pointer transition-all duration-200 hover:bg-[#e0e0e0]' : '',
+                  isActive ? 'border-black/20 ring-2 ring-black/10' : 'border-white/70',
+                ].join(' ')}
+              >
+                <div className="flex h-full items-center gap-5 md:gap-7">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[#f7cfcf] p-2 shadow-sm md:h-14 md:w-14 md:rounded-[14px]">
+                    {projectLogo ? (
+                      <img
+                        src={projectLogo}
+                        alt={projectTitle}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-700">
+                        {projectInitials}
+                      </span>
+                    )}
+                  </div>
 
-                <h2 className="max-w-[12ch] text-[2rem] font-medium leading-[0.95] tracking-tight text-neutral-700 md:text-[2.25rem]">
-                  {card.title}
-                </h2>
-              </div>
-            </motion.div>
-          ))}
+                  <h2 className="max-w-[12ch] text-[2rem] font-medium leading-[0.95] tracking-tight text-neutral-700 md:text-[2.25rem]">
+                    {card.title}
+                  </h2>
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
+
+        <AnimatePresence>
+          {activeServiceKey && isMeetingsCard(activeServiceKey) && (
+            <motion.div
+              key={activeServiceKey}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={PANEL_SPRING}
+              className="mt-5"
+            >
+              <MeetingHistory
+                projectId={activeProjectId}
+                onClose={() => setActiveServiceKey(null)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

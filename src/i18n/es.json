@@ -395,6 +395,25 @@
           "meetings": "Reuniones"
         }
       },
+      "meetings": {
+        "history": "Historial de reuniones",
+        "historySubtitle": "Registro cronológico de notas de reunión desde Notion",
+        "viewInNotion": "Ver en Notion",
+        "summary": "Resumen",
+        "actionItems": "Tareas de seguimiento",
+        "untitled": "Reunión sin título",
+        "empty": "Todavía no hay notas de reunión",
+        "emptyDescription": "Las notas de reunión agregadas en Notion aparecerán aquí una vez conectada la base de datos.",
+        "error": "No se pudieron cargar las notas de reunión",
+        "retry": "Reintentar",
+        "refresh": "Actualizar",
+        "close": "Cerrar",
+        "loadMore": "Cargar más",
+        "status": {
+          "planned": "Planificada",
+          "done": "Realizada"
+        }
+      },
       "create": {
         "title": "Crear proyecto",
         "firstTitle": "Crea tu ",

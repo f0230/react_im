@@ -66,6 +66,10 @@
       "destination": "/api/figma?action=comments"
     },
     {
+      "source": "/api/notion/meetings",
+      "destination": "/api/notion?action=meetings"
+    },
+    {
       "source": "/api/client-welcome-email",
       "destination": "/api/notifications?action=welcome-email"
     },

@@ -395,6 +395,25 @@
           "meetings": "Meetings"
         }
       },
+      "meetings": {
+        "history": "Meeting history",
+        "historySubtitle": "Chronological log of meeting notes from Notion",
+        "viewInNotion": "View in Notion",
+        "summary": "Summary",
+        "actionItems": "Action items",
+        "untitled": "Untitled meeting",
+        "empty": "No meeting notes yet",
+        "emptyDescription": "Meeting notes added to Notion will appear here once the database is connected.",
+        "error": "Could not load meeting notes",
+        "retry": "Try again",
+        "refresh": "Refresh",
+        "close": "Close",
+        "loadMore": "Load more",
+        "status": {
+          "planned": "Planned",
+          "done": "Done"
+        }
+      },
       "create": {
         "title": "Create project",
         "firstTitle": "Create your project",

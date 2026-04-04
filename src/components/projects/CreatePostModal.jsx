@@ -612,7 +612,7 @@ export function CreatePostModal({
                   <p>
                     {hasAssignments
                       ? 'Las cuentas asignadas no estan disponibles todavia. Sincroniza Blotato y vuelve a intentarlo.'
-                      : 'No hay cuentas asignadas a este proyecto. Abre "Cuentas" y selecciona los destinos antes de publicar.'}
+                      : 'No hay cuentas asociadas a este proyecto todavia. Asignalas al proyecto antes de publicar.'}
                   </p>
                 </div>
               ) : (

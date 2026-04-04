@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2 } from 'lucide-react';
+import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2, Database } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -21,6 +21,7 @@ const EditProjectModal = ({
         figma_url: '',
         jam_url: '',
         drive_url: '',
+        notion_db_id: '',
         avatar_url: '',
     });
     const [loading, setLoading] = useState(false);
