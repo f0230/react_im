@@ -1,15 +1,14 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
-import { formatFinanceCurrency } from '@/utils/finance';
+import { formatFinanceCurrency, getFinanceTransactionReportingAmount } from '@/utils/finance';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-const MonthlyReportView = ({ transactions, periods, config }) => {
+const MonthlyReportView = ({ transactions, periods, currency = 'USD' }) => {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
     const data = useMemo(() => {
-        const currency = config?.default_currency || 'USD';
         const yearPeriods = periods.filter((period) => new Date(period.start_date).getFullYear() === selectedYear);
 
         const monthlyData = MONTHS.map((month, monthIndex) => {
@@ -26,16 +25,24 @@ const MonthlyReportView = ({ transactions, periods, config }) => {
                     }
 
                     const periodTransactions = transactions.filter((transaction) => transaction.period_id === period.id);
-                    income += periodTransactions.filter((transaction) => transaction.type === 'income').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-                    expenses += periodTransactions.filter((transaction) => transaction.type === 'expense').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+                    income += periodTransactions
+                        .filter((transaction) => transaction.type === 'income')
+                        .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
+                    expenses += periodTransactions
+                        .filter((transaction) => transaction.type === 'expense')
+                        .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
                 });
             } else {
                 const monthTransactions = transactions.filter((transaction) => {
                     const date = new Date(transaction.transaction_date);
                     return !transaction.period_id && date.getUTCFullYear() === selectedYear && date.getUTCMonth() === monthIndex;
                 });
-                income = monthTransactions.filter((transaction) => transaction.type === 'income').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-                expenses = monthTransactions.filter((transaction) => transaction.type === 'expense').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+                income = monthTransactions
+                    .filter((transaction) => transaction.type === 'income')
+                    .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
+                expenses = monthTransactions
+                    .filter((transaction) => transaction.type === 'expense')
+                    .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
             }
 
             const net = income - expenses;
@@ -58,7 +65,7 @@ const MonthlyReportView = ({ transactions, periods, config }) => {
             closedPeriods: yearPeriods.filter((period) => period.status === 'closed').length,
             openPeriods: yearPeriods.filter((period) => period.status === 'open').length,
         };
-    }, [config?.default_currency, periods, selectedYear, transactions]);
+    }, [currency, periods, selectedYear, transactions]);
 
     const chartMax = Math.max(...data.monthlyData.map((item) => Math.max(item.income, item.expenses)), 1);
 

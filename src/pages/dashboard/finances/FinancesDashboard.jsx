@@ -4,6 +4,7 @@ import { Settings2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import useFinanceData from '@/hooks/useFinanceData';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import { FINANCE_REPORTING_CURRENCY } from '@/utils/finance';
 import { buildFinanceSearchParams, FINANCE_TAB_OPTIONS, normalizeFinanceSearchParams } from './financeTabs';
 
 const DashboardTab = lazy(() => import('./components/DashboardTab'));
@@ -141,9 +142,9 @@ const FinancesDashboard = () => {
             </section>
 
             <Suspense fallback={<LoadingFallback type="spinner" />}>
-                {activeTab === 'dashboard' && <DashboardTab {...sharedProps} />}
+                {activeTab === 'dashboard' && <DashboardTab {...sharedProps} currency={FINANCE_REPORTING_CURRENCY} />}
                 {activeTab === 'periodos' && <PeriodsTab {...sharedProps} />}
-                {activeTab === 'reportes' && <ReportsTab {...sharedProps} reportView={reportView} onChangeView={(view) => setTab('reportes', view)} />}
+                {activeTab === 'reportes' && <ReportsTab {...sharedProps} currency={FINANCE_REPORTING_CURRENCY} reportView={reportView} onChangeView={(view) => setTab('reportes', view)} />}
             </Suspense>
 
             {settingsOpen && (

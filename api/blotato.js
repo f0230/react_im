@@ -226,6 +226,37 @@ function getTargetConfig(platform, customConfig = {}, mediaUrls = []) {
   }
 }
 
+function shouldSplitIntoInstagramStorySequence(platform, targetConfig = {}, mediaUrls = []) {
+  return (
+    platform === 'instagram'
+    && normalizeOptionalString(targetConfig.mediaType) === 'story'
+    && mediaUrls.length > 1
+    && mediaUrls.every((url) => !isVideoMediaUrl(url))
+  );
+}
+
+function buildPublishJobs({ accountId, platform, targetConfig = {}, mediaUrls = [] }) {
+  const normalizedMediaUrls = normalizeMediaUrls(mediaUrls);
+
+  if (shouldSplitIntoInstagramStorySequence(platform, targetConfig, normalizedMediaUrls)) {
+    return normalizedMediaUrls.map((mediaUrl, index) => ({
+      accountId,
+      platform,
+      targetConfig,
+      mediaUrls: [mediaUrl],
+      storyIndex: index
+    }));
+  }
+
+  return [{
+    accountId,
+    platform,
+    targetConfig,
+    mediaUrls: normalizedMediaUrls,
+    storyIndex: null
+  }];
+}
+
 function buildBlotatoPostDraft({ accountId, platform, contentText, mediaUrls = [], targetConfig = {} }) {
   const targetType = PLATFORM_TARGET_TYPES[platform];
   if (!targetType) throw new Error(`Unsupported platform: ${platform}`);
@@ -444,57 +475,67 @@ async function handleCreatePost(req, res, supabase) {
   const errors = [];
 
   for (const { id: accountId, platform, targetConfig = {} } of accounts) {
-    try {
-      const blotatoPayload = buildBlotatoPostPayload({
-        accountId,
-        platform,
-        contentText,
-        mediaUrls,
-        targetConfig,
-        scheduling
-      });
+    const publishJobs = buildPublishJobs({ accountId, platform, targetConfig, mediaUrls });
 
-      const blotatoRes = await fetch(`${BLOTATO_API_BASE}/posts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'blotato-api-key': apiKey },
-        body: JSON.stringify(blotatoPayload)
-      });
-
-      const blotatoData = await blotatoRes.json();
-      if (!blotatoRes.ok) {
-        errors.push({
-          accountId,
-          platform,
-          error: getBlotatoErrorMessage(blotatoData, platform),
-          detail: blotatoData
+    for (const job of publishJobs) {
+      try {
+        const blotatoPayload = buildBlotatoPostPayload({
+          accountId: job.accountId,
+          platform: job.platform,
+          contentText,
+          mediaUrls: job.mediaUrls,
+          targetConfig: job.targetConfig,
+          scheduling
         });
-        continue;
+
+        const blotatoRes = await fetch(`${BLOTATO_API_BASE}/posts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'blotato-api-key': apiKey },
+          body: JSON.stringify(blotatoPayload)
+        });
+
+        const blotatoData = await blotatoRes.json();
+        if (!blotatoRes.ok) {
+          errors.push({
+            accountId: job.accountId,
+            platform: job.platform,
+            error: getBlotatoErrorMessage(blotatoData, job.platform),
+            detail: blotatoData,
+            ...(job.storyIndex !== null ? { storyIndex: job.storyIndex } : {})
+          });
+          continue;
+        }
+
+        const { data: postRecord, error: insertError } = await supabase
+          .from('service_posts')
+          .insert({
+            service_id: serviceId || null,
+            project_id: projectId,
+            post_group_id: postGroupId,
+            content_text: contentText.trim(),
+            media_urls: job.mediaUrls,
+            account_id: job.accountId,
+            platform: job.platform,
+            target_config: job.targetConfig,
+            status: initialStatus,
+            blotato_submission_id: blotatoData.postSubmissionId,
+            scheduled_time: scheduledTime,
+            created_by: auth.user.id
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        createdPosts.push(postRecord);
+      } catch (err) {
+        console.error(`Error creating post for account ${job.accountId}:`, err);
+        errors.push({
+          accountId: job.accountId,
+          platform: job.platform,
+          error: err.message,
+          ...(job.storyIndex !== null ? { storyIndex: job.storyIndex } : {})
+        });
       }
-
-      const { data: postRecord, error: insertError } = await supabase
-        .from('service_posts')
-        .insert({
-          service_id: serviceId || null,
-          project_id: projectId,
-          post_group_id: postGroupId,
-          content_text: contentText.trim(),
-          media_urls: mediaUrls || [],
-          account_id: accountId,
-          platform,
-          target_config: targetConfig,
-          status: initialStatus,
-          blotato_submission_id: blotatoData.postSubmissionId,
-          scheduled_time: scheduledTime,
-          created_by: auth.user.id
-        })
-        .select()
-        .single();
-
-      if (insertError) throw insertError;
-      createdPosts.push(postRecord);
-    } catch (err) {
-      console.error(`Error creating post for account ${accountId}:`, err);
-      errors.push({ accountId, platform, error: err.message });
     }
   }
 

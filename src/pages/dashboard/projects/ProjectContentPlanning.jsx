@@ -7,19 +7,7 @@ import { SocialCalendar } from '@/components/projects/SocialCalendar';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 
-const PANEL_SPRING = {
-  type: 'spring',
-  stiffness: 230,
-  damping: 28,
-  mass: 0.9,
-};
-
-const getProjectInitials = (project) => {
-  const title = project?.title || project?.name || project?.project_name || 'DTE';
-  const words = title.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
-  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase();
-};
+const PANEL_SPRING = { type: 'spring', stiffness: 230, damping: 28, mass: 0.9 };
 
 const ProjectContentPlanning = () => {
   const navigate = useNavigate();
@@ -102,54 +90,15 @@ const ProjectContentPlanning = () => {
     );
   }
 
-  const title = selectedProject?.title || selectedProject?.name || selectedProject?.project_name || 'Planificación de contenido';
-  const projectAvatar = selectedProject?.profile_image_url || selectedProject?.avatar_url;
-
   return (
-    <div className="font-product min-h-screen md:min-h-[calc(100vh-140px)] w-full px-0 flex flex-col justify-start py-0 overflow-hidden">
-      <div className="flex flex-col gap-2 md:gap-3 lg:gap-4 h-[calc(100dvh-70px)] md:h-[calc(100dvh-96px)] overflow-hidden w-full relative">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={PANEL_SPRING}
-          className="flex items-center gap-4 bg-white rounded-[24px] md:rounded-[32px] border border-neutral-100 shadow-sm px-5 py-4 md:px-6 md:py-5"
-        >
-          <button
-            onClick={() => navigate('/dashboard/projects')}
-            className="shrink-0 p-2.5 bg-neutral-50 rounded-full shadow-sm hover:shadow-md transition-all text-neutral-500 hover:text-black"
-            title="Volver a proyectos"
-          >
-            <ArrowLeft size={16} />
-          </button>
-
-          <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-sky-300 via-cyan-300 to-teal-400 shadow-md flex items-center justify-center text-sm font-black text-black overflow-hidden shrink-0">
-            {projectAvatar ? (
-              <img src={projectAvatar} alt={title} className="w-full h-full object-cover" />
-            ) : (
-              getProjectInitials(selectedProject || { title: 'Contenido' })
-            )}
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-neutral-400 font-black">
-              Planificación de contenido
-            </p>
-            <h1 className="text-lg md:text-2xl font-black text-neutral-800 truncate">
-              {title}
-            </h1>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={PANEL_SPRING}
-          className="flex-1 flex flex-col bg-[#EBEBEB] rounded-[24px] md:rounded-[32px] overflow-hidden transition-all h-full"
-        >
-          <SocialCalendar projectId={queryProjectId} canManage={canManage} />
-        </motion.div>
-      </div>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.99 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={PANEL_SPRING}
+      className="h-[calc(100dvh-70px)] md:h-[calc(100dvh-96px)] overflow-hidden w-full"
+    >
+      <SocialCalendar projectId={queryProjectId} canManage={canManage} />
+    </motion.div>
   );
 };
 

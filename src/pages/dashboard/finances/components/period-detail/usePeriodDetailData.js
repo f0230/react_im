@@ -3,9 +3,13 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { getDynamicWorkersTarget } from '@/components/finances/workersTarget';
 import {
+    DUPLICATE_FOUNDER_PROFILES_ERROR,
+    FINANCE_REPORTING_CURRENCY,
     formatFinancePeriodRange,
+    getFinanceTransactionReportingAmount,
     getInvoicePaymentDate,
     getPersonDisplayName,
+    hasDuplicateFounderProfiles,
     isDateWithinPeriod,
 } from '@/utils/finance';
 
@@ -67,7 +71,7 @@ export const usePeriodDetailData = ({
                     .order('created_at', { ascending: true }),
                 supabase
                     .from('invoices')
-                    .select('id, invoice_number, description, amount, currency, project_id, status, paid_at, updated_at, created_at')
+                    .select('id, invoice_number, description, amount, amount_usd, exchange_rate, currency, project_id, status, paid_at, updated_at, created_at')
                     .eq('status', 'paid')
                     .order('updated_at', { ascending: false }),
             ]);
@@ -139,11 +143,15 @@ export const usePeriodDetailData = ({
     }, [fetchPeriod]);
 
     const totals = useMemo(() => {
-        const displayCurrency = transactions[0]?.currency || config?.default_currency || currency || 'USD';
-        const income = transactions.filter((transaction) => transaction.type === 'income').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-        const expenses = transactions.filter((transaction) => transaction.type === 'expense').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+        const displayCurrency = FINANCE_REPORTING_CURRENCY;
+        const income = transactions
+            .filter((transaction) => transaction.type === 'income')
+            .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
+        const expenses = transactions
+            .filter((transaction) => transaction.type === 'expense')
+            .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
         return { income, expenses, net: income - expenses, currency: displayCurrency };
-    }, [config?.default_currency, currency, transactions]);
+    }, [transactions]);
 
     const periodPools = useMemo(() => {
         if (!config || totals.net <= 0) {
@@ -404,6 +412,11 @@ export const usePeriodDetailData = ({
             : currentCompanyFundBalance
     ), [currentCompanyFundBalance, period?.status, snapshot?.company_fund_balance_after]);
 
+    const duplicateFounderAssignments = useMemo(
+        () => hasDuplicateFounderProfiles(config),
+        [config],
+    );
+
     const missingFounderAssignments = useMemo(() => (
         (Number(config?.pct_francisco || 0) > 0 && !config?.francisco_profile_id)
         || (Number(config?.pct_federico || 0) > 0 && !config?.federico_profile_id)
@@ -486,17 +499,23 @@ export const usePeriodDetailData = ({
     ]);
 
     const canClosePeriod = useMemo(
-        () => !missingFounderAssignments && paidInvoicesPendingImport.length === 0,
-        [missingFounderAssignments, paidInvoicesPendingImport.length],
+        () => !missingFounderAssignments && !duplicateFounderAssignments && paidInvoicesPendingImport.length === 0,
+        [duplicateFounderAssignments, missingFounderAssignments, paidInvoicesPendingImport.length],
     );
 
-    const displayCurrency = config?.default_currency || totals.currency || currency || 'USD';
+    const displayCurrency = period?.status === 'closed'
+        ? (config?.default_currency || currency || totals.currency || FINANCE_REPORTING_CURRENCY)
+        : totals.currency;
     const adminDistributions = distributions.filter((distribution) => distribution.recipient_type === 'admin');
     const workerDistributions = distributions.filter((distribution) => distribution.recipient_type === 'worker');
     const legacyCompanyDistributions = distributions.filter((distribution) => distribution.recipient_type === 'company');
 
     const handleClosePeriod = useCallback(async () => {
         if (!period?.id || submitting) return;
+        if (duplicateFounderAssignments) {
+            setError(DUPLICATE_FOUNDER_PROFILES_ERROR);
+            return false;
+        }
         if (!canClosePeriod) {
             setError('No se puede cerrar el período. Revisa las alertas de validación.');
             return false;
@@ -510,7 +529,15 @@ export const usePeriodDetailData = ({
         const { error: closeError } = await supabase.rpc('close_period', { p_period_id: period.id });
         if (closeError) {
             setSubmitting(false);
-            setError(closeError.message || 'No pudimos cerrar el período.');
+            const isDuplicateFounderConstraint = (
+                closeError.message?.includes('idx_fd_unique_profile_recipient_source')
+                || closeError.message?.includes('finance_config_distinct_founder_profiles_check')
+            );
+            setError(
+                isDuplicateFounderConstraint
+                    ? DUPLICATE_FOUNDER_PROFILES_ERROR
+                    : (closeError.message || 'No pudimos cerrar el período.'),
+            );
             return false;
         }
 
@@ -637,6 +664,7 @@ export const usePeriodDetailData = ({
         companyFundCreditAmount,
         periodCompanyFundMovements,
         previewDistributions,
+        duplicateFounderAssignments,
         missingFounderAssignments,
         canClosePeriod,
         profileMap,

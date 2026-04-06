@@ -16,12 +16,25 @@ const AlertItem = ({ children, tone = 'amber' }) => {
     );
 };
 
-const PeriodAlerts = ({ period, missingFounderAssignments, paidInvoicesPendingImport, previewDistributions, workerPoolSummary, error }) => (
+const PeriodAlerts = ({
+    period,
+    missingFounderAssignments,
+    duplicateFounderAssignments,
+    paidInvoicesPendingImport,
+    previewDistributions,
+    workerPoolSummary,
+    error,
+}) => (
     <div className="space-y-3">
         {error ? <AlertItem tone="rose">{error}</AlertItem> : null}
         {period?.status === 'open' && missingFounderAssignments ? (
             <AlertItem>
                 Definí quién representa a Francisco y Federico en configuración antes de cerrar el período.
+            </AlertItem>
+        ) : null}
+        {period?.status === 'open' && duplicateFounderAssignments ? (
+            <AlertItem tone="rose">
+                Francisco y Federico no pueden usar el mismo perfil. Ajustalo en configuración antes de cerrar el período.
             </AlertItem>
         ) : null}
         {period?.status === 'open' && paidInvoicesPendingImport.length > 0 ? (

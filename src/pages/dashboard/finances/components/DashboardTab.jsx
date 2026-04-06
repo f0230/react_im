@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle, Plus } from 'lucide-react';
 import TransactionModal from '@/components/finances/TransactionModal';
+import { getFinanceTransactionReportingAmount, getInvoiceReportingAmount } from '@/utils/finance';
 import { buildFinanceSearchParams } from '../financeTabs';
 import DashboardKpiStrip from './dashboard/DashboardKpiStrip';
 import DashboardSparkline from './dashboard/DashboardSparkline';
@@ -31,7 +32,7 @@ const DashboardTab = ({ periodsWithTotals, transactions, invoices, summaryKpis, 
     );
 
     const pendingReceivables = useMemo(
-        () => pendingInvoices.reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0),
+        () => pendingInvoices.reduce((sum, invoice) => sum + getInvoiceReportingAmount(invoice), 0),
         [pendingInvoices],
     );
 
@@ -70,8 +71,8 @@ const DashboardTab = ({ periodsWithTotals, transactions, invoices, summaryKpis, 
                 const transactionDate = new Date(transaction.transaction_date);
                 return transactionDate.getUTCMonth() === month && transactionDate.getUTCFullYear() === year;
             });
-            const income = monthTransactions.filter((transaction) => transaction.type === 'income').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-            const expenses = monthTransactions.filter((transaction) => transaction.type === 'expense').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+            const income = monthTransactions.filter((transaction) => transaction.type === 'income').reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
+            const expenses = monthTransactions.filter((transaction) => transaction.type === 'expense').reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
             return { label: monthLabel(date), value: income - expenses };
         });
     }, [transactions]);

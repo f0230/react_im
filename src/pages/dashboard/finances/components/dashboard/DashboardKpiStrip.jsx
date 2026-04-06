@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Landmark, PiggyBank, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Landmark, PiggyBank, TrendingUp, Users, Wallet } from 'lucide-react';
 import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
 import { formatFinanceCurrency, formatFinanceDate } from '@/utils/finance';
 
@@ -25,17 +25,20 @@ const DashboardKpiStrip = ({
     companyFundMovements,
 }) => {
     const lastCompanyMovement = companyFundMovements[0];
+    const disponible = summaryKpis.disponible ?? (summaryKpis.companyFundBalance - summaryKpis.pendingPayouts);
 
     return (
         <div className="flex flex-wrap gap-2">
+            {/* P&L: accumulated net result across all periods */}
             <FinanceKpiCard
-                icon={Wallet}
-                label="Balance actual"
+                icon={TrendingUp}
+                label="Resultado acumulado"
                 value={formatFinanceCurrency(summaryKpis.net, currency)}
                 color={summaryKpis.net >= 0 ? 'text-neutral-900' : 'text-rose-500'}
                 popover={(
                     <div className="space-y-3">
-                        <p className="font-semibold text-neutral-900">Balance global</p>
+                        <p className="font-semibold text-neutral-900">Resultado P&L acumulado</p>
+                        <p className="text-xs text-neutral-500">Ingresos menos gastos registrados en todas las transacciones. No representa dinero en caja.</p>
                         <BreakdownList
                             items={[
                                 { label: 'Ingresos acumulados', value: formatFinanceCurrency(summaryKpis.income, currency), className: 'text-emerald-600' },
@@ -46,6 +49,8 @@ const DashboardKpiStrip = ({
                     </div>
                 )}
             />
+
+            {/* Current period income */}
             <FinanceKpiCard
                 icon={ArrowUpCircle}
                 label={currentPeriod ? `Ingresos ${currentPeriod.name}` : 'Ingresos período'}
@@ -63,6 +68,8 @@ const DashboardKpiStrip = ({
                     </div>
                 )}
             />
+
+            {/* Current period expenses */}
             <FinanceKpiCard
                 icon={ArrowDownCircle}
                 label={currentPeriod ? `Gastos ${currentPeriod.name}` : 'Gastos período'}
@@ -80,6 +87,8 @@ const DashboardKpiStrip = ({
                     </div>
                 )}
             />
+
+            {/* Pending receivables (invoices not yet paid) */}
             <FinanceKpiCard
                 icon={PiggyBank}
                 label="Pendiente cobro"
@@ -98,19 +107,62 @@ const DashboardKpiStrip = ({
                     </div>
                 )}
             />
+
+            {/* Company fund/reserve — internal buffer, NOT real bank balance */}
             <FinanceKpiCard
                 icon={Landmark}
                 label="Fondo empresa"
-                value={formatFinanceCurrency(summaryKpis.companyFundBalance, currency)}
+                value={formatFinanceCurrency(summaryKpis.companyFundBalance, summaryKpis.companyFundCurrency || currency)}
                 color="text-amber-600"
                 popover={(
                     <div className="space-y-3">
-                        <p className="font-semibold text-neutral-900">Saldo operativo</p>
+                        <p className="font-semibold text-neutral-900">Reserva operativa interna</p>
+                        <p className="text-xs text-neutral-500">Acumula el excedente asignado a la empresa en cada cierre. No representa saldo bancario real.</p>
                         <BreakdownList
                             items={[
-                                { label: 'Saldo actual', value: formatFinanceCurrency(summaryKpis.companyFundBalance, currency), className: 'text-amber-600' },
+                                { label: 'Saldo reserva', value: formatFinanceCurrency(summaryKpis.companyFundBalance, summaryKpis.companyFundCurrency || currency), className: 'text-amber-600' },
                                 { label: 'Último movimiento', value: lastCompanyMovement?.description || 'Sin movimientos recientes' },
                                 { label: 'Fecha', value: lastCompanyMovement?.movement_date ? formatFinanceDate(lastCompanyMovement.movement_date) : '—' },
+                            ]}
+                        />
+                    </div>
+                )}
+            />
+
+            {/* Obligations: what is owed to founders and workers */}
+            <FinanceKpiCard
+                icon={Users}
+                label="Obligaciones"
+                value={formatFinanceCurrency(summaryKpis.pendingPayouts, currency)}
+                color={summaryKpis.pendingPayouts > 0 ? 'text-rose-500' : 'text-neutral-900'}
+                popover={(
+                    <div className="space-y-3">
+                        <p className="font-semibold text-neutral-900">Pendiente founders y workers</p>
+                        <p className="text-xs text-neutral-500">Distribuciones generadas en cierres anteriores que aún no han sido pagadas.</p>
+                        <BreakdownList
+                            items={[
+                                { label: 'Monto pendiente', value: formatFinanceCurrency(summaryKpis.pendingPayouts, currency), className: summaryKpis.pendingPayouts > 0 ? 'text-rose-500' : undefined },
+                            ]}
+                        />
+                    </div>
+                )}
+            />
+
+            {/* Disponible libre: fund balance minus pending obligations */}
+            <FinanceKpiCard
+                icon={Wallet}
+                label="Disponible"
+                value={formatFinanceCurrency(disponible, currency)}
+                color={disponible >= 0 ? 'text-emerald-600' : 'text-rose-500'}
+                popover={(
+                    <div className="space-y-3">
+                        <p className="font-semibold text-neutral-900">Disponible libre</p>
+                        <p className="text-xs text-neutral-500">Fondo empresa menos obligaciones pendientes con founders y workers.</p>
+                        <BreakdownList
+                            items={[
+                                { label: 'Fondo empresa', value: formatFinanceCurrency(summaryKpis.companyFundBalance, currency), className: 'text-amber-600' },
+                                { label: 'Obligaciones', value: `− ${formatFinanceCurrency(summaryKpis.pendingPayouts, currency)}`, className: 'text-rose-500' },
+                                { label: 'Disponible', value: formatFinanceCurrency(disponible, currency), className: disponible >= 0 ? 'text-emerald-600' : 'text-rose-500' },
                             ]}
                         />
                     </div>

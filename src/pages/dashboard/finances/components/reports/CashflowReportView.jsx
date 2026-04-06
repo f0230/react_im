@@ -1,8 +1,13 @@
 import React, { useMemo } from 'react';
 import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
-import { formatFinanceCurrency, formatFinanceDate } from '@/utils/finance';
+import {
+    formatFinanceCurrency,
+    formatFinanceDate,
+    getFinanceTransactionReportingAmount,
+    getInvoiceReportingAmount,
+} from '@/utils/finance';
 
-const CashflowReportView = ({ transactions, invoices, config }) => {
+const CashflowReportView = ({ transactions, invoices, currency = 'USD' }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -12,13 +17,16 @@ const CashflowReportView = ({ transactions, invoices, config }) => {
     );
 
     const data = useMemo(() => {
-        const currency = config?.default_currency || 'USD';
-        const receivables = pendingInvoices.reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
+        const receivables = pendingInvoices.reduce((sum, invoice) => sum + getInvoiceReportingAmount(invoice), 0);
         const futureExpenses = transactions
             .filter((transaction) => transaction.type === 'expense' && new Date(transaction.transaction_date) > today)
-            .reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-        const completedIncome = transactions.filter((transaction) => transaction.type === 'income' && new Date(transaction.transaction_date) <= today).reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-        const completedExpenses = transactions.filter((transaction) => transaction.type === 'expense' && new Date(transaction.transaction_date) <= today).reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+            .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
+        const completedIncome = transactions
+            .filter((transaction) => transaction.type === 'income' && new Date(transaction.transaction_date) <= today)
+            .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
+        const completedExpenses = transactions
+            .filter((transaction) => transaction.type === 'expense' && new Date(transaction.transaction_date) <= today)
+            .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
         const baseBalance = completedIncome - completedExpenses;
         const projection90 = baseBalance + receivables - futureExpenses;
         const nextInvoice = [...pendingInvoices]
@@ -30,13 +38,17 @@ const CashflowReportView = ({ transactions, invoices, config }) => {
             const date = new Date(today);
             date.setDate(date.getDate() + offset);
             const dateString = date.toISOString().slice(0, 10);
-            const income = pendingInvoices.filter((invoice) => invoice.due_date === dateString).reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
-            const expenses = transactions.filter((transaction) => transaction.type === 'expense' && transaction.transaction_date === dateString).reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
+            const income = pendingInvoices
+                .filter((invoice) => invoice.due_date === dateString)
+                .reduce((sum, invoice) => sum + getInvoiceReportingAmount(invoice), 0);
+            const expenses = transactions
+                .filter((transaction) => transaction.type === 'expense' && transaction.transaction_date === dateString)
+                .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
             const previous = index === 0 ? baseBalance : timeline[index - 1].balance;
             timeline.push({ label: `${offset}d`, balance: previous + income - expenses });
         });
         return { currency, receivables, futureExpenses, projection90, nextInvoice, timeline };
-    }, [config?.default_currency, pendingInvoices, transactions]);
+    }, [currency, pendingInvoices, transactions]);
 
     const max = Math.max(...data.timeline.map((point) => point.balance), 1);
     const min = Math.min(...data.timeline.map((point) => point.balance), 0);
@@ -53,7 +65,11 @@ const CashflowReportView = ({ transactions, invoices, config }) => {
                 <FinanceKpiCard label="Proyección 90d" value={formatFinanceCurrency(data.projection90, data.currency)} color={data.projection90 >= 0 ? 'text-emerald-600' : 'text-rose-500'} />
                 <FinanceKpiCard label="Por cobrar" value={formatFinanceCurrency(data.receivables, data.currency)} sub={`${pendingInvoices.length} facturas`} color="text-amber-600" />
                 <FinanceKpiCard label="Gastos futuros" value={formatFinanceCurrency(data.futureExpenses, data.currency)} color="text-rose-500" />
-                <FinanceKpiCard label="Próximo vencimiento" value={data.nextInvoice ? formatFinanceDate(data.nextInvoice.due_date) : '—'} sub={data.nextInvoice ? formatFinanceCurrency(data.nextInvoice.amount, data.currency) : null} />
+                <FinanceKpiCard
+                    label="Próximo vencimiento"
+                    value={data.nextInvoice ? formatFinanceDate(data.nextInvoice.due_date) : '—'}
+                    sub={data.nextInvoice ? formatFinanceCurrency(getInvoiceReportingAmount(data.nextInvoice), data.currency) : null}
+                />
             </div>
 
             <section className="rounded-[24px] border border-neutral-200 bg-white px-4 py-4">

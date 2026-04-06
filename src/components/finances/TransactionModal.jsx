@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { buildUsdConversion, CURRENCY_OPTIONS } from '@/services/exchangeRateService';
 import { FINANCE_CATEGORY_OPTIONS, getProjectDisplayName } from '@/utils/finance';
 
 const getEmptyForm = (defaultType = 'income') => ({
@@ -86,11 +87,10 @@ const TransactionModal = ({
         { value: 'income', label: 'Ingreso' },
         { value: 'expense', label: 'Gasto' },
     ]), []);
-    const currencyOptions = useMemo(() => ([
-        { value: 'USD', label: 'USD' },
-        { value: 'UYU', label: 'UYU' },
-        { value: 'EUR', label: 'EUR' },
-    ]), []);
+    const currencyOptions = useMemo(
+        () => CURRENCY_OPTIONS.map((option) => ({ value: option.value, label: option.value })),
+        [],
+    );
     const periodOptions = useMemo(() => ([
         { value: '', label: 'Sin período' },
         ...periods.map((period) => ({ value: period.id, label: period.name })),
@@ -139,6 +139,17 @@ const TransactionModal = ({
 
         setSaving(true);
         setError('');
+
+        try {
+            const conversion = await buildUsdConversion(payload.amount, payload.currency);
+            payload.amount_usd = conversion.amountUsd;
+            payload.exchange_rate = conversion.exchangeRate;
+        } catch (conversionError) {
+            setError(conversionError.message || 'No pudimos calcular la conversión de moneda.');
+            setSaving(false);
+            return;
+        }
+
         let query = supabase.from('finance_transactions');
         query = initialValues?.id
             ? query.update(payload).eq('id', initialValues.id)

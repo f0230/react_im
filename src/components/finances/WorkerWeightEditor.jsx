@@ -16,6 +16,7 @@ import { useAuth } from '@/context/AuthContext';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import {
     formatFinanceCurrency,
+    getFinanceTransactionReportingAmount,
     getPersonDisplayName,
     getProjectDisplayName,
 } from '@/utils/finance';
@@ -296,13 +297,13 @@ const WorkerWeightEditor = ({
     );
 
     const totalPeriodIncome = useMemo(() => (
-        incomeEntries.reduce((sum, entry) => sum + Number(entry.amount || 0), 0)
+        incomeEntries.reduce((sum, entry) => sum + getFinanceTransactionReportingAmount(entry), 0)
     ), [incomeEntries]);
 
     const projectIncomeById = useMemo(
         () => incomeEntries.reduce((acc, entry) => {
             if (!entry.project_id) return acc;
-            acc[entry.project_id] = (acc[entry.project_id] || 0) + Number(entry.amount || 0);
+            acc[entry.project_id] = (acc[entry.project_id] || 0) + getFinanceTransactionReportingAmount(entry);
             return acc;
         }, {}),
         [incomeEntries],
@@ -514,7 +515,7 @@ const WorkerWeightEditor = ({
                     .order('created_at', { ascending: false }),
                 supabase
                     .from('finance_transactions')
-                    .select('project_id, amount')
+                    .select('project_id, amount, amount_usd, exchange_rate, currency')
                     .eq('period_id', periodId)
                     .eq('type', 'income'),
             ]);

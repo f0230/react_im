@@ -3,7 +3,12 @@ import { Search } from 'lucide-react';
 import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
 import MultiUseSelect from '@/components/MultiUseSelect';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { formatFinanceCurrency, formatFinanceDate } from '@/utils/finance';
+import {
+    formatFinanceCurrency,
+    formatFinanceDate,
+    getFinanceTransactionReportingAmount,
+    getInvoiceReportingAmount,
+} from '@/utils/finance';
 
 const selectButtonClass = 'h-9 rounded-xl border border-neutral-200 bg-white px-3 text-sm text-neutral-900 shadow-none hover:border-neutral-300';
 const selectListClass = 'border border-neutral-200 bg-white text-neutral-900 text-sm';
@@ -17,8 +22,10 @@ const ProjectsReportView = ({ transactions, invoices, projects, periods, distrib
     const projectData = useMemo(() => projects.map((project) => {
         const paidInvoices = invoices.filter((invoice) => invoice.project_id === project.id && invoice.status === 'paid');
         const relatedTransactions = transactions.filter((transaction) => transaction.project_id === project.id);
-        const expenses = relatedTransactions.filter((transaction) => transaction.type === 'expense').reduce((sum, transaction) => sum + Number(transaction.amount || 0), 0);
-        const income = paidInvoices.reduce((sum, invoice) => sum + Number(invoice.amount || 0), 0);
+        const expenses = relatedTransactions
+            .filter((transaction) => transaction.type === 'expense')
+            .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
+        const income = paidInvoices.reduce((sum, invoice) => sum + getInvoiceReportingAmount(invoice), 0);
         const workerCost = distributions
             .filter((distribution) => distribution.recipient_type === 'worker' && relatedTransactions.some((transaction) => transaction.period_id === distribution.period_id))
             .reduce((sum, distribution) => sum + Number(distribution.amount_earned || 0), 0);

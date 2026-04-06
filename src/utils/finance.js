@@ -8,6 +8,14 @@ export const formatFinanceCurrency = (value, currency = 'USD') => {
     }).format(Number.isFinite(amount) ? amount : 0);
 };
 
+export const FINANCE_REPORTING_CURRENCY = 'USD';
+
+const roundFinanceAmount = (value) => {
+    const amount = Number(value || 0);
+    if (!Number.isFinite(amount)) return 0;
+    return Math.round((amount + Number.EPSILON) * 100) / 100;
+};
+
 export const formatFinanceDate = (value) => {
     if (!value) return 'Sin fecha';
 
@@ -61,9 +69,58 @@ export const getPersonDisplayName = (person) => (
     person?.full_name || person?.email || 'Sin nombre'
 );
 
+export const DUPLICATE_FOUNDER_PROFILES_ERROR = 'Francisco y Federico deben estar asignados a perfiles distintos.';
+
+export const hasDuplicateFounderProfiles = (config) => {
+    const franciscoProfileId = config?.francisco_profile_id || null;
+    const federicoProfileId = config?.federico_profile_id || null;
+
+    return Boolean(
+        franciscoProfileId
+        && federicoProfileId
+        && franciscoProfileId === federicoProfileId,
+    );
+};
+
 export const getInvoiceDisplayLabel = (invoice) => (
     invoice?.invoice_number || invoice?.description || invoice?.id || 'Factura'
 );
+
+export const getFinanceTransactionReportingAmount = (transaction) => {
+    const amountUsd = Number(transaction?.amount_usd);
+    if (Number.isFinite(amountUsd)) return roundFinanceAmount(amountUsd);
+
+    const amount = Number(transaction?.amount);
+    if (!Number.isFinite(amount)) return 0;
+
+    const currency = transaction?.currency || FINANCE_REPORTING_CURRENCY;
+    if (currency === FINANCE_REPORTING_CURRENCY) return roundFinanceAmount(amount);
+
+    const exchangeRate = Number(transaction?.exchange_rate);
+    if (Number.isFinite(exchangeRate) && exchangeRate > 0) {
+        return roundFinanceAmount(amount / exchangeRate);
+    }
+
+    return roundFinanceAmount(amount);
+};
+
+export const getInvoiceReportingAmount = (invoice) => {
+    const amountUsd = Number(invoice?.amount_usd);
+    if (Number.isFinite(amountUsd)) return roundFinanceAmount(amountUsd);
+
+    const amount = Number(invoice?.amount);
+    if (!Number.isFinite(amount)) return 0;
+
+    const currency = invoice?.currency || FINANCE_REPORTING_CURRENCY;
+    if (currency === FINANCE_REPORTING_CURRENCY) return roundFinanceAmount(amount);
+
+    const exchangeRate = Number(invoice?.exchange_rate);
+    if (Number.isFinite(exchangeRate) && exchangeRate > 0) {
+        return roundFinanceAmount(amount / exchangeRate);
+    }
+
+    return roundFinanceAmount(amount);
+};
 
 export const getInvoicePaymentDate = (invoice) => (
     invoice?.paid_at || invoice?.updated_at || invoice?.created_at || null

@@ -57,6 +57,7 @@ const PeriodDetail = ({
         companyFundCreditAmount,
         periodCompanyFundMovements,
         previewDistributions,
+        duplicateFounderAssignments,
         missingFounderAssignments,
         canClosePeriod,
         profileMap: resolvedProfileMap,
@@ -129,6 +130,7 @@ const PeriodDetail = ({
                                 <PeriodAlerts
                                     period={period}
                                     missingFounderAssignments={missingFounderAssignments}
+                                    duplicateFounderAssignments={duplicateFounderAssignments}
                                     paidInvoicesPendingImport={paidInvoicesPendingImport}
                                     previewDistributions={previewDistributions}
                                     workerPoolSummary={workerPoolSummary}

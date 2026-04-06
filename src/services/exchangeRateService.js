@@ -57,6 +57,20 @@ export function convertToUsd(amount, currency, rates) {
     };
 }
 
+export async function buildUsdConversion(amount, currency) {
+    const normalizedAmount = Number(amount || 0);
+    if (!Number.isFinite(normalizedAmount)) {
+        throw new Error('Monto inválido para convertir.');
+    }
+
+    if ((currency || 'USD') === 'USD') {
+        return { amountUsd: normalizedAmount, exchangeRate: 1 };
+    }
+
+    const rates = await fetchExchangeRates();
+    return convertToUsd(normalizedAmount, currency, rates);
+}
+
 /** Common currencies for the selector */
 export const CURRENCY_OPTIONS = [
     { value: 'USD', label: 'USD — Dólar americano' },

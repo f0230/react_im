@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
+import { buildUsdConversion } from '@/services/exchangeRateService';
+import {
+    FINANCE_REPORTING_CURRENCY,
+    getFinanceTransactionReportingAmount,
+} from '@/utils/finance';
 
 /**
  * Centralized finance data hook.
@@ -20,6 +25,59 @@ const useFinanceData = () => {
     const [profiles, setProfiles] = useState([]);
 
     const isAdmin = profile?.role === 'admin';
+
+    const normalizeUsdFields = useCallback(async (table, rows) => {
+        const items = Array.isArray(rows) ? rows : [];
+        const pendingRows = items.filter((row) => {
+            if (table === 'finance_transactions' && row?.period?.status === 'closed') return false;
+
+            const amount = Number(row?.amount);
+            if (!Number.isFinite(amount) || amount <= 0) return false;
+
+            const amountUsd = Number(row?.amount_usd);
+            const exchangeRate = Number(row?.exchange_rate);
+            return !Number.isFinite(amountUsd) || !Number.isFinite(exchangeRate) || exchangeRate <= 0;
+        });
+
+        if (!pendingRows.length) return items;
+
+        const updates = await Promise.all(pendingRows.map(async (row) => {
+            try {
+                const invoiceAmountUsd = Number(row?.invoice?.amount_usd);
+                const invoiceExchangeRate = Number(row?.invoice?.exchange_rate);
+                const conversion = (
+                    table === 'finance_transactions'
+                    && Number.isFinite(invoiceAmountUsd)
+                    && Number.isFinite(invoiceExchangeRate)
+                    && invoiceExchangeRate > 0
+                )
+                    ? { amountUsd: invoiceAmountUsd, exchangeRate: invoiceExchangeRate }
+                    : await buildUsdConversion(row.amount, row.currency || FINANCE_REPORTING_CURRENCY);
+                const patch = {
+                    amount_usd: conversion.amountUsd,
+                    exchange_rate: conversion.exchangeRate,
+                };
+
+                const { error: updateError } = await supabase
+                    .from(table)
+                    .update(patch)
+                    .eq('id', row.id);
+
+                if (updateError) {
+                    console.error(`Error normalizing ${table} row`, row.id, updateError);
+                    return row;
+                }
+
+                return { ...row, ...patch };
+            } catch (normalizeError) {
+                console.error(`Error computing USD normalization for ${table} row`, row.id, normalizeError);
+                return row;
+            }
+        }));
+
+        const updatesById = new Map(updates.map((row) => [row.id, row]));
+        return items.map((row) => updatesById.get(row.id) || row);
+    }, []);
 
     const fetchAll = useCallback(async () => {
         setLoading(true);
@@ -47,7 +105,7 @@ const useFinanceData = () => {
                         *,
                         period:finance_periods(id, name, status),
                         project:projects(id, name),
-                        invoice:invoices(id, invoice_number, project_id, description),
+                        invoice:invoices(id, invoice_number, project_id, description, amount, amount_usd, exchange_rate, currency),
                         invoice_id
                     `)
                     .order('transaction_date', { ascending: false })
@@ -55,7 +113,7 @@ const useFinanceData = () => {
                 // 4. Invoices (all statuses — tabs filter locally)
                 supabase
                     .from('invoices')
-                    .select('id, invoice_number, description, amount, currency, status, due_date, paid_at, project_id, updated_at, created_at')
+                    .select('id, invoice_number, description, amount, amount_usd, exchange_rate, currency, status, due_date, paid_at, project_id, updated_at, created_at')
                     .order('updated_at', { ascending: false }),
                 // 5. Projects (with client name for profitability)
                 supabase
@@ -95,10 +153,13 @@ const useFinanceData = () => {
                 return;
             }
 
+            const normalizedTransactions = await normalizeUsdFields('finance_transactions', transactionsData || []);
+            const normalizedInvoices = await normalizeUsdFields('invoices', invoicesData || []);
+
             setConfig(configData || null);
             setPeriods(periodsData || []);
-            setTransactions(transactionsData || []);
-            setInvoices(invoicesData || []);
+            setTransactions(normalizedTransactions);
+            setInvoices(normalizedInvoices);
             setProjects(projectsData || []);
             setDistributions(distributionsData || []);
             setCompanyFundMovements(companyFundMovementsData || []);
@@ -109,7 +170,7 @@ const useFinanceData = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [normalizeUsdFields]);
 
     useEffect(() => {
         if (!isAdmin) return;
@@ -134,10 +195,10 @@ const useFinanceData = () => {
     const summaryKpis = useMemo(() => {
         const income = transactions
             .filter((t) => t.type === 'income')
-            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+            .reduce((sum, t) => sum + getFinanceTransactionReportingAmount(t), 0);
         const expenses = transactions
             .filter((t) => t.type === 'expense')
-            .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+            .reduce((sum, t) => sum + getFinanceTransactionReportingAmount(t), 0);
         const pendingPayouts = distributions.reduce(
             (sum, d) => sum + (d.recipient_type === 'company' ? 0 : Number(d.amount_pending || 0)), 0,
         );
@@ -150,6 +211,8 @@ const useFinanceData = () => {
             return acc;
         }, {});
 
+        const companyFundBalance = Number(companyFundBalances[currency] || 0);
+
         return {
             income,
             expenses,
@@ -157,17 +220,20 @@ const useFinanceData = () => {
             pendingPayouts,
             currency,
             companyFundBalances,
-            companyFundBalance: Number(companyFundBalances[currency] || 0),
+            companyFundCurrency: config?.default_currency || currency,
+            companyFundBalance,
+            // Free balance: what remains in the fund after honouring pending obligations
+            disponible: companyFundBalance - pendingPayouts,
         };
-    }, [companyFundMovements, currency, distributions, transactions]);
+    }, [companyFundMovements, config?.default_currency, currency, distributions, transactions]);
 
     // Periods with live totals (open=live data, closed=snapshot)
     const periodsWithTotals = useMemo(() => {
         const byPeriod = transactions.reduce((acc, t) => {
             if (!t.period_id) return acc;
-            const cur = acc[t.period_id] || { income: 0, expenses: 0, currency: t.currency || 'USD' };
-            if (t.type === 'income') cur.income += Number(t.amount || 0);
-            if (t.type === 'expense') cur.expenses += Number(t.amount || 0);
+            const cur = acc[t.period_id] || { income: 0, expenses: 0, currency: FINANCE_REPORTING_CURRENCY };
+            if (t.type === 'income') cur.income += getFinanceTransactionReportingAmount(t);
+            if (t.type === 'expense') cur.expenses += getFinanceTransactionReportingAmount(t);
             acc[t.period_id] = cur;
             return acc;
         }, {});
@@ -181,7 +247,7 @@ const useFinanceData = () => {
                 total_income: totalIncome,
                 total_expenses: totalExpenses,
                 net_profit: totalIncome - totalExpenses,
-                currency: live?.currency || currency,
+                currency: live?.currency || FINANCE_REPORTING_CURRENCY,
             };
         });
     }, [currency, periods, transactions]);

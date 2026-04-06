@@ -8,6 +8,7 @@ import {
     getDynamicWorkersTarget,
     WORKERS_TARGET_REFERENCE_ACTIVE_WORKERS,
 } from '@/components/finances/workersTarget';
+import { DUPLICATE_FOUNDER_PROFILES_ERROR, hasDuplicateFounderProfiles } from '@/utils/finance';
 
 const RECOMMENDED_SPLIT = {
     pct_francisco: 40,
@@ -60,6 +61,8 @@ const SettingsModal = ({ open, onClose, config, adminProfiles = [], onSaved }) =
             .reduce((sum, key) => sum + Number(form[key] || 0), 0)
     ), [form]);
 
+    const duplicateFounderProfiles = useMemo(() => hasDuplicateFounderProfiles(form), [form]);
+
     const adminOptions = useMemo(() => ([
         { value: '', label: 'Seleccionar admin' },
         ...adminProfiles.map((admin) => ({
@@ -94,6 +97,12 @@ const SettingsModal = ({ open, onClose, config, adminProfiles = [], onSaved }) =
 
         if (Math.round(totalPct * 100) / 100 !== 100) {
             setError('Los porcentajes deben sumar exactamente 100%.');
+            setSaving(false);
+            return;
+        }
+
+        if (duplicateFounderProfiles) {
+            setError(DUPLICATE_FOUNDER_PROFILES_ERROR);
             setSaving(false);
             return;
         }
@@ -363,6 +372,11 @@ const SettingsModal = ({ open, onClose, config, adminProfiles = [], onSaved }) =
                                     <p className={`mt-1 text-sm ${Math.round(totalPct * 100) / 100 === 100 ? 'text-emerald-600' : 'text-amber-600'}`}>
                                         Total actual: {totalPct.toFixed(2)}%
                                     </p>
+                                    {duplicateFounderProfiles ? (
+                                        <p className="mt-1 text-sm text-rose-600">
+                                            {DUPLICATE_FOUNDER_PROFILES_ERROR}
+                                        </p>
+                                    ) : null}
                                 </div>
                             </section>
 
@@ -383,7 +397,7 @@ const SettingsModal = ({ open, onClose, config, adminProfiles = [], onSaved }) =
                                 </button>
                                 <button
                                     type="submit"
-                                    disabled={saving}
+                                    disabled={saving || duplicateFounderProfiles}
                                     className="rounded-2xl bg-neutral-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {saving ? 'Guardando...' : 'Guardar configuración'}
