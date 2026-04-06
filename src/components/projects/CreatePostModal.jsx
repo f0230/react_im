@@ -111,7 +111,7 @@ const INSTAGRAM_COVER_MAX_BYTES = 8 * 1024 * 1024;
 const INSTAGRAM_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/quicktime']);
 
 function isVideoUrl(url = '') {
-  return /\.(mp4|mov|webm)$/i.test(url);
+  return /\.(mp4|mov|webm)(\?.*)?$/i.test(url);
 }
 
 function formatBytes(bytes = 0) {

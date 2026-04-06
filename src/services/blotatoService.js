@@ -189,8 +189,14 @@ export function subscribeToProjectPosts(projectId, callback) {
     .subscribe();
 }
 
+const UPLOAD_MAX_BYTES = 100 * 1024 * 1024; // 100 MB
+
 // Upload media to Supabase Storage → returns public URL
 export async function uploadMediaFile(file) {
+  if (file.size > UPLOAD_MAX_BYTES) {
+    throw new Error(`El archivo supera el límite de 100 MB (${(file.size / 1024 / 1024).toFixed(1)} MB).`);
+  }
+
   const ext = file.name.split('.').pop();
   const { data: { user } } = await supabase.auth.getUser();
   const path = `${user.id}/${Date.now()}.${ext}`;
