@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowDownCircle, ArrowUpCircle, Landmark, PiggyBank, TrendingUp, Users, Wallet } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Banknote, Landmark, PiggyBank, Users } from 'lucide-react';
 import FinanceKpiCard from '@/components/finances/FinanceKpiCard';
 import { formatFinanceCurrency, formatFinanceDate } from '@/utils/finance';
 
@@ -25,25 +25,29 @@ const DashboardKpiStrip = ({
     companyFundMovements,
 }) => {
     const lastCompanyMovement = companyFundMovements[0];
-    const disponible = summaryKpis.disponible ?? (summaryKpis.companyFundBalance - summaryKpis.pendingPayouts);
+    const cajaEstimada = summaryKpis.cajaEstimada ?? (summaryKpis.net - (summaryKpis.totalPaidDistributions || 0));
 
     return (
         <div className="flex flex-wrap gap-2">
-            {/* P&L: accumulated net result across all periods */}
+            {/* CASH: best estimate of real money available today */}
             <FinanceKpiCard
-                icon={TrendingUp}
-                label="Resultado acumulado"
-                value={formatFinanceCurrency(summaryKpis.net, currency)}
-                color={summaryKpis.net >= 0 ? 'text-neutral-900' : 'text-rose-500'}
+                icon={Banknote}
+                label="Caja estimada"
+                value={formatFinanceCurrency(cajaEstimada, currency)}
+                color={cajaEstimada >= 0 ? 'text-emerald-600' : 'text-rose-500'}
                 popover={(
                     <div className="space-y-3">
-                        <p className="font-semibold text-neutral-900">Resultado P&L acumulado</p>
-                        <p className="text-xs text-neutral-500">Ingresos menos gastos registrados en todas las transacciones. No representa dinero en caja.</p>
+                        <p className="font-semibold text-neutral-900">Plata disponible hoy (estimada)</p>
+                        <p className="text-xs text-neutral-500">
+                            Resultado P&L menos lo que ya se pagó en distribuciones a founders y workers. Es la mejor estimación del dinero real disponible mientras no se registren cuentas bancarias reales.
+                        </p>
                         <BreakdownList
                             items={[
                                 { label: 'Ingresos acumulados', value: formatFinanceCurrency(summaryKpis.income, currency), className: 'text-emerald-600' },
                                 { label: 'Gastos acumulados', value: formatFinanceCurrency(summaryKpis.expenses, currency), className: 'text-rose-500' },
-                                { label: 'Resultado neto', value: formatFinanceCurrency(summaryKpis.net, currency) },
+                                { label: 'Resultado neto (P&L)', value: formatFinanceCurrency(summaryKpis.net, currency) },
+                                { label: 'Ya pagado (distrib.)', value: `− ${formatFinanceCurrency(summaryKpis.totalPaidDistributions || 0, currency)}`, className: 'text-rose-500' },
+                                { label: 'Caja estimada', value: formatFinanceCurrency(cajaEstimada, currency), className: cajaEstimada >= 0 ? 'text-emerald-600' : 'text-rose-500' },
                             ]}
                         />
                     </div>
@@ -148,26 +152,6 @@ const DashboardKpiStrip = ({
                 )}
             />
 
-            {/* Disponible libre: fund balance minus pending obligations */}
-            <FinanceKpiCard
-                icon={Wallet}
-                label="Disponible"
-                value={formatFinanceCurrency(disponible, currency)}
-                color={disponible >= 0 ? 'text-emerald-600' : 'text-rose-500'}
-                popover={(
-                    <div className="space-y-3">
-                        <p className="font-semibold text-neutral-900">Disponible libre</p>
-                        <p className="text-xs text-neutral-500">Fondo empresa menos obligaciones pendientes con founders y workers.</p>
-                        <BreakdownList
-                            items={[
-                                { label: 'Fondo empresa', value: formatFinanceCurrency(summaryKpis.companyFundBalance, currency), className: 'text-amber-600' },
-                                { label: 'Obligaciones', value: `− ${formatFinanceCurrency(summaryKpis.pendingPayouts, currency)}`, className: 'text-rose-500' },
-                                { label: 'Disponible', value: formatFinanceCurrency(disponible, currency), className: disponible >= 0 ? 'text-emerald-600' : 'text-rose-500' },
-                            ]}
-                        />
-                    </div>
-                )}
-            />
         </div>
     );
 };

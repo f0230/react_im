@@ -202,6 +202,10 @@ const useFinanceData = () => {
         const pendingPayouts = distributions.reduce(
             (sum, d) => sum + (d.recipient_type === 'company' ? 0 : Number(d.amount_pending || 0)), 0,
         );
+        // Total already paid out in cash to founders and workers (real outflows not in finance_transactions)
+        const totalPaidDistributions = distributions.reduce(
+            (sum, d) => sum + (d.recipient_type === 'company' ? 0 : Number(d.amount_paid || 0)), 0,
+        );
         const companyFundBalances = companyFundMovements.reduce((acc, movement) => {
             const movementCurrency = movement.currency || currency;
             const signedAmount = movement.movement_type === 'credit'
@@ -213,11 +217,16 @@ const useFinanceData = () => {
 
         const companyFundBalance = Number(companyFundBalances[currency] || 0);
 
+        const net = income - expenses;
+
         return {
             income,
             expenses,
-            net: income - expenses,
+            net,
             pendingPayouts,
+            totalPaidDistributions,
+            // Best estimate of real cash today: P&L net minus distributions already paid out
+            cajaEstimada: net - totalPaidDistributions,
             currency,
             companyFundBalances,
             companyFundCurrency: config?.default_currency || currency,

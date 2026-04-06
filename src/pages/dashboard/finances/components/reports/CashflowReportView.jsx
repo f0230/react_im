@@ -32,20 +32,27 @@ const CashflowReportView = ({ transactions, invoices, currency = 'USD' }) => {
         const nextInvoice = [...pendingInvoices]
             .filter((invoice) => invoice.due_date)
             .sort((left, right) => new Date(left.due_date) - new Date(right.due_date))[0] || null;
-        const timeline = [];
-        Array.from({ length: 13 }).forEach((_, index) => {
-            const offset = index * 7;
-            const date = new Date(today);
-            date.setDate(date.getDate() + offset);
-            const dateString = date.toISOString().slice(0, 10);
-            const income = pendingInvoices
-                .filter((invoice) => invoice.due_date === dateString)
+        const todayString = today.toISOString().slice(0, 10);
+        // Build cumulative balance at each weekly checkpoint.
+        // Each point reflects everything received/spent up to and including that date.
+        const timeline = Array.from({ length: 13 }).map((_, index) => {
+            const offsetDays = index * 7;
+            const checkpoint = new Date(today);
+            checkpoint.setDate(checkpoint.getDate() + offsetDays);
+            const checkpointString = checkpoint.toISOString().slice(0, 10);
+
+            const cumulativeInvoices = pendingInvoices
+                .filter((invoice) => invoice.due_date && invoice.due_date <= checkpointString)
                 .reduce((sum, invoice) => sum + getInvoiceReportingAmount(invoice), 0);
-            const expenses = transactions
-                .filter((transaction) => transaction.type === 'expense' && transaction.transaction_date === dateString)
-                .reduce((sum, transaction) => sum + getFinanceTransactionReportingAmount(transaction), 0);
-            const previous = index === 0 ? baseBalance : timeline[index - 1].balance;
-            timeline.push({ label: `${offset}d`, balance: previous + income - expenses });
+
+            const cumulativeFutureExpenses = transactions
+                .filter((t) => t.type === 'expense' && t.transaction_date > todayString && t.transaction_date <= checkpointString)
+                .reduce((sum, t) => sum + getFinanceTransactionReportingAmount(t), 0);
+
+            return {
+                label: `${offsetDays}d`,
+                balance: baseBalance + cumulativeInvoices - cumulativeFutureExpenses,
+            };
         });
         return { currency, receivables, futureExpenses, projection90, nextInvoice, timeline };
     }, [currency, pendingInvoices, transactions]);
