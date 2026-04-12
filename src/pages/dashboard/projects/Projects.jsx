@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, Briefcase, CalendarDays, FileText, Folder, Pencil, Plus, Users } from 'lucide-react';
+import { BarChart3, BookOpen, Briefcase, CalendarDays, FileText, Folder, Pencil, Plus, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
@@ -30,6 +30,7 @@ const getProjectServicesHref = (projectId) => `/dashboard/projects/${projectId}/
 const getProjectSectionHref = (projectId, suffix) => {
     if (!projectId) return null;
     if (suffix === 'tasks') return getProjectServicesHref(projectId);
+    if (suffix === 'brand-docs') return `/dashboard/projects/${projectId}/brand-docs`;
     return `/dashboard/${suffix}?projectId=${projectId}`;
 };
 
@@ -572,6 +573,18 @@ const Projects = () => {
                 icon: FileText,
                 color: 'green',
                 suffix: 'invoices',
+            });
+        }
+
+        // Brand Docs only visible for admin / worker
+        if (isAdmin || isWorker) {
+            baseCards.push({
+                key: 'brand-docs',
+                label: 'Brand Docs',
+                description: 'Identidad y voz de marca',
+                icon: BookOpen,
+                color: 'indigo',
+                suffix: 'brand-docs',
             });
         }
 

@@ -3,12 +3,14 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   BookOpen,
+  Check,
   ChevronDown,
   ChevronUp,
   FileText,
   Loader2,
   Pencil,
   Plus,
+  Sparkles,
   ToggleLeft,
   ToggleRight,
   Trash2,
@@ -18,6 +20,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import { generateBrandDocs } from '@/services/aiCopyService';
 
 // ─── constants ──────────────────────────────────────────────────────────────
 
@@ -314,9 +317,18 @@ const ProjectBrandDocs = () => {
   const [error,    setError]    = useState('');
 
   // form state: null = closed | 'new' | doc object (edit mode)
-  const [formMode,   setFormMode]   = useState(null);
+  const [formMode,    setFormMode]    = useState(null);
   const [formLoading, setFormLoading] = useState(false);
-  const [formError,  setFormError]  = useState('');
+  const [formError,   setFormError]   = useState('');
+
+  // AI generation modal
+  const [aiModalOpen,    setAiModalOpen]    = useState(false);
+  const [aiContext,      setAiContext]       = useState('');
+  const [aiLoading,      setAiLoading]       = useState(false);
+  const [aiError,        setAiError]         = useState('');
+  const [aiPreviewDocs,  setAiPreviewDocs]   = useState([]); // generated, pending save
+  const [aiAccepted,     setAiAccepted]      = useState({}); // { index: bool }
+  const [aiSaving,       setAiSaving]        = useState(false);
 
   // ── data fetching ────────────────────────────────────────────────────────
 
@@ -329,7 +341,7 @@ const ProjectBrandDocs = () => {
       const [projectRes, docsRes] = await Promise.all([
         supabase
           .from('projects')
-          .select('id, title, name, project_name')
+          .select('*')
           .eq('id', activeProjectId)
           .maybeSingle(),
         supabase
@@ -435,6 +447,66 @@ const ProjectBrandDocs = () => {
     }
   }, []);
 
+  // ── AI generation handlers ────────────────────────────────────────────────
+
+  const handleAiGenerate = useCallback(async () => {
+    setAiLoading(true);
+    setAiError('');
+    setAiPreviewDocs([]);
+    try {
+      const generated = await generateBrandDocs({
+        projectId: activeProjectId,
+        extraContext: aiContext,
+      });
+      setAiPreviewDocs(generated);
+      // Accept all by default
+      setAiAccepted(Object.fromEntries(generated.map((_, i) => [i, true])));
+    } catch (err) {
+      setAiError(err?.message || 'No se pudo generar el brand kit.');
+    } finally {
+      setAiLoading(false);
+    }
+  }, [activeProjectId, aiContext]);
+
+  const handleAiSave = useCallback(async () => {
+    const toSave = aiPreviewDocs.filter((_, i) => aiAccepted[i]);
+    if (toSave.length === 0) return;
+
+    setAiSaving(true);
+    setAiError('');
+    try {
+      const { data, error: err } = await supabase
+        .from('project_brand_docs')
+        .insert(toSave.map((d) => ({
+          project_id: activeProjectId,
+          title:      d.title,
+          doc_type:   d.doc_type,
+          content:    d.content,
+        })))
+        .select();
+
+      if (err) throw err;
+      setDocs((prev) => [...prev, ...(data || [])]);
+      setAiModalOpen(false);
+      setAiPreviewDocs([]);
+      setAiContext('');
+      setAiAccepted({});
+    } catch (err) {
+      setAiError(err?.message || 'No se pudo guardar los documentos.');
+    } finally {
+      setAiSaving(false);
+    }
+  }, [activeProjectId, aiPreviewDocs, aiAccepted]);
+
+  const closeAiModal = useCallback(() => {
+    if (aiLoading || aiSaving) return;
+    setAiModalOpen(false);
+    setAiPreviewDocs([]);
+    setAiContext('');
+    setAiError('');
+    setAiAccepted({});
+  }, [aiLoading, aiSaving]);
+
   // ── derived ──────────────────────────────────────────────────────────────
 
   const activeDocs = docs.filter((d) => d.is_active);
@@ -467,13 +539,22 @@ const ProjectBrandDocs = () => {
         </div>
 
         {canEdit && !formMode && (
-          <button
-            onClick={() => { setFormMode('new'); setFormError(''); }}
-            className="mt-2 flex shrink-0 items-center gap-2 self-start rounded-full bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-neutral-800 transition sm:mt-0"
-          >
-            <Plus size={13} />
-            Nuevo documento
-          </button>
+          <div className="mt-2 flex shrink-0 items-center gap-2 self-start sm:mt-0">
+            <button
+              onClick={() => { setAiModalOpen(true); setAiError(''); }}
+              className="flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100 transition"
+            >
+              <Sparkles size={13} />
+              Generar con IA
+            </button>
+            <button
+              onClick={() => { setFormMode('new'); setFormError(''); }}
+              className="flex items-center gap-2 rounded-full bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-neutral-800 transition"
+            >
+              <Plus size={13} />
+              Nuevo documento
+            </button>
+          </div>
         )}
       </div>
 
@@ -592,6 +673,162 @@ const ProjectBrandDocs = () => {
           </span>
         </p>
       )}
+
+      {/* ── AI Generation Modal ───────────────────────────────────────────── */}
+      <AnimatePresence>
+        {aiModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeAiModal}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 16 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl"
+            >
+              {/* Modal header */}
+              <div className="sticky top-0 z-10 flex items-center justify-between rounded-t-3xl border-b border-neutral-100 bg-white px-6 py-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={18} className="text-violet-600" />
+                  <h3 className="text-sm font-bold text-neutral-900">Generar Brand Kit con IA</h3>
+                </div>
+                <button
+                  onClick={closeAiModal}
+                  disabled={aiLoading || aiSaving}
+                  className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-100 transition disabled:opacity-40"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 flex flex-col gap-5">
+
+                {/* Context input — only show before generation */}
+                {aiPreviewDocs.length === 0 && (
+                  <>
+                    <div>
+                      <p className="text-sm text-neutral-600 leading-relaxed">
+                        La IA va a generar <span className="font-semibold text-neutral-900">4-5 documentos de marca</span> (voz, audiencia, ejemplos de copy y lineamientos) usando la información del proyecto.
+                      </p>
+                      <p className="mt-1 text-xs text-neutral-400">
+                        Agregá contexto adicional para mejorar la calidad: industria, competidores, tono deseado, etc.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                        Contexto adicional <span className="font-normal text-neutral-400">(opcional)</span>
+                      </label>
+                      <textarea
+                        value={aiContext}
+                        onChange={(e) => setAiContext(e.target.value)}
+                        placeholder={`Ej: Empresa de servicios de limpieza en Montevideo, público objetivo dueños de oficinas y empresas medianas, tono profesional pero cercano, competimos con X y Y, queremos diferenciarnos por la confiabilidad y el servicio personalizado.`}
+                        rows={5}
+                        className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-900 placeholder-neutral-400 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100 transition resize-none"
+                      />
+                    </div>
+
+                    {aiError && (
+                      <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                        {aiError}
+                      </p>
+                    )}
+
+                    <button
+                      onClick={handleAiGenerate}
+                      disabled={aiLoading}
+                      className="flex items-center justify-center gap-2 rounded-full bg-violet-600 px-6 py-3 text-sm font-semibold text-white hover:bg-violet-700 transition disabled:opacity-50"
+                    >
+                      {aiLoading
+                        ? <><Loader2 size={15} className="animate-spin" /> Generando documentos…</>
+                        : <><Sparkles size={15} /> Generar Brand Kit</>
+                      }
+                    </button>
+                  </>
+                )}
+
+                {/* Preview — show after generation */}
+                {aiPreviewDocs.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-neutral-900">
+                        {aiPreviewDocs.length} documentos generados — revisá y seleccioná los que querés guardar
+                      </p>
+                      <button
+                        onClick={() => { setAiPreviewDocs([]); setAiError(''); }}
+                        disabled={aiSaving}
+                        className="text-xs text-neutral-400 hover:text-neutral-700 transition disabled:opacity-40"
+                      >
+                        Regenerar
+                      </button>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                      {aiPreviewDocs.map((doc, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.05 }}
+                          className={`rounded-2xl border p-4 transition cursor-pointer ${
+                            aiAccepted[i]
+                              ? 'border-violet-200 bg-violet-50'
+                              : 'border-neutral-200 bg-neutral-50 opacity-60'
+                          }`}
+                          onClick={() => setAiAccepted((prev) => ({ ...prev, [i]: !prev[i] }))}
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                                aiAccepted[i] ? 'border-violet-500 bg-violet-500' : 'border-neutral-300 bg-white'
+                              }`}>
+                                {aiAccepted[i] && <Check size={11} className="text-white" strokeWidth={3} />}
+                              </div>
+                              <span className="text-sm font-semibold text-neutral-900">{doc.title}</span>
+                            </div>
+                            <TypeBadge type={doc.doc_type} />
+                          </div>
+                          <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-neutral-600 max-h-40 overflow-y-auto">
+                            {doc.content}
+                          </pre>
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {aiError && (
+                      <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+                        {aiError}
+                      </p>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2">
+                      <p className="text-xs text-neutral-400">
+                        {Object.values(aiAccepted).filter(Boolean).length} de {aiPreviewDocs.length} seleccionados
+                      </p>
+                      <button
+                        onClick={handleAiSave}
+                        disabled={aiSaving || Object.values(aiAccepted).filter(Boolean).length === 0}
+                        className="flex items-center gap-2 rounded-full bg-black px-6 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 transition disabled:opacity-40"
+                      >
+                        {aiSaving
+                          ? <><Loader2 size={14} className="animate-spin" /> Guardando…</>
+                          : <><Check size={14} /> Guardar seleccionados</>
+                        }
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -14,9 +14,10 @@ import Sitemap from 'vite-plugin-sitemap';
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const devApiPlugin = () => {
-  const calHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/cal/index.js')).href;
-  const whatsappHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/whatsapp.js')).href;
-  const studioHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/studio.js')).href;
+  const calHandlerUrl        = pathToFileURL(path.resolve(__dirname, './api/cal/index.js')).href;
+  const whatsappHandlerUrl   = pathToFileURL(path.resolve(__dirname, './api/whatsapp.js')).href;
+  const studioHandlerUrl     = pathToFileURL(path.resolve(__dirname, './api/studio.js')).href;
+  const copywriterHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/post-copywriter.js')).href;
 
   const apiRoutes = [
     {
@@ -52,6 +53,16 @@ const devApiPlugin = () => {
         return query;
       },
       handlerUrl: whatsappHandlerUrl,
+    },
+    {
+      name: '/api/post-copywriter',
+      matches: (pathname) => pathname === '/api/post-copywriter' || pathname === '/api/generate-brand-docs',
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        if (!query.action && pathname === '/api/generate-brand-docs') query.action = 'generate-brand-docs';
+        return query;
+      },
+      handlerUrl: copywriterHandlerUrl,
     },
     {
       name: '/api/studio',

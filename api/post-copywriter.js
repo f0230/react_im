@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
+import { MODO_STYLE_GUIDE } from '../server/brand-base/modo-style.js';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const DESTINATION_KEYS = ['pageId', 'page_id', 'boardId', 'board_id', 'channelId', 'channel_id'];
@@ -228,6 +229,9 @@ function buildSystemPrompt(brandDocs = []) {
   const base = [
     'Sos un copywriter senior de social media para DTE.',
     'Tu tarea es escribir un copy listo para publicar, usando el brief del usuario, la identidad del proyecto y el contexto operativo disponible.',
+    '',
+    MODO_STYLE_GUIDE,
+    '',
     'Responde SIEMPRE en JSON valido, sin markdown.',
     'Output obligatorio:',
     '{',
@@ -399,6 +403,145 @@ async function callOpenAiJson({ apiKey, model, systemPrompt, userPayload }) {
   return parsed;
 }
 
+// ─── Brand Docs Generator ────────────────────────────────────────────────────
+
+const BRAND_DOC_TYPES = ['brand_voice', 'copy_examples', 'audience', 'guidelines', 'general'];
+
+function buildBrandDocsSystemPrompt() {
+  return [
+    'Sos un estratega de marca y copywriter senior especializado en social media para agencias de marketing.',
+    'Tu tarea es generar una base de conocimiento de marca completa para un proyecto, basándote en el contexto provisto.',
+    'Esta base de conocimiento será usada por una IA para generar copies de redes sociales alineados a la marca.',
+    '',
+    MODO_STYLE_GUIDE,
+    '',
+    'Los documentos que generés deben estar ALINEADOS con el estilo base anterior, adaptándolo al rubro y tono específico del proyecto.',
+    '',
+    'Respondé SIEMPRE con JSON válido, sin markdown, con esta estructura exacta:',
+    '{',
+    '  "docs": [',
+    '    {',
+    '      "doc_type": string,  // uno de: brand_voice | copy_examples | audience | guidelines | general',
+    '      "title": string,     // título descriptivo, máx 80 chars',
+    '      "content": string    // contenido en markdown, máx 1500 chars por doc',
+    '    }',
+    '  ]',
+    '}',
+    '',
+    'Reglas:',
+    '- Generá exactamente estos 4 documentos en este orden: brand_voice, audience, copy_examples, guidelines.',
+    '- Si hay contexto suficiente, agregá un 5to doc de tipo "general" con novedades, temporada o foco actual.',
+    '- Cada doc debe ser accionable y específico al proyecto — nada genérico ni de relleno.',
+    '- brand_voice: tono, persona gramatical, ritmo, palabras a evitar, estilo.',
+    '- audience: perfil demográfico, dolores reales, lenguaje que usa, qué valora.',
+    '- copy_examples: 3 ejemplos de copies listos para publicar (Instagram, LinkedIn o el canal más relevante).',
+    '- guidelines: reglas concretas de qué incluir siempre y qué evitar siempre.',
+    '- Escribí en español rioplatense. El contenido debe ser directamente usable, no una descripción de lo que haría.',
+    '- No uses placeholders como "[nombre del cliente]". Si falta info, inferí de forma razonable.',
+  ].join('\n');
+}
+
+function buildBrandDocsUserPayload({ project, extraContext }) {
+  return {
+    proyecto: {
+      nombre: getProjectDisplayName(project),
+      descripcion: sanitizeText(project.description),
+      objetivo: sanitizeText(project.objective),
+      tipo_necesidad: sanitizeText(project.need_type),
+    },
+    contexto_adicional: sanitizeText(extraContext),
+    instruccion: 'Generá la base de conocimiento de marca para este proyecto.',
+  };
+}
+
+function normalizeBrandDocsOutput(raw) {
+  const docs = Array.isArray(raw?.docs) ? raw.docs : [];
+
+  return docs
+    .filter((d) => d && typeof d === 'object')
+    .map((d) => ({
+      doc_type: BRAND_DOC_TYPES.includes(d.doc_type) ? d.doc_type : 'general',
+      title:   sanitizeText(d.title, 'Sin título').slice(0, 120),
+      content: sanitizeText(d.content, '').slice(0, 8000),
+    }))
+    .filter((d) => d.content.length > 0)
+    .slice(0, 6);
+}
+
+async function handleGenerateBrandDocs(req, res, supabase, user) {
+  const body = parseJsonBody(req);
+  const projectId    = sanitizeText(body?.projectId);
+  const extraContext = sanitizeText(body?.extraContext);
+
+  if (!projectId) {
+    return res.status(400).json({ error: 'projectId is required' });
+  }
+
+  const { data: hasAccess, error: accessError } = await supabase
+    .rpc('fn_has_project_access', { p_id: projectId, u_id: user.id });
+
+  if (accessError) {
+    return res.status(500).json({ error: 'Failed to verify project access', detail: accessError.message });
+  }
+  if (!hasAccess) {
+    return res.status(403).json({ error: 'Forbidden: no project access' });
+  }
+
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .maybeSingle();
+
+  if (projectError) {
+    return res.status(500).json({ error: 'Failed to load project', detail: projectError.message });
+  }
+  if (!project) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+
+  const apiKey = sanitizeText(process.env.OPENAI_API_KEY);
+  if (!apiKey) {
+    return res.status(500).json({ error: 'Missing OPENAI_API_KEY' });
+  }
+
+  const model =
+    sanitizeText(process.env.OPENAI_SOCIAL_COPY_MODEL)
+    || sanitizeText(process.env.OPENAI_SERVICES_PLANNER_MODEL)
+    || sanitizeText(process.env.OPENAI_REPORTS_MODEL)
+    || 'gpt-4o-mini';
+
+  try {
+    const rawOutput = await callOpenAiJson({
+      apiKey,
+      model,
+      systemPrompt: buildBrandDocsSystemPrompt(),
+      userPayload:  buildBrandDocsUserPayload({ project, extraContext }),
+    });
+
+    const docs = normalizeBrandDocsOutput(rawOutput);
+
+    if (docs.length === 0) {
+      return res.status(500).json({ error: 'AI did not return any brand docs' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      model,
+      generatedAt: new Date().toISOString(),
+      docs,
+    });
+  } catch (error) {
+    console.error('generate-brand-docs failed:', error);
+    return res.status(500).json({
+      error:  'Failed to generate brand docs',
+      detail: error?.message || String(error),
+    });
+  }
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -408,6 +551,29 @@ export default async function handler(req, res) {
   const body = parseJsonBody(req);
   if (!body) {
     return res.status(400).json({ error: 'Invalid JSON body' });
+  }
+
+  // ── Auth (shared by all actions) ──────────────────────────
+  const supabase = getSupabaseAdmin();
+  if (!supabase) {
+    return res.status(500).json({ error: 'Server configuration error: missing Supabase credentials' });
+  }
+
+  const token = getTokenFromRequest(req);
+  if (!token) {
+    return res.status(401).json({ error: 'Missing Authorization header' });
+  }
+
+  const { data: authData, error: authError } = await supabase.auth.getUser(token);
+  const user = authData?.user;
+  if (authError || !user?.id) {
+    return res.status(401).json({ error: 'Unauthorized: invalid token' });
+  }
+
+  // ── Action dispatch ───────────────────────────────────────
+  const action = sanitizeText(req.query?.action || body.action);
+  if (action === 'generate-brand-docs') {
+    return handleGenerateBrandDocs(req, res, supabase, user);
   }
 
   const projectId = sanitizeText(body.projectId);
@@ -425,22 +591,6 @@ export default async function handler(req, res) {
 
   if (!brief) {
     return res.status(400).json({ error: 'brief is required' });
-  }
-
-  const supabase = getSupabaseAdmin();
-  if (!supabase) {
-    return res.status(500).json({ error: 'Server configuration error: missing Supabase credentials' });
-  }
-
-  const token = getTokenFromRequest(req);
-  if (!token) {
-    return res.status(401).json({ error: 'Missing Authorization header' });
-  }
-
-  const { data: authData, error: authError } = await supabase.auth.getUser(token);
-  const user = authData?.user;
-  if (authError || !user?.id) {
-    return res.status(401).json({ error: 'Unauthorized: invalid token' });
   }
 
   const { data: hasAccess, error: accessError } = await supabase

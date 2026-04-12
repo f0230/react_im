@@ -50,3 +50,26 @@ export async function generateProjectPostCopy({
 
   return data.output;
 }
+
+export async function generateBrandDocs({ projectId, extraContext = '' }) {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE}/generate-brand-docs`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ projectId, extraContext }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.detail || data?.error || 'No se pudo generar el brand kit');
+  }
+
+  if (!Array.isArray(data?.docs) || data.docs.length === 0) {
+    throw new Error('La IA no devolvió documentos de marca válidos');
+  }
+
+  return data.docs;
+}

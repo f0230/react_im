@@ -66,6 +66,10 @@
       "destination": "/api/figma?action=comments"
     },
     {
+      "source": "/api/generate-brand-docs",
+      "destination": "/api/post-copywriter?action=generate-brand-docs"
+    },
+    {
       "source": "/api/studio-proxy",
       "destination": "/api/studio?action=proxy"
     },
