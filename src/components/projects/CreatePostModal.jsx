@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { createPost, getPlatformName, PLATFORM_CONFIG, uploadMediaFile } from '@/services/blotatoService';
+import { generateProjectPostCopy } from '@/services/aiCopyService';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { PlatformIcon } from './PlatformIcon';
 
@@ -425,6 +426,7 @@ export function CreatePostModal({
   serviceId,
   initialContent = '',
   initialDate = '',
+  aiPlanning = null,
 }) {
   const { accountsForPosting: accounts, loading: accountsLoading } = useBlotatoAccounts(projectId);
 
@@ -453,6 +455,7 @@ export function CreatePostModal({
   const [selectedAccountKeys, setSelectedAccountKeys] = useState(new Set());
 
   // Submit
+  const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError]               = useState(null);
 
@@ -473,6 +476,7 @@ export function CreatePostModal({
     setShowDatePicker(false);
     setScheduledDate(initialDate || '');
     setScheduledTime(initialDate ? '10:00' : '');
+    setIsGeneratingCopy(false);
     setError(null);
   }, [isOpen, initialContent, initialDate]);
 
@@ -489,6 +493,11 @@ export function CreatePostModal({
   const selectedAccounts = useMemo(
     () => accounts.filter((account) => effectiveSelectedAccountKeys.has(getAccountSelectionKey(account))),
     [accounts, effectiveSelectedAccountKeys]
+  );
+
+  const selectedPlatforms = useMemo(
+    () => [...new Set(selectedAccounts.map((account) => account.platform).filter(Boolean))],
+    [selectedAccounts]
   );
 
   const toggleSelectedAccount = useCallback((account) => {
@@ -631,6 +640,60 @@ export function CreatePostModal({
     setContent(next);
     requestAnimationFrame(() => { el.selectionStart = el.selectionEnd = s + text.length; el.focus(); });
   };
+
+  const handleGenerateCopy = useCallback(async () => {
+    const brief = content.trim();
+    if (!brief) {
+      setError('Escribe una idea base o un brief antes de usar IA.');
+      requestAnimationFrame(() => textareaRef.current?.focus());
+      return;
+    }
+
+    if (!projectId) {
+      setError('No encontramos el proyecto de esta publicación.');
+      return;
+    }
+
+    setIsGeneratingCopy(true);
+    setError(null);
+
+    try {
+      const output = await generateProjectPostCopy({
+        projectId,
+        serviceId,
+        brief,
+        selectedPlatforms,
+        format: effectiveFormat,
+        mediaContext: {
+          totalAssets: uploadedMediaItems.length,
+          imageCount: uploadedImages.length,
+          videoCount: uploadedVideos.length,
+          hasMedia: uploadedMediaItems.length > 0,
+          hasVideo: uploadedVideos.length > 0,
+        },
+        selectedAccounts,
+        aiPlanning,
+      });
+
+      setContent(output.copy);
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    } catch (err) {
+      setError(`No se pudo generar el copy con IA: ${err.message}`);
+    } finally {
+      setIsGeneratingCopy(false);
+    }
+  }, [
+    aiPlanning,
+    content,
+    effectiveFormat,
+    projectId,
+    selectedAccounts,
+    selectedPlatforms,
+    serviceId,
+    uploadedImages.length,
+    uploadedMediaItems.length,
+    uploadedVideos.length,
+  ]);
 
   // ── Submit ────────────────────────────────────────────────────────────────
 
@@ -801,8 +864,13 @@ export function CreatePostModal({
                 <button onClick={() => insertAtCursor('#')} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/75 hover:bg-white/[0.06] transition-colors">
                   <Hash size={13} /> Hashtags
                 </button>
-                <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/75 hover:bg-white/[0.06] transition-colors">
-                  <Sparkles size={13} /> IA
+                <button
+                  onClick={handleGenerateCopy}
+                  disabled={isGeneratingCopy}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/75 hover:bg-white/[0.06] transition-colors disabled:cursor-wait disabled:opacity-70"
+                  title="Generar copy con IA usando el texto actual como brief"
+                >
+                  {isGeneratingCopy ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />} {isGeneratingCopy ? 'Generando...' : 'IA'}
                 </button>
                 <div className="w-px h-4 bg-white/[0.08] mx-1" />
                 <button onClick={() => insertAtCursor('**texto**')} className="p-1.5 rounded-lg text-white/40 hover:text-white/75 hover:bg-white/[0.06] transition-colors" title="Negrita"><Bold size={14} /></button>

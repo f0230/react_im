@@ -224,12 +224,20 @@ function parseCsv(val: string | undefined): string[] {
     .filter(Boolean);
 }
 
-function parseSeeds(val: string | undefined): number[] {
-  if (!val) return [];
+function parseSeed(val: string | undefined): number | undefined {
+  if (!val) return undefined;
   return val
     .split(',')
     .map((s) => Number(s.trim()))
-    .filter((n) => !isNaN(n) && isFinite(n));
+    .find((n) => !isNaN(n) && isFinite(n));
+}
+
+function mapSoraAspectRatio(aspectRatio: string): 'landscape' | 'portrait' {
+  return aspectRatio === '9:16' ? 'portrait' : 'landscape';
+}
+
+function normalizeSoraUploadMethod(_uploadMethod: string | undefined): 's3' {
+  return 's3';
 }
 
 // ---------------------------------------------------------------------------
@@ -257,7 +265,7 @@ function buildMarketInput(
   const googleSearch = !!data.googleSearch;
   const nFrames = data.nFrames ? Number(data.nFrames) : undefined;
   const removeWatermark = !!data.removeWatermark;
-  const uploadMethod = (data.uploadMethod || 'url') as string;
+  const uploadMethod = normalizeSoraUploadMethod(data.uploadMethod);
 
   switch (model) {
     /* ---- Nano Banana family ---- */
@@ -371,11 +379,11 @@ function buildMarketInput(
     case 'sora-2-text-to-video': {
       const input: Record<string, any> = {
         prompt,
-        aspect_ratio: aspectRatio,
+        aspect_ratio: mapSoraAspectRatio(aspectRatio),
         remove_watermark: removeWatermark,
         upload_method: uploadMethod,
       };
-      if (nFrames) input.n_frames = nFrames;
+      if (nFrames) input.n_frames = String(nFrames);
       const charIds = parseCsv(data.characterIdList);
       if (charIds.length) input.character_id_list = charIds;
       return { apiModel: 'sora-2-text-to-video', input };
@@ -385,11 +393,11 @@ function buildMarketInput(
       const input: Record<string, any> = {
         prompt,
         image_urls: imageUrl ? [imageUrl] : [],
-        aspect_ratio: aspectRatio,
+        aspect_ratio: mapSoraAspectRatio(aspectRatio),
         remove_watermark: removeWatermark,
         upload_method: uploadMethod,
       };
-      if (nFrames) input.n_frames = nFrames;
+      if (nFrames) input.n_frames = String(nFrames);
       const charIds = parseCsv(data.characterIdList);
       if (charIds.length) input.character_id_list = charIds;
       return { apiModel: 'sora-2-image-to-video', input };
@@ -538,7 +546,6 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
   const handleGenerate = async () => {
     if (isGenerating) return;
     abortRef.current = false;
-    setIsGenerating(true);
 
     const nodes = getNodes();
     const edges = getEdges();
@@ -665,6 +672,8 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       }
     }
 
+    setIsGenerating(true);
+
     // Set output nodes to loading
     setNodes((nds) =>
       nds.map((n) => {
@@ -753,7 +762,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
 
         if (selectedCaps.provider === 'veo') {
           const aspectRatio = (data.aspectRatio || '16:9') as string;
-          const seeds = parseSeeds(data.seeds);
+          const seed = parseSeed(data.seeds);
           const genType = (data.generationType || 'auto') as string;
 
           taskId = await createVeoTask({
@@ -761,7 +770,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             model: selectedModel,
             imageUrls: uploadedImageUrl ? [uploadedImageUrl] : undefined,
             aspectRatio: aspectRatio === '1:1' ? '16:9' : aspectRatio,
-            seeds: seeds.length ? seeds : undefined,
+            seed,
             enableTranslation: data.enableTranslation ?? false,
             enableFallback: data.enableFallback ?? true,
             generationType: genType !== 'auto' ? genType : undefined,
@@ -923,6 +932,9 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
               }
               if (newCaps.supportsCharacterOrientation) {
                 patch.characterOrientation = 'video';
+              }
+              if (newCaps.supportsUploadMethod) {
+                patch.uploadMethod = 's3';
               }
               set(patch);
             }}
@@ -1108,18 +1120,22 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                           { label: 'Auto', value: 'auto' },
                           { label: 'Text to Video', value: 'TEXT_2_VIDEO' },
                           {
-                            label: 'Reference to Video',
+                            label: 'First/Last Frames',
+                            value: 'FIRST_AND_LAST_FRAMES_2_VIDEO',
+                          },
+                          {
+                            label: 'Reference to Video (Fast)',
                             value: 'REFERENCE_2_VIDEO',
                           },
                         ]}
                       />
                     </div>
                     <div className="flex flex-col gap-1.5">
-                      <FieldLabel>Seeds (comma-separated)</FieldLabel>
+                      <FieldLabel>Seed</FieldLabel>
                       <SmallInput
                         value={data.seeds || ''}
                         onChange={(v) => set({ seeds: v })}
-                        placeholder="e.g. 42, 123"
+                        placeholder="e.g. 42"
                       />
                     </div>
                     <ToggleRow
@@ -1157,11 +1173,10 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                   <div className="flex flex-col gap-1.5">
                     <FieldLabel>Upload Method</FieldLabel>
                     <MultiUseSelect
-                      value={data.uploadMethod || 'url'}
+                      value={data.uploadMethod || 's3'}
                       onChange={(val) => set({ uploadMethod: val as string })}
                       options={[
-                        { label: 'URL', value: 'url' },
-                        { label: 'Base64', value: 'base64' },
+                        { label: 'S3', value: 's3' },
                       ]}
                     />
                   </div>

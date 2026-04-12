@@ -66,6 +66,14 @@
       "destination": "/api/figma?action=comments"
     },
     {
+      "source": "/api/studio-proxy",
+      "destination": "/api/studio?action=proxy"
+    },
+    {
+      "source": "/api/kie-upload",
+      "destination": "/api/studio?action=kie-upload"
+    },
+    {
       "source": "/api/notion/meetings",
       "destination": "/api/notion?action=meetings"
     },

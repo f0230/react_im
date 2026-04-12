@@ -32,7 +32,7 @@ const DEFAULT_MODEL_DATA = {
   mode: 'std',
   sound: false,
   removeWatermark: false,
-  uploadMethod: 'url',
+  uploadMethod: 's3',
   enableTranslation: false,
   enableFallback: true,
   generationType: 'auto',

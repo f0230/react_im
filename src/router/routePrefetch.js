@@ -38,6 +38,7 @@ export const routeKeys = Object.freeze({
     projectContentPlanning: 'projectContentPlanning',
     projectReports: 'projectReports',
     projectIntegrations: 'projectIntegrations',
+    projectBrandDocs: 'projectBrandDocs',
     invoices: 'invoices',
     financesDashboard: 'financesDashboard',
     inbox: 'inbox',
@@ -76,6 +77,7 @@ const routeImporters = {
     [routeKeys.projectContentPlanning]: once(() => import('@/pages/dashboard/projects/ProjectContentPlanning')),
     [routeKeys.projectReports]: once(() => import('@/pages/dashboard/projects/ProjectReports')),
     [routeKeys.projectIntegrations]: once(() => import('@/pages/dashboard/projects/ProjectIntegrations')),
+    [routeKeys.projectBrandDocs]: once(() => import('@/pages/dashboard/projects/ProjectBrandDocs')),
     [routeKeys.invoices]: once(() => import('@/pages/dashboard/invoices/Invoices')),
     [routeKeys.financesDashboard]: once(() => import('@/pages/dashboard/finances/FinancesDashboard')),
     [routeKeys.inbox]: once(() => import('@/pages/dashboard/inbox/Inbox')),
@@ -162,6 +164,7 @@ const resolveRouteKey = (to) => {
     if (path.startsWith('/dashboard/content-planning')) return routeKeys.projectContentPlanning;
     if (path.startsWith('/dashboard/projects/') && path.endsWith('/services')) return routeKeys.projectTasks;
     if (path.startsWith('/dashboard/projects/') && path.endsWith('/integrations')) return routeKeys.projectIntegrations;
+    if (path.startsWith('/dashboard/projects/') && path.endsWith('/brand-docs')) return routeKeys.projectBrandDocs;
     if (path.startsWith('/dashboard/projects/')) return routeKeys.projects;
 
     return null;

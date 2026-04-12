@@ -18,6 +18,39 @@ async function parseJson(res: Response): Promise<any> {
   }
 }
 
+function extractResultUrls(payload: any): string[] {
+  const candidates = [
+    payload?.resultUrls,
+    payload?.response?.resultUrls,
+    payload?.response?.originUrls,
+    payload?.info?.resultUrls,
+    payload?.urls,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate) && candidate.length) {
+      return candidate.filter((url) => typeof url === 'string');
+    }
+  }
+
+  const singleUrlCandidates = [
+    payload?.url,
+    payload?.resultUrl,
+    payload?.imageUrl,
+    payload?.videoUrl,
+    payload?.response?.resultUrl,
+    payload?.response?.videoUrl,
+  ];
+
+  for (const candidate of singleUrlCandidates) {
+    if (typeof candidate === 'string' && candidate) {
+      return [candidate];
+    }
+  }
+
+  return [];
+}
+
 // ---------------------------------------------------------------------------
 // File Upload (stream — works for images and videos)
 // ---------------------------------------------------------------------------
@@ -106,7 +139,7 @@ export async function pollMarketTask(taskId: string): Promise<{ urls: string[] }
       headers: { Authorization: `Bearer ${key}` },
     });
 
-    const data = await res.json();
+    const data = await parseJson(res);
     if (import.meta.env.DEV) console.log(`[KIE] Poll (${taskId}):`, data);
 
     if (data.code !== 200) {
@@ -124,15 +157,16 @@ export async function pollMarketTask(taskId: string): Promise<{ urls: string[] }
       let urls: string[] = [];
       if (d.resultJson) {
         try {
-          const result = JSON.parse(d.resultJson);
-          urls = result.resultUrls || [];
-          if (!urls.length && result.url) urls = [result.url];
+          const result =
+            typeof d.resultJson === 'string'
+              ? JSON.parse(d.resultJson)
+              : d.resultJson;
+          urls = extractResultUrls(result);
         } catch { /* ignore */ }
       }
       // Fallback
       if (!urls.length) {
-        const fallback = d.url || d.imageUrl;
-        if (fallback) urls = [fallback];
+        urls = extractResultUrls(d);
       }
       return { urls };
     }
@@ -155,7 +189,7 @@ export async function createVeoTask(params: {
   model: string;
   imageUrls?: string[];
   aspectRatio?: string;
-  seeds?: number[];
+  seed?: number;
   enableTranslation?: boolean;
   enableFallback?: boolean;
   generationType?: string;
@@ -166,25 +200,19 @@ export async function createVeoTask(params: {
   const body: Record<string, any> = {
     prompt: params.prompt,
     model: params.model,
-    aspect_ratio: params.aspectRatio || '16:9',
+    aspectRatio: params.aspectRatio || '16:9',
   };
 
-  // Generation type: explicit override or auto-detect from imageUrls
   if (params.generationType) {
     body.generationType = params.generationType;
-  } else if (params.imageUrls?.length) {
-    body.generationType = 'REFERENCE_2_VIDEO';
-  } else {
-    body.generationType = 'TEXT_2_VIDEO';
   }
 
   if (params.imageUrls?.length) {
     body.imageUrls = params.imageUrls;
   }
 
-  // Seeds — only send if non-empty array
-  if (params.seeds?.length) {
-    body.seeds = params.seeds;
+  if (typeof params.seed === 'number' && isFinite(params.seed)) {
+    body.seeds = params.seed;
   }
 
   // Translation & fallback
@@ -248,14 +276,24 @@ export async function pollVeoTask(taskId: string): Promise<{ urls: string[] }> {
     const data = await parseJson(res);
     if (import.meta.env.DEV) console.log(`[KIE] Veo poll (${taskId}):`, data);
 
-    // successFlag: 0=processing, 1=success, 2=partial, 3=failed
+    if (data.code !== 200) {
+      throw new Error(data.msg || 'Error checking Veo task status');
+    }
+
+    // successFlag: 0=processing, 1=success, 2=failed, 3=upstream generation failed
     const flag = data.successFlag ?? data.data?.successFlag;
-    if (flag === 1 || flag === 2) {
-      const urls = data.response?.resultUrls || data.data?.resultUrls || [];
+    const details = data.data || {};
+
+    if (flag === 1) {
+      const urls = extractResultUrls(details);
       return { urls };
     }
-    if (flag === 3) {
-      throw new Error('Veo generation failed');
+    if (flag === 2 || flag === 3) {
+      throw new Error(
+        details.errorMessage ||
+          data.msg ||
+          'Veo generation failed',
+      );
     }
 
     await new Promise((r) => setTimeout(r, interval));

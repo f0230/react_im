@@ -16,8 +16,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') });
 const devApiPlugin = () => {
   const calHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/cal/index.js')).href;
   const whatsappHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/whatsapp.js')).href;
-  const kieUploadHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/kie-upload.js')).href;
-  const studioProxyHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/studio-proxy.js')).href;
+  const studioHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/studio.js')).href;
 
   const apiRoutes = [
     {
@@ -55,16 +54,17 @@ const devApiPlugin = () => {
       handlerUrl: whatsappHandlerUrl,
     },
     {
-      name: '/api/kie-upload',
-      matches: (pathname) => pathname === '/api/kie-upload',
-      resolveQuery: (_pathname, searchParams) => Object.fromEntries(searchParams.entries()),
-      handlerUrl: kieUploadHandlerUrl,
-    },
-    {
-      name: '/api/studio-proxy',
-      matches: (pathname) => pathname === '/api/studio-proxy',
-      resolveQuery: (_pathname, searchParams) => Object.fromEntries(searchParams.entries()),
-      handlerUrl: studioProxyHandlerUrl,
+      name: '/api/studio',
+      matches: (pathname) => pathname === '/api/studio-proxy' || pathname === '/api/kie-upload',
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        if (!query.action) {
+          if (pathname === '/api/studio-proxy') query.action = 'proxy';
+          if (pathname === '/api/kie-upload')   query.action = 'kie-upload';
+        }
+        return query;
+      },
+      handlerUrl: studioHandlerUrl,
     },
   ];
 

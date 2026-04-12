@@ -8,6 +8,7 @@ const ProjectDetailLayout = () => {
   const { profile } = useAuth();
   const role = profile?.role;
   const isClientLeader = profile?.is_client_leader;
+  const canSeeBrandDocs = role === 'admin' || role === 'worker';
   const { t } = useTranslation();
   const { projectId } = useParams();
   const basePath = projectId ? `/dashboard/projects/${projectId}` : '/dashboard/projects';
@@ -19,6 +20,9 @@ const ProjectDetailLayout = () => {
           { to: `${basePath}/reports`, label: t('dashboard.projects.detail.tabs.reports') },
           ...(role !== 'client' || isClientLeader
             ? [{ to: `${basePath}/invoices`, label: t('dashboard.projects.detail.tabs.invoices') }]
+            : []),
+          ...(canSeeBrandDocs
+            ? [{ to: `${basePath}/brand-docs`, label: 'Brand Docs' }]
             : []),
         ].map((tab) => (
           <NavLink
