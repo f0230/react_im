@@ -18,6 +18,7 @@ import {
   UserPlus,
   X,
   ExternalLink,
+  Pencil,
 } from 'lucide-react';
 import {
   format,
@@ -36,6 +37,8 @@ import { CreatePostModal } from './CreatePostModal';
 import { PlatformIcon } from './PlatformIcon';
 import { PostStatusBadge } from './PostStatusBadge';
 import { BlotatoConfigModal } from './BlotatoConfigModal';
+
+function isVideoUrl(url = '') { return /\.(mp4|mov|webm)(\?.*)?$/i.test(url); }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -308,7 +311,51 @@ function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
   );
 }
 
-function PostDrawer({ post, onClose }) {
+function MediaThumb({ url }) {
+  const [errored, setErrored] = useState(false);
+  const isVideo = isVideoUrl(url);
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+      <div className="w-20 h-20 rounded-xl overflow-hidden bg-white/[0.05] border border-white/[0.06] flex items-center justify-center">
+        {isVideo ? (
+          <video
+            src={url}
+            className="w-full h-full object-cover"
+            muted playsInline autoPlay
+            onCanPlay={(e) => e.currentTarget.pause()}
+          />
+        ) : errored ? (
+          <span className="text-[9px] text-white/25 text-center px-1 leading-relaxed">
+            Sin<br/>preview
+          </span>
+        ) : (
+          <img
+            src={url}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={() => setErrored(true)}
+          />
+        )}
+      </div>
+    </a>
+  );
+}
+
+function MediaGrid({ urls }) {
+  if (!urls?.length) return null;
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 mb-2">
+        Archivos
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {urls.map((url, i) => <MediaThumb key={i} url={url} />)}
+      </div>
+    </div>
+  );
+}
+
+function PostDrawer({ post, onClose, onEdit }) {
   if (!post) return null;
 
   const createdAt    = parsePostDate(post.created_at);
@@ -337,7 +384,18 @@ function PostDrawer({ post, onClose }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar">
-        <PostStatusBadge status={post.status} size="md" />
+        <div className="flex items-center justify-between">
+          <PostStatusBadge status={post.status} size="md" />
+          {post.status === 'draft' && onEdit && (
+            <button
+              onClick={() => onEdit(post)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.07] hover:bg-white/[0.12] text-white/60 hover:text-white/90 border border-white/[0.08] transition-colors"
+            >
+              <Pencil size={12} />
+              Editar
+            </button>
+          )}
+        </div>
 
         <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
           {post.content_text}
@@ -383,20 +441,7 @@ function PostDrawer({ post, onClose }) {
         )}
 
         {post.media_urls?.length > 0 && (
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 mb-2">
-              Archivos
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {post.media_urls.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/[0.05] border border-white/[0.06]">
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
+          <MediaGrid urls={post.media_urls} />
         )}
       </div>
     </motion.div>
@@ -414,6 +459,7 @@ export function SocialCalendar({ projectId, canManage }) {
   const [isBlotatoConfigOpen, setIsBlotatoConfigOpen] = useState(false);
   const [preselectedDate, setPreselectedDate] = useState('');
   const [selectedPost, setSelectedPost] = useState(null);
+  const [editingDraft, setEditingDraft] = useState(null);
 
   // Filter state
   const [accountSearch, setAccountSearch]   = useState('');
@@ -465,7 +511,7 @@ export function SocialCalendar({ projectId, canManage }) {
   // Week helpers
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekEnd   = endOfWeek(currentDate,   { weekStartsOn: 1 });
-  const weekDays  = eachDayOfInterval({ start: weekStart, end: weekEnd }).slice(0, 5); // Mon–Fri
+  const weekDays  = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   const weekRangeLabel = `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d')}`;
 
@@ -546,6 +592,13 @@ export function SocialCalendar({ projectId, canManage }) {
 
   const getPostsForDay = (day) =>
     postsByDay.get(format(day, 'yyyy-MM-dd')) || [];
+
+  const handleEditDraft = (post) => {
+    setSelectedPost(null);
+    setEditingDraft(post);
+    setPreselectedDate('');
+    setIsCreateOpen(true);
+  };
 
   const handleDayClick = (day) => {
     if (!canManage) return;
@@ -726,7 +779,11 @@ export function SocialCalendar({ projectId, canManage }) {
           {/* Post detail drawer */}
           <AnimatePresence>
             {selectedPost && (
-              <PostDrawer post={selectedPost} onClose={() => setSelectedPost(null)} />
+              <PostDrawer
+                post={selectedPost}
+                onClose={() => setSelectedPost(null)}
+                onEdit={canManage ? handleEditDraft : null}
+              />
             )}
           </AnimatePresence>
         </div>
@@ -735,10 +792,13 @@ export function SocialCalendar({ projectId, canManage }) {
       {/* Create post modal */}
       <CreatePostModal
         isOpen={isCreateOpen}
-        onClose={() => { setIsCreateOpen(false); setPreselectedDate(''); }}
+        onClose={() => { setIsCreateOpen(false); setPreselectedDate(''); setEditingDraft(null); }}
         projectId={projectId}
-        serviceId={null}
+        serviceId={editingDraft?.service_id ?? null}
         initialDate={preselectedDate}
+        initialContent={editingDraft?.content_text ?? ''}
+        initialMediaUrls={editingDraft?.media_urls ?? []}
+        draftGroupId={editingDraft?.post_group_id ?? null}
       />
 
       <BlotatoConfigModal

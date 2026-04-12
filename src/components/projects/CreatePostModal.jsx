@@ -17,13 +17,14 @@ import {
   MessageCircle,
   MoreHorizontal,
   Music,
+  Save,
   Send,
   Sparkles,
   Upload,
   X,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { createPost, getPlatformName, PLATFORM_CONFIG, uploadMediaFile } from '@/services/blotatoService';
+import { createPost, deleteDraftGroup, getPlatformName, PLATFORM_CONFIG, saveDraftPost, uploadMediaFile } from '@/services/blotatoService';
 import { generateProjectPostCopy } from '@/services/aiCopyService';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { PlatformIcon } from './PlatformIcon';
@@ -426,6 +427,8 @@ export function CreatePostModal({
   serviceId,
   initialContent = '',
   initialDate = '',
+  initialMediaUrls = [],
+  draftGroupId = null,
   aiPlanning = null,
 }) {
   const { accountsForPosting: accounts, loading: accountsLoading } = useBlotatoAccounts(projectId);
@@ -456,8 +459,9 @@ export function CreatePostModal({
 
   // Submit
   const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError]               = useState(null);
+  const [isSubmitting, setIsSubmitting]         = useState(false);
+  const [isSavingDraft, setIsSavingDraft]       = useState(false);
+  const [error, setError]                       = useState(null);
 
   const fileInputRef  = useRef(null);
   const coverInputRef = useRef(null);
@@ -467,7 +471,17 @@ export function CreatePostModal({
   useEffect(() => {
     if (!isOpen) return;
     setContent(initialContent);
-    setMediaItems([]);
+    setMediaItems(
+      (initialMediaUrls || []).map((url) => ({
+        name: url.split('/').pop() || 'media',
+        url,
+        uploading: false,
+        error: null,
+        isVideo: isVideoUrl(url),
+        mimeType: '',
+        sizeBytes: 0,
+      }))
+    );
     setCoverImageUrl('');
     setIsCoverUploading(false);
     setFormatOverride(null);
@@ -477,8 +491,9 @@ export function CreatePostModal({
     setScheduledDate(initialDate || '');
     setScheduledTime(initialDate ? '10:00' : '');
     setIsGeneratingCopy(false);
+    setIsSavingDraft(false);
     setError(null);
-  }, [isOpen, initialContent, initialDate]);
+  }, [isOpen, initialContent, initialDate, initialMediaUrls]);
 
   const allAccountSelectionKeys = useMemo(
     () => accounts.map((account) => getAccountSelectionKey(account)),
@@ -586,6 +601,17 @@ export function CreatePostModal({
     return null;
   }, [accountsLoading, accounts, selectedAccounts.length, content, isUploadingMedia, isCoverUploading, mediaItems,
       facebookAccountsNeedingPage, showDatePicker, scheduledDate, scheduledTime, hasInstagram, uploadedVideos]);
+
+  const draftValidationError = useMemo(() => {
+    if (accountsLoading) return 'Cargando cuentas...';
+    if (!accounts.length) return 'Sin cuentas conectadas.';
+    if (!selectedAccounts.length) return 'Selecciona al menos una cuenta.';
+    if (!content.trim()) return 'Escribe algo antes de guardar el borrador.';
+    if (isUploadingMedia) return 'Espera a que terminen de subir los archivos.';
+    if (isCoverUploading) return 'Espera a que termine de subir la portada.';
+    if (mediaItems.some((item) => item.error)) return 'Elimina o vuelve a subir los archivos con error.';
+    return null;
+  }, [accountsLoading, accounts.length, selectedAccounts.length, content, isUploadingMedia, isCoverUploading, mediaItems]);
 
   // ── File handling ─────────────────────────────────────────────────────────
 
@@ -765,14 +791,39 @@ export function CreatePostModal({
       if (result.errors?.length) {
         const detail = result.errors.map((i) => `${getPlatformName(i.platform)}: ${i.error}`).join(' · ');
         setError(result.posts.length > 0 ? `Publicado en ${result.posts.length} cuenta(s), con fallos: ${detail}` : `Falló: ${detail}`);
-        if (result.posts.length > 0) onClose();
+        if (result.posts.length > 0) {
+          if (draftGroupId) await deleteDraftGroup(draftGroupId).catch(() => {});
+          onClose();
+        }
         return;
       }
+      if (draftGroupId) await deleteDraftGroup(draftGroupId).catch(() => {});
       onClose();
     } catch (err) {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    if (draftValidationError) { setError(draftValidationError); return; }
+    setIsSavingDraft(true);
+    setError(null);
+    try {
+      await saveDraftPost({
+        serviceId,
+        projectId,
+        contentText: content.trim(),
+        mediaUrls: uploadedMediaUrls,
+        accounts: buildAccountsPayload(),
+      });
+      if (draftGroupId) await deleteDraftGroup(draftGroupId).catch(() => {});
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSavingDraft(false);
     }
   };
 
@@ -1045,6 +1096,16 @@ export function CreatePostModal({
 
               <div className="flex-1" />
               {validationError && !error && <span className="text-[11px] text-white/25 truncate max-w-[200px]">{validationError}</span>}
+
+              <button
+                onClick={handleSaveDraft}
+                disabled={!!draftValidationError || isSavingDraft || isSubmitting}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors border border-white/[0.1] text-white/45 hover:text-white/70 hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed"
+                title={draftValidationError || 'Guardar como borrador'}
+              >
+                {isSavingDraft ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                {isSavingDraft ? 'Guardando...' : 'Borrador'}
+              </button>
 
               <button
                 onClick={handleSubmit}

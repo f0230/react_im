@@ -89,6 +89,42 @@ export async function createPost({
   return data;
 }
 
+export async function saveDraftPost({ serviceId, projectId, contentText, mediaUrls, accounts }) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const postGroupId = crypto.randomUUID();
+
+  const rows = accounts.map((account) => ({
+    service_id: serviceId || null,
+    project_id: projectId,
+    post_group_id: postGroupId,
+    content_text: contentText,
+    media_urls: mediaUrls || [],
+    account_id: account.id,
+    platform: account.platform,
+    target_config: account.targetConfig || {},
+    status: 'draft',
+    created_by: user.id,
+    updated_by: user.id,
+  }));
+
+  const { data, error } = await supabase
+    .from('service_posts')
+    .insert(rows)
+    .select();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteDraftGroup(postGroupId) {
+  const { error } = await supabase
+    .from('service_posts')
+    .delete()
+    .eq('post_group_id', postGroupId)
+    .eq('status', 'draft');
+  if (error) throw error;
+}
+
 export async function checkPostStatus(postId) {
   const token = await getToken();
   const res = await fetch(`${API_BASE}/blotato?action=check-status&postId=${postId}`, {
