@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   Bold,
   Calendar,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -34,14 +35,31 @@ const INSTAGRAM_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/quicktime']);
 const MAX_FILE_BYTES      = 100 * 1024 * 1024;
 const COVER_MAX_BYTES     = 8  * 1024 * 1024;
 const PREVIEW_PLATFORMS   = ['instagram', 'facebook', 'twitter', 'linkedin', 'tiktok', 'threads', 'bluesky', 'youtube'];
+const ACCOUNT_DESTINATION_KEYS = ['pageId', 'page_id', 'boardId', 'board_id', 'channelId', 'channel_id'];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function isVideoMime(mimeType = '') { return mimeType.startsWith('video/'); }
 function isVideoUrl(url = '')  { return /\.(mp4|mov|webm)(\?.*)?$/i.test(url); }
 function formatBytes(bytes = 0) { return `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
+function getDestinationId(targetConfig) {
+  if (!targetConfig || typeof targetConfig !== 'object') return '';
+  const entry = ACCOUNT_DESTINATION_KEYS.find((key) => targetConfig[key]);
+  return entry ? String(targetConfig[entry]) : '';
+}
+function getAccountSelectionKey(account) {
+  const destinationId = getDestinationId(account?.targetConfig || account?.target_config);
+  return [account?.platform || 'unknown', account?.id || 'unknown', destinationId || 'default'].join('::');
+}
 function getAccountLabel(account) {
+  const targetConfig = account?.targetConfig || account?.target_config;
+  const destinationLabel = targetConfig?.pageName || targetConfig?.page_name || targetConfig?.boardName || targetConfig?.board_name;
+  if (destinationLabel) return destinationLabel;
   return account?.fullname || (account?.username ? `@${account.username}` : getPlatformName(account?.platform || ''));
+}
+function getAccountHelperLabel(account) {
+  if (account?.username) return `@${account.username}`;
+  return getPlatformName(account?.platform || '');
 }
 
 // ─── Shared account avatar ────────────────────────────────────────────────────
@@ -59,6 +77,38 @@ function AccountAvatar({ account, size = 36 }) {
         <PlatformIcon platform={account.platform} size={10} />
       </div>
     </div>
+  );
+}
+
+function AccountToggleChip({ account, selected, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={selected}
+      className={`group flex min-w-[180px] max-w-full items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition-all ${
+        selected
+          ? 'border-white/20 bg-white/[0.09] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]'
+          : 'border-white/[0.08] bg-white/[0.03] text-white/45 hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-white/70'
+      }`}
+    >
+      <AccountAvatar account={account} size={28} />
+      <div className="min-w-0 flex-1">
+        <p className={`truncate text-xs font-semibold ${selected ? 'text-white/85' : 'text-white/55'}`}>
+          {getAccountLabel(account)}
+        </p>
+        <p className="truncate text-[10px] text-white/30">
+          {getAccountHelperLabel(account)}
+        </p>
+      </div>
+      <div
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
+          selected ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-white/10 bg-transparent text-transparent'
+        }`}
+      >
+        <Check size={11} strokeWidth={3} />
+      </div>
+    </button>
   );
 }
 
@@ -400,6 +450,7 @@ export function CreatePostModal({
 
   // Preview
   const [previewPlatform, setPreviewPlatform] = useState('instagram');
+  const [selectedAccountKeys, setSelectedAccountKeys] = useState(new Set());
 
   // Submit
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -418,19 +469,54 @@ export function CreatePostModal({
     setIsCoverUploading(false);
     setFormatOverride(null);
     setPageSelections({});
+    setSelectedAccountKeys(new Set());
     setShowDatePicker(false);
     setScheduledDate(initialDate || '');
     setScheduledTime(initialDate ? '10:00' : '');
     setError(null);
   }, [isOpen, initialContent, initialDate]);
 
-  // Auto-set preview platform to first account's platform
+  const allAccountSelectionKeys = useMemo(
+    () => accounts.map((account) => getAccountSelectionKey(account)),
+    [accounts]
+  );
+
+  const effectiveSelectedAccountKeys = useMemo(() => {
+    if (selectedAccountKeys.size > 0) return selectedAccountKeys;
+    return new Set(allAccountSelectionKeys);
+  }, [selectedAccountKeys, allAccountSelectionKeys]);
+
+  const selectedAccounts = useMemo(
+    () => accounts.filter((account) => effectiveSelectedAccountKeys.has(getAccountSelectionKey(account))),
+    [accounts, effectiveSelectedAccountKeys]
+  );
+
+  const toggleSelectedAccount = useCallback((account) => {
+    const accountKey = getAccountSelectionKey(account);
+    setSelectedAccountKeys((prev) => {
+      const next = prev.size > 0 ? new Set(prev) : new Set(allAccountSelectionKeys);
+      if (next.has(accountKey)) {
+        if (next.size === 1) return next;
+        next.delete(accountKey);
+      } else {
+        next.add(accountKey);
+      }
+
+      if (next.size === allAccountSelectionKeys.length) {
+        return new Set();
+      }
+
+      return next;
+    });
+  }, [allAccountSelectionKeys]);
+
+  // Auto-set preview platform to first selected account platform
   useEffect(() => {
-    if (accounts.length > 0) {
-      const platforms = [...new Set(accounts.map((a) => a.platform))];
-      if (PREVIEW_PLATFORMS.includes(platforms[0])) setPreviewPlatform(platforms[0]);
-    }
-  }, [accounts]);
+    if (selectedAccounts.length === 0) return;
+    const platforms = [...new Set(selectedAccounts.map((a) => a.platform).filter((platform) => PREVIEW_PLATFORMS.includes(platform)))];
+    if (platforms.length === 0) return;
+    setPreviewPlatform((current) => (platforms.includes(current) ? current : platforms[0]));
+  }, [selectedAccounts]);
 
   useEffect(() => { setError(null); }, [content, mediaItems, scheduledDate, scheduledTime]);
 
@@ -449,8 +535,8 @@ export function CreatePostModal({
     return 'post';
   }, [uploadedVideos.length, uploadedImages.length]);
 
-  const hasInstagram = accounts.some((a) => a.platform === 'instagram');
-  const hasStoryCapableAccount = accounts.some((a) => PLATFORM_CONFIG[a.platform]?.mediaTypes?.includes('story'));
+  const hasInstagram = selectedAccounts.some((a) => a.platform === 'instagram');
+  const hasStoryCapableAccount = selectedAccounts.some((a) => PLATFORM_CONFIG[a.platform]?.mediaTypes?.includes('story'));
   const canChooseStory = uploadedVideos.length === 0 && uploadedImages.length >= 1 && hasStoryCapableAccount;
   const effectiveFormat = canChooseStory && formatOverride === 'historia' ? 'historia' : inferredFormat;
   const storyFormatLabel = uploadedImages.length > 1 ? 'Historias' : 'Historia';
@@ -458,8 +544,11 @@ export function CreatePostModal({
   const showHistoriaToggle = canChooseStory;
 
   // Facebook accounts needing page selection
-  const facebookAccountsNeedingPage = accounts.filter(
-    (a) => a.platform === 'facebook' && a.subaccounts?.length > 0 && !pageSelections[a.id] && !a.targetConfig?.pageId
+  const facebookAccountsNeedingPage = selectedAccounts.filter(
+    (a) => a.platform === 'facebook'
+      && a.subaccounts?.length > 0
+      && !pageSelections[getAccountSelectionKey(a)]
+      && !a.targetConfig?.pageId
   );
 
   useEffect(() => {
@@ -473,6 +562,7 @@ export function CreatePostModal({
   const validationError = useMemo(() => {
     if (accountsLoading) return 'Cargando cuentas...';
     if (!accounts.length) return 'Sin cuentas conectadas. Agrega una en Configuración.';
+    if (!selectedAccounts.length) return 'Selecciona al menos una cuenta para publicar.';
     if (!content.trim()) return 'Escribe algo antes de publicar.';
     if (isUploadingMedia) return 'Espera a que terminen de subir los archivos.';
     if (isCoverUploading) return 'Espera a que termine de subir la portada.';
@@ -485,7 +575,7 @@ export function CreatePostModal({
       if (v.sizeBytes > MAX_FILE_BYTES) return `El video supera 100 MB (${formatBytes(v.sizeBytes)}).`;
     }
     return null;
-  }, [accountsLoading, accounts, content, isUploadingMedia, isCoverUploading, mediaItems,
+  }, [accountsLoading, accounts, selectedAccounts.length, content, isUploadingMedia, isCoverUploading, mediaItems,
       facebookAccountsNeedingPage, showDatePicker, scheduledDate, scheduledTime, hasInstagram, uploadedVideos]);
 
   // ── File handling ─────────────────────────────────────────────────────────
@@ -551,7 +641,7 @@ export function CreatePostModal({
     return { type: 'immediate' };
   };
 
-  const buildAccountsPayload = () => accounts.map((account) => {
+  const buildAccountsPayload = () => selectedAccounts.map((account) => {
     const tc = { ...(account.targetConfig || {}) };
 
     if (account.platform === 'instagram') {
@@ -586,7 +676,8 @@ export function CreatePostModal({
       });
     }
 
-    const pageId = pageSelections[account.id] || account.targetConfig?.pageId;
+    const accountSelectionKey = getAccountSelectionKey(account);
+    const pageId = pageSelections[accountSelectionKey] || account.targetConfig?.pageId;
     if (pageId) {
       tc.pageId = pageId;
       const sub = account.subaccounts?.find((s) => s.id === pageId);
@@ -624,7 +715,7 @@ export function CreatePostModal({
 
   if (!isOpen) return null;
 
-  const availablePreviewPlatforms = [...new Set(accounts.map((a) => a.platform).filter((p) => PREVIEW_PLATFORMS.includes(p)))];
+  const availablePreviewPlatforms = [...new Set(selectedAccounts.map((a) => a.platform).filter((p) => PREVIEW_PLATFORMS.includes(p)))];
 
   const modalContent = (
     <AnimatePresence>
@@ -647,26 +738,45 @@ export function CreatePostModal({
         >
 
           {/* ── Header ─────────────────────────────── */}
-          <div className="flex items-center gap-3 px-4 py-3.5 border-b border-white/[0.07] shrink-0">
-            <div className="flex items-center">
+          <div className="flex items-start gap-3 px-4 py-3.5 border-b border-white/[0.07] shrink-0">
+            <div className="min-w-0 flex-1 space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-white/35">
+                  Publicar en
+                </p>
+                {!accountsLoading && accounts.length > 0 && (
+                  <span className="text-[11px] text-white/25">
+                    {selectedAccounts.length}/{accounts.length} seleccionadas
+                  </span>
+                )}
+                {uploadedMediaItems.length > 0 && (
+                  <span className="px-2 py-0.5 rounded-full bg-white/[0.07] text-[10px] text-white/40 border border-white/[0.08]">
+                    {effectiveFormat === 'reel' ? 'Reel / Video' : effectiveFormat === 'carousel' ? 'Carrusel' : effectiveFormat === 'historia' ? storyFormatLabel : 'Publicación'}
+                  </span>
+                )}
+              </div>
+
               {accountsLoading ? <Loader2 size={16} className="animate-spin text-white/30" /> : accounts.length === 0 ? (
                 <span className="text-xs text-white/30">Sin cuentas</span>
               ) : (
-                <div className="flex items-center -space-x-2">
-                  {accounts.slice(0, 6).map((a) => <AccountAvatar key={a.id} account={a} size={34} />)}
-                  {accounts.length > 6 && <div className="w-8 h-8 rounded-full bg-[#333] flex items-center justify-center text-[10px] text-white/50 ring-2 ring-[#1c1c1e]">+{accounts.length - 6}</div>}
+                <div className="flex flex-wrap gap-2">
+                  {accounts.map((account) => (
+                    <AccountToggleChip
+                      key={getAccountSelectionKey(account)}
+                      account={account}
+                      selected={effectiveSelectedAccountKeys.has(getAccountSelectionKey(account))}
+                      onToggle={() => toggleSelectedAccount(account)}
+                    />
+                  ))}
                 </div>
+              )}
+              {!accountsLoading && accounts.length > 0 && (
+                <p className="text-[10px] text-white/25">
+                  Tocá una cuenta para incluirla o excluirla de esta publicación.
+                </p>
               )}
             </div>
 
-            {/* Format badge */}
-            {uploadedMediaItems.length > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-white/[0.07] text-[10px] text-white/40 border border-white/[0.08]">
-                {effectiveFormat === 'reel' ? 'Reel / Video' : effectiveFormat === 'carousel' ? 'Carrusel' : effectiveFormat === 'historia' ? storyFormatLabel : 'Publicación'}
-              </span>
-            )}
-
-            <div className="flex-1" />
             <button onClick={onClose} className="p-1.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
               <X size={17} />
             </button>
@@ -795,9 +905,13 @@ export function CreatePostModal({
                 <div className="px-4 pb-3 space-y-2">
                   <p className="text-[10px] text-white/30 uppercase tracking-wider font-medium">Página de Facebook</p>
                   {facebookAccountsNeedingPage.map((account) => (
-                    <div key={account.id} className="flex items-center gap-2">
+                    <div key={getAccountSelectionKey(account)} className="flex items-center gap-2">
                       <AccountAvatar account={account} size={24} />
-                      <select value={pageSelections[account.id] || ''} onChange={(e) => setPageSelections((prev) => ({ ...prev, [account.id]: e.target.value }))} className="flex-1 bg-[#2a2a2a] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white/70 outline-none">
+                      <select
+                        value={pageSelections[getAccountSelectionKey(account)] || ''}
+                        onChange={(e) => setPageSelections((prev) => ({ ...prev, [getAccountSelectionKey(account)]: e.target.value }))}
+                        className="flex-1 bg-[#2a2a2a] border border-white/[0.1] rounded-lg px-3 py-1.5 text-xs text-white/70 outline-none"
+                      >
                         <option value="">Selecciona una página...</option>
                         {(account.subaccounts || []).map((sub) => <option key={sub.id} value={sub.id}>{sub.name}</option>)}
                       </select>
@@ -824,7 +938,7 @@ export function CreatePostModal({
               <div className="flex-1 overflow-y-auto no-scrollbar">
                 <PostPreview
                   platform={previewPlatform}
-                  accounts={accounts}
+                  accounts={selectedAccounts}
                   content={content}
                   mediaItems={uploadedMediaItems}
                   format={effectiveFormat}

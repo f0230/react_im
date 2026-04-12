@@ -627,10 +627,8 @@ const Projects = () => {
         navigate(getProjectServicesHref(projectId), { state: getProjectPreviewState(project) });
     }, [navigate]);
 
-    if (loading) return <LoadingFallback type="spinner" />;
-
     return (
-        <div className="mx-auto max-w-[1350px] px-6 md:px-10 font-product text-neutral-900 pb-16 pt-6">
+        <div className="mx-auto max-w-[1350px] px-6 md:px-10 font-product text-neutral-900 pb-16 pt-6" style={{ zoom: '0.65' }}>
             <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div className="flex flex-col gap-1 md:flex-row md:items-center md:gap-4">
                     <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 whitespace-nowrap">
@@ -649,7 +647,9 @@ const Projects = () => {
                 )}
             </div>
 
-            {error ? (
+            {loading ? (
+                <LoadingFallback type="spinner" />
+            ) : error ? (
                 <div className="bg-white border border-red-100 rounded-3xl p-6 text-sm text-red-500">
                     {t('dashboard.projects.error')}
                 </div>
@@ -676,7 +676,12 @@ const Projects = () => {
                     )}
                 </div>
             ) : (
-                <div className="space-y-[10px]">
+                <motion.div
+                    className="space-y-[10px]"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.07 } } }}
+                >
                     {projects.map((project, index) => {
                         const projectId = project?.id;
                         const projectKey = projectId ?? index;
@@ -689,8 +694,12 @@ const Projects = () => {
                             .filter(Boolean);
 
                         return (
-                            <div
+                            <motion.div
                                 key={projectKey}
+                                variants={{
+                                    hidden: { opacity: 0, y: 14 },
+                                    visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: 'easeOut' } },
+                                }}
                                 className="grid min-h-[220px] w-full grid-cols-2 gap-[5px] overflow-hidden rounded-[10px] border border-white/60 bg-[#D9D9D9] p-2 md:flex md:flex-row md:gap-0"
                             >
                                 <div className="relative col-span-1 flex h-[208px] min-w-0 flex-col items-center justify-center overflow-hidden p-4 text-center md:h-auto md:flex-1 md:items-stretch md:justify-center md:border-r md:border-white/30 md:p-6 md:text-left">
@@ -891,10 +900,10 @@ const Projects = () => {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </motion.div>
                         );
                     })}
-                </div>
+                </motion.div>
             )
             }
 

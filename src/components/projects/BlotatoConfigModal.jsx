@@ -133,7 +133,7 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[220] flex items-center justify-center p-4"
+        className="fixed inset-0 z-[220] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm pointer-events-auto"
         onClick={onClose}
       >
         <motion.div
@@ -141,7 +141,7 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 8 }}
           onClick={e => e.stopPropagation()}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
+          className="flex w-full max-w-lg max-h-[min(88vh,760px)] flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-neutral-100">
@@ -179,7 +179,7 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
           </div>
 
           {/* Account list */}
-          <div className="max-h-[50vh] overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={22} className="animate-spin text-neutral-300" />
@@ -216,9 +216,6 @@ export function BlotatoConfigModal({ projectId, isOpen, onClose }) {
                           <button
                             type="button"
                             key={target.key}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                            }}
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();

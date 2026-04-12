@@ -29,13 +29,13 @@ import {
   addWeeks,
   subWeeks,
 } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
 import { fetchProjectPosts, subscribeToProjectPosts } from '@/services/blotatoService';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { usePostStatusPolling } from '@/hooks/usePostStatusPolling';
 import { CreatePostModal } from './CreatePostModal';
 import { PlatformIcon } from './PlatformIcon';
 import { PostStatusBadge } from './PostStatusBadge';
+import { BlotatoConfigModal } from './BlotatoConfigModal';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -111,6 +111,31 @@ function getPostDateLabel(post) {
   return 'Sin fecha';
 }
 
+const ACCOUNT_DESTINATION_KEYS = ['pageId', 'page_id', 'boardId', 'board_id', 'channelId', 'channel_id'];
+
+function getDestinationId(targetConfig) {
+  if (!targetConfig || typeof targetConfig !== 'object') return '';
+  const entry = ACCOUNT_DESTINATION_KEYS.find((key) => targetConfig[key]);
+  return entry ? String(targetConfig[entry]) : '';
+}
+
+function getAccountSelectionKey(account) {
+  const destinationId = getDestinationId(account?.targetConfig || account?.target_config);
+  return [account?.platform || 'unknown', account?.id || 'unknown', destinationId || 'default'].join('::');
+}
+
+function doesPostMatchAccount(post, account) {
+  if (!post || !account) return false;
+  if (String(post.account_id) !== String(account.id)) return false;
+  if ((post.platform || '') !== (account.platform || '')) return false;
+
+  const accountDestinationId = getDestinationId(account.targetConfig || account.target_config);
+  if (!accountDestinationId) return true;
+
+  const postDestinationId = getDestinationId(post.target_config);
+  return postDestinationId === accountDestinationId;
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function AccountItem({ account, selected, onToggle }) {
@@ -119,13 +144,15 @@ function AccountItem({ account, selected, onToggle }) {
 
   return (
     <button
+      type="button"
+      aria-pressed={selected}
       onClick={onToggle}
-      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+      className={`relative isolate w-full select-none text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
         selected ? 'bg-white/[0.06]' : 'opacity-45 hover:opacity-70 hover:bg-white/[0.03]'
       }`}
     >
       {/* Avatar */}
-      <div className="relative shrink-0">
+      <div className="relative shrink-0 pointer-events-none">
         <div className="w-9 h-9 rounded-full bg-[#222] flex items-center justify-center overflow-hidden ring-1 ring-white/10">
           {account.profileImageUrl ? (
             <img src={account.profileImageUrl} alt={name} className="w-full h-full object-cover" />
@@ -145,7 +172,7 @@ function AccountItem({ account, selected, onToggle }) {
         )}
       </div>
 
-      <span className="flex-1 text-sm text-white/75 font-medium truncate text-left leading-tight">
+      <span className="pointer-events-none flex-1 text-sm text-white/75 font-medium truncate text-left leading-tight">
         {name}
       </span>
     </button>
@@ -379,19 +406,18 @@ function PostDrawer({ post, onClose }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function SocialCalendar({ projectId, canManage }) {
-  const navigate = useNavigate();
-
   // Posts state
   const [currentDate, setCurrentDate]   = useState(new Date());
   const [posts, setPosts]               = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isBlotatoConfigOpen, setIsBlotatoConfigOpen] = useState(false);
   const [preselectedDate, setPreselectedDate] = useState('');
   const [selectedPost, setSelectedPost] = useState(null);
 
   // Filter state
   const [accountSearch, setAccountSearch]   = useState('');
-  const [selectedAccountIds, setSelectedAccountIds] = useState(null); // null = all
+  const [selectedAccountKeys, setSelectedAccountKeys] = useState(null); // null = all
   const [postSearch, setPostSearch]         = useState('');
   const [statusFilter, setStatusFilter]     = useState('all');
 
@@ -458,36 +484,41 @@ export function SocialCalendar({ projectId, canManage }) {
 
   // Check if an account is "selected" for filtering
   const isAccountSelected = (account) =>
-    selectedAccountIds === null || selectedAccountIds.has(account.id);
+    selectedAccountKeys === null || selectedAccountKeys.has(getAccountSelectionKey(account));
 
   const toggleAccount = (account) => {
     if (accountsForPosting.length <= 1) return; // can't deselect if only one
-    if (selectedAccountIds === null) {
+    const accountKey = getAccountSelectionKey(account);
+    if (selectedAccountKeys === null) {
       // Currently all selected → select only this one
-      setSelectedAccountIds(new Set([account.id]));
-    } else if (selectedAccountIds.has(account.id)) {
-      const next = new Set(selectedAccountIds);
-      next.delete(account.id);
+      setSelectedAccountKeys(new Set([accountKey]));
+    } else if (selectedAccountKeys.has(accountKey)) {
+      const next = new Set(selectedAccountKeys);
+      next.delete(accountKey);
       if (next.size === 0) {
-        setSelectedAccountIds(null); // back to "all"
+        setSelectedAccountKeys(null); // back to "all"
       } else {
-        setSelectedAccountIds(next);
+        setSelectedAccountKeys(next);
       }
     } else {
-      const next = new Set(selectedAccountIds);
-      next.add(account.id);
+      const next = new Set(selectedAccountKeys);
+      next.add(accountKey);
       if (next.size === accountsForPosting.length) {
-        setSelectedAccountIds(null); // all selected → normalize to null
+        setSelectedAccountKeys(null); // all selected → normalize to null
       } else {
-        setSelectedAccountIds(next);
+        setSelectedAccountKeys(next);
       }
     }
   };
 
   // Filtered posts (apply account + status + text filters)
   const filteredPosts = useMemo(() => {
+    const selectedAccounts = selectedAccountKeys === null
+      ? null
+      : accountsForPosting.filter((account) => selectedAccountKeys.has(getAccountSelectionKey(account)));
+
     return posts.filter((post) => {
-      if (selectedAccountIds !== null && !selectedAccountIds.has(post.account_id)) return false;
+      if (selectedAccounts && !selectedAccounts.some((account) => doesPostMatchAccount(post, account))) return false;
       if (statusFilter !== 'all' && post.status !== statusFilter) return false;
       if (postSearch) {
         const q = postSearch.toLowerCase();
@@ -495,7 +526,7 @@ export function SocialCalendar({ projectId, canManage }) {
       }
       return true;
     });
-  }, [posts, selectedAccountIds, statusFilter, postSearch]);
+  }, [posts, accountsForPosting, selectedAccountKeys, statusFilter, postSearch]);
 
   // Group posts by day for the week grid
   const postsByDay = useMemo(() => {
@@ -567,7 +598,7 @@ export function SocialCalendar({ projectId, canManage }) {
             <>
               {filteredAccounts.map((account) => (
                 <AccountItem
-                  key={account.id}
+                  key={getAccountSelectionKey(account)}
                   account={account}
                   selected={isAccountSelected(account)}
                   onToggle={() => toggleAccount(account)}
@@ -581,7 +612,8 @@ export function SocialCalendar({ projectId, canManage }) {
         {/* Add account */}
         <div className="px-3 pb-3">
           <button
-            onClick={() => navigate(`/dashboard/integrations?projectId=${projectId}`)}
+            type="button"
+            onClick={() => setIsBlotatoConfigOpen(true)}
             className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-white/[0.1] text-xs font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.05] hover:border-white/[0.18] transition-all"
           >
             <UserPlus size={13} />
@@ -707,6 +739,12 @@ export function SocialCalendar({ projectId, canManage }) {
         projectId={projectId}
         serviceId={null}
         initialDate={preselectedDate}
+      />
+
+      <BlotatoConfigModal
+        isOpen={isBlotatoConfigOpen}
+        onClose={() => setIsBlotatoConfigOpen(false)}
+        projectId={projectId}
       />
     </div>
   );

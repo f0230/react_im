@@ -153,11 +153,11 @@ const EditProjectModal = ({
         }
     };
 
-    const inputClass = "w-full bg-[#f3f4f6] border-none rounded-xl py-3 px-4 text-sm text-neutral-800 focus:ring-2 focus:ring-black outline-none transition-all";
-    const labelClass = "text-xs font-bold text-neutral-500 uppercase tracking-wider mb-1.5 block ml-1";
+    const inputClass = "w-full bg-[#f3f4f6] border-none rounded-xl py-2.5 px-4 text-sm text-neutral-800 focus:ring-2 focus:ring-black outline-none transition-all";
+    const labelClass = "text-[11px] font-bold text-neutral-500 uppercase tracking-wider mb-1.5 block ml-1";
 
     return (
-        <Dialog.Root open={isOpen} onOpenChange={onClose}>
+        <Dialog.Root open={isOpen} onOpenChange={onClose} modal={false}>
             <AnimatePresence>
                 {isOpen && (
                     <Dialog.Portal forceMount>
@@ -174,156 +174,164 @@ const EditProjectModal = ({
                         <Dialog.Content asChild>
                             <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 pointer-events-none">
                                 <motion.div
-                                    className="w-full max-w-[440px] bg-white rounded-[28px] shadow-2xl font-product p-0 border border-neutral-100 pointer-events-auto"
+                                    className="w-full max-w-[760px] max-h-[calc(100vh-2rem)] overflow-y-auto bg-white rounded-[28px] shadow-2xl font-product p-0 border border-neutral-100 pointer-events-auto"
                                     initial={{ opacity: 0, scale: 0.95, y: 15 }}
                                     animate={{ opacity: 1, scale: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
                                 >
-                                    <div className="p-6">
-                                        <div className="flex items-center justify-between mb-6">
+                                    <div className="p-5 sm:p-6">
+                                        <div className="flex items-center justify-between mb-5">
                                             <h2 className="text-xl font-bold text-neutral-900">Configurar Proyecto</h2>
                                             <button onClick={onClose} className="p-2 rounded-full hover:bg-neutral-100 transition-colors text-neutral-400">
                                                 <X size={20} />
                                             </button>
                                         </div>
 
-                                        <form onSubmit={handleSubmit} className="space-y-5">
-                                            {/* Avatar section */}
-                                            <div className="flex flex-col items-center gap-3 py-2">
-                                                <div className="relative group">
-                                                    <div className="h-24 w-24 rounded-full overflow-hidden bg-neutral-100 border-2 border-neutral-100 shadow-sm">
-                                                        {formData.avatar_url ? (
-                                                            <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
-                                                                <Camera size={28} />
+                                        <form onSubmit={handleSubmit} className="space-y-4">
+                                            <div className="grid gap-4 lg:grid-cols-[200px,minmax(0,1fr)] lg:items-start">
+                                                <div className="flex flex-col items-center gap-3 rounded-2xl bg-neutral-50 px-4 py-5">
+                                                    <div className="relative group">
+                                                        <div className="h-24 w-24 rounded-full overflow-hidden bg-neutral-100 border-2 border-neutral-100 shadow-sm sm:h-28 sm:w-28">
+                                                            {formData.avatar_url ? (
+                                                                <img src={formData.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-400">
+                                                                    <Camera size={28} />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                            <Camera size={20} />
+                                                            <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+                                                        </label>
+                                                        {uploading && (
+                                                            <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-full">
+                                                                <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin rounded-full" />
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                        <Camera size={20} />
-                                                        <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
-                                                    </label>
-                                                    {uploading && (
-                                                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-full">
-                                                            <div className="w-5 h-5 border-2 border-black border-t-transparent animate-spin rounded-full" />
+                                                    <p className="text-[11px] text-neutral-400 font-medium text-center">
+                                                        Click para cambiar imagen
+                                                    </p>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <label className={labelClass}>Nombre del Proyecto</label>
+                                                        <input
+                                                            name="name"
+                                                            value={formData.name}
+                                                            onChange={handleChange}
+                                                            className={inputClass}
+                                                            placeholder="Ej: Rediseño Web"
+                                                            required
+                                                        />
+                                                    </div>
+
+                                                    <div className="grid gap-4 sm:grid-cols-2">
+                                                        <div>
+                                                            <label className={labelClass}>Link de Figma (Design)</label>
+                                                            <div className="relative">
+                                                                <input
+                                                                    name="figma_url"
+                                                                    value={formData.figma_url}
+                                                                    onChange={handleChange}
+                                                                    className={`${inputClass} pl-10`}
+                                                                    placeholder="https://www.figma.com/design/..."
+                                                                />
+                                                                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                                    <LinkIcon size={16} />
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                                <p className="text-[10px] text-neutral-400 font-medium">Click para cambiar imagen</p>
-                                            </div>
 
-                                            <div>
-                                                <label className={labelClass}>Nombre del Proyecto</label>
-                                                <input
-                                                    name="name"
-                                                    value={formData.name}
-                                                    onChange={handleChange}
-                                                    className={inputClass}
-                                                    placeholder="Ej: Rediseño Web"
-                                                    required
-                                                />
-                                            </div>
+                                                        <div>
+                                                            <label className={labelClass}>Link de Figma JAM</label>
+                                                            <div className="relative">
+                                                                <input
+                                                                    name="jam_url"
+                                                                    value={formData.jam_url}
+                                                                    onChange={handleChange}
+                                                                    className={`${inputClass} pl-10`}
+                                                                    placeholder="https://www.figma.com/board/..."
+                                                                />
+                                                                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                                    <LinkIcon size={16} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
-                                            <div>
-                                                <label className={labelClass}>Link de Figma (Design)</label>
-                                                <div className="relative">
-                                                    <input
-                                                        name="figma_url"
-                                                        value={formData.figma_url}
-                                                        onChange={handleChange}
-                                                        className={`${inputClass} pl-10`}
-                                                        placeholder="https://www.figma.com/design/..."
-                                                    />
-                                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
-                                                        <LinkIcon size={16} />
+                                                    <div>
+                                                        <label className={labelClass}>Link de Carpeta Drive</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                name="drive_url"
+                                                                value={formData.drive_url}
+                                                                onChange={handleChange}
+                                                                className={`${inputClass} pl-10`}
+                                                                placeholder="https://drive.google.com/drive/folders/..."
+                                                            />
+                                                            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                                <LinkIcon size={16} />
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <div>
-                                                <label className={labelClass}>Link de Figma JAM</label>
-                                                <div className="relative">
-                                                    <input
-                                                        name="jam_url"
-                                                        value={formData.jam_url}
-                                                        onChange={handleChange}
-                                                        className={`${inputClass} pl-10`}
-                                                        placeholder="https://www.figma.com/board/..."
-                                                    />
-                                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
-                                                        <LinkIcon size={16} />
+                                            <div className="grid gap-3 md:grid-cols-2">
+                                                <div className="rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3.5 flex items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <Share2 size={16} className="text-neutral-400 shrink-0" />
+                                                        <div className="min-w-0">
+                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Blotato</p>
+                                                            <p className="text-xs font-semibold text-neutral-700 truncate">
+                                                                {assignedAccounts.length > 0
+                                                                    ? `${assignedAccounts.length} destino${assignedAccounts.length !== 1 ? 's' : ''} asignado${assignedAccounts.length !== 1 ? 's' : ''}`
+                                                                    : allAccounts.length > 0
+                                                                        ? `${allAccounts.length} cuenta${allAccounts.length !== 1 ? 's' : ''} disponible${allAccounts.length !== 1 ? 's' : ''}`
+                                                                        : 'Sin cuentas sincronizadas'}
+                                                            </p>
+                                                            <p className="text-[11px] text-neutral-400">
+                                                                Configurá qué cuentas usa este proyecto para publicar contenido.
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <label className={labelClass}>Link de Carpeta Drive</label>
-                                                <div className="relative">
-                                                    <input
-                                                        name="drive_url"
-                                                        value={formData.drive_url}
-                                                        onChange={handleChange}
-                                                        className={`${inputClass} pl-10`}
-                                                        placeholder="https://drive.google.com/drive/folders/..."
-                                                    />
-                                                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
-                                                        <LinkIcon size={16} />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3 flex items-center justify-between gap-3">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <Share2 size={16} className="text-neutral-400 shrink-0" />
-                                                    <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Blotato</p>
-                                                        <p className="text-xs font-semibold text-neutral-700 truncate">
-                                                            {assignedAccounts.length > 0
-                                                                ? `${assignedAccounts.length} destino${assignedAccounts.length !== 1 ? 's' : ''} asignado${assignedAccounts.length !== 1 ? 's' : ''}`
-                                                                : allAccounts.length > 0
-                                                                    ? `${allAccounts.length} cuenta${allAccounts.length !== 1 ? 's' : ''} disponible${allAccounts.length !== 1 ? 's' : ''}`
-                                                                    : 'Sin cuentas sincronizadas'}
-                                                        </p>
-                                                        <p className="text-[11px] text-neutral-400">
-                                                            Configurá qué cuentas usa este proyecto para publicar contenido.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsBlotatoConfigOpen(true)}
-                                                    className="shrink-0 text-[11px] font-semibold text-neutral-600 hover:text-black underline underline-offset-2 transition"
-                                                >
-                                                    {blotatoSyncing ? 'Sincronizando…' : 'Configurar →'}
-                                                </button>
-                                            </div>
-
-                                            {/* TeamChat Channel */}
-                                            <div className="rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3 flex items-center justify-between gap-3">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <MessageSquare size={16} className="text-neutral-400 shrink-0" />
-                                                    <div className="min-w-0">
-                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Team Chat</p>
-                                                        {linkedChannel ? (
-                                                            <p className="text-xs font-semibold text-neutral-700 truncate">#{linkedChannel.name}</p>
-                                                        ) : (
-                                                            <p className="text-xs text-neutral-400">Canal automático pendiente...</p>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                {linkedChannel && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            onClose();
-                                                            navigate(`/dashboard/team-chat?channel=${linkedChannel.id}`);
-                                                        }}
+                                                        onClick={() => setIsBlotatoConfigOpen(true)}
                                                         className="shrink-0 text-[11px] font-semibold text-neutral-600 hover:text-black underline underline-offset-2 transition"
                                                     >
-                                                        Ir al chat →
+                                                        {blotatoSyncing ? 'Sincronizando…' : 'Configurar →'}
                                                     </button>
-                                                )}
+                                                </div>
+
+                                                <div className="rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-3.5 flex items-center justify-between gap-3">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <MessageSquare size={16} className="text-neutral-400 shrink-0" />
+                                                        <div className="min-w-0">
+                                                            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Team Chat</p>
+                                                            {linkedChannel ? (
+                                                                <p className="text-xs font-semibold text-neutral-700 truncate">#{linkedChannel.name}</p>
+                                                            ) : (
+                                                                <p className="text-xs text-neutral-400">Canal automático pendiente...</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    {linkedChannel && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                onClose();
+                                                                navigate(`/dashboard/team-chat?channel=${linkedChannel.id}`);
+                                                            }}
+                                                            className="shrink-0 text-[11px] font-semibold text-neutral-600 hover:text-black underline underline-offset-2 transition"
+                                                        >
+                                                            Ir al chat →
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             {error && (
@@ -333,11 +341,11 @@ const EditProjectModal = ({
                                             )}
 
 
-                                            <div className="pt-2">
+                                            <div className="pt-1">
                                                 <button
                                                     type="submit"
                                                     disabled={loading || uploading}
-                                                    className="w-full bg-black text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] disabled:opacity-50"
+                                                    className="w-full bg-black text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-neutral-800 transition-all active:scale-[0.98] disabled:opacity-50"
                                                 >
                                                     {loading ? 'Guardando...' : (
                                                         <>
