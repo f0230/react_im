@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import {
   Node,
   Edge,
   Connection,
+  XYPosition,
   addEdge,
   applyNodeChanges,
   applyEdgeChanges,
@@ -159,7 +159,8 @@ interface WorkflowState {
   onConnect: (connection: Connection) => void;
   setNodes: (updater: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges: (updater: Edge[] | ((edges: Edge[]) => Edge[])) => void;
-  addNode: (type: string) => void;
+  addNode: (type: string, opts?: { position?: XYPosition; pinned?: boolean }) => string;
+  setPinned: (nodeId: string, pinned: boolean) => void;
   // undo/redo
   pushSnapshot: () => void;
   undo: () => void;
@@ -170,6 +171,7 @@ interface WorkflowState {
   exportWorkflow: () => string;
   importWorkflow: (json: string) => void;
   resetWorkflow: () => void;
+  loadWorkflow: (nodes: Node[], edges: Edge[]) => void;
 }
 
 function getConnectionColor(
@@ -220,8 +222,7 @@ function getConnectionColor(
 }
 
 export const useWorkflowStore = create<WorkflowState>()(
-  persist(
-    (set, get) => ({
+  (set, get) => ({
       nodes: initialNodes,
       edges: initialEdges,
       past: [],
@@ -269,27 +270,36 @@ export const useWorkflowStore = create<WorkflowState>()(
         });
       },
 
-      addNode: (type) => {
+      addNode: (type, opts) => {
         get().pushSnapshot();
         const newNodeId = `${type}-${Date.now()}`;
         const newNode: Node = {
           id: newNodeId,
           type,
-          position: {
-            x: Math.random() * 200 + 300,
-            y: Math.random() * 200 + 300,
+          position: opts?.position ?? { x: 300, y: 300 },
+          data: {
+            ...getDefaultData(type),
+            ...(opts?.pinned !== undefined && { pinned: opts.pinned }),
           },
-          data: getDefaultData(type),
         };
         set({ nodes: [...get().nodes, newNode] });
+        return newNodeId;
+      },
+
+      setPinned: (nodeId, pinned) => {
+        set({
+          nodes: get().nodes.map((n) =>
+            n.id === nodeId ? { ...n, data: { ...n.data, pinned } } : n,
+          ),
+        });
       },
 
       // ---- Undo / Redo ----
       pushSnapshot: () => {
         const { nodes, edges, past } = get();
         const snap: Snapshot = {
-          nodes: JSON.parse(JSON.stringify(nodes)),
-          edges: JSON.parse(JSON.stringify(edges)),
+          nodes: structuredClone(nodes),
+          edges: structuredClone(edges),
         };
         set({
           past: [...past.slice(-MAX_HISTORY), snap],
@@ -302,8 +312,8 @@ export const useWorkflowStore = create<WorkflowState>()(
         if (!past.length) return;
         const prev = past[past.length - 1];
         const current: Snapshot = {
-          nodes: JSON.parse(JSON.stringify(nodes)),
-          edges: JSON.parse(JSON.stringify(edges)),
+          nodes: structuredClone(nodes),
+          edges: structuredClone(edges),
         };
         set({
           nodes: prev.nodes,
@@ -318,8 +328,8 @@ export const useWorkflowStore = create<WorkflowState>()(
         if (!future.length) return;
         const next = future[0];
         const current: Snapshot = {
-          nodes: JSON.parse(JSON.stringify(nodes)),
-          edges: JSON.parse(JSON.stringify(edges)),
+          nodes: structuredClone(nodes),
+          edges: structuredClone(edges),
         };
         set({
           nodes: next.nodes,
@@ -369,13 +379,9 @@ export const useWorkflowStore = create<WorkflowState>()(
         get().pushSnapshot();
         set({ nodes: initialNodes, edges: initialEdges });
       },
+
+      loadWorkflow: (nodes, edges) => {
+        set({ nodes, edges, past: [], future: [] });
+      },
     }),
-    {
-      name: 'studio-dte-workflow',
-      partialize: (state) => ({
-        nodes: state.nodes,
-        edges: state.edges,
-      }),
-    },
-  ),
 );
