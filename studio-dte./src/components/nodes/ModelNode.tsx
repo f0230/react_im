@@ -28,6 +28,7 @@ interface ModelCaps {
   kind: 'image' | 'video';
   provider: 'market' | 'veo';
   supportsReferenceImage?: boolean;
+  requiresReferenceImage?: boolean;
   supportsReferenceVideo?: boolean;
   supportsAspectRatio?: boolean;
   supportsResolution?: boolean;
@@ -63,6 +64,7 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     kind: 'image',
     provider: 'market',
     supportsReferenceImage: true,
+    requiresReferenceImage: true,
     supportsAspectRatio: true,
     supportsOutputFormat: true,
   },
@@ -97,9 +99,9 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     kind: 'video',
     provider: 'market',
     supportsReferenceImage: true,
+    requiresReferenceImage: true,
     supportsDuration: true,
     supportsSound: true,
-
   },
   'kling-2.6/motion-control': {
     kind: 'video',
@@ -152,12 +154,12 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     kind: 'video',
     provider: 'market',
     supportsReferenceImage: true,
+    requiresReferenceImage: true,
     supportsAspectRatio: true,
     supportsFrameCount: true,
     supportsRemoveWatermark: true,
     supportsUploadMethod: true,
     supportsCharacterIds: true,
-
   },
 
   /* ---- Veo ---- */
@@ -658,6 +660,11 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     // -- Validations --
     if (!promptText) {
       toast.error('Conecta un nodo de Prompt con texto antes de generar.');
+      return;
+    }
+
+    if (selectedCaps.requiresReferenceImage && !refImageDataUrl) {
+      toast.error('Este modelo requiere una imagen de referencia. Conecta un nodo Image al puerto Image.');
       return;
     }
 

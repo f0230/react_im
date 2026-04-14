@@ -9,16 +9,20 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const ratio = img.width / img.height;
-        updateNodeData(id, { imageUrl: reader.result as string, aspectRatio: ratio });
-      };
-      img.src = reader.result as string;
+    const MAX_MB = 15;
+    if (file.size > MAX_MB * 1024 * 1024) {
+      alert(`La imagen es demasiado grande (máx ${MAX_MB} MB)`);
+      return;
+    }
+    const blobUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      updateNodeData(id, { imageUrl: blobUrl, aspectRatio: img.width / img.height });
     };
-    reader.readAsDataURL(file);
+    img.onerror = () => {
+      updateNodeData(id, { imageUrl: blobUrl, aspectRatio: 1 });
+    };
+    img.src = blobUrl;
   };
 
   const handleClick = () => inputRef.current?.click();

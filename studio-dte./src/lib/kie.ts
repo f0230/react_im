@@ -200,7 +200,7 @@ export async function createVeoTask(params: {
   const body: Record<string, any> = {
     prompt: params.prompt,
     model: params.model,
-    aspectRatio: params.aspectRatio || '16:9',
+    aspect_ratio: params.aspectRatio || '16:9',
   };
 
   if (params.generationType) {
