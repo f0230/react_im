@@ -66,7 +66,11 @@ const devApiPlugin = () => {
     },
     {
       name: '/api/studio',
-      matches: (pathname) => pathname === '/api/studio-proxy' || pathname === '/api/kie-upload',
+      matches: (pathname) => [
+        '/api/studio',
+        '/api/studio-proxy',
+        '/api/kie-upload',
+      ].includes(pathname),
       resolveQuery: (pathname, searchParams) => {
         const query = Object.fromEntries(searchParams.entries());
         if (!query.action) {

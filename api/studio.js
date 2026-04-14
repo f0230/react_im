@@ -2,13 +2,27 @@
  * /api/studio — merged handler for Studio / Banana AI image utilities
  *
  * Routes (action param):
- *   proxy      POST /api/studio-proxy  → /api/studio?action=proxy
- *   kie-upload POST /api/kie-upload    → /api/studio?action=kie-upload
+ *   proxy          POST /api/studio-proxy     → download KIE image → Supabase
+ *   kie-upload     POST /api/kie-upload       → upload reference file to KIE CDN
+ *   market-create  POST /api/studio           → proxy KIE Market createTask
+ *   market-poll    POST /api/studio           → proxy KIE Market recordInfo
+ *   veo-create     POST /api/studio           → proxy KIE Veo generate
+ *   veo-poll       POST /api/studio           → proxy KIE Veo record-info
  */
 
 import { createClient } from '@supabase/supabase-js';
 
+const KIE_API           = 'https://api.kie.ai/api/v1';
 const KIE_UPLOAD_BASE_URL = 'https://kieai.redpandaai.co';
+
+function getKieApiKey(res) {
+  const key = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
+  if (!key) {
+    res.status(500).json({ error: 'KIE_API_KEY not configured on server.' });
+    return null;
+  }
+  return key;
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -86,33 +100,31 @@ async function handleProxy(req, res) {
 }
 
 // ─── action: kie-upload ──────────────────────────────────────────────────────
-// Uploads a reference image (data URL) to the KIE AI CDN.
-// Body: { imageDataUrl: string }
+// Uploads a reference image/video (data URL or https URL) to the KIE CDN.
+// Body: { imageDataUrl: string, uploadPath?: string }
 
 async function handleKieUpload(req, res) {
-  const { imageDataUrl } = parseBody(req);
+  const { imageDataUrl, uploadPath = 'images/studio-dte' } = parseBody(req);
 
   if (!imageDataUrl || typeof imageDataUrl !== 'string') {
     return res.status(400).json({ error: 'Missing imageDataUrl in request body.' });
   }
 
-  const apiKey = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'KIE_API_KEY not configured on server.' });
-  }
+  const apiKey = getKieApiKey(res);
+  if (!apiKey) return;
 
   const imageResponse = await fetch(imageDataUrl);
   if (!imageResponse.ok) {
-    throw new Error(`Could not parse reference image: HTTP ${imageResponse.status}`);
+    throw new Error(`Could not fetch reference file: HTTP ${imageResponse.status}`);
   }
 
   const blob = await imageResponse.blob();
   const extension = getFileExtensionFromType(blob.type);
-  const fileName = `reference-${Date.now()}.${extension}`;
+  const fileName = `ref-${Date.now()}.${extension}`;
 
   const formData = new FormData();
   formData.append('file', blob, fileName);
-  formData.append('uploadPath', 'images/banana-reference');
+  formData.append('uploadPath', uploadPath);
   formData.append('fileName', fileName);
 
   const uploadResponse = await fetch(`${KIE_UPLOAD_BASE_URL}/api/file-stream-upload`, {
@@ -123,7 +135,7 @@ async function handleKieUpload(req, res) {
 
   const data = await parseJsonResponse(uploadResponse);
   if (data.code !== 200) {
-    throw new Error(data.msg || `Reference image upload failed (${uploadResponse.status})`);
+    throw new Error(data.msg || `Reference upload failed (${uploadResponse.status})`);
   }
 
   const fileUrl =
@@ -140,11 +152,114 @@ async function handleKieUpload(req, res) {
   return res.status(200).json({ fileUrl });
 }
 
+// ─── action: market-create ───────────────────────────────────────────────────
+// Proxy for KIE Market POST /api/v1/jobs/createTask
+// Body: { model, input, callBackUrl?, progressCallBackUrl? }
+
+async function handleMarketCreate(req, res) {
+  const { model, input, callBackUrl, progressCallBackUrl } = parseBody(req);
+  if (!model || !input) return res.status(400).json({ error: 'Missing model or input.' });
+
+  const apiKey = getKieApiKey(res);
+  if (!apiKey) return;
+
+  const body = { model, input };
+  if (callBackUrl) body.callBackUrl = callBackUrl;
+  if (progressCallBackUrl) body.progressCallBackUrl = progressCallBackUrl;
+
+  const kieRes = await fetch(`${KIE_API}/jobs/createTask`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(body),
+  });
+
+  const data = await parseJsonResponse(kieRes);
+
+  if (data.code !== 200) {
+    return res.status(400).json({ error: data.msg || `KIE error: ${data.code}` });
+  }
+
+  const taskId = data.data?.taskId || data.data?.tid || data.taskId || data.tid;
+  if (!taskId) return res.status(500).json({ error: 'No taskId in KIE response.' });
+
+  return res.status(200).json({ taskId: String(taskId) });
+}
+
+// ─── action: market-poll ─────────────────────────────────────────────────────
+// Proxy for KIE Market GET /api/v1/jobs/recordInfo
+// Body: { taskId }
+
+async function handleMarketPoll(req, res) {
+  const { taskId } = parseBody(req);
+  if (!taskId) return res.status(400).json({ error: 'Missing taskId.' });
+
+  const apiKey = getKieApiKey(res);
+  if (!apiKey) return;
+
+  const kieRes = await fetch(`${KIE_API}/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+
+  const data = await parseJsonResponse(kieRes);
+  return res.status(200).json(data);
+}
+
+// ─── action: veo-create ──────────────────────────────────────────────────────
+// Proxy for KIE Veo POST /api/v1/veo/generate
+// Body: full Veo request payload
+
+async function handleVeoCreate(req, res) {
+  const payload = parseBody(req);
+
+  const apiKey = getKieApiKey(res);
+  if (!apiKey) return;
+
+  const kieRes = await fetch(`${KIE_API}/veo/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await parseJsonResponse(kieRes);
+
+  if (data.code && data.code !== 200) {
+    return res.status(400).json({ error: data.msg || `Veo error: ${data.code}` });
+  }
+
+  const taskId = data.data?.taskId || data.data?.tid || data.taskId || data.tid;
+  if (!taskId) return res.status(500).json({ error: 'No taskId in Veo response.' });
+
+  return res.status(200).json({ taskId: String(taskId) });
+}
+
+// ─── action: veo-poll ────────────────────────────────────────────────────────
+// Proxy for KIE Veo GET /api/v1/veo/record-info
+// Body: { taskId }
+
+async function handleVeoPoll(req, res) {
+  const { taskId } = parseBody(req);
+  if (!taskId) return res.status(400).json({ error: 'Missing taskId.' });
+
+  const apiKey = getKieApiKey(res);
+  if (!apiKey) return;
+
+  const kieRes = await fetch(`${KIE_API}/veo/record-info?taskId=${encodeURIComponent(taskId)}`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+  });
+
+  const data = await parseJsonResponse(kieRes);
+  return res.status(200).json(data);
+}
+
 // ─── main handler ────────────────────────────────────────────────────────────
 
 const ACTIONS = {
   proxy: handleProxy,
   'kie-upload': handleKieUpload,
+  'market-create': handleMarketCreate,
+  'market-poll': handleMarketPoll,
+  'veo-create': handleVeoCreate,
+  'veo-poll': handleVeoPoll,
 };
 
 export default async function handler(req, res) {

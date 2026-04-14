@@ -477,16 +477,6 @@ function SmallInput({
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-/** Convert a remote URL to a base64 data URL */
-async function toBase64(url: string): Promise<string> {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -701,51 +691,22 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
 
     try {
       // -- Upload reference image (shared across all generations) --
+      // uploadFile handles blob:, data:, and https: URLs via the server proxy
       let uploadedImageUrl: string | null = null;
       if (refImageDataUrl) {
-        if (refImageDataUrl.startsWith('http')) {
-          try {
-            refImageDataUrl = await toBase64(refImageDataUrl);
-          } catch (e) {
-            console.error('Error fetching reference image:', e);
-          }
-        }
-        uploadedImageUrl = await uploadFile(
-          refImageDataUrl,
-          'images/studio-dte',
-        );
+        uploadedImageUrl = await uploadFile(refImageDataUrl, 'images/studio-dte');
       }
 
       // -- Upload reference image 2 (last frame, shared) --
       let uploadedImage2Url: string | null = null;
       if (refImage2DataUrl && selectedCaps.supportsSecondImage) {
-        if (refImage2DataUrl.startsWith('http')) {
-          try {
-            refImage2DataUrl = await toBase64(refImage2DataUrl);
-          } catch (e) {
-            console.error('Error fetching reference image 2:', e);
-          }
-        }
-        uploadedImage2Url = await uploadFile(
-          refImage2DataUrl,
-          'images/studio-dte',
-        );
+        uploadedImage2Url = await uploadFile(refImage2DataUrl, 'images/studio-dte');
       }
 
       // -- Upload reference video (shared across all generations) --
       let uploadedVideoUrl: string | null = null;
       if (refVideoDataUrl && selectedCaps.supportsReferenceVideo) {
-        if (refVideoDataUrl.startsWith('http')) {
-          try {
-            refVideoDataUrl = await toBase64(refVideoDataUrl);
-          } catch (e) {
-            console.error('Error fetching reference video:', e);
-          }
-        }
-        uploadedVideoUrl = await uploadFile(
-          refVideoDataUrl,
-          'videos/studio-dte',
-        );
+        uploadedVideoUrl = await uploadFile(refVideoDataUrl, 'videos/studio-dte');
       }
 
       // -- Generate one result per connected output node --
