@@ -340,10 +340,15 @@ function buildMarketInput(
 
     /* ---- Kling 3.0 ---- */
     case 'kling-3.0/video': {
+      // KIE requires multi_shots as a non-empty array; it's the primary prompt carrier
+      const durationNum = parseInt(duration) || 5;
+      const shots = extras?.multiPrompt?.length
+        ? extras.multiPrompt.map((seg) => ({ prompt: seg.prompt, duration: seg.duration }))
+        : [{ prompt, duration: durationNum }];
+
       const input: Record<string, any> = {
-        prompt,
+        multi_shots: shots,
         sound,
-        duration,
         aspect_ratio: aspectRatio,
         mode,
       };
@@ -354,10 +359,6 @@ function buildMarketInput(
       }
       if (negativePrompt) {
         input.negative_prompt = negativePrompt;
-      }
-      if (extras?.multiPrompt?.length) {
-        input.multi_shots = true;
-        input.multi_prompt = extras.multiPrompt;
       }
       if (extras?.klingElements?.length) {
         input.kling_elements = extras.klingElements;
