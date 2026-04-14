@@ -29,6 +29,43 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
     if (file?.type.startsWith('image/')) handleFile(file);
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    // 1. Image blob from clipboard (e.g. screenshot, browser copy-image)
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) { handleFile(file); return; }
+      }
+    }
+
+    // 2. Text URL (e.g. copied with the Studio copy-URL button)
+    for (const item of Array.from(items)) {
+      if (item.type === 'text/plain') {
+        item.getAsString((text) => {
+          const trimmed = text.trim();
+          if (/^https?:\/\/.+\.(png|jpg|jpeg|webp|gif|avif)(\?.*)?$/i.test(trimmed) || trimmed.startsWith('http')) {
+            // Load image to get aspect ratio
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const ratio = img.width / img.height;
+              updateNodeData(id, { imageUrl: trimmed, aspectRatio: ratio });
+            };
+            img.onerror = () => {
+              // Accept URL even if CORS blocks load
+              updateNodeData(id, { imageUrl: trimmed, aspectRatio: 1 });
+            };
+            img.src = trimmed;
+          }
+        });
+        return;
+      }
+    }
+  };
+
   return (
     <BaseNode id={id} title="Image" className="w-48 p-3 rounded-[24px]">
       <input
@@ -49,6 +86,8 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
         onClick={handleClick}
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
+        onPaste={handlePaste}
+        tabIndex={0}
       >
         {data.imageUrl ? (
           <img src={data.imageUrl} alt="Reference" className="w-full h-full object-cover" />
