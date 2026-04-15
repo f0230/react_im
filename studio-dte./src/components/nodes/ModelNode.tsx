@@ -18,6 +18,7 @@ import {
   createVeoTask,
   pollVeoTask,
 } from '../../lib/kie';
+import { persistMediaUrl } from '../../lib/mediaStorage';
 import toast from 'react-hot-toast';
 import { ElasticSwitch } from '../ui/elastic-switch';
 
@@ -723,7 +724,11 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
           ? '16:9'
           : (data.aspectRatio || '1:1');
 
-      const generateOne = async (): Promise<{ resultUrl: string; taskId: string }> => {
+      const generateOne = async (): Promise<{
+        resultUrl: string;
+        taskId: string;
+        storagePath: string | null;
+      }> => {
         if (abortRef.current) throw new Error('Cancelled');
 
         let resultUrl = '';
@@ -766,7 +771,22 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
         }
 
         if (!resultUrl) throw new Error('No se generó ningún resultado');
-        return { resultUrl, taskId };
+
+        let persistedUrl = resultUrl;
+        let storagePath: string | null = null;
+
+        try {
+          const persisted = await persistMediaUrl(
+            resultUrl,
+            taskId || `result-${Date.now()}`,
+          );
+          persistedUrl = persisted.signedUrl;
+          storagePath = persisted.storagePath;
+        } catch (persistError) {
+          console.warn('[model-node] Could not persist output media:', persistError);
+        }
+
+        return { resultUrl: persistedUrl, taskId, storagePath };
       };
 
       // Launch all generations in parallel
@@ -798,6 +818,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                 resultAspectRatio: actualAspectRatio,
                 taskId: result.value.taskId,
                 provider: selectedCaps.provider,
+                storagePath: result.value.storagePath,
               },
             };
           } else {

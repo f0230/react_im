@@ -48,9 +48,16 @@ async function parseJsonResponse(response) {
 }
 
 function getFileExtensionFromType(contentType) {
-  if (contentType === 'image/jpeg') return 'jpg';
-  if (contentType === 'image/webp') return 'webp';
-  if (contentType === 'image/gif') return 'gif';
+  const normalized = (contentType || '').toLowerCase();
+  if (normalized.includes('image/jpeg')) return 'jpg';
+  if (normalized.includes('image/webp')) return 'webp';
+  if (normalized.includes('image/gif')) return 'gif';
+  if (normalized.includes('image/png')) return 'png';
+  if (normalized.includes('image/avif')) return 'avif';
+  if (normalized.includes('video/mp4')) return 'mp4';
+  if (normalized.includes('video/webm')) return 'webm';
+  if (normalized.includes('video/quicktime')) return 'mov';
+  if (normalized.includes('video/')) return 'mp4';
   return 'png';
 }
 
@@ -82,8 +89,8 @@ async function handleProxy(req, res) {
 
   const arrayBuffer = await imageResponse.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  const contentType = imageResponse.headers.get('content-type') || 'image/png';
-  const ext = contentType.includes('webp') ? 'webp' : contentType.includes('jpeg') ? 'jpg' : 'png';
+  const contentType = imageResponse.headers.get('content-type') || 'application/octet-stream';
+  const ext = getFileExtensionFromType(contentType);
 
   const safeTaskId = (taskId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '');
   const fileName = `banana-${safeTaskId}-${Date.now()}.${ext}`;

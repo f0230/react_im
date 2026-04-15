@@ -42,6 +42,7 @@ import { createInitialWorkflow, useWorkflowStore } from './lib/store';
 import { useElkLayout } from './lib/useElkLayout';
 import { useWorkflowSync } from './lib/useWorkflowSync';
 import { supabase } from './lib/supabaseClient';
+import { persistMediaUrl } from './lib/mediaStorage';
 
 const nodeTypes: NodeTypes = {
   prompt: PromptNode,
@@ -340,16 +341,43 @@ function WorkflowApp() {
                 x: window.innerWidth / 2,
                 y: window.innerHeight / 2,
               });
+              const nodeId = `image-${Date.now()}`;
               pushSnapshot();
               setNodes((nds) => [
                 ...nds,
                 {
-                  id: `image-${Date.now()}`,
+                  id: nodeId,
                   type: 'image',
                   position: center,
-                  data: { imageUrl, aspectRatio },
+                  data: { imageUrl, aspectRatio, storagePath: null },
                 },
               ]);
+
+              void (async () => {
+                try {
+                  const { storagePath, signedUrl } = await persistMediaUrl(
+                    imageUrl,
+                    `paste-${nodeId}`,
+                  );
+                  setNodes((nds) =>
+                    nds.map((n) =>
+                      n.id === nodeId
+                        ? {
+                            ...n,
+                            data: {
+                              ...n.data,
+                              imageUrl: signedUrl,
+                              storagePath,
+                            },
+                          }
+                        : n,
+                    ),
+                  );
+                } catch (error) {
+                  console.warn('[app] Could not persist pasted image:', error);
+                }
+              })();
+
               toast.success('Image pasted as reference node');
             };
             img.src = imageUrl;

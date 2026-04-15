@@ -3,26 +3,58 @@ import { Image as ImageIcon, Upload } from 'lucide-react';
 import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
+import toast from 'react-hot-toast';
+import { persistMediaUrl } from '../../lib/mediaStorage';
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function getAspectRatio(src: string): Promise<number> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img.width / img.height || 1);
+    img.onerror = () => resolve(1);
+    img.src = src;
+  });
+}
 
 export default function ImageNode({ id, data }: { id: string; data: any }) {
   const { updateNodeData } = useReactFlow();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     const MAX_MB = 15;
     if (file.size > MAX_MB * 1024 * 1024) {
       alert(`La imagen es demasiado grande (máx ${MAX_MB} MB)`);
       return;
     }
-    const blobUrl = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      updateNodeData(id, { imageUrl: blobUrl, aspectRatio: img.width / img.height });
-    };
-    img.onerror = () => {
-      updateNodeData(id, { imageUrl: blobUrl, aspectRatio: 1 });
-    };
-    img.src = blobUrl;
+
+    const dataUrl = await fileToDataUrl(file);
+    const aspectRatio = await getAspectRatio(dataUrl);
+
+    updateNodeData(id, {
+      imageUrl: dataUrl,
+      aspectRatio,
+      storagePath: null,
+    });
+
+    try {
+      const { storagePath, signedUrl } = await persistMediaUrl(
+        dataUrl,
+        `ref-${id}-${Date.now()}`,
+      );
+      updateNodeData(id, { imageUrl: signedUrl, aspectRatio, storagePath });
+    } catch (error) {
+      console.warn('[image-node] Persisting reference image failed:', error);
+      // Keep the data URL fallback to avoid losing the image on refresh.
+      toast.error('No se pudo guardar la referencia en storage, usando fallback local.');
+    }
   };
 
   const handleClick = () => inputRef.current?.click();
@@ -30,7 +62,7 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file?.type.startsWith('image/')) handleFile(file);
+    if (file?.type.startsWith('image/')) void handleFile(file);
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -54,13 +86,32 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
             // Load image to get aspect ratio
             const img = new Image();
             img.crossOrigin = 'anonymous';
-            img.onload = () => {
-              const ratio = img.width / img.height;
-              updateNodeData(id, { imageUrl: trimmed, aspectRatio: ratio });
+            img.onload = async () => {
+              const ratio = img.width / img.height || 1;
+              updateNodeData(id, { imageUrl: trimmed, aspectRatio: ratio, storagePath: null });
+
+              try {
+                const { storagePath, signedUrl } = await persistMediaUrl(
+                  trimmed,
+                  `ref-url-${id}-${Date.now()}`,
+                );
+                updateNodeData(id, { imageUrl: signedUrl, aspectRatio: ratio, storagePath });
+              } catch (error) {
+                console.warn('[image-node] Persisting pasted URL failed:', error);
+              }
             };
-            img.onerror = () => {
+            img.onerror = async () => {
               // Accept URL even if CORS blocks load
-              updateNodeData(id, { imageUrl: trimmed, aspectRatio: 1 });
+              updateNodeData(id, { imageUrl: trimmed, aspectRatio: 1, storagePath: null });
+              try {
+                const { storagePath, signedUrl } = await persistMediaUrl(
+                  trimmed,
+                  `ref-url-${id}-${Date.now()}`,
+                );
+                updateNodeData(id, { imageUrl: signedUrl, aspectRatio: 1, storagePath });
+              } catch (error) {
+                console.warn('[image-node] Persisting pasted URL failed:', error);
+              }
             };
             img.src = trimmed;
           }
@@ -79,7 +130,7 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) handleFile(file);
+          if (file) void handleFile(file);
           e.target.value = '';
         }}
       />

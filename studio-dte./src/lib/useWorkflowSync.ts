@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Node, Edge, Viewport } from '@xyflow/react';
 import { supabase } from './supabaseClient';
+import { hydrateNodeMediaUrls } from './mediaStorage';
 
 interface WorkflowSnapshot {
   nodes: Node[];
@@ -63,7 +64,7 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
       .select('nodes, edges, viewport, revision')
       .eq('project_id', projectId)
       .maybeSingle()
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (cancelled) return;
 
         if (error) {
@@ -74,9 +75,12 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
         }
 
         if (data) {
+          const hydratedNodes = await hydrateNodeMediaUrls(data.nodes as Node[]);
+          if (cancelled) return;
+
           revisionRef.current = data.revision;
           setSnapshot({
-            nodes: data.nodes as Node[],
+            nodes: hydratedNodes,
             edges: data.edges as Edge[],
             viewport: data.viewport as Viewport | null,
             revision: data.revision,
