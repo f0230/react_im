@@ -118,17 +118,22 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
 
         setStatus('saving');
 
-        // Strip transient output node data before persisting
+        // Normalize output runtime state before persisting.
+        // Keep generated media URLs so refresh does not wipe previews.
         const cleanNodes = toSave.nodes.map((n) => {
           if (n.type === 'output') {
+            const nodeData = (n.data && typeof n.data === 'object' ? n.data : {}) as Record<string, any>;
+            const hasResult = Boolean(nodeData.resultUrl);
+            const safeStatus =
+              nodeData.status === 'loading'
+                ? (hasResult ? 'success' : 'idle')
+                : (nodeData.status ?? (hasResult ? 'success' : 'idle'));
+
             return {
               ...n,
               data: {
-                status: 'idle',
-                resultUrl: null,
-                resultType: null,
-                taskId: null,
-                provider: null,
+                ...nodeData,
+                status: safeStatus,
               },
             };
           }
