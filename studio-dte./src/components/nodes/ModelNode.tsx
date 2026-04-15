@@ -163,6 +163,30 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsCharacterIds: true,
   },
 
+  /* ---- Bytedance Seedance 2.0 ---- */
+  'bytedance/seedance-2': {
+    kind: 'video',
+    provider: 'market',
+    supportsReferenceImage: true,
+    supportsSecondImage: true,
+    supportsAspectRatio: true,
+    supportsDuration: true,
+    supportsSound: true,
+    supportsResolution: true,
+    supportsGoogleSearch: true,
+  },
+  'bytedance/seedance-2-fast': {
+    kind: 'video',
+    provider: 'market',
+    supportsReferenceImage: true,
+    supportsSecondImage: true,
+    supportsAspectRatio: true,
+    supportsDuration: true,
+    supportsSound: true,
+    supportsResolution: true,
+    supportsGoogleSearch: true,
+  },
+
   /* ---- Veo ---- */
   veo3: {
     kind: 'video',
@@ -210,6 +234,8 @@ const MODEL_OPTIONS = [
       { label: 'Kling 3.0 Motion', value: 'kling-3.0/motion-control' },
       { label: 'Sora 2 Text', value: 'sora-2-text-to-video' },
       { label: 'Sora 2 Image', value: 'sora-2-image-to-video' },
+      { label: 'Seedance 2', value: 'bytedance/seedance-2' },
+      { label: 'Seedance 2 Fast', value: 'bytedance/seedance-2-fast' },
       { label: 'Veo 3', value: 'veo3' },
       { label: 'Veo 3 Fast', value: 'veo3_fast' },
     ],
@@ -405,6 +431,26 @@ function buildMarketInput(
       const charIds = parseCsv(data.characterIdList);
       if (charIds.length) input.character_id_list = charIds;
       return { apiModel: 'sora-2-image-to-video', input };
+    }
+
+    /* ---- Bytedance Seedance 2.0 ---- */
+    case 'bytedance/seedance-2':
+    case 'bytedance/seedance-2-fast': {
+      const seedanceResolution =
+        data.resolution === '480p' || data.resolution === '720p'
+          ? data.resolution
+          : '720p';
+      const input: Record<string, any> = {
+        prompt,
+        aspect_ratio: aspectRatio,
+        duration: parseInt(duration) || 5,
+        generate_audio: sound,
+        resolution: seedanceResolution,
+        web_search: googleSearch,
+      };
+      if (imageUrl) input.first_frame_url = imageUrl;
+      if (imageUrl2) input.last_frame_url = imageUrl2;
+      return { apiModel: model, input };
     }
 
     default:
@@ -948,6 +994,16 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                         { label: '16:9', value: '16:9' },
                         { label: '9:16', value: '9:16' },
                       ]
+                    : data.model?.startsWith('bytedance/')
+                    ? [
+                        { label: '16:9', value: '16:9' },
+                        { label: '9:16', value: '9:16' },
+                        { label: '1:1', value: '1:1' },
+                        { label: '4:3', value: '4:3' },
+                        { label: '3:4', value: '3:4' },
+                        { label: '21:9', value: '21:9' },
+                        { label: 'Adaptive', value: 'adaptive' },
+                      ]
                     : [
                         { label: '16:9', value: '16:9' },
                         { label: '9:16', value: '9:16' },
@@ -965,14 +1021,25 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             <div className="flex flex-col gap-2">
               <FieldLabel>Calidad</FieldLabel>
               <MultiUseSelect
-                value={data.resolution || '1K'}
+                value={
+                  data.model?.startsWith('bytedance/')
+                    ? (data.resolution || '720p')
+                    : (data.resolution || '1K')
+                }
                 onChange={(val) => set({ resolution: val as string })}
-                options={[
-                  { label: '512px', value: '512px' },
-                  { label: '1K', value: '1K' },
-                  { label: '2K', value: '2K' },
-                  { label: '4K', value: '4K' },
-                ]}
+                options={
+                  data.model?.startsWith('bytedance/')
+                    ? [
+                        { label: '480p', value: '480p' },
+                        { label: '720p', value: '720p' },
+                      ]
+                    : [
+                        { label: '512px', value: '512px' },
+                        { label: '1K', value: '1K' },
+                        { label: '2K', value: '2K' },
+                        { label: '4K', value: '4K' },
+                      ]
+                }
               />
             </div>
           )}
@@ -1004,6 +1071,13 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                     ? [
                         { label: '3s', value: '3' },
                         { label: '5s', value: '5' },
+                        { label: '10s', value: '10' },
+                        { label: '15s', value: '15' },
+                      ]
+                    : data.model?.startsWith('bytedance/')
+                    ? [
+                        { label: '5s', value: '5' },
+                        { label: '8s', value: '8' },
                         { label: '10s', value: '10' },
                         { label: '15s', value: '15' },
                       ]

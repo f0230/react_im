@@ -181,17 +181,24 @@ function WorkflowApp() {
   // ---- Supabase sync ----
   const { snapshot, status: syncStatus, hasLoaded, save } = useWorkflowSync({ projectId });
 
+  // True while we're hydrating data from the DB — prevents the save effect
+  // from firing a redundant write right after a fresh load.
+  const isLoadingRef = useRef(false);
+
   // Load snapshot only after sync layer confirms the project has finished loading.
   useEffect(() => {
     if (!projectId || !hasLoaded) return;
 
+    isLoadingRef.current = true;
+
     if (snapshot) {
       loadWorkflow(snapshot.nodes, snapshot.edges);
       if (snapshot.viewport) {
-        requestAnimationFrame(() => setViewport(snapshot.viewport));
+        requestAnimationFrame(() => { setViewport(snapshot.viewport); isLoadingRef.current = false; });
       } else {
         requestAnimationFrame(() => {
           void fitView({ padding: 0.2, duration: 200 });
+          isLoadingRef.current = false;
         });
       }
       return;
@@ -201,12 +208,13 @@ function WorkflowApp() {
     loadWorkflow(initial.nodes, initial.edges);
     requestAnimationFrame(() => {
       void fitView({ padding: 0.2, duration: 200 });
+      isLoadingRef.current = false;
     });
   }, [projectId, hasLoaded, snapshot, loadWorkflow, setViewport, fitView]);
 
   // Debounced save on every graph change (skip during initial load)
   useEffect(() => {
-    if (!projectId || !hasLoaded) return;
+    if (!projectId || !hasLoaded || isLoadingRef.current) return;
     const viewport = getViewport();
     save(nodes, edges, viewport);
   }, [nodes, edges, projectId, hasLoaded, save, getViewport]);

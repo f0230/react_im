@@ -119,40 +119,46 @@ export async function persistMediaUrl(
 }
 
 export async function hydrateNodeMediaUrls(nodes: Node[]): Promise<Node[]> {
-  const hydrated = await Promise.all(
-    nodes.map(async (node) => {
-      const nodeData = (node.data && typeof node.data === 'object' ? node.data : {}) as Record<string, any>;
-      const storagePath = typeof nodeData.storagePath === 'string' ? nodeData.storagePath : null;
-      if (!storagePath) return node;
+  // Collect all nodes that need a signed URL renewal
+  const nodesNeedingHydration: Array<{ index: number; node: Node; storagePath: string }> = [];
+  nodes.forEach((node, index) => {
+    const nodeData = (node.data && typeof node.data === 'object' ? node.data : {}) as Record<string, any>;
+    const storagePath = typeof nodeData.storagePath === 'string' ? nodeData.storagePath : null;
+    if (storagePath) nodesNeedingHydration.push({ index, node, storagePath });
+  });
 
-      try {
-        const signedUrl = await createStudioSignedUrl(storagePath);
-        if (node.type === 'output') {
-          return {
-            ...node,
-            data: {
-              ...nodeData,
-              resultUrl: signedUrl,
-            },
-          };
-        }
+  if (nodesNeedingHydration.length === 0) return nodes;
 
-        if (node.type === 'image') {
-          return {
-            ...node,
-            data: {
-              ...nodeData,
-              imageUrl: signedUrl,
-            },
-          };
-        }
-      } catch (error) {
-        console.warn('[media-storage] Failed to re-sign media URL:', storagePath, error);
-      }
+  // Batch-sign all paths in a single request instead of N separate calls
+  const paths = nodesNeedingHydration.map((n) => n.storagePath);
+  const { data: signedEntries, error } = await supabase.storage
+    .from(STUDIO_BUCKET)
+    .createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
 
-      return node;
-    }),
-  );
+  if (error) {
+    console.warn('[media-storage] Batch sign failed, skipping hydration:', error.message);
+    return nodes;
+  }
 
-  return hydrated;
+  // Build a path → signedUrl lookup
+  const signedUrlMap = new Map<string, string>();
+  (signedEntries ?? []).forEach((entry) => {
+    if (entry.signedUrl) signedUrlMap.set(entry.path, entry.signedUrl);
+  });
+
+  // Apply signed URLs back to nodes
+  const result = [...nodes];
+  for (const { index, node, storagePath } of nodesNeedingHydration) {
+    const signedUrl = signedUrlMap.get(storagePath);
+    if (!signedUrl) continue;
+
+    const nodeData = (node.data && typeof node.data === 'object' ? node.data : {}) as Record<string, any>;
+    if (node.type === 'output') {
+      result[index] = { ...node, data: { ...nodeData, resultUrl: signedUrl } };
+    } else if (node.type === 'image') {
+      result[index] = { ...node, data: { ...nodeData, imageUrl: signedUrl } };
+    }
+  }
+
+  return result;
 }
