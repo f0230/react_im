@@ -8,24 +8,24 @@ interface ProxyUploadResponse {
   path?: string;
 }
 
-export async function createStudioSignedUrl(path: string): Promise<string> {
-  const { data, error } = await supabase.storage
-    .from(STUDIO_BUCKET)
-    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
-
-  if (error) {
-    throw error;
-  }
-
-  const signedUrl = data?.signedUrl;
-  if (!signedUrl) {
-    throw new Error('No signedUrl returned by Supabase storage');
-  }
-
-  return signedUrl;
+function normalizeExtFromMime(mimeType: string | null | undefined): string {
+  const normalized = (mimeType || '').toLowerCase();
+  if (normalized.includes('image/jpeg')) return 'jpg';
+  if (normalized.includes('image/webp')) return 'webp';
+  if (normalized.includes('image/gif')) return 'gif';
+  if (normalized.includes('image/avif')) return 'avif';
+  if (normalized.includes('video/mp4')) return 'mp4';
+  if (normalized.includes('video/webm')) return 'webm';
+  if (normalized.includes('video/quicktime')) return 'mov';
+  if (normalized.includes('video/')) return 'mp4';
+  return 'png';
 }
 
-export async function persistMediaUrl(
+function sanitizeTaskId(taskId: string): string {
+  return (taskId || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+async function persistViaProxy(
   mediaUrl: string,
   taskId: string,
 ): Promise<{ storagePath: string; signedUrl: string }> {
@@ -53,6 +53,69 @@ export async function persistMediaUrl(
 
   const signedUrl = await createStudioSignedUrl(data.path);
   return { storagePath: data.path, signedUrl };
+}
+
+async function persistViaClient(
+  mediaUrl: string,
+  taskId: string,
+): Promise<{ storagePath: string; signedUrl: string }> {
+  const fetchRes = await fetch(mediaUrl);
+  if (!fetchRes.ok) {
+    throw new Error(`Client fetch failed (${fetchRes.status})`);
+  }
+
+  const blob = await fetchRes.blob();
+  const contentType = blob.type || 'application/octet-stream';
+  const ext = normalizeExtFromMime(contentType);
+  const fileName = `banana-${sanitizeTaskId(taskId)}-${Date.now()}.${ext}`;
+
+  const { data, error } = await supabase.storage
+    .from(STUDIO_BUCKET)
+    .upload(fileName, blob, { contentType, upsert: true });
+
+  if (error) {
+    throw error;
+  }
+
+  const storagePath = data?.path || fileName;
+  const signedUrl = await createStudioSignedUrl(storagePath);
+  return { storagePath, signedUrl };
+}
+
+export async function createStudioSignedUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(STUDIO_BUCKET)
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+
+  if (error) {
+    throw error;
+  }
+
+  const signedUrl = data?.signedUrl;
+  if (!signedUrl) {
+    throw new Error('No signedUrl returned by Supabase storage');
+  }
+
+  return signedUrl;
+}
+
+export async function persistMediaUrl(
+  mediaUrl: string,
+  taskId: string,
+): Promise<{ storagePath: string; signedUrl: string }> {
+  try {
+    return await persistViaProxy(mediaUrl, taskId);
+  } catch (proxyError) {
+    // Fallback for environments where server proxy env vars are missing.
+    // Requires authenticated user with upload permission on bucket.
+    try {
+      return await persistViaClient(mediaUrl, taskId);
+    } catch (clientError) {
+      const proxyMsg = proxyError instanceof Error ? proxyError.message : String(proxyError);
+      const clientMsg = clientError instanceof Error ? clientError.message : String(clientError);
+      throw new Error(`Media persist failed. Proxy: ${proxyMsg}. Client: ${clientMsg}`);
+    }
+  }
 }
 
 export async function hydrateNodeMediaUrls(nodes: Node[]): Promise<Node[]> {
