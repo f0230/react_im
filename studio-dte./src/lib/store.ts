@@ -90,49 +90,62 @@ export function getDefaultData(type: string): Record<string, any> {
 // ---------------------------------------------------------------------------
 // Initial state
 // ---------------------------------------------------------------------------
-const initialNodes: Node[] = [
-  {
-    id: 'prompt-1',
-    type: 'prompt',
-    position: { x: 250, y: 300 },
-    data: { ...DEFAULT_PROMPT_DATA },
-  },
-  {
-    id: 'model-1',
-    type: 'model',
-    position: { x: 700, y: 250 },
-    data: { ...DEFAULT_MODEL_DATA },
-  },
-  {
-    id: 'output-1',
-    type: 'output',
-    position: { x: 1100, y: 250 },
-    data: { ...DEFAULT_OUTPUT_DATA },
-  },
-];
+export function createInitialNodes(): Node[] {
+  return [
+    {
+      id: 'prompt-1',
+      type: 'prompt',
+      position: { x: 250, y: 300 },
+      data: { ...DEFAULT_PROMPT_DATA },
+    },
+    {
+      id: 'model-1',
+      type: 'model',
+      position: { x: 700, y: 250 },
+      data: { ...DEFAULT_MODEL_DATA },
+    },
+    {
+      id: 'output-1',
+      type: 'output',
+      position: { x: 1100, y: 250 },
+      data: { ...DEFAULT_OUTPUT_DATA },
+    },
+  ];
+}
 
-const initialEdges: Edge[] = [
-  {
-    id: 'e1-2',
-    source: 'prompt-1',
-    sourceHandle: 'out',
-    target: 'model-1',
-    targetHandle: 'prompt',
-    type: 'default',
-    animated: true,
-    data: { color: 'pink' },
-  },
-  {
-    id: 'e3-4',
-    source: 'model-1',
-    sourceHandle: 'out',
-    target: 'output-1',
-    targetHandle: 'in',
-    type: 'default',
-    animated: true,
-    data: { color: 'green' },
-  },
-];
+export function createInitialEdges(): Edge[] {
+  return [
+    {
+      id: 'e1-2',
+      source: 'prompt-1',
+      sourceHandle: 'out',
+      target: 'model-1',
+      targetHandle: 'prompt',
+      type: 'default',
+      animated: true,
+      data: { color: 'pink' },
+    },
+    {
+      id: 'e3-4',
+      source: 'model-1',
+      sourceHandle: 'out',
+      target: 'output-1',
+      targetHandle: 'in',
+      type: 'default',
+      animated: true,
+      data: { color: 'green' },
+    },
+  ];
+}
+
+export function createInitialWorkflow(): { nodes: Node[]; edges: Edge[] } {
+  return {
+    nodes: createInitialNodes(),
+    edges: createInitialEdges(),
+  };
+}
+
+const { nodes: initialNodes, edges: initialEdges } = createInitialWorkflow();
 
 // ---------------------------------------------------------------------------
 // Undo / Redo history
@@ -377,7 +390,8 @@ export const useWorkflowStore = create<WorkflowState>()(
 
       resetWorkflow: () => {
         get().pushSnapshot();
-        set({ nodes: initialNodes, edges: initialEdges });
+        const initial = createInitialWorkflow();
+        set({ nodes: initial.nodes, edges: initial.edges });
       },
 
       loadWorkflow: (nodes, edges) => {

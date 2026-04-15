@@ -26,7 +26,6 @@ import {
   Node,
   NodeTypes,
   useReactFlow,
-  useViewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import toast, { Toaster } from 'react-hot-toast';
@@ -39,7 +38,7 @@ import EnhancerNode from './components/nodes/EnhancerNode';
 import MultiPromptNode from './components/nodes/MultiPromptNode';
 import ElementNode from './components/nodes/ElementNode';
 import WorkflowEdge from './components/edges/WorkflowEdge';
-import { useWorkflowStore } from './lib/store';
+import { createInitialWorkflow, useWorkflowStore } from './lib/store';
 import { useElkLayout } from './lib/useElkLayout';
 import { useWorkflowSync } from './lib/useWorkflowSync';
 import { supabase } from './lib/supabaseClient';
@@ -162,7 +161,7 @@ function WorkflowApp() {
     loadWorkflow,
   } = useWorkflowStore();
 
-  const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
+  const { screenToFlowPosition, getViewport, setViewport, fitView } = useReactFlow();
   const { runLayout, isRunning: isLayoutRunning } = useElkLayout();
 
   // ---- Project selector: ?projectId= drives the active room ----
@@ -179,29 +178,37 @@ function WorkflowApp() {
   }, []);
 
   // ---- Supabase sync ----
-  const { snapshot, status: syncStatus, save } = useWorkflowSync({ projectId });
+  const { snapshot, status: syncStatus, hasLoaded, save } = useWorkflowSync({ projectId });
 
-  // Cold-start: load snapshot when it arrives, restore viewport if saved
-  const snapshotLoadedRef = useRef(false);
+  // Load snapshot only after sync layer confirms the project has finished loading.
   useEffect(() => {
-    if (snapshot === undefined) return; // still fetching
-    snapshotLoadedRef.current = true;
+    if (!projectId || !hasLoaded) return;
+
     if (snapshot) {
       loadWorkflow(snapshot.nodes, snapshot.edges);
       if (snapshot.viewport) {
-        // Delay one frame so React Flow has rendered before restoring viewport
-        requestAnimationFrame(() => setViewport(snapshot.viewport!));
+        requestAnimationFrame(() => setViewport(snapshot.viewport));
+      } else {
+        requestAnimationFrame(() => {
+          void fitView({ padding: 0.2, duration: 200 });
+        });
       }
+      return;
     }
-    // snapshot === null means first time for this project: use initialNodes (already in store)
-  }, [snapshot, loadWorkflow, setViewport]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const initial = createInitialWorkflow();
+    loadWorkflow(initial.nodes, initial.edges);
+    requestAnimationFrame(() => {
+      void fitView({ padding: 0.2, duration: 200 });
+    });
+  }, [projectId, hasLoaded, snapshot, loadWorkflow, setViewport, fitView]);
 
   // Debounced save on every graph change (skip during initial load)
   useEffect(() => {
-    if (!projectId || !snapshotLoadedRef.current) return;
+    if (!projectId || !hasLoaded) return;
     const viewport = getViewport();
     save(nodes, edges, viewport);
-  }, [nodes, edges, projectId, save, getViewport]);
+  }, [nodes, edges, projectId, hasLoaded, save, getViewport]);
 
   const [menu, setMenu] = useState<{
     id?: string;

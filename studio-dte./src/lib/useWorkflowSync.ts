@@ -28,6 +28,7 @@ const DEBOUNCE_MS = 800;
 export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOptions) {
   const [status, setStatus] = useState<SyncStatus>('idle');
   const [snapshot, setSnapshot] = useState<WorkflowSnapshot | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Pending save state, compared against revision at write time
   const revisionRef = useRef<number>(0);
@@ -38,14 +39,24 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
   // Load snapshot on project change
   // --------------------------------------------------------------------------
   useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    pendingSaveRef.current = null;
+
     if (!projectId) {
       setSnapshot(null);
       setStatus('idle');
+      setHasLoaded(false);
+      revisionRef.current = 0;
       return;
     }
 
     let cancelled = false;
+    setHasLoaded(false);
     setStatus('loading');
+    setSnapshot(null);
 
     supabase
       .from('studio_workflow_snapshots')
@@ -58,6 +69,7 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
         if (error) {
           console.error('[workflow-sync] load error:', error.message);
           setStatus('error');
+          setHasLoaded(true);
           return;
         }
 
@@ -75,6 +87,7 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
           setSnapshot(null);
         }
         setStatus('idle');
+        setHasLoaded(true);
       });
 
     return () => {
@@ -87,7 +100,7 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
   // --------------------------------------------------------------------------
   const save = useCallback(
     (nodes: Node[], edges: Edge[], viewport: Viewport | null) => {
-      if (!projectId) return;
+      if (!projectId || !hasLoaded) return;
 
       const pending: WorkflowSnapshot = {
         nodes,
@@ -155,7 +168,7 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
         setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), 1500);
       }, debounceMs);
     },
-    [projectId, debounceMs],
+    [projectId, debounceMs, hasLoaded],
   );
 
   // Flush on unmount
@@ -165,5 +178,5 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
     };
   }, []);
 
-  return { snapshot, status, save };
+  return { snapshot, status, hasLoaded, save };
 }
