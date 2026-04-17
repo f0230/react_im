@@ -25,6 +25,21 @@ async function studioPost(action: string, body: Record<string, any>): Promise<an
   return data;
 }
 
+function tryParseJsonArray(value: any): string[] | null {
+  if (Array.isArray(value) && value.length) {
+    return value.filter((u) => typeof u === 'string');
+  }
+  if (typeof value === 'string' && value.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed) && parsed.length) {
+        return parsed.filter((u) => typeof u === 'string');
+      }
+    } catch { /* not valid JSON */ }
+  }
+  return null;
+}
+
 function extractResultUrls(payload: any): string[] {
   const candidates = [
     payload?.resultUrls,
@@ -35,9 +50,8 @@ function extractResultUrls(payload: any): string[] {
   ];
 
   for (const candidate of candidates) {
-    if (Array.isArray(candidate) && candidate.length) {
-      return candidate.filter((url) => typeof url === 'string');
-    }
+    const urls = tryParseJsonArray(candidate);
+    if (urls) return urls;
   }
 
   const singleUrlCandidates = [
@@ -195,8 +209,8 @@ export async function createVeoTask(params: {
 }
 
 export async function pollVeoTask(taskId: string): Promise<{ urls: string[] }> {
-  const maxRetries = 120;
-  const interval = 5000;
+  const maxRetries = 60;   // 60 × 15s = 15 min max
+  const interval = 15000; // Veo takes 2-5 min; 15s avoids hammering the API
 
   for (let i = 0; i < maxRetries; i++) {
     const data = await studioPost('veo-poll', { taskId });

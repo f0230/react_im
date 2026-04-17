@@ -192,9 +192,9 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     kind: 'video',
     provider: 'veo',
     supportsReferenceImage: true,
+    supportsSecondImage: true,
     supportsAspectRatio: true,
     supportsSeeds: true,
-
     supportsTranslation: true,
     supportsFallback: true,
   },
@@ -202,9 +202,19 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     kind: 'video',
     provider: 'veo',
     supportsReferenceImage: true,
+    supportsSecondImage: true,
     supportsAspectRatio: true,
     supportsSeeds: true,
-
+    supportsTranslation: true,
+    supportsFallback: true,
+  },
+  veo3_lite: {
+    kind: 'video',
+    provider: 'veo',
+    supportsReferenceImage: true,
+    supportsSecondImage: true,
+    supportsAspectRatio: true,
+    supportsSeeds: true,
     supportsTranslation: true,
     supportsFallback: true,
   },
@@ -238,6 +248,7 @@ const MODEL_OPTIONS = [
       { label: 'Seedance 2 Fast', value: 'bytedance/seedance-2-fast' },
       { label: 'Veo 3', value: 'veo3' },
       { label: 'Veo 3 Fast', value: 'veo3_fast' },
+      { label: 'Veo 3 Lite', value: 'veo3_lite' },
     ],
   },
 ];
@@ -758,10 +769,46 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       }
 
       // -- Generate one result per connected output node --
-      const outputNodeIds = targetNodeIds.filter((tid) => {
+      let outputNodeIds = targetNodeIds.filter((tid) => {
         const n = nodes.find((nd) => nd.id === tid);
         return n?.type === 'output';
       });
+
+      // Auto-create an output node if none is connected
+      if (outputNodeIds.length === 0) {
+        const modelNode = nodes.find((n) => n.id === id);
+        const pos = modelNode
+          ? { x: modelNode.position.x + 380, y: modelNode.position.y }
+          : { x: 1100, y: 300 };
+
+        const autoOutputId = `output-${Date.now()}`;
+        setNodes((nds) => [
+          ...nds,
+          {
+            id: autoOutputId,
+            type: 'output',
+            position: pos,
+            data: { status: 'idle', resultUrl: null, resultType: null, taskId: null, provider: null },
+          },
+        ]);
+        setEdges((eds) => [
+          ...eds,
+          {
+            id: `e-${id}-${autoOutputId}`,
+            source: id,
+            sourceHandle: 'out',
+            target: autoOutputId,
+            targetHandle: 'in',
+            type: 'default',
+            animated: true,
+            data: { color: 'green' },
+          },
+        ]);
+        outputNodeIds = [autoOutputId];
+        targetNodeIds.push(autoOutputId);
+        toast('Output creado automáticamente', { icon: '✨' });
+      }
+
       const genCount = Math.max(outputNodeIds.length, 1);
 
       const resultType = selectedCaps.kind;
@@ -785,15 +832,30 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
           const seed = parseSeed(data.seeds);
           const genType = (data.generationType || 'auto') as string;
 
+          // Build imageUrls — Veo 3.1 supports first+last frame with 2 images
+          const veoImageUrls = uploadedImageUrl
+            ? (uploadedImage2Url
+                ? [uploadedImageUrl, uploadedImage2Url]
+                : [uploadedImageUrl])
+            : undefined;
+
+          // Auto-select generationType when 2 images are connected
+          const resolvedGenType =
+            genType !== 'auto'
+              ? genType
+              : veoImageUrls?.length === 2
+              ? 'FIRST_AND_LAST_FRAMES_2_VIDEO'
+              : undefined;
+
           taskId = await createVeoTask({
             prompt: promptText,
             model: selectedModel,
-            imageUrls: uploadedImageUrl ? [uploadedImageUrl] : undefined,
+            imageUrls: veoImageUrls,
             aspectRatio: aspectRatio === '1:1' ? '16:9' : aspectRatio,
             seed,
             enableTranslation: data.enableTranslation ?? false,
             enableFallback: data.enableFallback ?? true,
-            generationType: genType !== 'auto' ? genType : undefined,
+            generationType: resolvedGenType,
           });
           const result = await pollVeoTask(taskId);
           resultUrl = result.urls[0] || '';
@@ -961,6 +1023,17 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
               const v = val as string;
               const newCaps = getCaps(v);
               const patch: Record<string, any> = { model: v, modelType: newCaps.kind };
+
+              // Reset aspect ratio when switching model families to avoid stale values
+              if (v.startsWith('bytedance/')) {
+                patch.aspectRatio = '16:9';
+                patch.resolution = '720p';
+              } else if (newCaps.kind === 'image') {
+                patch.aspectRatio = '1:1';
+              } else {
+                patch.aspectRatio = '16:9';
+              }
+
               if (v === 'kling-2.6/motion-control') {
                 patch.mode = '720p';
               } else if (data.model === 'kling-2.6/motion-control') {
