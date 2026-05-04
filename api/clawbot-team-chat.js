@@ -2,7 +2,7 @@ import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
 
 const DEFAULT_CONTEXT_LIMIT = 40;
 const MAX_CONTEXT_LIMIT = 80;
-const DEFAULT_BOT_NAME = 'Clawbot';
+const DEFAULT_BOT_NAME = 'Mike';
 const DONE_STATUSES = new Set([
   'done',
   'completed',
@@ -49,10 +49,10 @@ function isMissingProjectColumn(error) {
 function looksLikeBotName(value, botName) {
   const text = sanitizeText(value).toLowerCase();
   if (!text) return false;
-  return text.includes('clawbot') || text.includes(String(botName || '').toLowerCase());
+  return text.includes('mike') || text.includes('clawbot') || text.includes(String(botName || '').toLowerCase());
 }
 
-function isClawbotMessage(row, botName) {
+function isMikeMessage(row, botName) {
   const authorName = row?.author_name;
   const authorFullName = row?.author?.full_name;
   const authorEmail = row?.author?.email;
@@ -96,7 +96,7 @@ function toOpenAiContextMessages(rows, botName) {
       : `[${type}] ${sanitizeText(row?.file_name) || rawBody || 'archivo'}`;
 
     return {
-      role: isClawbotMessage(row, botName) ? 'assistant' : 'user',
+      role: isMikeMessage(row, botName) ? 'assistant' : 'user',
       content: `[${timestamp}] ${authorName}: ${body}`.slice(0, 2200),
     };
   });
@@ -116,15 +116,15 @@ function projectSnapshot(project) {
 
 function buildSystemPrompt(botName) {
   return [
-    `Sos ${botName}, miembro operativo del equipo de DTE.`,
-    'Participas en canales internos como un colega tecnico y de operaciones.',
+    `Sos ${botName}, agente orquestador operativo de Grupo DTE.`,
+    'Participas en canales internos como un colega tecnico, operativo y estrategico.',
     'Reglas:',
     '- Responde en espanol claro y concreto.',
     '- Usa el contexto del canal, mensajes previos y proyecto si existe.',
     '- Si falta contexto, pide solo una aclaracion puntual.',
     '- Si detectas bloqueo, propone pasos accionables con responsables sugeridos.',
     '- No inventes datos que no esten en el contexto.',
-    '- Mantene respuestas breves (maximo 8 lineas).',
+    '- Mantene respuestas breves (maximo 8 lineas), salvo que te pidan profundidad.',
   ].join('\n');
 }
 
@@ -441,14 +441,14 @@ export default async function handler(req, res) {
 
   const supabase = getSupabaseAdmin();
   if (!supabase) {
-    console.error('Clawbot: Missing Supabase credentials (SERVICE_ROLE_KEY)');
+    console.error('Mike: Missing Supabase credentials (SERVICE_ROLE_KEY)');
     return res.status(500).json({ error: 'Server configuration error: missing Supabase admin credentials' });
   }
 
   try {
     const currentUser = await resolveCurrentUser({ supabase, req });
     if (currentUser.error) {
-      console.warn('Clawbot: Auth failed:', currentUser.error);
+      console.warn('Mike: Auth failed:', currentUser.error);
       return res.status(currentUser.status).json({ error: currentUser.error });
     }
 
@@ -466,7 +466,7 @@ export default async function handler(req, res) {
         .maybeSingle();
 
       if (memberError) {
-        console.error('Clawbot: Membership verify error:', memberError);
+        console.error('Mike: Membership verify error:', memberError);
         return res.status(500).json({ error: 'Failed to verify channel membership' });
       }
       if (!member) {
@@ -482,7 +482,7 @@ export default async function handler(req, res) {
       .limit(contextLimit);
 
     if (messagesError) {
-      console.error('Clawbot: Messages load error:', messagesError);
+      console.error('Mike: Messages load error:', messagesError);
       return res.status(500).json({ error: 'Failed to load channel context', detail: messagesError.message });
     }
 
@@ -511,9 +511,9 @@ export default async function handler(req, res) {
         contextMessages,
       });
     } catch (aiError) {
-      console.error('Clawbot: OpenAI/OpenClaw call failed:', aiError);
+      console.error('Mike: OpenAI/OpenClaw call failed:', aiError);
       return res.status(500).json({
-        error: 'Clawbot failed to generate a response',
+        error: 'Mike failed to generate a response',
         detail: aiError.message
       });
     }
@@ -539,7 +539,7 @@ export default async function handler(req, res) {
       .single();
 
     if (insertResult.error && botAuthorId !== currentUser.user.id) {
-      console.warn('Clawbot: Failed to insert with botAuthorId, falling back to currentUser:', insertResult.error.message);
+      console.warn('Mike: Failed to insert with botAuthorId, falling back to currentUser:', insertResult.error.message);
       insertPayload = {
         ...insertPayload,
         author_id: currentUser.user.id,
@@ -552,8 +552,8 @@ export default async function handler(req, res) {
     }
 
     if (insertResult.error) {
-      console.error('Clawbot: Failed to persist message:', insertResult.error);
-      return res.status(500).json({ error: 'Failed to persist Clawbot message', detail: insertResult.error.message });
+      console.error('Mike: Failed to persist message:', insertResult.error);
+      return res.status(500).json({ error: 'Failed to persist Mike message', detail: insertResult.error.message });
     }
 
     return res.status(200).json({

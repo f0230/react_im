@@ -37,7 +37,7 @@ const TEAM_MESSAGE_COLUMNS = 'id, body, created_at, author_id, author_name, mess
 const TEAM_MEDIA_SIGNED_URL_TTL = 60 * 60 * 24;
 const TEAM_MEDIA_SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
 const teamMediaUrlCache = new Map();
-const CLAWBOT_AVATAR_URL = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=96&h=96&q=80&crop=faces&fit=crop';
+const MIKE_AVATAR_URL = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=96&h=96&q=80&crop=faces&fit=crop';
 
 const renderTextWithLinks = (text) => {
     if (!text) return null;
@@ -61,7 +61,8 @@ const renderTextWithLinks = (text) => {
     });
 };
 
-const looksLikeClawbot = (value) => typeof value === 'string' && /clawbot/i.test(value);
+const looksLikeMike = (value) => typeof value === 'string' && /\b(mike|clawbot)\b/i.test(value);
+const hasMikeMention = (value) => typeof value === 'string' && /(^|\s)@(mike|clawbot)\b/i.test(value);
 
 const getInitials = (value) => {
     if (!value || typeof value !== 'string') return 'AI';
@@ -74,10 +75,10 @@ const getInitials = (value) => {
     return parts.map((part) => part.charAt(0).toUpperCase()).join('');
 };
 
-const isMessageFromClawbot = (message) =>
-    looksLikeClawbot(message?.author_name)
-    || looksLikeClawbot(message?.author?.full_name)
-    || looksLikeClawbot(message?.author?.email);
+const isMessageFromMike = (message) =>
+    looksLikeMike(message?.author_name)
+    || looksLikeMike(message?.author?.full_name)
+    || looksLikeMike(message?.author?.email);
 
 const getProjectLabel = (project) => {
     if (!project) return '';
@@ -488,6 +489,36 @@ const TeamChat = () => {
         }
     }, [reactionTable, user?.id]);
 
+    const invokeMikeTeamChat = useCallback(async ({ prompt, triggerMessageId }) => {
+        if (!selectedChannelId || !prompt || !triggerMessageId) return;
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const accessToken = session?.access_token;
+            if (!accessToken) return;
+
+            const response = await fetch('/api/clawbot-team-chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    channel_id: selectedChannelId,
+                    prompt,
+                    trigger_message_id: triggerMessageId,
+                }),
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                console.error('Mike team chat failed:', payload?.error || response.status);
+            }
+        } catch (error) {
+            console.error('Mike team chat failed:', error);
+        }
+    }, [selectedChannelId]);
+
     const notifySlackTeamMessage = useCallback(async (messageId) => {
         if (!messageId) return;
 
@@ -543,11 +574,17 @@ const TeamChat = () => {
             setReplyingTo(null);
             if (insertedMessage?.id) {
                 void notifySlackTeamMessage(insertedMessage.id);
+                if (hasMikeMention(body)) {
+                    void invokeMikeTeamChat({
+                        prompt: body,
+                        triggerMessageId: insertedMessage.id,
+                    });
+                }
             }
         }
 
         setSending(false);
-    }, [messageText, notifySlackTeamMessage, replyingTo, selectedChannelId, sending, user?.id]);
+    }, [invokeMikeTeamChat, messageText, notifySlackTeamMessage, replyingTo, selectedChannelId, sending, user?.id]);
 
     const uploadAudioBlob = useCallback(async (blob, fileName) => {
         if (!selectedChannelId || !user?.id) return;
@@ -1316,7 +1353,7 @@ const TeamChat = () => {
                                     </div>
                                 )}
                                 {messages.map((message) => {
-                                    const botMessage = isMessageFromClawbot(message);
+                                    const botMessage = isMessageFromMike(message);
                                     const isOutbound = message.author_id === user?.id && !botMessage;
                                     const authorName = isOutbound
                                         ? 'Tú'
@@ -1339,7 +1376,7 @@ const TeamChat = () => {
                                         || 'Mensaje original';
                                     const repliedBody = repliedMessage?.body || '...';
                                     const avatarSrc = botMessage
-                                        ? CLAWBOT_AVATAR_URL
+                                        ? MIKE_AVATAR_URL
                                         : message?.author?.avatar_url
                                         || (isOutbound ? profile?.avatar_url || user?.user_metadata?.avatar_url : null);
                                     const avatarFallback = botMessage
