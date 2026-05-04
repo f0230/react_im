@@ -703,20 +703,32 @@ async function callMistralOcr(pdfUrl) {
   }
 
   const model = sanitizeText(process.env.MISTRAL_OCR_MODEL, 'mistral-ocr-latest');
+  const imageLimit = toNullableNumber(process.env.MISTRAL_OCR_IMAGE_LIMIT);
+  const imageMinSize = toNullableNumber(process.env.MISTRAL_OCR_IMAGE_MIN_SIZE);
+  const requestBody = {
+    model,
+    document: {
+      type: 'document_url',
+      document_url: pdfUrl,
+    },
+    include_image_base64: true,
+  };
+
+  if (Number.isFinite(imageLimit) && imageLimit > 0) {
+    requestBody.image_limit = Math.trunc(imageLimit);
+  }
+
+  if (Number.isFinite(imageMinSize) && imageMinSize > 0) {
+    requestBody.image_min_size = Math.trunc(imageMinSize);
+  }
+
   const response = await fetch('https://api.mistral.ai/v1/ocr', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model,
-      document: {
-        type: 'document_url',
-        document_url: pdfUrl,
-      },
-      include_image_base64: true,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   const raw = await response.text();
@@ -743,6 +755,82 @@ async function callMistralOcr(pdfUrl) {
     images,
     weakText: isPoorOcrText(text),
   };
+}
+
+function extractResponsesText(payload) {
+  const directText = sanitizeText(payload?.output_text);
+  if (directText) return directText;
+
+  if (!Array.isArray(payload?.output)) return '';
+
+  const parts = [];
+  for (const item of payload.output) {
+    if (!Array.isArray(item?.content)) continue;
+
+    for (const content of item.content) {
+      const text = sanitizeText(content?.text);
+      if (text) parts.push(text);
+    }
+  }
+
+  return parts.join('\n').trim();
+}
+
+async function callOpenAiResponsesJson({
+  model,
+  apiKey,
+  systemPrompt,
+  userPrompt,
+  pdfUrl,
+}) {
+  const content = [
+    { type: 'input_text', text: userPrompt },
+  ];
+
+  if (pdfUrl) {
+    content.push({ type: 'input_file', file_url: pdfUrl });
+  }
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      instructions: systemPrompt,
+      text: { format: { type: 'json_object' } },
+      input: [
+        {
+          role: 'user',
+          content,
+        },
+      ],
+    }),
+  });
+
+  const raw = await response.text();
+  let payload = {};
+
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    payload = {};
+  }
+
+  if (!response.ok) {
+    const detail = sanitizeText(raw).slice(0, 280);
+    throw new Error(`OpenAI Responses request failed (${response.status}): ${detail || 'unknown error'}`);
+  }
+
+  const contentText = extractResponsesText(payload);
+  const parsed = extractJsonObject(contentText);
+  if (!parsed) {
+    throw new Error('OpenAI Responses returned invalid JSON content');
+  }
+
+  return parsed;
 }
 
 async function callOpenAiJson({
@@ -811,6 +899,7 @@ async function runExtractor({
   projectTitle,
   reportMonth,
   pdfName,
+  pdfUrl,
 }) {
   const apiKey = sanitizeText(process.env.OPENAI_API_KEY);
   if (!apiKey) {
@@ -824,7 +913,8 @@ async function runExtractor({
 
   const selectedImages = Array.isArray(ocrImages) ? ocrImages.slice(0, 4) : [];
   const ocrTrimmed = String(ocrText || '').slice(0, 100000);
-  const shouldAttachImages = selectedImages.length > 0 && (ocrWeak || ocrTrimmed.length < 1600);
+  const shouldAttachImages = selectedImages.length > 0;
+  const shouldUsePdfVision = Boolean(pdfUrl) && sanitizeText(process.env.OPENAI_REPORTS_PDF_VISION, 'true') !== 'false';
 
   let lastValidationError = '';
 
@@ -845,19 +935,33 @@ async function runExtractor({
     let parsed;
 
     try {
-      parsed = await callOpenAiJson({
-        model,
-        apiKey,
-        systemPrompt: EXTRACTOR_SYSTEM_PROMPT,
-        userPrompt,
-        images: selectedImages,
-        withImages: shouldAttachImages,
-      });
+      if (shouldUsePdfVision) {
+        parsed = await callOpenAiResponsesJson({
+          model,
+          apiKey,
+          systemPrompt: EXTRACTOR_SYSTEM_PROMPT,
+          userPrompt,
+          pdfUrl,
+        });
+      } else {
+        parsed = await callOpenAiJson({
+          model,
+          apiKey,
+          systemPrompt: EXTRACTOR_SYSTEM_PROMPT,
+          userPrompt,
+          images: selectedImages,
+          withImages: shouldAttachImages,
+        });
+      }
     } catch (error) {
-      if (!shouldAttachImages || attempt > 1) throw error;
+      if ((!shouldUsePdfVision && !shouldAttachImages) || attempt > 1) throw error;
 
       const detail = sanitizeText(error?.message).toLowerCase();
-      const shouldRetryWithoutImages = detail.includes('image') || detail.includes('vision') || detail.includes('unsupported');
+      const shouldRetryWithoutImages = detail.includes('image')
+        || detail.includes('vision')
+        || detail.includes('unsupported')
+        || detail.includes('file')
+        || detail.includes('pdf');
       if (!shouldRetryWithoutImages) throw error;
 
       parsed = await callOpenAiJson({
@@ -1153,6 +1257,7 @@ export async function handleReportsIngest(req, res) {
       projectTitle,
       reportMonth,
       pdfName,
+      pdfUrl,
     });
 
     const normalizedMetrics = normalizeReportMetrics(extraction.metrics, extraction.metrics);
