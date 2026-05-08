@@ -305,6 +305,12 @@ export default function ControlPanel({
                                                     )}
                                                 </div>
                                                 <p className="text-[10px] text-white/40 leading-tight">{m.description}</p>
+                                                <p className="text-[10px] text-white/30 leading-tight">
+                                                    {m.creditsByResolution
+                                                        ? `${Math.min(...Object.values(m.creditsByResolution))}–${Math.max(...Object.values(m.creditsByResolution))} créditos`
+                                                        : `${m.credits ?? 0} créditos`
+                                                    }
+                                                </p>
                                             </div>
                                         );
                                     })}

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { Link2, RefreshCw, Trash2, PlugZap } from 'lucide-react';
+import { Link2, RefreshCw, Trash2, PlugZap, BookOpen, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
+import { saveNotionDbIds } from '@/services/notionService';
 
 const formatDateTime = (value) => {
   if (!value) return 'N/D';
@@ -34,6 +35,15 @@ const ProjectIntegrations = () => {
 
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Notion state
+  const [notionDbId, setNotionDbId] = useState('');
+  const [notionTasksDbId, setNotionTasksDbId] = useState('');
+  const [notionCampaignsDbId, setNotionCampaignsDbId] = useState('');
+  const [notionSaving, setNotionSaving] = useState(false);
+  const [notionError, setNotionError] = useState('');
+  const [notionNotice, setNotionNotice] = useState('');
+
   const [metaConnection, setMetaConnection] = useState(null);
   const [metaLoading, setMetaLoading] = useState(false);
   const [metaConnecting, setMetaConnecting] = useState(false);
@@ -75,6 +85,9 @@ const ProjectIntegrations = () => {
     const { data, error } = await query;
     if (!error && data) {
       setProject(data);
+      setNotionDbId(data.notion_db_id || '');
+      setNotionTasksDbId(data.notion_tasks_db_id || '');
+      setNotionCampaignsDbId(data.notion_campaigns_db_id || '');
     } else {
       setProject(null);
     }
@@ -136,6 +149,25 @@ const ProjectIntegrations = () => {
         : 'No se pudo conectar Meta.'
     );
   }, [callbackMetaStatus, callbackReason]);
+
+  const handleSaveNotion = async () => {
+    if (!project?.id || notionSaving) return;
+    setNotionSaving(true);
+    setNotionError('');
+    setNotionNotice('');
+    try {
+      await saveNotionDbIds(project.id, {
+        notion_db_id: notionDbId.trim() || null,
+        notion_tasks_db_id: notionTasksDbId.trim() || null,
+        notion_campaigns_db_id: notionCampaignsDbId.trim() || null,
+      });
+      setNotionNotice('IDs de Notion guardados correctamente.');
+    } catch (err) {
+      setNotionError(err.message || 'No se pudo guardar.');
+    } finally {
+      setNotionSaving(false);
+    }
+  };
 
   const handleConnectMeta = async () => {
     if (!project?.id || metaConnecting) return;
@@ -459,6 +491,91 @@ const ProjectIntegrations = () => {
           </div>
         )}
       </div>
+
+      {/* Notion — solo visible para admins */}
+      {isAdmin && (
+        <div className="mt-6 bg-white rounded-[32px] border border-neutral-100 shadow-sm p-8">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-skyblue font-bold mb-2">
+                <BookOpen size={14} />
+                Integración Notion
+              </div>
+              <h2 className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight">
+                Bases de datos por proyecto
+              </h2>
+              <p className="text-neutral-500 mt-2 text-sm max-w-lg">
+                Pegá los IDs de las bases de datos de Notion que querés mostrarle al cliente en su portal.
+                El ID se obtiene de la URL de Notion: <code className="bg-neutral-100 px-1 py-0.5 rounded text-xs">notion.so/workspace/<strong>ID-ACA</strong>?v=...</code>
+              </p>
+            </div>
+          </div>
+
+          {notionError && (
+            <div className="mt-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+              {notionError}
+            </div>
+          )}
+          {notionNotice && (
+            <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              {notionNotice}
+            </div>
+          )}
+
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-neutral-500 mb-2">
+                Base de datos de Reuniones
+              </label>
+              <input
+                type="text"
+                value={notionDbId}
+                onChange={(e) => setNotionDbId(e.target.value)}
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-mono outline-none focus:border-black focus:bg-white transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-neutral-500 mb-2">
+                Base de datos de Tareas
+              </label>
+              <input
+                type="text"
+                value={notionTasksDbId}
+                onChange={(e) => setNotionTasksDbId(e.target.value)}
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-mono outline-none focus:border-black focus:bg-white transition"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-neutral-500 mb-2">
+                Base de datos de Campañas
+              </label>
+              <input
+                type="text"
+                value={notionCampaignsDbId}
+                onChange={(e) => setNotionCampaignsDbId(e.target.value)}
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-mono outline-none focus:border-black focus:bg-white transition"
+              />
+            </div>
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleSaveNotion}
+                disabled={notionSaving}
+                className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60 transition"
+              >
+                <Save size={15} />
+                {notionSaving ? 'Guardando...' : 'Guardar IDs de Notion'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

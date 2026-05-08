@@ -208,7 +208,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@banana-studio': path.resolve(__dirname, './banana-image-studio/src'),
-      '@studio-dte': path.resolve(__dirname, './studio-dte./src'),
+      '@studio-dte': path.resolve(__dirname, './studio-dte/src'),
     },
   },
 

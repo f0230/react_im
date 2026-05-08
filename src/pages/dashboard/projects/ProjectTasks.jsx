@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Briefcase } from 'lucide-react';
+import { ArrowLeft, Briefcase, CalendarDays, CheckSquare, Megaphone } from 'lucide-react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -8,7 +8,8 @@ import LoadingFallback from '@/components/ui/LoadingFallback';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import MeetingHistory from '@/components/projects/MeetingHistory';
-import { isMeetingsCard } from '@/config/notion';
+import NotionTasksView from '@/components/projects/NotionTasksView';
+import NotionCampaignsView from '@/components/projects/NotionCampaignsView';
 
 const PANEL_SPRING = {
   type: 'spring',
@@ -30,12 +31,14 @@ const getProjectInitials = (project, fallback = 'DTE') => {
   const words = title.trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return fallback;
   if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
-  return words
-    .slice(0, 2)
-    .map((word) => word[0])
-    .join('')
-    .toUpperCase();
+  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase();
 };
+
+const SERVICE_CARDS = [
+  { key: 'meetings', icon: CalendarDays, label: 'Reuniones' },
+  { key: 'tasks', icon: CheckSquare, label: 'Tareas' },
+  { key: 'campaigns', icon: Megaphone, label: 'Campañas' },
+];
 
 const ProjectTasks = () => {
   const { t } = useTranslation();
@@ -58,17 +61,6 @@ const ProjectTasks = () => {
   const [loading, setLoading] = useState(() => !previewProject);
   const [activeServiceKey, setActiveServiceKey] = useState(null);
 
-  const serviceCards = useMemo(
-    () => [
-      { key: 'adsCampaign', title: t('dashboard.projects.servicesHub.cards.adsCampaign') },
-      { key: 'mailing', title: t('dashboard.projects.servicesHub.cards.mailing') },
-      { key: 'meetingsPrimary', title: t('dashboard.projects.servicesHub.cards.meetings') },
-      { key: 'meetingsSecondary', title: t('dashboard.projects.servicesHub.cards.meetings') },
-      { key: 'meetingsTertiary', title: t('dashboard.projects.servicesHub.cards.meetings') },
-    ],
-    [t]
-  );
-
   const fetchProject = useCallback(async () => {
     if (!activeProjectId || !user?.id) {
       setSelectedProject(null);
@@ -84,7 +76,6 @@ const ProjectTasks = () => {
     });
 
     if (accessError || !hasAccess) {
-      console.error('Error validating services hub access:', accessError);
       setSelectedProject(null);
       setLoading(false);
       return;
@@ -97,7 +88,6 @@ const ProjectTasks = () => {
       .maybeSingle();
 
     if (error) {
-      console.error('Error fetching services hub project:', error);
       setSelectedProject(null);
       setLoading(false);
       return;
@@ -117,9 +107,7 @@ const ProjectTasks = () => {
     void fetchProject();
   }, [fetchProject, previewProject, user?.id]);
 
-  if (loading) {
-    return <LoadingFallback type="spinner" />;
-  }
+  if (loading) return <LoadingFallback type="spinner" />;
 
   if (!activeProjectId) {
     return (
@@ -207,9 +195,10 @@ const ProjectTasks = () => {
           </p>
         </motion.div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {serviceCards.map((card, index) => {
-            const isMeeting = isMeetingsCard(card.key);
+        {/* Cards */}
+        <div className="grid gap-5 md:grid-cols-3">
+          {SERVICE_CARDS.map((card, index) => {
+            const Icon = card.icon;
             const isActive = activeServiceKey === card.key;
             return (
               <motion.div
@@ -217,14 +206,13 @@ const ProjectTasks = () => {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ ...PANEL_SPRING, delay: index * 0.04 }}
-                onClick={isMeeting ? () => setActiveServiceKey(isActive ? null : card.key) : undefined}
+                onClick={() => setActiveServiceKey(isActive ? null : card.key)}
                 className={[
-                  'min-h-[190px] rounded-[30px] border bg-[#e7e7e7] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] md:min-h-[210px] md:p-8',
-                  isMeeting ? 'cursor-pointer transition-all duration-200 hover:bg-[#e0e0e0]' : '',
+                  'min-h-[190px] rounded-[30px] border bg-[#e7e7e7] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] cursor-pointer transition-all duration-200 hover:bg-[#e0e0e0] md:min-h-[210px] md:p-8',
                   isActive ? 'border-black/20 ring-2 ring-black/10' : 'border-white/70',
                 ].join(' ')}
               >
-                <div className="flex h-full items-center gap-5 md:gap-7">
+                <div className="flex h-full flex-col justify-between gap-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[#f7cfcf] p-2 shadow-sm md:h-14 md:w-14 md:rounded-[14px]">
                     {projectLogo ? (
                       <img
@@ -239,17 +227,21 @@ const ProjectTasks = () => {
                     )}
                   </div>
 
-                  <h2 className="max-w-[12ch] text-[2rem] font-medium leading-[0.95] tracking-tight text-neutral-700 md:text-[2.25rem]">
-                    {card.title}
-                  </h2>
+                  <div className="flex items-end justify-between">
+                    <h2 className="max-w-[12ch] text-[2rem] font-medium leading-[0.95] tracking-tight text-neutral-700 md:text-[2.25rem]">
+                      {card.label}
+                    </h2>
+                    <Icon size={20} className={isActive ? 'text-neutral-700' : 'text-neutral-400'} />
+                  </div>
                 </div>
               </motion.div>
             );
           })}
         </div>
 
+        {/* Panel expansible según la card activa */}
         <AnimatePresence>
-          {activeServiceKey && isMeetingsCard(activeServiceKey) && (
+          {activeServiceKey && (
             <motion.div
               key={activeServiceKey}
               initial={{ opacity: 0, y: 20 }}
@@ -258,10 +250,24 @@ const ProjectTasks = () => {
               transition={PANEL_SPRING}
               className="mt-5"
             >
-              <MeetingHistory
-                projectId={activeProjectId}
-                onClose={() => setActiveServiceKey(null)}
-              />
+              {activeServiceKey === 'meetings' && (
+                <MeetingHistory
+                  projectId={activeProjectId}
+                  onClose={() => setActiveServiceKey(null)}
+                />
+              )}
+              {activeServiceKey === 'tasks' && (
+                <NotionTasksView
+                  projectId={activeProjectId}
+                  onClose={() => setActiveServiceKey(null)}
+                />
+              )}
+              {activeServiceKey === 'campaigns' && (
+                <NotionCampaignsView
+                  projectId={activeProjectId}
+                  onClose={() => setActiveServiceKey(null)}
+                />
+              )}
             </motion.div>
           )}
         </AnimatePresence>

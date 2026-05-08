@@ -224,6 +224,28 @@ function getCaps(model: string): ModelCaps {
   return MODEL_CAPS[model] ?? { kind: 'image', provider: 'market' };
 }
 
+// ---------------------------------------------------------------------------
+// Credit costs per model (approximate, based on Kie.ai pricing)
+// ---------------------------------------------------------------------------
+const MODEL_CREDITS: Record<string, string> = {
+  'google/nano-banana':         '4 cr / img',
+  'google/nano-banana-edit':    '6 cr / img',
+  'nano-banana-2':              '8 cr / img',
+  'nano-banana-pro':            '12 cr / img',
+  'kling-2.6/text-to-video':    '70–140 cr',
+  'kling-2.6/image-to-video':   '70–140 cr',
+  'kling-2.6/motion-control':   '70 cr',
+  'kling-3.0/video':            '140–280 cr',
+  'kling-3.0/motion-control':   '140 cr',
+  'sora-2-text-to-video':       '300 cr',
+  'sora-2-image-to-video':      '300 cr',
+  'bytedance/seedance-2':       '100 cr',
+  'bytedance/seedance-2-fast':  '50 cr',
+  veo3:                         '500 cr',
+  veo3_fast:                    '200 cr',
+  veo3_lite:                    '100 cr',
+};
+
 const MODEL_OPTIONS = [
   {
     label: 'Image Models',
@@ -1050,6 +1072,16 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             options={MODEL_OPTIONS}
           />
         </div>
+
+        {/* ---------- Credit Cost Badge ---------- */}
+        {data.model && MODEL_CREDITS[data.model] && (
+          <div className="flex items-center gap-1.5 -mt-1">
+            <span className="text-[10px] text-white/30 uppercase tracking-widest">Costo</span>
+            <span className="rounded-full bg-[#0A84FF]/15 border border-[#0A84FF]/25 px-2.5 py-0.5 text-[11px] text-[#0A84FF] font-medium tabular-nums">
+              ~{MODEL_CREDITS[data.model]}
+            </span>
+          </div>
+        )}
 
         {/* ---------- Basic Controls ---------- */}
         <div className="grid grid-cols-2 gap-4 mt-1">
