@@ -5,10 +5,11 @@ import {
   ArrowUpFromLine,
   Loader2,
   ChevronDown,
+  Copy,
+  Check,
 } from 'lucide-react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
-import { CopyButton } from '../ui/copy-button';
 import { createUpscaleTask, pollMarketTask } from '../../lib/kie';
 import toast from 'react-hot-toast';
 
@@ -78,6 +79,40 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
     }
   };
 
+  const [copying, setCopying] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyImage = async () => {
+    if (!data.resultUrl || copying) return;
+    setCopying(true);
+    try {
+      const response = await fetch(data.resultUrl as string);
+      const sourceBlob = await response.blob();
+
+      // Convert to PNG via canvas for maximum compatibility and quality
+      const bitmap = await createImageBitmap(sourceBlob);
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(bitmap, 0, 0);
+
+      const pngBlob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob failed'))), 'image/png'),
+      );
+
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+      setCopied(true);
+      toast.success('Imagen copiada');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (e) {
+      console.error('Copy image failed:', e);
+      toast.error('No se pudo copiar la imagen');
+    } finally {
+      setCopying(false);
+    }
+  };
+
   const hasResult = data.status === 'success' && data.resultUrl;
 
   return (
@@ -121,15 +156,25 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
               ) : (
                 <img src={data.resultUrl} alt="Generated Output" className="w-full h-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
               )}
-              {/* Copy URL button — appears on hover */}
-              <div className="absolute top-2 right-2 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-200">
-                <CopyButton
-                  value={data.resultUrl as string}
-                  size="sm"
-                  className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-lg h-7 w-7 text-white/70 hover:text-white hover:bg-black/70"
-                  onClick={() => toast.success('URL copied')}
-                />
-              </div>
+              {/* Copy image button — appears on hover */}
+              {!isVideo && (
+                <div className="absolute top-2 right-2 opacity-0 group-hover/preview:opacity-100 transition-opacity duration-200">
+                  <button
+                    onClick={handleCopyImage}
+                    disabled={copying}
+                    className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-lg h-7 w-7 flex items-center justify-center text-white/70 hover:text-white hover:bg-black/70 transition-all disabled:opacity-50"
+                    title="Copiar imagen"
+                  >
+                    {copying ? (
+                      <Loader2 size={13} className="animate-spin" />
+                    ) : copied ? (
+                      <Check size={13} className="text-[#32D74B]" />
+                    ) : (
+                      <Copy size={13} />
+                    )}
+                  </button>
+                </div>
+              )}
             </>
           ) : data.status === 'error' ? (
             <div className="flex flex-col items-center justify-center p-6 text-center">
