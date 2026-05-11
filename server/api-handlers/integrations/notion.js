@@ -407,6 +407,36 @@ async function handleSearchPages(req, res, token, userId) {
     });
 }
 
+async function tryLoadPageOrDatabase(resourceId, token, cursor) {
+    const cursorSuffix = cursor ? `&start_cursor=${encodeURIComponent(cursor)}` : '';
+
+    try {
+        const [page, children] = await Promise.all([
+            notionRequest(`/pages/${resourceId}`, token),
+            notionRequest(`/blocks/${resourceId}/children?page_size=50${cursorSuffix}`, token),
+        ]);
+        return { type: 'page', page, children };
+    } catch (pageError) {
+        if (pageError.message?.includes('is a database')) {
+            const [db, children] = await Promise.all([
+                notionRequest(`/databases/${resourceId}`, token),
+                notionRequest(`/blocks/${resourceId}/children?page_size=50${cursorSuffix}`, token),
+            ]);
+            return {
+                type: 'database',
+                page: {
+                    id: db.id,
+                    title: extractRichText(db.title || []) || 'Base de datos sin título',
+                    url: db.url || null,
+                    last_edited_time: db.last_edited_time || null,
+                },
+                children,
+            };
+        }
+        throw pageError;
+    }
+}
+
 async function handleProjectPage(req, res, projectId, token) {
     const settings = await getProjectNotionPage(projectId);
     if (!settings.notion_page_id) {
@@ -419,13 +449,7 @@ async function handleProjectPage(req, res, projectId, token) {
     const cursor = req.query?.cursor
         ?? new URL(req.url, 'http://localhost').searchParams.get('cursor');
 
-    const [page, children] = await Promise.all([
-        notionRequest(`/pages/${settings.notion_page_id}`, token),
-        notionRequest(
-            `/blocks/${settings.notion_page_id}/children?page_size=50${cursor ? `&start_cursor=${encodeURIComponent(cursor)}` : ''}`,
-            token
-        ),
-    ]);
+    const { page, children } = await tryLoadPageOrDatabase(settings.notion_page_id, token, cursor);
 
     return res.status(200).json({
         page: {
@@ -450,13 +474,7 @@ async function handleSubPage(req, res, projectId, token) {
     const cursor = req.query?.cursor
         ?? new URL(req.url, 'http://localhost').searchParams.get('cursor');
 
-    const [page, children] = await Promise.all([
-        notionRequest(`/pages/${pageId}`, token),
-        notionRequest(
-            `/blocks/${pageId}/children?page_size=50${cursor ? `&start_cursor=${encodeURIComponent(cursor)}` : ''}`,
-            token
-        ),
-    ]);
+    const { page, children } = await tryLoadPageOrDatabase(pageId, token, cursor);
 
     return res.status(200).json({
         page: formatPageSummary(page),
