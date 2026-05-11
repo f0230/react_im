@@ -7,6 +7,7 @@
  */
 
 import creditsHandler from '../../server/api-handlers/utils/credits.js';
+import creditsDebugHandler from '../../server/api-handlers/utils/credits-debug.js';
 import modelsHandler from '../../server/api-handlers/utils/models.js';
 import reportsHandler from '../../server/api-handlers/utils/reports.js';
 
@@ -38,6 +39,9 @@ export default async function handler(req, res) {
       case 'kie-credits':
       case 'kie':
         return await creditsHandler(req, res);
+      case 'credits-debug':
+      case 'kie-debug':
+        return await creditsDebugHandler(req, res);
       case 'models':
       case 'kie-models':
       case 'pricing':
@@ -48,7 +52,7 @@ export default async function handler(req, res) {
       default:
         return res.status(400).json({
           error: 'Invalid action parameter',
-          available: ['credits', 'models', 'reports'],
+          available: ['credits', 'credits-debug', 'models', 'reports'],
           received: action || '(empty)',
         });
     }
