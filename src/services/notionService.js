@@ -73,6 +73,12 @@ export async function fetchNotionPage(projectId, cursor = null) {
     return notionFetch(params);
 }
 
+export async function fetchNotionSubPage(projectId, pageId, cursor = null) {
+    const params = new URLSearchParams({ action: 'sub-page', projectId, pageId });
+    if (cursor) params.set('cursor', cursor);
+    return notionFetch(params);
+}
+
 export async function saveNotionSettings(projectId, settings) {
     const params = new URLSearchParams({ action: 'save-settings', projectId });
     return notionPost(params, settings);

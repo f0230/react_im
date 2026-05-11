@@ -1,15 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, BookOpen, Briefcase, CalendarDays, CheckSquare, Megaphone } from 'lucide-react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Briefcase } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import MeetingHistory from '@/components/projects/MeetingHistory';
-import NotionTasksView from '@/components/projects/NotionTasksView';
-import NotionCampaignsView from '@/components/projects/NotionCampaignsView';
 import NotionPageView from '@/components/projects/NotionPageView';
 
 const PANEL_SPRING = {
@@ -23,27 +20,8 @@ const getProjectTitle = (project, fallback = 'Proyecto') => {
   return project?.title || project?.name || project?.project_name || fallback;
 };
 
-const getProjectLogo = (project) => {
-  return project?.profile_image_url || project?.avatar_url || '';
-};
-
-const getProjectInitials = (project, fallback = 'DTE') => {
-  const title = getProjectTitle(project, fallback);
-  const words = title.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return fallback;
-  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
-  return words.slice(0, 2).map((word) => word[0]).join('').toUpperCase();
-};
-
-const SERVICE_CARDS = [
-  { key: 'meetings', icon: CalendarDays, label: 'Reuniones' },
-  { key: 'tasks', icon: CheckSquare, label: 'Tareas' },
-  { key: 'campaigns', icon: Megaphone, label: 'Campañas' },
-];
-
 const ProjectTasks = () => {
   const { t } = useTranslation();
-  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { projectId: routeProjectId } = useParams();
@@ -52,15 +30,8 @@ const ProjectTasks = () => {
   const queryProjectId = searchParams.get('projectId');
   const activeProjectId = routeProjectId || queryProjectId;
 
-  const locationProjectPreview = location.state?.projectPreview;
-  const previewProject =
-    locationProjectPreview?.id && locationProjectPreview.id === activeProjectId
-      ? locationProjectPreview
-      : null;
-
-  const [selectedProject, setSelectedProject] = useState(() => previewProject || null);
-  const [loading, setLoading] = useState(() => !previewProject);
-  const [activeServiceKey, setActiveServiceKey] = useState(null);
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [loading, setLoading] = useState(() => !selectedProject);
 
   const fetchProject = useCallback(async () => {
     if (!activeProjectId || !user?.id) {
@@ -99,14 +70,9 @@ const ProjectTasks = () => {
   }, [activeProjectId, user?.id]);
 
   useEffect(() => {
-    if (previewProject) {
-      setSelectedProject(previewProject);
-      setLoading(false);
-      return;
-    }
     if (!user?.id) return;
     void fetchProject();
-  }, [fetchProject, previewProject, user?.id]);
+  }, [fetchProject, user?.id]);
 
   if (loading) return <LoadingFallback type="spinner" />;
 
@@ -159,12 +125,7 @@ const ProjectTasks = () => {
   }
 
   const projectTitle = getProjectTitle(selectedProject, t('dashboard.projects.untitled'));
-  const projectLogo = getProjectLogo(selectedProject);
-  const projectInitials = getProjectInitials(selectedProject);
   const hasNotionPage = Boolean(selectedProject?.notion_page_id);
-  const serviceCards = hasNotionPage
-    ? [...SERVICE_CARDS, { key: 'notion', icon: BookOpen, label: 'Notion' }]
-    : SERVICE_CARDS;
 
   return (
     <div className="min-h-screen bg-[#f2f2f2] px-6 py-8 font-product md:px-10 md:py-10">
@@ -200,88 +161,28 @@ const ProjectTasks = () => {
           </p>
         </motion.div>
 
-        {/* Cards */}
-        <div className={`grid gap-5 ${hasNotionPage ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
-          {serviceCards.map((card, index) => {
-            const Icon = card.icon;
-            const isActive = activeServiceKey === card.key;
-            return (
-              <motion.div
-                key={card.key}
-                initial={{ opacity: 0, y: 24 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ ...PANEL_SPRING, delay: index * 0.04 }}
-                onClick={() => setActiveServiceKey(isActive ? null : card.key)}
-                className={[
-                  'min-h-[190px] rounded-[30px] border bg-[#e7e7e7] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] cursor-pointer transition-all duration-200 hover:bg-[#e0e0e0] md:min-h-[210px] md:p-8',
-                  isActive ? 'border-black/20 ring-2 ring-black/10' : 'border-white/70',
-                ].join(' ')}
-              >
-                <div className="flex h-full flex-col justify-between gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[#f7cfcf] p-2 shadow-sm md:h-14 md:w-14 md:rounded-[14px]">
-                    {projectLogo ? (
-                      <img
-                        src={projectLogo}
-                        alt={projectTitle}
-                        className="h-full w-full object-contain"
-                      />
-                    ) : (
-                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-700">
-                        {projectInitials}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-end justify-between">
-                    <h2 className="max-w-[12ch] text-[2rem] font-medium leading-[0.95] tracking-tight text-neutral-700 md:text-[2.25rem]">
-                      {card.label}
-                    </h2>
-                    <Icon size={20} className={isActive ? 'text-neutral-700' : 'text-neutral-400'} />
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Panel expansible según la card activa */}
-        <AnimatePresence>
-          {activeServiceKey && (
-            <motion.div
-              key={activeServiceKey}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={PANEL_SPRING}
-              className="mt-5"
-            >
-              {activeServiceKey === 'meetings' && (
-                <MeetingHistory
-                  projectId={activeProjectId}
-                  onClose={() => setActiveServiceKey(null)}
-                />
-              )}
-              {activeServiceKey === 'tasks' && (
-                <NotionTasksView
-                  projectId={activeProjectId}
-                  onClose={() => setActiveServiceKey(null)}
-                />
-              )}
-              {activeServiceKey === 'campaigns' && (
-                <NotionCampaignsView
-                  projectId={activeProjectId}
-                  onClose={() => setActiveServiceKey(null)}
-                />
-              )}
-              {activeServiceKey === 'notion' && (
-                <NotionPageView
-                  projectId={activeProjectId}
-                  onClose={() => setActiveServiceKey(null)}
-                />
-              )}
-            </motion.div>
+        {/* Contenido principal */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={PANEL_SPRING}
+        >
+          {hasNotionPage ? (
+            <NotionPageView projectId={activeProjectId} />
+          ) : (
+            <div className="rounded-[28px] border border-neutral-200 bg-[#fafafa] p-6 md:p-8">
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Briefcase size={32} className="mb-3 text-neutral-200" />
+                <h3 className="text-lg font-semibold tracking-tight text-neutral-700">
+                  No hay Notion configurado
+                </h3>
+                <p className="mt-2 max-w-sm text-sm leading-relaxed text-neutral-400">
+                  Este proyecto aún no tiene una página de Notion vinculada. Contacta al administrador para configurar el acceso.
+                </p>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
+        </motion.div>
       </div>
     </div>
   );

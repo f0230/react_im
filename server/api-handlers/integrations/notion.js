@@ -439,6 +439,33 @@ async function handleProjectPage(req, res, projectId, token) {
     });
 }
 
+async function handleSubPage(req, res, projectId, token) {
+    const pageId = req.query?.pageId
+        ?? new URL(req.url, 'http://localhost').searchParams.get('pageId');
+
+    if (!pageId) {
+        return res.status(400).json({ error: 'pageId query param is required' });
+    }
+
+    const cursor = req.query?.cursor
+        ?? new URL(req.url, 'http://localhost').searchParams.get('cursor');
+
+    const [page, children] = await Promise.all([
+        notionRequest(`/pages/${pageId}`, token),
+        notionRequest(
+            `/blocks/${pageId}/children?page_size=50${cursor ? `&start_cursor=${encodeURIComponent(cursor)}` : ''}`,
+            token
+        ),
+    ]);
+
+    return res.status(200).json({
+        page: formatPageSummary(page),
+        blocks: (children.results || []).map(formatBlock),
+        nextCursor: children.next_cursor ?? null,
+        hasMore: children.has_more ?? false,
+    });
+}
+
 // ─── Admin: save Notion settings ──────────────────────────────────────────────
 
 async function handleSaveDbIds(req, res, projectId, userId) {
@@ -517,6 +544,7 @@ export default async function handler(req, res) {
         if (action === 'tasks') return await handleTasks(req, res, projectId, notionToken);
         if (action === 'campaigns') return await handleCampaigns(req, res, projectId, notionToken);
         if (action === 'page') return await handleProjectPage(req, res, projectId, notionToken);
+        if (action === 'sub-page') return await handleSubPage(req, res, projectId, notionToken);
         if (action === 'search-pages' && req.method === 'POST') {
             return await handleSearchPages(req, res, notionToken, user.id);
         }
@@ -525,7 +553,7 @@ export default async function handler(req, res) {
         }
 
         return res.status(400).json({
-            error: 'Missing or unknown ?action param. Valid: meetings, tasks, campaigns, page, search-pages, save-settings',
+            error: 'Missing or unknown ?action param. Valid: meetings, tasks, campaigns, page, sub-page, search-pages, save-settings',
         });
     } catch (err) {
         console.error('[notion] handler error:', err);

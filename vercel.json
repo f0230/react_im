@@ -102,6 +102,10 @@
       "destination": "/api/utils?action=models"
     },
     {
+      "source": "/api/notion",
+      "destination": "/api/integrations?service=notion"
+    },
+    {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
