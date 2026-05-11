@@ -2,10 +2,12 @@
  * Consolidated Utils Handler
  * Routes via ?action= or ?type= param:
  *   action=credits      → KIE credits handler
+ *   action=models       → KIE models & pricing handler
  *   action=reports      → Reports handler
  */
 
 import creditsHandler from '../../server/api-handlers/utils/credits.js';
+import modelsHandler from '../../server/api-handlers/utils/models.js';
 import reportsHandler from '../../server/api-handlers/utils/reports.js';
 
 function getAction(req) {
@@ -36,13 +38,17 @@ export default async function handler(req, res) {
       case 'kie-credits':
       case 'kie':
         return await creditsHandler(req, res);
+      case 'models':
+      case 'kie-models':
+      case 'pricing':
+        return await modelsHandler(req, res);
       case 'reports':
       case 'report':
         return await reportsHandler(req, res);
       default:
         return res.status(400).json({
           error: 'Invalid action parameter',
-          available: ['credits', 'reports'],
+          available: ['credits', 'models', 'reports'],
           received: action || '(empty)',
         });
     }

@@ -98,6 +98,10 @@
       "destination": "/api/utils?action=credits"
     },
     {
+      "source": "/api/kie-models",
+      "destination": "/api/utils?action=models"
+    },
+    {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
