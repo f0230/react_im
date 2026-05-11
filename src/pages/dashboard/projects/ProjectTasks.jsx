@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, BookOpen, Briefcase, CalendarDays, CheckSquare, Megaphone } from 'lucide-react';
+import { ArrowLeft, BookOpen, Briefcase, CalendarDays, CheckSquare, Megaphone, Settings } from 'lucide-react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -45,7 +45,7 @@ const ProjectTasks = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { projectId: routeProjectId } = useParams();
   const [searchParams] = useSearchParams();
 
@@ -162,8 +162,10 @@ const ProjectTasks = () => {
   const projectLogo = getProjectLogo(selectedProject);
   const projectInitials = getProjectInitials(selectedProject);
   const hasNotionPage = Boolean(selectedProject?.notion_page_id);
-  const serviceCards = hasNotionPage
-    ? [...SERVICE_CARDS, { key: 'notion', icon: BookOpen, label: 'Notion' }]
+  const canConfigureNotion = profile?.role === 'admin';
+  const integrationsPath = `/dashboard/projects/${activeProjectId}/integrations`;
+  const serviceCards = hasNotionPage || canConfigureNotion
+    ? [...SERVICE_CARDS, { key: 'notion', icon: BookOpen, label: hasNotionPage ? 'Notion' : 'Configurar Notion', requiresSetup: !hasNotionPage }]
     : SERVICE_CARDS;
 
   return (
@@ -195,13 +197,25 @@ const ProjectTasks = () => {
             </div>
           </div>
 
-          <p className="max-w-lg text-left text-xl font-medium tracking-tight text-neutral-400 md:pt-4 md:text-right">
-            {t('dashboard.projects.servicesHub.subtitle')}
-          </p>
+          <div className="flex flex-col items-start gap-3 md:items-end md:pt-4">
+            <p className="max-w-lg text-left text-xl font-medium tracking-tight text-neutral-400 md:text-right">
+              {t('dashboard.projects.servicesHub.subtitle')}
+            </p>
+            {canConfigureNotion && (
+              <button
+                type="button"
+                onClick={() => navigate(integrationsPath)}
+                className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-4 py-2 text-xs font-semibold text-neutral-600 shadow-sm transition hover:bg-white hover:text-black"
+              >
+                <Settings size={14} />
+                Configurar Notion
+              </button>
+            )}
+          </div>
         </motion.div>
 
         {/* Cards */}
-        <div className={`grid gap-5 ${hasNotionPage ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+        <div className={`grid gap-5 ${hasNotionPage || canConfigureNotion ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           {serviceCards.map((card, index) => {
             const Icon = card.icon;
             const isActive = activeServiceKey === card.key;
@@ -211,7 +225,13 @@ const ProjectTasks = () => {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ ...PANEL_SPRING, delay: index * 0.04 }}
-                onClick={() => setActiveServiceKey(isActive ? null : card.key)}
+                onClick={() => {
+                  if (card.requiresSetup) {
+                    navigate(integrationsPath);
+                    return;
+                  }
+                  setActiveServiceKey(isActive ? null : card.key);
+                }}
                 className={[
                   'min-h-[190px] rounded-[30px] border bg-[#e7e7e7] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] cursor-pointer transition-all duration-200 hover:bg-[#e0e0e0] md:min-h-[210px] md:p-8',
                   isActive ? 'border-black/20 ring-2 ring-black/10' : 'border-white/70',

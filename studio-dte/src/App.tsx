@@ -15,6 +15,7 @@ import {
   Cloud,
   CloudOff,
   Loader2,
+  Plus,
 } from 'lucide-react';
 import { ContextMenu } from './components/ui/context-menu';
 import {
@@ -223,11 +224,32 @@ function WorkflowApp() {
     id?: string;
     top: number;
     left: number;
+    insertPosition?: { x: number; y: number };
     nodeType?: string;
     mode: 'node' | 'canvas';
   } | null>(null);
   const deleteNodeIdRef = useRef<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const addNodeButtonRef = useRef<HTMLButtonElement>(null);
+
+  const getCanvasCenterPosition = useCallback(
+    () =>
+      screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      }),
+    [screenToFlowPosition],
+  );
+
+  const getClampedMenuPosition = useCallback((x: number, y: number) => {
+    const margin = 12;
+    const menuWidth = 192;
+    const menuHeight = 340;
+    return {
+      left: Math.max(margin, Math.min(x, window.innerWidth - menuWidth - margin)),
+      top: Math.max(margin, Math.min(y, window.innerHeight - menuHeight - margin)),
+    };
+  }, []);
 
   // ---- Context menus ----
   const onNodeContextMenu = useCallback(
@@ -247,25 +269,49 @@ function WorkflowApp() {
 
   const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
     event.preventDefault();
+    const { left, top } = getClampedMenuPosition(event.clientX, event.clientY);
     setMenu({
-      top: event.clientY,
-      left: event.clientX,
+      top,
+      left,
+      insertPosition: screenToFlowPosition({ x: event.clientX, y: event.clientY }),
       mode: 'canvas',
     });
-  }, []);
+  }, [getClampedMenuPosition, screenToFlowPosition]);
+
+  const onPaneDoubleClick = useCallback((event: React.MouseEvent) => {
+    event.preventDefault();
+    const { left, top } = getClampedMenuPosition(event.clientX, event.clientY);
+    setMenu({
+      top,
+      left,
+      insertPosition: screenToFlowPosition({ x: event.clientX, y: event.clientY }),
+      mode: 'canvas',
+    });
+  }, [getClampedMenuPosition, screenToFlowPosition]);
+
+  const openToolbarAddMenu = useCallback(() => {
+    const rect = addNodeButtonRef.current?.getBoundingClientRect();
+    const rawLeft = rect ? rect.left + rect.width / 2 - 96 : window.innerWidth / 2 - 96;
+    const rawTop = rect ? rect.bottom + 10 : 68;
+    const { left, top } = getClampedMenuPosition(rawLeft, rawTop);
+    setMenu({
+      top,
+      left,
+      insertPosition: getCanvasCenterPosition(),
+      mode: 'canvas',
+    });
+  }, [getCanvasCenterPosition, getClampedMenuPosition]);
 
   const onPaneClick = useCallback(() => setMenu(null), []);
 
   // ---- Add node at cursor (A2) ----
   const handleAddNode = useCallback(
     (type: Parameters<typeof addNode>[0]) => {
-      const position = menu
-        ? screenToFlowPosition({ x: menu.left, y: menu.top })
-        : undefined;
+      const position = menu?.insertPosition ?? getCanvasCenterPosition();
       addNode(type, { position });
       setMenu(null);
     },
-    [addNode, menu, screenToFlowPosition],
+    [addNode, getCanvasCenterPosition, menu],
   );
 
   // ---- Mark node as pinned on manual drag (A3) ----
@@ -522,6 +568,20 @@ function WorkflowApp() {
 
         <div className="w-px h-5 bg-white/10" />
 
+        {/* Add node */}
+        <button
+          type="button"
+          ref={addNodeButtonRef}
+          onClick={openToolbarAddMenu}
+          className="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+          aria-label="Add node"
+          title="Add node"
+        >
+          <Plus size={14} />
+        </button>
+
+        <div className="w-px h-5 bg-white/10" />
+
         {/* Undo / Redo */}
         <button
           onClick={undo}
@@ -606,6 +666,7 @@ function WorkflowApp() {
           onConnect={onConnect}
           onNodeContextMenu={onNodeContextMenu}
           onPaneContextMenu={onPaneContextMenu}
+          onPaneDoubleClick={onPaneDoubleClick}
           onPaneClick={onPaneClick}
           onNodeDragStart={onPaneClick}
           onNodeDragStop={onNodeDragStop}
@@ -615,6 +676,7 @@ function WorkflowApp() {
           colorMode="dark"
           minZoom={0.1}
           maxZoom={2}
+          zoomOnDoubleClick={false}
         >
           <Background gap={24} size={2} color="rgba(255,255,255,0.04)" />
 

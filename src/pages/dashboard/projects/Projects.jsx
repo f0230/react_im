@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, BookOpen, Briefcase, CalendarDays, FileText, Folder, Pencil, Plus, Users } from 'lucide-react';
+import { BarChart3, BookOpen, Briefcase, CalendarDays, FileText, Folder, Pencil, PlugZap, Plus, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
@@ -31,6 +31,7 @@ const getProjectSectionHref = (projectId, suffix) => {
     if (!projectId) return null;
     if (suffix === 'tasks') return getProjectServicesHref(projectId);
     if (suffix === 'brand-docs') return `/dashboard/projects/${projectId}/brand-docs`;
+    if (suffix === 'integrations') return `/dashboard/projects/${projectId}/integrations`;
     return `/dashboard/${suffix}?projectId=${projectId}`;
 };
 
@@ -590,8 +591,19 @@ const Projects = () => {
             });
         }
 
+        if (isAdmin || isWorker || isClientLeader) {
+            baseCards.push({
+                key: 'integrations',
+                label: 'Integraciones',
+                description: 'Notion, Meta y conexiones',
+                icon: PlugZap,
+                color: 'green',
+                suffix: 'integrations',
+            });
+        }
+
         return baseCards;
-    }, [t, isClient, isClientLeader]);
+    }, [t, isClient, isClientLeader, isAdmin, isWorker]);
 
     const clientCompanyMap = useMemo(() => {
         return new Map(
