@@ -4,7 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
     "./banana-image-studio/src/**/*.{ts,tsx}",
-    "./studio-dte./src/**/*.{ts,tsx}",
+    "./studio-dte/src/**/*.{ts,tsx}",
   ],
   theme: {
     extend: {
@@ -69,7 +69,6 @@ export default {
 
 
 }
-
 
 
 

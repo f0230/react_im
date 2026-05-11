@@ -153,7 +153,11 @@ export default function MultiUseSelect({
     };
 
     return (
-        <div ref={wrapperRef} className={cn('relative w-full nodrag nowheel', className)}>
+        <div
+            ref={wrapperRef}
+            className={cn('relative w-full nodrag nowheel', className)}
+            style={isOpen ? { zIndex: 1000 } : undefined}
+        >
             {!alwaysOpen && (
                 <button
                     type="button"
@@ -179,10 +183,11 @@ export default function MultiUseSelect({
             {isOpen && (
                 <div
                     className={cn(
-                        'nowheel absolute z-50 max-h-60 overflow-y-auto overscroll-contain rounded-[16px] bg-[#1a1a1e] border border-white/10 p-1.5 shadow-xl shadow-black/40 backdrop-blur-xl',
+                        'nowheel absolute z-[1000] max-h-60 overflow-y-auto overscroll-contain rounded-[16px] bg-[#151518] border border-white/10 p-1.5 shadow-[0_24px_70px_rgba(0,0,0,0.72)] ring-1 ring-black/70',
                         placementClass,
                         listClassName,
                     )}
+                    style={{ backgroundColor: '#151518' }}
                     onWheel={stopScrollPropagation}
                     onScroll={stopScrollPropagation}
                     role="listbox"

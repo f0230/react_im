@@ -4,7 +4,9 @@
  *   action=meetings       → fetch meeting notes from a project's Notion database
  *   action=tasks          → fetch tasks from a project's Notion database
  *   action=campaigns      → fetch campaigns from a project's Notion database
- *   action=save-settings  → save the direct Notion URL and optional database IDs
+ *   action=search-pages   → search Notion pages available to the integration
+ *   action=page           → render the selected project page through the API
+ *   action=save-settings  → save the selected page and optional database IDs
  *
  * Env vars required:
  *   NOTION_TOKEN              — Notion integration token (set once in Vercel)
@@ -12,6 +14,7 @@
  *   SUPABASE_SERVICE_ROLE_KEY — already set
  *
  * The Notion database IDs per project are stored in the `projects` Supabase table:
+ *   notion_page_id        → root page rendered in the portal
  *   notion_db_id           → meetings
  *   notion_tasks_db_id     → tasks
  *   notion_campaigns_db_id → campaigns
@@ -61,6 +64,19 @@ async function assertProjectAccess(userId, projectId) {
     if (error || !hasAccess) throw new Error('Access denied');
 }
 
+async function assertAdmin(userId) {
+    const supabase = getSupabase();
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (profile?.role !== 'admin') {
+        throw new Error('Solo admins pueden configurar las integraciones de Notion.');
+    }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function notionHeaders(token) {
@@ -74,6 +90,34 @@ function notionHeaders(token) {
 function extractRichText(arr) {
     if (!Array.isArray(arr) || arr.length === 0) return '';
     return arr.map((r) => r.plain_text || '').join('');
+}
+
+async function readJsonBody(req) {
+    if (req.body && typeof req.body === 'object') return req.body;
+    if (typeof req.body === 'string') return JSON.parse(req.body || '{}');
+
+    const raw = await new Promise((resolve, reject) => {
+        let data = '';
+        req.on('data', (chunk) => { data += chunk; });
+        req.on('end', () => resolve(data));
+        req.on('error', reject);
+    });
+    return JSON.parse(raw || '{}');
+}
+
+async function notionRequest(path, token, options = {}) {
+    const r = await fetch(`${NOTION_API_BASE}${path}`, {
+        method: options.method || 'GET',
+        headers: notionHeaders(token),
+        body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+
+    if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.message || `Notion API error ${r.status}`);
+    }
+
+    return r.json();
 }
 
 async function queryNotionDb(databaseId, token, cursor, sorts) {
@@ -107,7 +151,61 @@ async function getProjectDbIds(projectId) {
     return data ?? {};
 }
 
+async function getProjectNotionPage(projectId) {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from('projects')
+        .select('notion_page_id, notion_page_title, notion_page_url')
+        .eq('id', projectId)
+        .maybeSingle();
+
+    if (error) throw new Error(`Supabase error: ${error.message}`);
+    return data ?? {};
+}
+
 // ─── Formatters ───────────────────────────────────────────────────────────────
+
+function extractPageTitle(page) {
+    const properties = page?.properties || {};
+    const titleProperty = Object.values(properties).find((property) => property?.type === 'title');
+    return extractRichText(titleProperty?.title || []) || 'Página sin título';
+}
+
+function formatPageSummary(page) {
+    return {
+        id: page.id,
+        title: extractPageTitle(page),
+        url: page.url || null,
+        lastEditedTime: page.last_edited_time || null,
+    };
+}
+
+function formatBlock(block) {
+    const type = block.type;
+    const data = block[type] || {};
+    const text = extractRichText(data.rich_text || data.title || []);
+    const caption = extractRichText(data.caption || []);
+
+    return {
+        id: block.id,
+        type,
+        hasChildren: Boolean(block.has_children),
+        text,
+        caption,
+        checked: data.checked ?? null,
+        language: data.language ?? null,
+        url:
+            data.url ??
+            data.external?.url ??
+            data.file?.url ??
+            null,
+        title:
+            data.title ??
+            data.name ??
+            text ??
+            '',
+    };
+}
 
 function formatMeeting(page) {
     const p = page.properties || {};
@@ -260,37 +358,100 @@ async function handleCampaigns(req, res, projectId, token) {
     });
 }
 
+async function handleSearchPages(req, res, token, userId) {
+    try {
+        await assertAdmin(userId);
+    } catch (err) {
+        return res.status(403).json({ error: err.message });
+    }
+
+    let body;
+    try {
+        body = await readJsonBody(req);
+    } catch {
+        return res.status(400).json({ error: 'Invalid JSON body' });
+    }
+
+    const query = String(body.query || '').trim();
+    const cursor = body.cursor || null;
+    const data = await notionRequest('/search', token, {
+        method: 'POST',
+        body: {
+            ...(query ? { query } : {}),
+            page_size: 20,
+            ...(cursor ? { start_cursor: cursor } : {}),
+            filter: {
+                property: 'object',
+                value: 'page',
+            },
+            sort: {
+                direction: 'descending',
+                timestamp: 'last_edited_time',
+            },
+        },
+    });
+
+    return res.status(200).json({
+        pages: (data.results || []).map(formatPageSummary),
+        nextCursor: data.next_cursor ?? null,
+        hasMore: data.has_more ?? false,
+    });
+}
+
+async function handleProjectPage(req, res, projectId, token) {
+    const settings = await getProjectNotionPage(projectId);
+    if (!settings.notion_page_id) {
+        return res.status(404).json({
+            error: 'No hay página de Notion configurada para este proyecto.',
+            hint: 'Un admin debe seleccionar una página de Notion en Integraciones.',
+        });
+    }
+
+    const cursor = req.query?.cursor
+        ?? new URL(req.url, 'http://localhost').searchParams.get('cursor');
+
+    const [page, children] = await Promise.all([
+        notionRequest(`/pages/${settings.notion_page_id}`, token),
+        notionRequest(
+            `/blocks/${settings.notion_page_id}/children?page_size=50${cursor ? `&start_cursor=${encodeURIComponent(cursor)}` : ''}`,
+            token
+        ),
+    ]);
+
+    return res.status(200).json({
+        page: {
+            ...formatPageSummary(page),
+            title: settings.notion_page_title || extractPageTitle(page),
+            url: settings.notion_page_url || page.url || null,
+        },
+        blocks: (children.results || []).map(formatBlock),
+        nextCursor: children.next_cursor ?? null,
+        hasMore: children.has_more ?? false,
+    });
+}
+
 // ─── Admin: save Notion settings ──────────────────────────────────────────────
 
 async function handleSaveDbIds(req, res, projectId, userId) {
     const supabase = getSupabase();
 
-    // Only admins can configure
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .maybeSingle();
-
-    if (profile?.role !== 'admin') {
-        return res.status(403).json({ error: 'Solo admins pueden configurar las integraciones de Notion.' });
+    try {
+        await assertAdmin(userId);
+    } catch (err) {
+        return res.status(403).json({ error: err.message });
     }
 
     let body;
     try {
-        const raw = await new Promise((resolve, reject) => {
-            let data = '';
-            req.on('data', (chunk) => { data += chunk; });
-            req.on('end', () => resolve(data));
-            req.on('error', reject);
-        });
-        body = JSON.parse(raw || '{}');
+        body = await readJsonBody(req);
     } catch {
         return res.status(400).json({ error: 'Invalid JSON body' });
     }
 
     const updates = {};
-    if ('notion_workspace_url' in body) updates.notion_workspace_url = body.notion_workspace_url || null;
+    if ('notion_page_id' in body) updates.notion_page_id = body.notion_page_id || null;
+    if ('notion_page_title' in body) updates.notion_page_title = body.notion_page_title || null;
+    if ('notion_page_url' in body) updates.notion_page_url = body.notion_page_url || null;
     if ('notion_db_id' in body) updates.notion_db_id = body.notion_db_id || null;
     if ('notion_tasks_db_id' in body) updates.notion_tasks_db_id = body.notion_tasks_db_id || null;
     if ('notion_campaigns_db_id' in body) updates.notion_campaigns_db_id = body.notion_campaigns_db_id || null;
@@ -346,12 +507,16 @@ export default async function handler(req, res) {
         if (action === 'meetings') return await handleMeetings(req, res, projectId, notionToken);
         if (action === 'tasks') return await handleTasks(req, res, projectId, notionToken);
         if (action === 'campaigns') return await handleCampaigns(req, res, projectId, notionToken);
+        if (action === 'page') return await handleProjectPage(req, res, projectId, notionToken);
+        if (action === 'search-pages' && req.method === 'POST') {
+            return await handleSearchPages(req, res, notionToken, user.id);
+        }
         if ((action === 'save-settings' || action === 'save-db-ids') && req.method === 'POST') {
             return await handleSaveDbIds(req, res, projectId, user.id);
         }
 
         return res.status(400).json({
-            error: 'Missing or unknown ?action param. Valid: meetings, tasks, campaigns, save-settings',
+            error: 'Missing or unknown ?action param. Valid: meetings, tasks, campaigns, page, search-pages, save-settings',
         });
     } catch (err) {
         console.error('[notion] handler error:', err);

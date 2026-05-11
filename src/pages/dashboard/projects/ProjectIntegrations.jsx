@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { ExternalLink, Link2, RefreshCw, Trash2, PlugZap, BookOpen, Save } from 'lucide-react';
+import { BookOpen, CheckCircle2, Link2, Loader2, RefreshCw, Search, Trash2, PlugZap, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
-import { saveNotionSettings } from '@/services/notionService';
+import { saveNotionSettings, searchNotionPages } from '@/services/notionService';
 
 const formatDateTime = (value) => {
   if (!value) return 'N/D';
@@ -25,12 +25,6 @@ const getProjectTitle = (project) => (
   project?.title || project?.name || project?.project_name || 'Proyecto'
 );
 
-const normalizeExternalUrl = (value) => {
-  const trimmed = String(value || '').trim();
-  if (!trimmed) return '';
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-};
-
 const ProjectIntegrations = () => {
   const { projectId: routeProjectId } = useParams();
   const [searchParams] = useSearchParams();
@@ -43,7 +37,13 @@ const ProjectIntegrations = () => {
   const [loading, setLoading] = useState(true);
 
   // Notion state
-  const [notionWorkspaceUrl, setNotionWorkspaceUrl] = useState('');
+  const [notionPageId, setNotionPageId] = useState('');
+  const [notionPageTitle, setNotionPageTitle] = useState('');
+  const [notionPageUrl, setNotionPageUrl] = useState('');
+  const [notionSearchQuery, setNotionSearchQuery] = useState('');
+  const [notionSearchResults, setNotionSearchResults] = useState([]);
+  const [notionSearching, setNotionSearching] = useState(false);
+  const [notionSearchError, setNotionSearchError] = useState('');
   const [notionDbId, setNotionDbId] = useState('');
   const [notionTasksDbId, setNotionTasksDbId] = useState('');
   const [notionCampaignsDbId, setNotionCampaignsDbId] = useState('');
@@ -67,7 +67,6 @@ const ProjectIntegrations = () => {
   const isWorker = profile?.role === 'worker';
   const isClientLeader = profile?.role === 'client' && (profile?.is_client_leader || client?.user_id === user?.id);
   const canManageMeta = isAdmin || isWorker || isClientLeader;
-  const notionHref = normalizeExternalUrl(notionWorkspaceUrl);
 
   const applyMetaConnection = useCallback((payload) => {
     setMetaConnection(payload);
@@ -93,7 +92,10 @@ const ProjectIntegrations = () => {
     const { data, error } = await query;
     if (!error && data) {
       setProject(data);
-      setNotionWorkspaceUrl(data.notion_workspace_url || '');
+      setNotionPageId(data.notion_page_id || '');
+      setNotionPageTitle(data.notion_page_title || '');
+      setNotionPageUrl(data.notion_page_url || '');
+      setNotionSearchQuery(data.notion_page_title || getProjectTitle(data));
       setNotionDbId(data.notion_db_id || '');
       setNotionTasksDbId(data.notion_tasks_db_id || '');
       setNotionCampaignsDbId(data.notion_campaigns_db_id || '');
@@ -159,6 +161,39 @@ const ProjectIntegrations = () => {
     );
   }, [callbackMetaStatus, callbackReason]);
 
+  const handleSearchNotionPages = async () => {
+    if (!project?.id || notionSearching) return;
+    setNotionSearching(true);
+    setNotionSearchError('');
+    setNotionNotice('');
+    try {
+      const data = await searchNotionPages(project.id, notionSearchQuery.trim());
+      setNotionSearchResults(data.pages || []);
+      if (!data.pages?.length) {
+        setNotionSearchError('No encontramos páginas. Compartí la página con la integración de Notion y volvé a buscar.');
+      }
+    } catch (err) {
+      setNotionSearchError(err.message || 'No se pudo buscar en Notion.');
+      setNotionSearchResults([]);
+    } finally {
+      setNotionSearching(false);
+    }
+  };
+
+  const handleSelectNotionPage = (page) => {
+    setNotionPageId(page.id || '');
+    setNotionPageTitle(page.title || '');
+    setNotionPageUrl(page.url || '');
+    setNotionSearchQuery(page.title || notionSearchQuery);
+    setNotionSearchError('');
+  };
+
+  const handleClearNotionPage = () => {
+    setNotionPageId('');
+    setNotionPageTitle('');
+    setNotionPageUrl('');
+  };
+
   const handleSaveNotion = async () => {
     if (!project?.id || notionSaving) return;
     setNotionSaving(true);
@@ -166,7 +201,9 @@ const ProjectIntegrations = () => {
     setNotionNotice('');
     try {
       await saveNotionSettings(project.id, {
-        notion_workspace_url: normalizeExternalUrl(notionWorkspaceUrl) || null,
+        notion_page_id: notionPageId || null,
+        notion_page_title: notionPageTitle || null,
+        notion_page_url: notionPageUrl || null,
         notion_db_id: notionDbId.trim() || null,
         notion_tasks_db_id: notionTasksDbId.trim() || null,
         notion_campaigns_db_id: notionCampaignsDbId.trim() || null,
@@ -515,20 +552,17 @@ const ProjectIntegrations = () => {
                 Notion del proyecto
               </h2>
               <p className="text-neutral-500 mt-2 text-sm max-w-lg">
-                Pegá el link del workspace o página de Notion del cliente para abrirlo desde su portal.
-                Los IDs de bases de datos son opcionales y solo sirven si querés mostrar reuniones, tareas o campañas dentro de DTE.
+                Buscá una página compartida con la integración y guardala como raíz del proyecto.
+                DTE lee esa página con Notion API y la muestra dentro del portal.
               </p>
             </div>
-            {notionHref && (
-              <a
-                href={notionHref}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
-              >
-                <ExternalLink size={15} />
-                Abrir Notion
-              </a>
+            {notionPageId && (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                <div className="flex items-center gap-2 font-semibold">
+                  <CheckCircle2 size={15} />
+                  {notionPageTitle || 'Página seleccionada'}
+                </div>
+              </div>
             )}
           </div>
 
@@ -546,16 +580,96 @@ const ProjectIntegrations = () => {
           <div className="mt-6 space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-neutral-500 mb-2">
-                Link del workspace o página de Notion
+                Buscar página de Notion
               </label>
-              <input
-                type="url"
-                value={notionWorkspaceUrl}
-                onChange={(e) => setNotionWorkspaceUrl(e.target.value)}
-                placeholder="https://www.notion.so/..."
-                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm outline-none focus:border-black focus:bg-white transition"
-              />
+              <div className="flex flex-col gap-2 md:flex-row">
+                <div className="relative flex-1">
+                  <input
+                    type="search"
+                    value={notionSearchQuery}
+                    onChange={(e) => setNotionSearchQuery(e.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        handleSearchNotionPages();
+                      }
+                    }}
+                    placeholder="Ej. EPT, GRUPODTE, reuniones..."
+                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-black focus:bg-white"
+                  />
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSearchNotionPages}
+                  disabled={notionSearching}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+                >
+                  {notionSearching ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+                  Buscar
+                </button>
+              </div>
+              {notionSearchError && (
+                <p className="mt-2 text-xs font-medium text-red-500">{notionSearchError}</p>
+              )}
             </div>
+
+            {notionPageId && (
+              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">
+                      Página seleccionada
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-neutral-800">
+                      {notionPageTitle || notionPageId}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearNotionPage}
+                    className="self-start rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-500 transition hover:bg-neutral-100 md:self-auto"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {notionSearchResults.length > 0 && (
+              <div className="rounded-2xl border border-neutral-200 bg-white">
+                <div className="border-b border-neutral-100 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">
+                    Resultados de Notion
+                  </p>
+                </div>
+                <div className="divide-y divide-neutral-100">
+                  {notionSearchResults.map((page) => {
+                    const isSelected = page.id === notionPageId;
+                    return (
+                      <button
+                        key={page.id}
+                        type="button"
+                        onClick={() => handleSelectNotionPage(page)}
+                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-neutral-50"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-neutral-800">
+                            {page.title || 'Página sin título'}
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-neutral-400">
+                            {page.id}
+                          </p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${isSelected ? 'bg-emerald-100 text-emerald-700' : 'bg-neutral-100 text-neutral-500'}`}>
+                          {isSelected ? 'Seleccionada' : 'Elegir'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="pt-2">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">
