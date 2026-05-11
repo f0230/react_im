@@ -192,8 +192,12 @@ const EditProjectModal = ({
                 notion_page_title: notionPageTitle || null,
                 notion_page_url: notionPageUrl || null,
             };
+            const notionChanged =
+                (project.notion_page_id || '') !== (notionData.notion_page_id || '') ||
+                (project.notion_page_title || '') !== (notionData.notion_page_title || '') ||
+                (project.notion_page_url || '') !== (notionData.notion_page_url || '');
 
-            if (canConfigureNotion) {
+            if (canConfigureNotion && notionChanged) {
                 await saveNotionSettings(project.id, notionData);
             }
 
