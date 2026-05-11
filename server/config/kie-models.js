@@ -8,12 +8,13 @@
 
 export const KIE_VIDEO_MODELS = [
   // Veo 3 Models
+  // Updated pricing as of 2026: 60% cheaper than competitors (Replicate, Fal.ai)
   {
     id: 'veo3-fast',
     name: 'Veo 3 Fast',
     category: 'veo3',
-    credits: 80,
-    estimatedUsd: 0.40,
+    credits: 60,
+    estimatedUsd: 0.30,
     duration: '~8s',
     quality: 'Standard',
     description: 'Fast video generation with standard quality',
@@ -22,20 +23,21 @@ export const KIE_VIDEO_MODELS = [
     id: 'veo3-quality',
     name: 'Veo 3 Quality',
     category: 'veo3',
-    credits: 400,
-    estimatedUsd: 2.00,
+    credits: 250,
+    estimatedUsd: 1.25,
     duration: '~8s',
     quality: 'High',
     description: 'High-quality video generation (longer processing time)',
   },
 
   // Market Models (Template-based)
+  // Pricing estimates based on KIE pricing structure
   {
     id: 'market-standard',
     name: 'Market Standard',
     category: 'market',
-    credits: 30,
-    estimatedUsd: 0.15,
+    credits: 24,
+    estimatedUsd: 0.12,
     duration: '~3s',
     quality: 'Standard',
     description: 'Template-based video creation',
@@ -44,8 +46,8 @@ export const KIE_VIDEO_MODELS = [
     id: 'market-hd',
     name: 'Market HD',
     category: 'market',
-    credits: 60,
-    estimatedUsd: 0.30,
+    credits: 48,
+    estimatedUsd: 0.24,
     duration: '~3s',
     quality: 'HD',
     description: 'Template-based HD video creation',
