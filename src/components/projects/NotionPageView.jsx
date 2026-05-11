@@ -152,6 +152,20 @@ function BlockRenderer({ block, onChildPageClick }) {
         return <div className="my-5 h-px bg-neutral-200" />;
     }
 
+    if (block.type === 'database_info') {
+        return (
+            <div className="rounded-2xl border-2 border-blue-200 bg-blue-50 p-4">
+                <div className="flex items-start gap-3">
+                    <BookOpen size={20} className="mt-0.5 shrink-0 text-blue-600" />
+                    <div className="flex-1">
+                        <p className="font-semibold text-blue-900">{block.title || 'Base de datos de Notion'}</p>
+                        <p className="mt-2 text-sm leading-relaxed text-blue-800">{block.text}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     return null;
 }
 

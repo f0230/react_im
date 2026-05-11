@@ -418,10 +418,7 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
         return { type: 'page', page, children };
     } catch (pageError) {
         if (pageError.message?.includes('is a database')) {
-            const [db, children] = await Promise.all([
-                notionRequest(`/databases/${resourceId}`, token),
-                notionRequest(`/blocks/${resourceId}/children?page_size=50${cursorSuffix}`, token),
-            ]);
+            const db = await notionRequest(`/databases/${resourceId}`, token);
             return {
                 type: 'database',
                 page: {
@@ -430,7 +427,19 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
                     url: db.url || null,
                     last_edited_time: db.last_edited_time || null,
                 },
-                children,
+                children: {
+                    results: [
+                        {
+                            id: db.id,
+                            type: 'database_info',
+                            hasChildren: false,
+                            text: `Esta es una base de datos de Notion. Haz clic en el enlace para verla en Notion: ${db.url || 'Sin URL'}`,
+                            title: extractRichText(db.title || []) || 'Base de datos',
+                        },
+                    ],
+                    next_cursor: null,
+                    has_more: false,
+                },
             };
         }
         throw pageError;
