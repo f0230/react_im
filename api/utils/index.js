@@ -5,8 +5,8 @@
  *   action=reports      → Reports handler
  */
 
-import creditsHandler from './credits.js';
-import reportsHandler from './reports.js';
+import creditsHandler from '../../server/api-handlers/utils/credits.js';
+import reportsHandler from '../../server/api-handlers/utils/reports.js';
 
 function getAction(req) {
   let action = req.query?.action || req.query?.type;

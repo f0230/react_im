@@ -5,8 +5,8 @@
  *   type=notifications  → Notifications & webhooks handler
  */
 
-import chatHandler from './chat.js';
-import notificationsHandler from './notifications.js';
+import chatHandler from '../../server/api-handlers/messaging/chat.js';
+import notificationsHandler from '../../server/api-handlers/messaging/notifications.js';
 
 function getType(req) {
   let type = req.query?.type || req.query?.service;

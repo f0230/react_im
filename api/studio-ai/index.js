@@ -5,8 +5,8 @@
  *   tool=blotato   → Blotato social media handler
  */
 
-import studioHandler from './studio.js';
-import blotatoHandler from './blotato.js';
+import studioHandler from '../../server/api-handlers/studio-ai/studio.js';
+import blotatoHandler from '../../server/api-handlers/studio-ai/blotato.js';
 
 function getTool(req) {
   let tool = req.query?.tool || req.query?.service;

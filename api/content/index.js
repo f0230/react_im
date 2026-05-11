@@ -5,8 +5,8 @@
  *   type=planner        → Services content planner handler
  */
 
-import copywriterHandler from './copywriter.js';
-import plannerHandler from './planner.js';
+import copywriterHandler from '../../server/api-handlers/content/copywriter.js';
+import plannerHandler from '../../server/api-handlers/content/planner.js';
 
 function getType(req) {
   let type = req.query?.type || req.query?.service;

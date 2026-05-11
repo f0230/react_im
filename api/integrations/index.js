@@ -7,10 +7,10 @@
  *   service=notion     → Notion API handlers
  */
 
-import figmaHandler from './figma.js';
-import metaHandler from './meta.js';
-import whatsappHandler from './whatsapp.js';
-import notionHandler from './notion.js';
+import figmaHandler from '../../server/api-handlers/integrations/figma.js';
+import metaHandler from '../../server/api-handlers/integrations/meta.js';
+import whatsappHandler from '../../server/api-handlers/integrations/whatsapp.js';
+import notionHandler from '../../server/api-handlers/integrations/notion.js';
 
 function getService(req) {
   if (req.query?.service) return String(req.query.service).toLowerCase().trim();
