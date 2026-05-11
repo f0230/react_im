@@ -1,9 +1,10 @@
 /**
  * Notion API proxy
  * Routes via ?action= param:
- *   action=meetings   → fetch meeting notes from a project's Notion database
- *   action=tasks      → fetch tasks from a project's Notion database
- *   action=campaigns  → fetch campaigns from a project's Notion database
+ *   action=meetings       → fetch meeting notes from a project's Notion database
+ *   action=tasks          → fetch tasks from a project's Notion database
+ *   action=campaigns      → fetch campaigns from a project's Notion database
+ *   action=save-settings  → save the direct Notion URL and optional database IDs
  *
  * Env vars required:
  *   NOTION_TOKEN              — Notion integration token (set once in Vercel)
@@ -259,7 +260,7 @@ async function handleCampaigns(req, res, projectId, token) {
     });
 }
 
-// ─── Admin: save Notion DB IDs ────────────────────────────────────────────────
+// ─── Admin: save Notion settings ──────────────────────────────────────────────
 
 async function handleSaveDbIds(req, res, projectId, userId) {
     const supabase = getSupabase();
@@ -289,6 +290,7 @@ async function handleSaveDbIds(req, res, projectId, userId) {
     }
 
     const updates = {};
+    if ('notion_workspace_url' in body) updates.notion_workspace_url = body.notion_workspace_url || null;
     if ('notion_db_id' in body) updates.notion_db_id = body.notion_db_id || null;
     if ('notion_tasks_db_id' in body) updates.notion_tasks_db_id = body.notion_tasks_db_id || null;
     if ('notion_campaigns_db_id' in body) updates.notion_campaigns_db_id = body.notion_campaigns_db_id || null;
@@ -344,12 +346,12 @@ export default async function handler(req, res) {
         if (action === 'meetings') return await handleMeetings(req, res, projectId, notionToken);
         if (action === 'tasks') return await handleTasks(req, res, projectId, notionToken);
         if (action === 'campaigns') return await handleCampaigns(req, res, projectId, notionToken);
-        if (action === 'save-db-ids' && req.method === 'POST') {
+        if ((action === 'save-settings' || action === 'save-db-ids') && req.method === 'POST') {
             return await handleSaveDbIds(req, res, projectId, user.id);
         }
 
         return res.status(400).json({
-            error: 'Missing or unknown ?action param. Valid: meetings, tasks, campaigns',
+            error: 'Missing or unknown ?action param. Valid: meetings, tasks, campaigns, save-settings',
         });
     } catch (err) {
         console.error('[notion] handler error:', err);

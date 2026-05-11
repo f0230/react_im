@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { Link2, RefreshCw, Trash2, PlugZap, BookOpen, Save } from 'lucide-react';
+import { ExternalLink, Link2, RefreshCw, Trash2, PlugZap, BookOpen, Save } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
-import { saveNotionDbIds } from '@/services/notionService';
+import { saveNotionSettings } from '@/services/notionService';
 
 const formatDateTime = (value) => {
   if (!value) return 'N/D';
@@ -25,6 +25,12 @@ const getProjectTitle = (project) => (
   project?.title || project?.name || project?.project_name || 'Proyecto'
 );
 
+const normalizeExternalUrl = (value) => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
+
 const ProjectIntegrations = () => {
   const { projectId: routeProjectId } = useParams();
   const [searchParams] = useSearchParams();
@@ -37,6 +43,7 @@ const ProjectIntegrations = () => {
   const [loading, setLoading] = useState(true);
 
   // Notion state
+  const [notionWorkspaceUrl, setNotionWorkspaceUrl] = useState('');
   const [notionDbId, setNotionDbId] = useState('');
   const [notionTasksDbId, setNotionTasksDbId] = useState('');
   const [notionCampaignsDbId, setNotionCampaignsDbId] = useState('');
@@ -60,6 +67,7 @@ const ProjectIntegrations = () => {
   const isWorker = profile?.role === 'worker';
   const isClientLeader = profile?.role === 'client' && (profile?.is_client_leader || client?.user_id === user?.id);
   const canManageMeta = isAdmin || isWorker || isClientLeader;
+  const notionHref = normalizeExternalUrl(notionWorkspaceUrl);
 
   const applyMetaConnection = useCallback((payload) => {
     setMetaConnection(payload);
@@ -85,6 +93,7 @@ const ProjectIntegrations = () => {
     const { data, error } = await query;
     if (!error && data) {
       setProject(data);
+      setNotionWorkspaceUrl(data.notion_workspace_url || '');
       setNotionDbId(data.notion_db_id || '');
       setNotionTasksDbId(data.notion_tasks_db_id || '');
       setNotionCampaignsDbId(data.notion_campaigns_db_id || '');
@@ -156,12 +165,13 @@ const ProjectIntegrations = () => {
     setNotionError('');
     setNotionNotice('');
     try {
-      await saveNotionDbIds(project.id, {
+      await saveNotionSettings(project.id, {
+        notion_workspace_url: normalizeExternalUrl(notionWorkspaceUrl) || null,
         notion_db_id: notionDbId.trim() || null,
         notion_tasks_db_id: notionTasksDbId.trim() || null,
         notion_campaigns_db_id: notionCampaignsDbId.trim() || null,
       });
-      setNotionNotice('IDs de Notion guardados correctamente.');
+      setNotionNotice('Configuración de Notion guardada correctamente.');
     } catch (err) {
       setNotionError(err.message || 'No se pudo guardar.');
     } finally {
@@ -502,13 +512,24 @@ const ProjectIntegrations = () => {
                 Integración Notion
               </div>
               <h2 className="text-2xl md:text-3xl font-black text-neutral-900 tracking-tight">
-                Bases de datos por proyecto
+                Notion del proyecto
               </h2>
               <p className="text-neutral-500 mt-2 text-sm max-w-lg">
-                Pegá los IDs de las bases de datos de Notion que querés mostrarle al cliente en su portal.
-                El ID se obtiene de la URL de Notion: <code className="bg-neutral-100 px-1 py-0.5 rounded text-xs">notion.so/workspace/<strong>ID-ACA</strong>?v=...</code>
+                Pegá el link del workspace o página de Notion del cliente para abrirlo desde su portal.
+                Los IDs de bases de datos son opcionales y solo sirven si querés mostrar reuniones, tareas o campañas dentro de DTE.
               </p>
             </div>
+            {notionHref && (
+              <a
+                href={notionHref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+              >
+                <ExternalLink size={15} />
+                Abrir Notion
+              </a>
+            )}
           </div>
 
           {notionError && (
@@ -523,6 +544,28 @@ const ProjectIntegrations = () => {
           )}
 
           <div className="mt-6 space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wide text-neutral-500 mb-2">
+                Link del workspace o página de Notion
+              </label>
+              <input
+                type="url"
+                value={notionWorkspaceUrl}
+                onChange={(e) => setNotionWorkspaceUrl(e.target.value)}
+                placeholder="https://www.notion.so/..."
+                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm outline-none focus:border-black focus:bg-white transition"
+              />
+            </div>
+
+            <div className="pt-2">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">
+                Opcional: bases de datos embebidas en el portal
+              </p>
+              <p className="mt-1 text-xs text-neutral-400">
+                Solo completá esto si ya tenés databases de Notion compartidas con la integración.
+              </p>
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase tracking-wide text-neutral-500 mb-2">
                 Base de datos de Reuniones
@@ -570,7 +613,7 @@ const ProjectIntegrations = () => {
                 className="inline-flex items-center gap-2 rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60 transition"
               >
                 <Save size={15} />
-                {notionSaving ? 'Guardando...' : 'Guardar IDs de Notion'}
+                {notionSaving ? 'Guardando...' : 'Guardar Notion'}
               </button>
             </div>
           </div>
@@ -581,4 +624,3 @@ const ProjectIntegrations = () => {
 };
 
 export default ProjectIntegrations;
-

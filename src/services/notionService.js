@@ -41,17 +41,17 @@ export async function fetchCampaigns(projectId, cursor = null) {
     return notionFetch(params);
 }
 
-export async function saveNotionDbIds(projectId, ids) {
+export async function saveNotionSettings(projectId, settings) {
     const token = await getAuthToken();
     if (!token) throw new Error('No autenticado.');
 
-    const res = await fetch(`/api/notion?action=save-db-ids&projectId=${projectId}`, {
+    const res = await fetch(`/api/notion?action=save-settings&projectId=${projectId}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(ids),
+        body: JSON.stringify(settings),
     });
 
     if (!res.ok) {
@@ -61,3 +61,5 @@ export async function saveNotionDbIds(projectId, ids) {
 
     return res.json();
 }
+
+export const saveNotionDbIds = saveNotionSettings;

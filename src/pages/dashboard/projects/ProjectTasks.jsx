@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Briefcase, CalendarDays, CheckSquare, Megaphone } from 'lucide-react';
+import { ArrowLeft, BookOpen, Briefcase, CalendarDays, CheckSquare, ExternalLink, Megaphone } from 'lucide-react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -39,6 +39,12 @@ const SERVICE_CARDS = [
   { key: 'tasks', icon: CheckSquare, label: 'Tareas' },
   { key: 'campaigns', icon: Megaphone, label: 'Campañas' },
 ];
+
+const normalizeExternalUrl = (value) => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
 
 const ProjectTasks = () => {
   const { t } = useTranslation();
@@ -83,7 +89,7 @@ const ProjectTasks = () => {
 
     const { data, error } = await supabase
       .from('projects')
-      .select('id, title, name, project_name, avatar_url, profile_image_url')
+      .select('id, title, name, project_name, avatar_url, profile_image_url, notion_workspace_url')
       .eq('id', activeProjectId)
       .maybeSingle();
 
@@ -160,6 +166,10 @@ const ProjectTasks = () => {
   const projectTitle = getProjectTitle(selectedProject, t('dashboard.projects.untitled'));
   const projectLogo = getProjectLogo(selectedProject);
   const projectInitials = getProjectInitials(selectedProject);
+  const notionUrl = normalizeExternalUrl(selectedProject?.notion_workspace_url);
+  const serviceCards = notionUrl
+    ? [...SERVICE_CARDS, { key: 'notion', icon: BookOpen, label: 'Notion', externalUrl: notionUrl }]
+    : SERVICE_CARDS;
 
   return (
     <div className="min-h-screen bg-[#f2f2f2] px-6 py-8 font-product md:px-10 md:py-10">
@@ -196,8 +206,8 @@ const ProjectTasks = () => {
         </motion.div>
 
         {/* Cards */}
-        <div className="grid gap-5 md:grid-cols-3">
-          {SERVICE_CARDS.map((card, index) => {
+        <div className={`grid gap-5 ${notionUrl ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+          {serviceCards.map((card, index) => {
             const Icon = card.icon;
             const isActive = activeServiceKey === card.key;
             return (
@@ -206,7 +216,13 @@ const ProjectTasks = () => {
                 initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ ...PANEL_SPRING, delay: index * 0.04 }}
-                onClick={() => setActiveServiceKey(isActive ? null : card.key)}
+                onClick={() => {
+                  if (card.externalUrl) {
+                    window.open(card.externalUrl, '_blank', 'noopener,noreferrer');
+                    return;
+                  }
+                  setActiveServiceKey(isActive ? null : card.key);
+                }}
                 className={[
                   'min-h-[190px] rounded-[30px] border bg-[#e7e7e7] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] cursor-pointer transition-all duration-200 hover:bg-[#e0e0e0] md:min-h-[210px] md:p-8',
                   isActive ? 'border-black/20 ring-2 ring-black/10' : 'border-white/70',
@@ -231,7 +247,11 @@ const ProjectTasks = () => {
                     <h2 className="max-w-[12ch] text-[2rem] font-medium leading-[0.95] tracking-tight text-neutral-700 md:text-[2.25rem]">
                       {card.label}
                     </h2>
-                    <Icon size={20} className={isActive ? 'text-neutral-700' : 'text-neutral-400'} />
+                    {card.externalUrl ? (
+                      <ExternalLink size={20} className="text-neutral-400" />
+                    ) : (
+                      <Icon size={20} className={isActive ? 'text-neutral-700' : 'text-neutral-400'} />
+                    )}
                   </div>
                 </div>
               </motion.div>

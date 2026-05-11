@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2, Database } from 'lucide-react';
+import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { BlotatoConfigModal } from '@/components/projects/BlotatoConfigModal';
+
+const normalizeExternalUrl = (value) => {
+    const trimmed = String(value || '').trim();
+    if (!trimmed) return '';
+    return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
 
 const EditProjectModal = ({
     isOpen,
@@ -21,7 +27,7 @@ const EditProjectModal = ({
         figma_url: '',
         jam_url: '',
         drive_url: '',
-        notion_db_id: '',
+        notion_workspace_url: '',
         avatar_url: '',
     });
     const [loading, setLoading] = useState(false);
@@ -42,6 +48,7 @@ const EditProjectModal = ({
                 figma_url: project.figma_url || '',
                 jam_url: project.jam_url || '',
                 drive_url: project.drive_url || '',
+                notion_workspace_url: project.notion_workspace_url || '',
                 avatar_url: project.avatar_url || project.profile_image_url || '',
             });
             setError(null);
@@ -120,6 +127,7 @@ const EditProjectModal = ({
                 figma_url: formData.figma_url || null,
                 jam_url: formData.jam_url || null,
                 drive_url: formData.drive_url || null,
+                notion_workspace_url: normalizeExternalUrl(formData.notion_workspace_url) || null,
                 avatar_url: formData.avatar_url || null,
             };
 
@@ -271,6 +279,22 @@ const EditProjectModal = ({
                                                                 onChange={handleChange}
                                                                 className={`${inputClass} pl-10`}
                                                                 placeholder="https://drive.google.com/drive/folders/..."
+                                                            />
+                                                            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                                <LinkIcon size={16} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <label className={labelClass}>Link de Notion</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                name="notion_workspace_url"
+                                                                value={formData.notion_workspace_url}
+                                                                onChange={handleChange}
+                                                                className={`${inputClass} pl-10`}
+                                                                placeholder="https://www.notion.so/..."
                                                             />
                                                             <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
                                                                 <LinkIcon size={16} />

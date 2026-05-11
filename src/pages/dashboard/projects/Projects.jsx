@@ -42,6 +42,7 @@ const getProjectPreviewState = (project) => ({
         project_name: project?.project_name || null,
         avatar_url: project?.avatar_url || null,
         profile_image_url: project?.profile_image_url || null,
+        notion_workspace_url: project?.notion_workspace_url || null,
     },
 });
 

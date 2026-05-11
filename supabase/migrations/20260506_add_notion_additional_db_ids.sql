@@ -12,3 +12,5 @@ comment on column projects.notion_tasks_db_id is
 comment on column projects.notion_campaigns_db_id is
   'Notion database ID for this project''s campaigns. '
   'Obtain from the Notion database URL: notion.so/<workspace>/<DATABASE_ID>?v=...';
+
+
