@@ -6,7 +6,12 @@
 function getKieApiKey(res) {
   const key = process.env.KIE_API_KEY || process.env.VITE_KIE_API_KEY;
   if (!key) {
-    res.status(500).json({ error: 'KIE_API_KEY not configured on server.' });
+    console.error('[kie-credits] Missing KIE_API_KEY environment variable');
+    res.status(500).json({
+      error: 'KIE_API_KEY not configured',
+      hint: 'Add KIE_API_KEY to Vercel Environment Variables (Settings > Environment Variables)',
+      status: 'configuration_error',
+    });
     return null;
   }
   return key;
