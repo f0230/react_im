@@ -13,6 +13,10 @@ const SUPPORTED_TEXT_BLOCKS = new Set([
     'callout',
     'toggle',
     'table_of_contents',
+    'synced_block',
+    'column',
+    'video',
+    'audio',
 ]);
 
 function BlockText({ block }) {
@@ -162,6 +166,77 @@ function BlockRenderer({ block, onChildPageClick }) {
                         <p className="mt-2 text-sm leading-relaxed text-blue-800">{block.text}</p>
                     </div>
                 </div>
+            </div>
+        );
+    }
+
+    if (block.type === 'video' && block.url) {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
+                <video controls className="w-full max-h-[400px]">
+                    <source src={block.url} />
+                    Tu navegador no soporta videos.
+                </video>
+                {block.caption && <p className="px-4 py-3 text-xs text-neutral-400">{block.caption}</p>}
+            </div>
+        );
+    }
+
+    if (block.type === 'audio' && block.url) {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                <audio controls className="w-full">
+                    <source src={block.url} />
+                    Tu navegador no soporta audio.
+                </audio>
+                {block.caption && <p className="mt-2 text-xs text-neutral-400">{block.caption}</p>}
+            </div>
+        );
+    }
+
+    if (block.type === 'table') {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white overflow-x-auto p-4">
+                <p className="text-sm text-neutral-600">Tabla de Notion (contenido no renderizado)</p>
+            </div>
+        );
+    }
+
+    if (block.type === 'column_list') {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                <p className="text-sm text-neutral-600">Columnas de Notion (contenido no renderizado)</p>
+            </div>
+        );
+    }
+
+    if (block.type === 'synced_block') {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                <p className="text-sm text-neutral-600">Bloque sincronizado de Notion</p>
+                {block.text && <p className="mt-2 text-sm text-neutral-700">{block.text}</p>}
+            </div>
+        );
+    }
+
+    if (block.type === 'column') {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                {block.text && <p className="text-sm text-neutral-700">{block.text}</p>}
+            </div>
+        );
+    }
+
+    if (block.type === 'unsupported') {
+        return null;
+    }
+
+    if (block.text || block.title) {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-600">
+                <p className="text-xs font-mono text-neutral-400 mb-1">Tipo: {block.type}</p>
+                {block.title && <p className="font-semibold text-neutral-800">{block.title}</p>}
+                {block.text && <p className="text-neutral-700">{block.text}</p>}
             </div>
         );
     }
