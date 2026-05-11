@@ -19,15 +19,15 @@
   "rewrites": [
     {
       "source": "/api/reports-ingest",
-      "destination": "/api/reports?action=reports-ingest"
+      "destination": "/api/utils?action=reports&type=reports-ingest"
     },
     {
       "source": "/api/reports-ai-context",
-      "destination": "/api/reports?action=reports-ai-context"
+      "destination": "/api/utils?action=reports&type=reports-ai-context"
     },
     {
       "source": "/api/reports-ocr-summary",
-      "destination": "/api/reports?action=reports-ingest"
+      "destination": "/api/utils?action=reports&type=reports-ingest"
     },
     {
       "source": "/api/cal/:action",
@@ -35,63 +35,63 @@
     },
     {
       "source": "/api/meta/:action",
-      "destination": "/api/meta?action=:action"
+      "destination": "/api/integrations?service=meta&action=:action"
     },
     {
       "source": "/api/whatsapp-send",
-      "destination": "/api/whatsapp?action=send"
+      "destination": "/api/integrations?service=whatsapp&action=send"
     },
     {
       "source": "/api/whatsapp-webhook",
-      "destination": "/api/whatsapp?action=webhook"
+      "destination": "/api/integrations?service=whatsapp&action=webhook"
     },
     {
       "source": "/api/whatsapp-ai-toggle",
-      "destination": "/api/whatsapp?action=ai-toggle"
+      "destination": "/api/integrations?service=whatsapp&action=ai-toggle"
     },
     {
       "source": "/api/figma-auth/login",
-      "destination": "/api/figma?action=auth-login"
+      "destination": "/api/integrations?service=figma&action=auth-login"
     },
     {
       "source": "/api/figma-auth/callback",
-      "destination": "/api/figma?action=auth-callback"
+      "destination": "/api/integrations?service=figma&action=auth-callback"
     },
     {
       "source": "/api/figma-webhook",
-      "destination": "/api/figma?action=webhook"
+      "destination": "/api/integrations?service=figma&action=webhook"
     },
     {
       "source": "/api/figma/comments",
-      "destination": "/api/figma?action=comments"
+      "destination": "/api/integrations?service=figma&action=comments"
     },
     {
       "source": "/api/generate-brand-docs",
-      "destination": "/api/post-copywriter?action=generate-brand-docs"
+      "destination": "/api/content?type=copywriter&action=generate-brand-docs"
     },
     {
       "source": "/api/studio-proxy",
-      "destination": "/api/studio?action=proxy"
+      "destination": "/api/studio-ai?tool=studio&action=proxy"
     },
     {
       "source": "/api/kie-upload",
-      "destination": "/api/studio?action=kie-upload"
+      "destination": "/api/studio-ai?tool=studio&action=kie-upload"
     },
     {
       "source": "/api/notion/meetings",
-      "destination": "/api/notion?action=meetings"
+      "destination": "/api/integrations?service=notion&action=meetings"
     },
     {
       "source": "/api/client-welcome-email",
-      "destination": "/api/notifications?action=welcome-email"
+      "destination": "/api/messaging?type=notifications&action=welcome-email"
     },
     {
       "source": "/api/project-created",
-      "destination": "/api/notifications?action=project-created"
+      "destination": "/api/messaging?type=notifications&action=project-created"
     },
     {
       "source": "/api/slack-notify",
-      "destination": "/api/notifications?action=slack-notify"
+      "destination": "/api/messaging?type=notifications&action=slack-notify"
     },
     {
       "source": "/((?!api/|assets/|.*\\..*).*)",
