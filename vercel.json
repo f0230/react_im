@@ -94,6 +94,10 @@
       "destination": "/api/messaging?type=notifications&action=slack-notify"
     },
     {
+      "source": "/api/kie-credits",
+      "destination": "/api/utils?action=credits"
+    },
+    {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
