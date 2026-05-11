@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2 } from 'lucide-react';
+import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2, BookOpen, CheckCircle2, Loader2, Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { BlotatoConfigModal } from '@/components/projects/BlotatoConfigModal';
+import { useAuth } from '@/context/AuthContext';
+import { saveNotionSettings, searchNotionPages } from '@/services/notionService';
 
 const EditProjectModal = ({
     isOpen,
@@ -16,6 +18,7 @@ const EditProjectModal = ({
 }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
+    const { profile } = useAuth();
     const [formData, setFormData] = useState({
         name: '',
         figma_url: '',
@@ -28,11 +31,19 @@ const EditProjectModal = ({
     const [uploading, setUploading] = useState(false);
     const [linkedChannel, setLinkedChannel] = useState(null);
     const [isBlotatoConfigOpen, setIsBlotatoConfigOpen] = useState(false);
+    const [notionPageId, setNotionPageId] = useState('');
+    const [notionPageTitle, setNotionPageTitle] = useState('');
+    const [notionPageUrl, setNotionPageUrl] = useState('');
+    const [notionSearchQuery, setNotionSearchQuery] = useState('');
+    const [notionSearchResults, setNotionSearchResults] = useState([]);
+    const [notionSearching, setNotionSearching] = useState(false);
+    const [notionError, setNotionError] = useState('');
     const {
         allAccounts,
         assignedAccounts,
         syncing: blotatoSyncing,
     } = useBlotatoAccounts(project?.id);
+    const canConfigureNotion = profile?.role === 'admin';
 
     useEffect(() => {
         if (isOpen && project) {
@@ -44,6 +55,12 @@ const EditProjectModal = ({
                 avatar_url: project.avatar_url || project.profile_image_url || '',
             });
             setError(null);
+            setNotionError('');
+            setNotionPageId(project.notion_page_id || '');
+            setNotionPageTitle(project.notion_page_title || '');
+            setNotionPageUrl(project.notion_page_url || '');
+            setNotionSearchQuery(project.notion_page_title || project.name || project.title || project.project_name || '');
+            setNotionSearchResults([]);
             setLinkedChannel(null);
 
             // Load the linked TeamChat channel
@@ -69,6 +86,40 @@ const EditProjectModal = ({
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleSearchNotionPages = async () => {
+        if (!project?.id || notionSearching) return;
+        setNotionSearching(true);
+        setNotionError('');
+
+        try {
+            const data = await searchNotionPages(project.id, notionSearchQuery.trim());
+            const pages = data.pages || [];
+            setNotionSearchResults(pages);
+            if (pages.length === 0) {
+                setNotionError('No encontramos páginas. Compartí la página con la integración de Notion y volvé a buscar.');
+            }
+        } catch (err) {
+            setNotionError(err.message || 'No se pudo buscar en Notion.');
+            setNotionSearchResults([]);
+        } finally {
+            setNotionSearching(false);
+        }
+    };
+
+    const handleSelectNotionPage = (page) => {
+        setNotionPageId(page.id || '');
+        setNotionPageTitle(page.title || '');
+        setNotionPageUrl(page.url || '');
+        setNotionSearchQuery(page.title || notionSearchQuery);
+        setNotionError('');
+    };
+
+    const handleClearNotionPage = () => {
+        setNotionPageId('');
+        setNotionPageTitle('');
+        setNotionPageUrl('');
     };
 
     const handleFileChange = async (e) => {
@@ -136,10 +187,21 @@ const EditProjectModal = ({
                 throw updateError;
             }
 
+            const notionData = {
+                notion_page_id: notionPageId || null,
+                notion_page_title: notionPageTitle || null,
+                notion_page_url: notionPageUrl || null,
+            };
+
+            if (canConfigureNotion) {
+                await saveNotionSettings(project.id, notionData);
+            }
+
             if (onUpdated) {
                 onUpdated({
                     ...project,
                     ...formData,
+                    ...notionData,
                     [nameColumn]: formData.name
                 });
             }
@@ -332,6 +394,96 @@ const EditProjectModal = ({
                                                     )}
                                                 </div>
                                             </div>
+
+                                            {canConfigureNotion && (
+                                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5">
+                                                    <div className="mb-3 flex items-start justify-between gap-3">
+                                                        <div className="flex min-w-0 items-start gap-2">
+                                                            <BookOpen size={16} className="mt-0.5 shrink-0 text-neutral-400" />
+                                                            <div className="min-w-0">
+                                                                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Notion</p>
+                                                                <p className="text-xs font-semibold text-neutral-700">
+                                                                    {notionPageId ? (notionPageTitle || 'Página seleccionada') : 'Sin página conectada'}
+                                                                </p>
+                                                                <p className="text-[11px] text-neutral-400">
+                                                                    Buscá una página compartida con la integración para mostrarla en Servicios.
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        {notionPageId && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleClearNotionPage}
+                                                                className="shrink-0 text-[11px] font-semibold text-neutral-500 hover:text-black underline underline-offset-2 transition"
+                                                            >
+                                                                Quitar
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                                        <div className="relative min-w-0 flex-1">
+                                                            <input
+                                                                type="search"
+                                                                value={notionSearchQuery}
+                                                                onChange={(event) => setNotionSearchQuery(event.target.value)}
+                                                                onKeyDown={(event) => {
+                                                                    if (event.key === 'Enter') {
+                                                                        event.preventDefault();
+                                                                        handleSearchNotionPages();
+                                                                    }
+                                                                }}
+                                                                className={`${inputClass} pl-10`}
+                                                                placeholder="Ej: EPT, GRUPODTE, reuniones..."
+                                                            />
+                                                            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400">
+                                                                <Search size={16} />
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleSearchNotionPages}
+                                                            disabled={notionSearching}
+                                                            className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-bold text-neutral-700 transition hover:bg-neutral-100 disabled:opacity-60"
+                                                        >
+                                                            {notionSearching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
+                                                            Buscar
+                                                        </button>
+                                                    </div>
+
+                                                    {notionError && (
+                                                        <p className="mt-2 text-xs font-medium text-red-500">{notionError}</p>
+                                                    )}
+
+                                                    {notionSearchResults.length > 0 && (
+                                                        <div className="mt-3 max-h-48 overflow-y-auto rounded-xl border border-neutral-200 bg-white">
+                                                            {notionSearchResults.map((page) => {
+                                                                const isSelected = page.id === notionPageId;
+                                                                return (
+                                                                    <button
+                                                                        key={page.id}
+                                                                        type="button"
+                                                                        onClick={() => handleSelectNotionPage(page)}
+                                                                        className="flex w-full items-center justify-between gap-3 border-b border-neutral-100 px-3 py-2.5 text-left last:border-b-0 hover:bg-neutral-50"
+                                                                    >
+                                                                        <div className="min-w-0">
+                                                                            <p className="truncate text-xs font-semibold text-neutral-800">
+                                                                                {page.title || 'Página sin título'}
+                                                                            </p>
+                                                                            <p className="truncate text-[10px] text-neutral-400">{page.id}</p>
+                                                                        </div>
+                                                                        {isSelected ? (
+                                                                            <CheckCircle2 size={15} className="shrink-0 text-emerald-500" />
+                                                                        ) : (
+                                                                            <span className="shrink-0 text-[10px] font-bold text-neutral-400">Elegir</span>
+                                                                        )}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {error && (
                                                 <p className="text-xs text-red-500 bg-red-50 p-2 rounded-lg text-center">

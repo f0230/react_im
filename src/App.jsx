@@ -31,7 +31,6 @@ const Projects = lazyRoute(routeKeys.projects);
 const ProjectTasks = lazyRoute(routeKeys.projectTasks);
 const ProjectContentPlanning = lazyRoute(routeKeys.projectContentPlanning);
 const ProjectReports = lazyRoute(routeKeys.projectReports);
-const ProjectIntegrations = lazyRoute(routeKeys.projectIntegrations);
 const ProjectBrandDocs    = lazyRoute(routeKeys.projectBrandDocs);
 const ClientAppointments = lazyRoute(routeKeys.clientAppointments);
 const Invoices = lazyRoute(routeKeys.invoices);
@@ -51,6 +50,11 @@ const PortalLayout = lazy(() => import('@/layouts/PortalLayout'));
 const FinancesPeriodRedirect = () => {
   const { periodId } = useParams();
   return <Navigate to={`/dashboard/finances?tab=periodos&period=${periodId}`} replace />;
+};
+
+const ProjectIntegrationsRedirect = () => {
+  const { projectId } = useParams();
+  return <Navigate to={projectId ? `/dashboard/projects/${projectId}/services` : '/dashboard/projects'} replace />;
 };
 
 const AppContent = () => {
@@ -183,7 +187,7 @@ const AppContent = () => {
             <Route path="tasks" element={<ProjectTasks />} />
             <Route path="content-planning" element={<ProjectContentPlanning />} />
             <Route path="reports" element={<ProjectReports />} />
-            <Route path="integrations" element={<ProjectIntegrations />} />
+            <Route path="integrations" element={<ProjectIntegrationsRedirect />} />
             <Route path="invoices" element={<Invoices />} />
             <Route path="finances" element={<FinancesDashboard />} />
             <Route path="finances/ledger" element={<Navigate to="/dashboard/finances?tab=dashboard" replace />} />
@@ -197,7 +201,7 @@ const AppContent = () => {
             <Route path="projects/:projectId/services" element={<ProjectTasks />} />
             <Route path="services" element={<ProjectTasks />} />
             <Route path="projects/:projectId/reports" element={<Navigate to="/dashboard/reports" replace />} />
-            <Route path="projects/:projectId/integrations" element={<ProjectIntegrations />} />
+            <Route path="projects/:projectId/integrations" element={<ProjectIntegrationsRedirect />} />
             <Route path="projects/:projectId/brand-docs" element={<ProjectBrandDocs />} />
             <Route path="projects/:projectId/invoices" element={<Navigate to="/dashboard/invoices" replace />} />
             <Route path="inbox" element={<Inbox />} />

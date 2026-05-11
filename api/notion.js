@@ -29,9 +29,18 @@ const PAGE_SIZE = 20;
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 
 function getSupabase() {
-    const url = process.env.VITE_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) throw new Error('Supabase credentials not configured');
+    const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const key =
+        process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.SUPABASE_SERVICE_KEY ||
+        process.env.SERVICE_ROLE_KEY;
+    if (!url || !key) {
+        const missing = [
+            !url ? 'SUPABASE_URL or VITE_SUPABASE_URL' : null,
+            !key ? 'SUPABASE_SERVICE_ROLE_KEY' : null,
+        ].filter(Boolean).join(', ');
+        throw new Error(`Supabase server credentials missing: ${missing}`);
+    }
     return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 }
 
@@ -42,8 +51,8 @@ async function getUserFromToken(req) {
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (!token) return null;
 
-    const supabaseUrl = process.env.VITE_SUPABASE_URL;
-    const anonKey = process.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+    const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
     if (!supabaseUrl || !anonKey) return null;
 
     const client = createClient(supabaseUrl, anonKey, {

@@ -39,6 +39,7 @@ import EnhancerNode from './components/nodes/EnhancerNode';
 import MultiPromptNode from './components/nodes/MultiPromptNode';
 import ElementNode from './components/nodes/ElementNode';
 import WorkflowEdge from './components/edges/WorkflowEdge';
+import { CreditIndicator } from './components/CreditIndicator';
 import { createInitialWorkflow, useWorkflowStore } from './lib/store';
 import { useElkLayout } from './lib/useElkLayout';
 import { useWorkflowSync } from './lib/useWorkflowSync';
@@ -565,6 +566,11 @@ function WorkflowApp() {
 
         {/* Sync status indicator (A4) */}
         <SyncIndicator status={syncStatus} />
+
+        <div className="w-px h-5 bg-white/10" />
+
+        {/* Credit indicator */}
+        <CreditIndicator />
 
         <div className="w-px h-5 bg-white/10" />
 
