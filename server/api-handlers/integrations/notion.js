@@ -296,6 +296,91 @@ function formatCampaign(page) {
     };
 }
 
+function formatDatabaseRowProperty(prop) {
+    if (!prop) return null;
+
+    const { type } = prop;
+
+    switch (type) {
+        case 'title':
+            return { type: 'text', value: extractRichText(prop.title || []) };
+        case 'rich_text':
+            return { type: 'text', value: extractRichText(prop.rich_text || []) };
+        case 'status':
+            return {
+                type: 'badge',
+                value: prop.status?.name || null,
+                color: prop.status?.color || 'gray',
+            };
+        case 'select':
+            return {
+                type: 'badge',
+                value: prop.select?.name || null,
+                color: prop.select?.color || 'gray',
+            };
+        case 'multi_select':
+            return {
+                type: 'badges',
+                value: (prop.multi_select || []).map(s => ({
+                    name: s.name,
+                    color: s.color,
+                })),
+            };
+        case 'date':
+            return {
+                type: 'date',
+                value: prop.date?.start || null,
+                end: prop.date?.end || null,
+            };
+        case 'number':
+            return { type: 'number', value: prop.number };
+        case 'checkbox':
+            return { type: 'checkbox', value: prop.checkbox };
+        case 'people':
+            return {
+                type: 'people',
+                value: (prop.people || []).map(p => p.name),
+            };
+        case 'email':
+            return { type: 'email', value: prop.email };
+        case 'phone_number':
+            return { type: 'phone', value: prop.phone_number };
+        case 'url':
+            return { type: 'url', value: prop.url };
+        default:
+            return null;
+    }
+}
+
+function formatDatabaseRow(row) {
+    const properties = row.properties || {};
+    const titleProp = Object.entries(properties).find(([, p]) => p?.type === 'title');
+    const titleValue = titleProp ? extractRichText(titleProp[1]?.title || []) : `Entrada #${row.id.slice(0, 8)}`;
+
+    const formattedProps = {};
+    Object.entries(properties).forEach(([propName, prop]) => {
+        if (prop?.type !== 'title') {
+            const formatted = formatDatabaseRowProperty(prop);
+            if (formatted) {
+                formattedProps[propName] = formatted;
+            }
+        }
+    });
+
+    return {
+        id: row.id,
+        type: 'database_row',
+        hasChildren: false,
+        text: titleValue,
+        title: titleValue,
+        url: row.url || null,
+        properties: formattedProps,
+        caption: '',
+        checked: null,
+        language: null,
+    };
+}
+
 // ─── Action handlers ─────────────────────────────────────────────────────────
 
 async function handleMeetings(req, res, projectId, token) {
@@ -423,23 +508,7 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
                 queryNotionDb(resourceId, token, cursor, null),
             ]);
 
-            const dbRows = (dbQuery.results || []).map((row) => {
-                const properties = row.properties || {};
-                const titleProp = Object.values(properties).find(p => p?.type === 'title');
-                const title = extractRichText(titleProp?.title || []) || `Entrada #${row.id.slice(0, 8)}`;
-
-                return {
-                    id: row.id,
-                    type: 'database_row',
-                    hasChildren: false,
-                    text: title,
-                    title: title,
-                    url: row.url || null,
-                    caption: '',
-                    checked: null,
-                    language: null,
-                };
-            });
+            const dbRows = (dbQuery.results || []).map(formatDatabaseRow);
 
             return {
                 type: 'database',

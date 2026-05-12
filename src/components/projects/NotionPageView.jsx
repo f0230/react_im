@@ -171,12 +171,89 @@ function BlockRenderer({ block, onChildPageClick }) {
     }
 
     if (block.type === 'database_row') {
+        const properties = block.properties || {};
+        const propEntries = Object.entries(properties).slice(0, 4);
+
+        const colorMap = {
+            red: 'bg-red-100 text-red-700',
+            orange: 'bg-orange-100 text-orange-700',
+            yellow: 'bg-yellow-100 text-yellow-700',
+            green: 'bg-green-100 text-green-700',
+            blue: 'bg-blue-100 text-blue-700',
+            purple: 'bg-purple-100 text-purple-700',
+            pink: 'bg-pink-100 text-pink-700',
+            gray: 'bg-neutral-100 text-neutral-600',
+        };
+
         return (
-            <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 transition hover:bg-neutral-50">
-                <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 shrink-0 rounded-full bg-neutral-300" />
-                    <p className="text-sm font-medium text-neutral-800">{block.title || 'Fila sin título'}</p>
-                </div>
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4 transition hover:bg-neutral-50">
+                <p className="text-sm font-semibold text-neutral-900 mb-3">{block.title || 'Fila sin título'}</p>
+                {propEntries.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                        {propEntries.map(([propName, prop]) => {
+                            if (!prop || !prop.value) return null;
+
+                            if (prop.type === 'badge' && prop.value) {
+                                const colorClass = colorMap[prop.color] || colorMap.gray;
+                                return (
+                                    <span
+                                        key={propName}
+                                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${colorClass}`}
+                                    >
+                                        {prop.value}
+                                    </span>
+                                );
+                            }
+
+                            if (prop.type === 'badges' && Array.isArray(prop.value)) {
+                                return (
+                                    <div key={propName} className="flex flex-wrap gap-1.5">
+                                        {prop.value.map((badge, idx) => {
+                                            const colorClass = colorMap[badge.color] || colorMap.gray;
+                                            return (
+                                                <span
+                                                    key={idx}
+                                                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${colorClass}`}
+                                                >
+                                                    {badge.name}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            }
+
+                            if (prop.type === 'date' && prop.value) {
+                                return (
+                                    <span key={propName} className="text-xs bg-neutral-100 text-neutral-600 px-2.5 py-1 rounded-full">
+                                        {new Date(prop.value).toLocaleDateString('es-ES', {
+                                            month: 'short',
+                                            day: 'numeric',
+                                        })}
+                                    </span>
+                                );
+                            }
+
+                            if (prop.type === 'people' && Array.isArray(prop.value)) {
+                                return (
+                                    <span key={propName} className="text-xs bg-neutral-100 text-neutral-600 px-2.5 py-1 rounded-full">
+                                        {prop.value.join(', ')}
+                                    </span>
+                                );
+                            }
+
+                            if (prop.type === 'checkbox') {
+                                return (
+                                    <span key={propName} className="text-xs">
+                                        {prop.value ? '✓' : '○'}
+                                    </span>
+                                );
+                            }
+
+                            return null;
+                        })}
+                    </div>
+                )}
             </div>
         );
     }
