@@ -418,7 +418,29 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
         return { type: 'page', page, children };
     } catch (pageError) {
         if (pageError.message?.includes('is a database')) {
-            const db = await notionRequest(`/databases/${resourceId}`, token);
+            const [db, dbQuery] = await Promise.all([
+                notionRequest(`/databases/${resourceId}`, token),
+                queryNotionDb(resourceId, token, cursor, null),
+            ]);
+
+            const dbRows = (dbQuery.results || []).map((row) => {
+                const properties = row.properties || {};
+                const titleProp = Object.values(properties).find(p => p?.type === 'title');
+                const title = extractRichText(titleProp?.title || []) || `Entrada #${row.id.slice(0, 8)}`;
+
+                return {
+                    id: row.id,
+                    type: 'database_row',
+                    hasChildren: false,
+                    text: title,
+                    title: title,
+                    url: row.url || null,
+                    caption: '',
+                    checked: null,
+                    language: null,
+                };
+            });
+
             return {
                 type: 'database',
                 page: {
@@ -428,17 +450,9 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
                     last_edited_time: db.last_edited_time || null,
                 },
                 children: {
-                    results: [
-                        {
-                            id: db.id,
-                            type: 'database_info',
-                            hasChildren: false,
-                            text: `Esta es una base de datos de Notion. Haz clic en el enlace para verla en Notion: ${db.url || 'Sin URL'}`,
-                            title: extractRichText(db.title || []) || 'Base de datos',
-                        },
-                    ],
-                    next_cursor: null,
-                    has_more: false,
+                    results: dbRows,
+                    next_cursor: dbQuery.next_cursor ?? null,
+                    has_more: dbQuery.has_more ?? false,
                 },
             };
         }
@@ -483,13 +497,17 @@ async function handleSubPage(req, res, projectId, token) {
     const cursor = req.query?.cursor
         ?? new URL(req.url, 'http://localhost').searchParams.get('cursor');
 
-    const { page, children } = await tryLoadPageOrDatabase(pageId, token, cursor);
+    const result = await tryLoadPageOrDatabase(pageId, token, cursor);
+
+    const blocks = result.type === 'database'
+        ? result.children.results
+        : (result.children.results || []).map(formatBlock);
 
     return res.status(200).json({
-        page: formatPageSummary(page),
-        blocks: (children.results || []).map(formatBlock),
-        nextCursor: children.next_cursor ?? null,
-        hasMore: children.has_more ?? false,
+        page: formatPageSummary(result.page),
+        blocks: blocks,
+        nextCursor: result.children.next_cursor ?? null,
+        hasMore: result.children.has_more ?? false,
     });
 }
 

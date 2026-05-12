@@ -170,6 +170,17 @@ function BlockRenderer({ block, onChildPageClick }) {
         );
     }
 
+    if (block.type === 'database_row') {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 transition hover:bg-neutral-50">
+                <div className="flex items-center gap-3">
+                    <div className="h-2 w-2 shrink-0 rounded-full bg-neutral-300" />
+                    <p className="text-sm font-medium text-neutral-800">{block.title || 'Fila sin título'}</p>
+                </div>
+            </div>
+        );
+    }
+
     if (block.type === 'video' && block.url) {
         return (
             <div className="rounded-2xl border border-neutral-200 bg-white overflow-hidden">
