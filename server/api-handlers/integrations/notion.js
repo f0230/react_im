@@ -413,7 +413,7 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
     try {
         const [page, children] = await Promise.all([
             notionRequest(`/pages/${resourceId}`, token),
-            notionRequest(`/blocks/${resourceId}/children?page_size=50${cursorSuffix}`, token),
+            notionRequest(`/blocks/${resourceId}/children?page_size=25${cursorSuffix}`, token),
         ]);
         return { type: 'page', page, children };
     } catch (pageError) {

@@ -318,6 +318,8 @@ const NotionPageView = ({ projectId, onClose }) => {
     };
 
     const handleChildPageClick = useCallback((block) => {
+        setBlocks([]);
+        setError(null);
         setNavStack((prev) => [...prev, { id: block.id, title: block.title }]);
     }, []);
 
