@@ -106,6 +106,26 @@
       "destination": "/api/integrations?service=notion"
     },
     {
+      "source": "/api/blotato",
+      "destination": "/api/studio-ai?tool=blotato"
+    },
+    {
+      "source": "/api/clawbot-team-chat",
+      "destination": "/api/messaging?type=chat"
+    },
+    {
+      "source": "/api/notifications",
+      "destination": "/api/messaging?type=notifications"
+    },
+    {
+      "source": "/api/post-copywriter",
+      "destination": "/api/content?type=copywriter"
+    },
+    {
+      "source": "/api/profile-complete-email",
+      "destination": "/api/messaging?type=notifications&action=profile-complete-email"
+    },
+    {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
     }
