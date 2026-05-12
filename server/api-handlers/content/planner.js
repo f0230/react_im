@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
+import { getSupabaseAdmin } from '../../utils/supabaseServer.js';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 

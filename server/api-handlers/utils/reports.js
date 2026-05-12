@@ -1,4 +1,4 @@
-import { handleReportsAiContext, handleReportsIngest } from '../server/services/reportsPipeline.js';
+import { handleReportsAiContext, handleReportsIngest } from '../../services/reportsPipeline.js';
 
 /**
  * Unified Reports handler.

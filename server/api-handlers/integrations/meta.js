@@ -22,7 +22,7 @@ import {
   sanitizeConnection,
   verifyCurrentUser,
   verifySignedState,
-} from '../server/utils/metaOAuth.js';
+} from '../../utils/metaOAuth.js';
 
 function resolveAction(req) {
   const fromParams = typeof req?.params?.action === 'string' ? req.params.action.trim() : '';

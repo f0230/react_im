@@ -1,6 +1,6 @@
 import axios from 'axios';
 import crypto from 'crypto';
-import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
+import { getSupabaseAdmin } from '../../utils/supabaseServer.js';
 
 function parseJsonBody(req) {
   if (!req.body) return null;

@@ -31,6 +31,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import toast, { Toaster } from 'react-hot-toast';
 
+import dteLogo from '@/assets/dte-white.svg';
 import PromptNode from './components/nodes/PromptNode';
 import ModelNode from './components/nodes/ModelNode';
 import ImageNode from './components/nodes/ImageNode';
@@ -555,9 +556,11 @@ function WorkflowApp() {
 
       {/* Top Bar */}
       <div className="absolute top-4 left-1/2 -translate-x-1/2 h-10 bg-white/8 backdrop-blur-2xl border border-white/10 rounded-full flex items-center px-6 gap-3 z-50 shadow-xl shadow-black/20">
-        <span className="text-sm font-semibold text-white/80 tracking-widest">
-          STUDIO DTE.
-        </span>
+        <img
+          src={dteLogo}
+          alt="DTE"
+          className="h-[18px] w-auto shrink-0 opacity-90"
+        />
 
         <div className="w-px h-5 bg-white/10" />
 

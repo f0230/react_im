@@ -1,5 +1,5 @@
-import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
-import { MODO_STYLE_GUIDE } from '../server/brand-base/modo-style.js';
+import { getSupabaseAdmin } from '../../utils/supabaseServer.js';
+import { MODO_STYLE_GUIDE } from '../../brand-base/modo-style.js';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const DESTINATION_KEYS = ['pageId', 'page_id', 'boardId', 'board_id', 'channelId', 'channel_id'];

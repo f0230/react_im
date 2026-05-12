@@ -13,9 +13,9 @@
 import {
     handleReportsAiContext,
     handleReportsIngest,
-} from '../server/services/reportsPipeline.js';
-import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
-import { verifyAuthenticated } from '../server/utils/auth.js';
+} from '../../services/reportsPipeline.js';
+import { getSupabaseAdmin } from '../../utils/supabaseServer.js';
+import { verifyAuthenticated } from '../../utils/auth.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

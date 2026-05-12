@@ -12,7 +12,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
+import { getSupabaseAdmin } from '../../utils/supabaseServer.js';
 
 const BLOTATO_API_BASE = 'https://backend.blotato.com/v2';
 

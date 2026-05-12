@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from '../server/utils/supabaseServer.js';
+import { getSupabaseAdmin } from '../../utils/supabaseServer.js';
 
 const DEFAULT_CONTEXT_LIMIT = 40;
 const MAX_CONTEXT_LIMIT = 80;
