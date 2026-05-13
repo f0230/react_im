@@ -1,5 +1,6 @@
 // App.jsx
 import React, { Suspense, useEffect, useState, lazy } from "react";
+import { Toaster } from "react-hot-toast";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
@@ -231,6 +232,14 @@ const App = () => {
           <AppContent />
         </AuthProvider>
       </UIProvider>
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: { background: '#1c1c1e', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', fontSize: '13px' },
+          success: { iconTheme: { primary: '#34d399', secondary: '#1c1c1e' } },
+          error:   { iconTheme: { primary: '#f87171', secondary: '#1c1c1e' } },
+        }}
+      />
     </Router>
   );
 };

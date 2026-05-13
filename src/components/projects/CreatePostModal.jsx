@@ -442,6 +442,11 @@ export function CreatePostModal({
   const [coverImageUrl, setCoverImageUrl]       = useState('');
   const [isCoverUploading, setIsCoverUploading] = useState(false);
 
+  // Instagram collaborators (max 3 handles, without @)
+  const [collaborators, setCollaborators]           = useState([]);
+  const [collaboratorInput, setCollaboratorInput]   = useState('');
+  const collaboratorInputRef                        = useRef(null);
+
   // Image-only posts can be sent as feed/carousel or as stories.
   const [formatOverride, setFormatOverride] = useState(null); // null | 'historia'
 
@@ -484,6 +489,8 @@ export function CreatePostModal({
     );
     setCoverImageUrl('');
     setIsCoverUploading(false);
+    setCollaborators([]);
+    setCollaboratorInput('');
     setFormatOverride(null);
     setPageSelections({});
     setSelectedAccountKeys(new Set());
@@ -561,9 +568,10 @@ export function CreatePostModal({
 
   const hasInstagram = selectedAccounts.some((a) => a.platform === 'instagram');
   const hasStoryCapableAccount = selectedAccounts.some((a) => PLATFORM_CONFIG[a.platform]?.mediaTypes?.includes('story'));
-  const canChooseStory = uploadedVideos.length === 0 && uploadedImages.length >= 1 && hasStoryCapableAccount;
+  const canChooseStory = (uploadedImages.length >= 1 || uploadedVideos.length === 1) && hasStoryCapableAccount;
   const effectiveFormat = canChooseStory && formatOverride === 'historia' ? 'historia' : inferredFormat;
   const storyFormatLabel = uploadedImages.length > 1 ? 'Historias' : 'Historia';
+  const isStory = effectiveFormat === 'historia';
   const showCoverUpload = effectiveFormat === 'reel' && hasInstagram;
   const showHistoriaToggle = canChooseStory;
 
@@ -587,7 +595,7 @@ export function CreatePostModal({
     if (accountsLoading) return 'Cargando cuentas...';
     if (!accounts.length) return 'Sin cuentas conectadas. Agrega una en Configuración.';
     if (!selectedAccounts.length) return 'Selecciona al menos una cuenta para publicar.';
-    if (!content.trim()) return 'Escribe algo antes de publicar.';
+    if (!content.trim() && !isStory) return 'Escribe algo antes de publicar.';
     if (isUploadingMedia) return 'Espera a que terminen de subir los archivos.';
     if (isCoverUploading) return 'Espera a que termine de subir la portada.';
     if (mediaItems.some((item) => item.error)) return 'Elimina o vuelve a subir los archivos con error.';
@@ -606,7 +614,7 @@ export function CreatePostModal({
     if (accountsLoading) return 'Cargando cuentas...';
     if (!accounts.length) return 'Sin cuentas conectadas.';
     if (!selectedAccounts.length) return 'Selecciona al menos una cuenta.';
-    if (!content.trim()) return 'Escribe algo antes de guardar el borrador.';
+    if (!content.trim() && !isStory) return 'Escribe algo antes de guardar el borrador.';
     if (isUploadingMedia) return 'Espera a que terminen de subir los archivos.';
     if (isCoverUploading) return 'Espera a que termine de subir la portada.';
     if (mediaItems.some((item) => item.error)) return 'Elimina o vuelve a subir los archivos con error.';
@@ -738,6 +746,8 @@ export function CreatePostModal({
       else if (effectiveFormat === 'historia') tc.mediaType = 'story';
       else delete tc.mediaType;
       if (uploadedVideos.length > 0) delete tc.altText;
+      if (collaborators.length > 0) tc.collaborators = collaborators;
+      else delete tc.collaborators;
     }
 
     if (account.platform === 'facebook') {
@@ -975,6 +985,59 @@ export function CreatePostModal({
                     onClick={() => setFormatOverride('historia')}
                     className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${formatOverride === 'historia' ? 'border-white/20 bg-white/10 text-white/80' : 'border-white/[0.08] text-white/35 hover:text-white/60'}`}
                   >{storyFormatLabel}</button>
+                </div>
+              )}
+
+              {/* Instagram collaborators */}
+              {hasInstagram && (
+                <div className="px-4 pb-3 space-y-2">
+                  <p className="text-[10px] text-white/30 uppercase tracking-wider font-medium">
+                    Colaboradores Instagram <span className="text-white/20 normal-case font-normal">(máx. 3)</span>
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {collaborators.map((handle, i) => (
+                      <span key={i} className="flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full bg-white/[0.07] text-[11px] text-white/65 border border-white/[0.1]">
+                        @{handle}
+                        <button
+                          type="button"
+                          onClick={() => setCollaborators((prev) => prev.filter((_, idx) => idx !== i))}
+                          className="p-0.5 rounded-full text-white/30 hover:text-white/70 transition-colors"
+                        >
+                          <X size={9} />
+                        </button>
+                      </span>
+                    ))}
+                    {collaborators.length < 3 && (
+                      <input
+                        ref={collaboratorInputRef}
+                        type="text"
+                        value={collaboratorInput}
+                        onChange={(e) => setCollaboratorInput(e.target.value.replace(/^@+/, ''))}
+                        onKeyDown={(e) => {
+                          if (['Enter', ',', ' ', 'Tab'].includes(e.key)) {
+                            e.preventDefault();
+                            const val = collaboratorInput.trim();
+                            if (val && !collaborators.includes(val)) {
+                              setCollaborators((prev) => [...prev, val]);
+                            }
+                            setCollaboratorInput('');
+                          } else if (e.key === 'Backspace' && !collaboratorInput && collaborators.length > 0) {
+                            setCollaborators((prev) => prev.slice(0, -1));
+                          }
+                        }}
+                        onBlur={() => {
+                          const val = collaboratorInput.trim();
+                          if (val && !collaborators.includes(val)) {
+                            setCollaborators((prev) => [...prev, val]);
+                          }
+                          setCollaboratorInput('');
+                        }}
+                        placeholder={collaborators.length === 0 ? '@usuario' : '+'}
+                        className="bg-transparent text-[11px] text-white/70 placeholder:text-white/25 outline-none min-w-[80px] max-w-[140px]"
+                      />
+                    )}
+                  </div>
+                  <p className="text-[9px] text-white/20">Enter, coma o espacio para confirmar cada usuario</p>
                 </div>
               )}
 

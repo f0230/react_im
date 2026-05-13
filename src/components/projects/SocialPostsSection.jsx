@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Share2, 
@@ -47,13 +48,34 @@ export function SocialPostsSection({
   const [initialContent, setInitialContent] = useState('');
   const [cancellingId, setCancellingId] = useState(null);
 
+  // Track posts that already reached a final state so we only toast on new transitions
+  const finalizedRef = useRef(new Set());
+
+  const notifyStatusChange = useCallback((post) => {
+    if (finalizedRef.current.has(post.id)) return;
+    if (!['published', 'failed', 'cancelled'].includes(post.status)) return;
+    finalizedRef.current.add(post.id);
+    const platform = getPlatformName(post.platform);
+    if (post.status === 'published') {
+      toast.success(`Publicado en ${platform}`, { duration: 5000 });
+    } else if (post.status === 'failed') {
+      toast.error(`Falló en ${platform}: ${post.error_message || 'Error desconocido'}`, { duration: 8000 });
+    }
+  }, []);
+
   // Cargar posts
   const loadPosts = useCallback(async () => {
     if (!serviceId) return;
-    
+
     try {
       setLoading(true);
       const data = await fetchServicePosts(serviceId);
+      // Mark already-final posts so we don't toast on initial load
+      data.forEach((p) => {
+        if (['published', 'failed', 'cancelled'].includes(p.status)) {
+          finalizedRef.current.add(p.id);
+        }
+      });
       setPosts(data);
     } catch (err) {
       console.error('Error loading posts:', err);
@@ -74,6 +96,7 @@ export function SocialPostsSection({
       if (payload.eventType === 'INSERT') {
         setPosts(prev => [payload.new, ...prev]);
       } else if (payload.eventType === 'UPDATE') {
+        notifyStatusChange(payload.new);
         setPosts(prev => prev.map(p => p.id === payload.new.id ? payload.new : p));
       } else if (payload.eventType === 'DELETE') {
         setPosts(prev => prev.filter(p => p.id !== payload.old.id));
@@ -87,6 +110,7 @@ export function SocialPostsSection({
 
   // Polling de estados
   usePostStatusPolling(posts, (postId, updatedPost) => {
+    notifyStatusChange(updatedPost);
     setPosts(prev => prev.map(p => p.id === postId ? updatedPost : p));
   });
 

@@ -440,7 +440,8 @@ async function handleCreatePost(req, res, supabase) {
   const { serviceId, projectId, contentText, mediaUrls = [], accounts = [], scheduling = {} } = body;
 
   if (!projectId) return res.status(400).json({ error: 'projectId is required' });
-  if (!contentText?.trim()) return res.status(400).json({ error: 'contentText is required' });
+  const isAllStories = accounts.every((acc) => acc.targetConfig?.mediaType === 'story');
+  if (!contentText?.trim() && !isAllStories) return res.status(400).json({ error: 'contentText is required' });
   if (!accounts.length) return res.status(400).json({ error: 'at least one account is required' });
 
   for (const acc of accounts) {
