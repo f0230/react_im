@@ -14,10 +14,12 @@ import Sitemap from 'vite-plugin-sitemap';
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 const devApiPlugin = () => {
-  const calHandlerUrl        = pathToFileURL(path.resolve(__dirname, './api/cal/index.js')).href;
-  const whatsappHandlerUrl   = pathToFileURL(path.resolve(__dirname, './api/whatsapp.js')).href;
-  const studioHandlerUrl     = pathToFileURL(path.resolve(__dirname, './api/studio.js')).href;
-  const copywriterHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/post-copywriter.js')).href;
+  const calHandlerUrl          = pathToFileURL(path.resolve(__dirname, './api/cal/index.js')).href;
+  const integrationsHandlerUrl = pathToFileURL(path.resolve(__dirname, './api/integrations/index.js')).href;
+  const studioAiHandlerUrl     = pathToFileURL(path.resolve(__dirname, './api/studio-ai/index.js')).href;
+  const contentHandlerUrl      = pathToFileURL(path.resolve(__dirname, './api/content/index.js')).href;
+  const messagingHandlerUrl    = pathToFileURL(path.resolve(__dirname, './api/messaging/index.js')).href;
+  const utilsHandlerUrl        = pathToFileURL(path.resolve(__dirname, './api/utils/index.js')).href;
 
   const apiRoutes = [
     {
@@ -45,6 +47,7 @@ const devApiPlugin = () => {
       ].includes(pathname),
       resolveQuery: (pathname, searchParams) => {
         const query = Object.fromEntries(searchParams.entries());
+        query.service = 'whatsapp';
         if (!query.action) {
           if (pathname === '/api/whatsapp-send') query.action = 'send';
           if (pathname === '/api/whatsapp-webhook') query.action = 'webhook';
@@ -52,17 +55,62 @@ const devApiPlugin = () => {
         }
         return query;
       },
-      handlerUrl: whatsappHandlerUrl,
+      handlerUrl: integrationsHandlerUrl,
+    },
+    {
+      name: '/api/meta',
+      matches: (pathname) => pathname === '/api/meta' || pathname.startsWith('/api/meta/'),
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        query.service = 'meta';
+        const actionFromPath = pathname.startsWith('/api/meta/')
+          ? pathname.slice('/api/meta/'.length)
+          : null;
+        if (actionFromPath && !query.action) query.action = actionFromPath;
+        return query;
+      },
+      handlerUrl: integrationsHandlerUrl,
+    },
+    {
+      name: '/api/notion',
+      matches: (pathname) => pathname === '/api/notion' || pathname.startsWith('/api/notion/'),
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        query.service = 'notion';
+        const actionFromPath = pathname.startsWith('/api/notion/')
+          ? pathname.slice('/api/notion/'.length)
+          : null;
+        if (actionFromPath && !query.action) query.action = actionFromPath;
+        return query;
+      },
+      handlerUrl: integrationsHandlerUrl,
+    },
+    {
+      name: '/api/figma',
+      matches: (pathname) => pathname.startsWith('/api/figma'),
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        query.service = 'figma';
+        if (!query.action) {
+          if (pathname === '/api/figma-auth/login') query.action = 'auth-login';
+          if (pathname === '/api/figma-auth/callback') query.action = 'auth-callback';
+          if (pathname === '/api/figma-webhook') query.action = 'webhook';
+          if (pathname === '/api/figma/comments') query.action = 'comments';
+        }
+        return query;
+      },
+      handlerUrl: integrationsHandlerUrl,
     },
     {
       name: '/api/post-copywriter',
       matches: (pathname) => pathname === '/api/post-copywriter' || pathname === '/api/generate-brand-docs',
       resolveQuery: (pathname, searchParams) => {
         const query = Object.fromEntries(searchParams.entries());
+        query.type = 'copywriter';
         if (!query.action && pathname === '/api/generate-brand-docs') query.action = 'generate-brand-docs';
         return query;
       },
-      handlerUrl: copywriterHandlerUrl,
+      handlerUrl: contentHandlerUrl,
     },
     {
       name: '/api/studio',
@@ -73,13 +121,73 @@ const devApiPlugin = () => {
       ].includes(pathname),
       resolveQuery: (pathname, searchParams) => {
         const query = Object.fromEntries(searchParams.entries());
+        query.tool = 'studio';
         if (!query.action) {
           if (pathname === '/api/studio-proxy') query.action = 'proxy';
           if (pathname === '/api/kie-upload')   query.action = 'kie-upload';
         }
         return query;
       },
-      handlerUrl: studioHandlerUrl,
+      handlerUrl: studioAiHandlerUrl,
+    },
+    {
+      name: '/api/blotato',
+      matches: (pathname) => pathname === '/api/blotato',
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        query.tool = 'blotato';
+        return query;
+      },
+      handlerUrl: studioAiHandlerUrl,
+    },
+    {
+      name: '/api/messaging',
+      matches: (pathname) => [
+        '/api/clawbot-team-chat',
+        '/api/notifications',
+        '/api/client-welcome-email',
+        '/api/profile-complete-email',
+        '/api/project-created',
+        '/api/slack-notify',
+      ].includes(pathname),
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        if (pathname === '/api/clawbot-team-chat') {
+          query.type = 'chat';
+        } else {
+          query.type = 'notifications';
+          if (!query.action) {
+            if (pathname === '/api/client-welcome-email') query.action = 'welcome-email';
+            if (pathname === '/api/profile-complete-email') query.action = 'profile-complete-email';
+            if (pathname === '/api/project-created') query.action = 'project-created';
+            if (pathname === '/api/slack-notify') query.action = 'slack-notify';
+          }
+        }
+        return query;
+      },
+      handlerUrl: messagingHandlerUrl,
+    },
+    {
+      name: '/api/utils',
+      matches: (pathname) => [
+        '/api/reports-ingest',
+        '/api/reports-ai-context',
+        '/api/reports-ocr-summary',
+        '/api/kie-credits',
+        '/api/kie-models',
+      ].includes(pathname),
+      resolveQuery: (pathname, searchParams) => {
+        const query = Object.fromEntries(searchParams.entries());
+        if (!query.action) {
+          if (pathname === '/api/kie-credits') query.action = 'credits';
+          if (pathname === '/api/kie-models') query.action = 'models';
+          if (pathname === '/api/reports-ingest') query.action = 'reports';
+          if (pathname === '/api/reports-ai-context') query.action = 'reports';
+          if (pathname === '/api/reports-ocr-summary') query.action = 'reports';
+        }
+        return query;
+      },
+      handlerUrl: utilsHandlerUrl,
     },
   ];
 

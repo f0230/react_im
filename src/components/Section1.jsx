@@ -5,7 +5,7 @@ import RotatingText from "./ui/RotatingText";
 import AnimatedContent from './ui/AnimatedContent';
 import FadeContent from './ui/FadeContent';
 import OptimizedImage from "@/components/OptimizedImage";
-import { useTranslation } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { Helmet } from "react-helmet-async";
 
 import desktopSectionImage from "../assets/FONODO CON TEXTO 1440.webp";
@@ -84,9 +84,13 @@ const HeroSection = ({ onRegisterClick, brochureUrl, whatsappUrl }) => {
 
                 <FadeContent duration={1000} easing="ease-in-out" initialOpacity={0} delay={700}>
                   <p className="mt-4 max-w-[720px] text-center text-[12px] leading-[1.14] md:text-[17px]" style={{ color: "#656565" }}>
-                    En <span className="font-bold">DTE</span> unimos tecnologia y automatizaciones con estrategia y diseno
-                    <br />
-                    para que tu empresa crezca con claridad y opere con control.
+                    <Trans
+                      i18nKey="section1.heroDescription"
+                      components={{
+                        bold: <span className="font-bold" />,
+                        lineBreak: <br />,
+                      }}
+                    />
                   </p>
                 </FadeContent>
 
