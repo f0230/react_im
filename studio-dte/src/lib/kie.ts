@@ -80,6 +80,13 @@ export async function uploadFile(
   urlOrDataUrl: string,
   uploadPath = 'images/studio-dte',
 ): Promise<string> {
+  // Public https URLs (Supabase CDN, etc.) are passed directly to KIE —
+  // the API accepts them natively and this avoids a costly server-side re-fetch
+  // that causes 504 timeouts on Vercel.
+  if (urlOrDataUrl.startsWith('https://') || urlOrDataUrl.startsWith('http://')) {
+    return urlOrDataUrl;
+  }
+
   let imageDataUrl = urlOrDataUrl;
 
   // blob: URLs are browser-local — convert to base64 so the server can read it
