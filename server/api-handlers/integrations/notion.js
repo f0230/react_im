@@ -189,11 +189,31 @@ function formatPageSummary(page) {
     };
 }
 
+function coerceToString(value, fallback = '') {
+    if (value == null) return fallback;
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) return extractRichText(value);
+    if (typeof value === 'object') {
+        if (typeof value.plain_text === 'string') return value.plain_text;
+        if (typeof value.name === 'string') return value.name;
+        if (typeof value.content === 'string') return value.content;
+        return fallback;
+    }
+    return String(value);
+}
+
 function formatBlock(block) {
     const type = block.type;
     const data = block[type] || {};
-    const text = extractRichText(data.rich_text || data.title || []);
-    const caption = extractRichText(data.caption || []);
+    const rawRichText = Array.isArray(data.rich_text)
+        ? data.rich_text
+        : (Array.isArray(data.title) ? data.title : []);
+    const text = extractRichText(rawRichText);
+    const caption = extractRichText(Array.isArray(data.caption) ? data.caption : []);
+    const title = coerceToString(data.title, '')
+        || coerceToString(data.name, '')
+        || text
+        || '';
 
     return {
         id: block.id,
@@ -208,11 +228,7 @@ function formatBlock(block) {
             data.external?.url ??
             data.file?.url ??
             null,
-        title:
-            data.title ??
-            data.name ??
-            text ??
-            '',
+        title,
     };
 }
 

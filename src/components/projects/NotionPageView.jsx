@@ -19,8 +19,23 @@ const SUPPORTED_TEXT_BLOCKS = new Set([
     'audio',
 ]);
 
+function safeText(value) {
+    if (value == null) return '';
+    if (typeof value === 'string') return value;
+    if (Array.isArray(value)) {
+        return value.map((v) => (typeof v === 'string' ? v : v?.plain_text || '')).join('');
+    }
+    if (typeof value === 'object') {
+        return value.plain_text || value.name || value.content || '';
+    }
+    return String(value);
+}
+
 function BlockText({ block }) {
-    if (!block.text && !block.title) return null;
+    const text = safeText(block.text);
+    const title = safeText(block.title);
+    if (!text && !title) return null;
+    block = { ...block, text, title };
 
     if (block.type === 'heading_1') {
         return <h2 className="mt-5 text-2xl font-bold tracking-tight text-neutral-900 first:mt-0">{block.text}</h2>;
@@ -80,6 +95,12 @@ function BlockText({ block }) {
 }
 
 function BlockRenderer({ block, onChildPageClick }) {
+    block = {
+        ...block,
+        text: safeText(block.text),
+        title: safeText(block.title),
+        caption: safeText(block.caption),
+    };
     if (SUPPORTED_TEXT_BLOCKS.has(block.type)) {
         return <BlockText block={block} />;
     }
