@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   Play,
   Square,
@@ -6,8 +6,9 @@ import {
   Image as ImageIcon,
   Video as VideoIcon,
   ChevronDown,
+  Copy,
 } from 'lucide-react';
-import { useReactFlow } from '@xyflow/react';
+import { useReactFlow, useNodes, useEdges } from '@xyflow/react';
 import BaseNode, { cn } from './BaseNode';
 import { Port } from './Port';
 import MultiUseSelect from '../MultiUseSelect';
@@ -51,6 +52,11 @@ interface ModelCaps {
   supportsBackgroundSource?: boolean;
   supportsNegativePrompt?: boolean;
   supportsSecondImage?: boolean;
+  // Seedance 2.0 multimodal references
+  supportsReferenceImages?: boolean;  // reference_image_urls array (up to 9)
+  supportsReferenceVideos?: boolean;  // reference_video_urls array (up to 3), optional
+  supportsReferenceAudios?: boolean;  // reference_audio_urls array (up to 3)
+  supportsNsfwChecker?: boolean;
 }
 
 const MODEL_CAPS: Record<string, ModelCaps> = {
@@ -169,22 +175,30 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     provider: 'market',
     supportsReferenceImage: true,
     supportsSecondImage: true,
+    supportsReferenceImages: true,
+    supportsReferenceVideos: true,
+    supportsReferenceAudios: true,
     supportsAspectRatio: true,
     supportsDuration: true,
     supportsSound: true,
     supportsResolution: true,
     supportsGoogleSearch: true,
+    supportsNsfwChecker: true,
   },
   'bytedance/seedance-2-fast': {
     kind: 'video',
     provider: 'market',
     supportsReferenceImage: true,
     supportsSecondImage: true,
+    supportsReferenceImages: true,
+    supportsReferenceVideos: true,
+    supportsReferenceAudios: true,
     supportsAspectRatio: true,
     supportsDuration: true,
     supportsSound: true,
     supportsResolution: true,
     supportsGoogleSearch: true,
+    supportsNsfwChecker: true,
   },
 
   /* ---- Veo ---- */
@@ -316,6 +330,9 @@ function buildMarketInput(
   extras?: {
     multiPrompt?: Array<{ prompt: string; duration: number }>;
     klingElements?: Array<{ name: string; description: string; element_input_urls: string[] }>;
+    referenceImageUrls?: string[];
+    referenceVideoUrls?: string[];
+    referenceAudioUrls?: string[];
   },
 ): { apiModel: string; input: Record<string, any> } {
   const aspectRatio = (data.aspectRatio || '1:1') as string;
@@ -469,20 +486,29 @@ function buildMarketInput(
     /* ---- Bytedance Seedance 2.0 ---- */
     case 'bytedance/seedance-2':
     case 'bytedance/seedance-2-fast': {
-      const seedanceResolution =
-        data.resolution === '480p' || data.resolution === '720p'
-          ? data.resolution
-          : '720p';
+      const validResolutions = ['480p', '720p', '1080p'];
+      const seedanceResolution = validResolutions.includes(data.resolution)
+        ? data.resolution
+        : '720p';
+      const durationVal = parseInt(duration) || 5;
+      const clampedDuration = Math.min(15, Math.max(4, durationVal));
       const input: Record<string, any> = {
         prompt,
         aspect_ratio: aspectRatio,
-        duration: parseInt(duration) || 5,
+        duration: clampedDuration,
         generate_audio: sound,
         resolution: seedanceResolution,
         web_search: googleSearch,
       };
       if (imageUrl) input.first_frame_url = imageUrl;
       if (imageUrl2) input.last_frame_url = imageUrl2;
+      if (extras?.referenceImageUrls?.length)
+        input.reference_image_urls = extras.referenceImageUrls.slice(0, 9);
+      if (extras?.referenceVideoUrls?.length)
+        input.reference_video_urls = extras.referenceVideoUrls.slice(0, 3);
+      if (extras?.referenceAudioUrls?.length)
+        input.reference_audio_urls = extras.referenceAudioUrls.slice(0, 3);
+      if (data.nsfwChecker) input.nsfw_checker = true;
       return { apiModel: model, input };
     }
 
@@ -573,6 +599,78 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
   const isVideo = caps.kind === 'video';
   const isMotionControl = !!caps.supportsReferenceVideo;
 
+  // Reactive snapshot of all nodes/edges — used to show reference image previews
+  const allNodes = useNodes();
+  const allEdges = useEdges();
+
+  // Build the list of connected reference images with their prompt tokens
+  const connectedRefImages = useMemo(() => {
+    const inputEdges = allEdges.filter((e) => e.target === id);
+    const refs: Array<{ token: string; label: string; imageUrl: string | null }> = [];
+
+    if (caps.supportsReferenceImage) {
+      const edge = inputEdges.find((e) => e.targetHandle === 'ref-image');
+      if (edge) {
+        const n = allNodes.find((nd) => nd.id === edge.source);
+        refs.push({
+          token: caps.supportsSecondImage ? '[first_frame]' : '[img]',
+          label: caps.supportsSecondImage ? '1st Frame' : 'Img',
+          imageUrl: ((n?.data?.imageUrl || n?.data?.resultUrl) as string) || null,
+        });
+      }
+    }
+
+    if (caps.supportsSecondImage) {
+      const edge = inputEdges.find((e) => e.targetHandle === 'ref-image-2');
+      if (edge) {
+        const n = allNodes.find((nd) => nd.id === edge.source);
+        refs.push({
+          token: '[last_frame]',
+          label: 'Last Frame',
+          imageUrl: ((n?.data?.imageUrl || n?.data?.resultUrl) as string) || null,
+        });
+      }
+    }
+
+    if (caps.supportsReferenceImages) {
+      const edges = inputEdges.filter((e) => e.targetHandle === 'ref-images');
+      edges.forEach((edge, i) => {
+        const n = allNodes.find((nd) => nd.id === edge.source);
+        refs.push({
+          token: `[ref${i + 1}]`,
+          label: `Ref ${i + 1}`,
+          imageUrl: ((n?.data?.imageUrl || n?.data?.resultUrl) as string) || null,
+        });
+      });
+    }
+
+    if (caps.supportsReferenceVideo) {
+      const edge = inputEdges.find((e) => e.targetHandle === 'ref-video');
+      if (edge) {
+        const n = allNodes.find((nd) => nd.id === edge.source);
+        refs.push({
+          token: '[video]',
+          label: 'Video',
+          imageUrl: ((n?.data?.imageUrl || n?.data?.resultUrl) as string) || null,
+        });
+      }
+    }
+
+    if (caps.supportsReferenceVideos) {
+      const edges = inputEdges.filter((e) => e.targetHandle === 'ref-videos');
+      edges.forEach((edge, i) => {
+        const n = allNodes.find((nd) => nd.id === edge.source);
+        refs.push({
+          token: `[video${i + 1}]`,
+          label: `Video ${i + 1}`,
+          imageUrl: ((n?.data?.imageUrl || n?.data?.resultUrl) as string) || null,
+        });
+      });
+    }
+
+    return refs;
+  }, [allNodes, allEdges, id, caps]);
+
   const hasAdvanced =
     caps.supportsSeeds ||
     caps.supportsTranslation ||
@@ -582,6 +680,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     caps.supportsUploadMethod ||
     caps.supportsCharacterIds ||
     caps.supportsBackgroundSource ||
+    caps.supportsNsfwChecker ||
     caps.provider === 'veo'; // generationType
 
   // Shorthand updater
@@ -725,6 +824,33 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       element_input_urls: string[];
     }>;
 
+    // -- Seedance: multiple reference images --
+    const refImagesEdges = inputEdges.filter((e) => e.targetHandle === 'ref-images');
+    const refImageDataUrls: string[] = refImagesEdges
+      .map((e) => {
+        const n = nodes.find((nd) => nd.id === e.source);
+        return (n?.data?.imageUrl || n?.data?.resultUrl) as string | undefined;
+      })
+      .filter(Boolean) as string[];
+
+    // -- Seedance: multiple reference videos --
+    const refVideosEdges = inputEdges.filter((e) => e.targetHandle === 'ref-videos');
+    const refVideoDataUrls: string[] = refVideosEdges
+      .map((e) => {
+        const n = nodes.find((nd) => nd.id === e.source);
+        return (n?.data?.resultUrl || n?.data?.videoUrl || n?.data?.imageUrl) as string | undefined;
+      })
+      .filter(Boolean) as string[];
+
+    // -- Seedance: reference audio --
+    const refAudioEdges = inputEdges.filter((e) => e.targetHandle === 'ref-audio');
+    const refAudioDataUrls: string[] = refAudioEdges
+      .map((e) => {
+        const n = nodes.find((nd) => nd.id === e.source);
+        return (n?.data?.audioUrl || n?.data?.resultUrl) as string | undefined;
+      })
+      .filter(Boolean) as string[];
+
     const selectedModel = data.model as string;
     const selectedCaps = getCaps(selectedModel);
 
@@ -788,6 +914,30 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       let uploadedVideoUrl: string | null = null;
       if (refVideoDataUrl && selectedCaps.supportsReferenceVideo) {
         uploadedVideoUrl = await uploadFile(refVideoDataUrl, 'videos/studio-dte');
+      }
+
+      // -- Upload Seedance multi reference images --
+      const uploadedRefImageUrls: string[] = [];
+      if (selectedCaps.supportsReferenceImages && refImageDataUrls.length) {
+        for (const url of refImageDataUrls) {
+          uploadedRefImageUrls.push(await uploadFile(url, 'images/studio-dte'));
+        }
+      }
+
+      // -- Upload Seedance multi reference videos --
+      const uploadedRefVideoUrls: string[] = [];
+      if (selectedCaps.supportsReferenceVideos && refVideoDataUrls.length) {
+        for (const url of refVideoDataUrls) {
+          uploadedRefVideoUrls.push(await uploadFile(url, 'videos/studio-dte'));
+        }
+      }
+
+      // -- Upload Seedance reference audio --
+      const uploadedRefAudioUrls: string[] = [];
+      if (selectedCaps.supportsReferenceAudios && refAudioDataUrls.length) {
+        for (const url of refAudioDataUrls) {
+          uploadedRefAudioUrls.push(await uploadFile(url, 'audio/studio-dte'));
+        }
       }
 
       // -- Generate one result per connected output node --
@@ -893,6 +1043,9 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             {
               multiPrompt: multiPromptData,
               klingElements: klingElementsData.length ? klingElementsData : undefined,
+              referenceImageUrls: uploadedRefImageUrls.length ? uploadedRefImageUrls : undefined,
+              referenceVideoUrls: uploadedRefVideoUrls.length ? uploadedRefVideoUrls : undefined,
+              referenceAudioUrls: uploadedRefAudioUrls.length ? uploadedRefAudioUrls : undefined,
             },
           );
           taskId = await createMarketTask(apiModel, input);
@@ -1018,13 +1171,27 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             <Port type="target" id="negative-prompt" color="pink" label="Neg. Prompt" />
           )}
           {caps.supportsReferenceImage && (
-            <Port type="target" id="ref-image" color="green" label="Image" />
+            <Port
+              type="target"
+              id="ref-image"
+              color="green"
+              label={caps.supportsSecondImage ? '1st Frame' : 'Image'}
+            />
           )}
           {caps.supportsSecondImage && (
-            <Port type="target" id="ref-image-2" color="green" label="Image 2" />
+            <Port type="target" id="ref-image-2" color="green" label="Last Frame" />
+          )}
+          {caps.supportsReferenceImages && (
+            <Port type="target" id="ref-images" color="green" label="Ref Images ×9" />
           )}
           {caps.supportsReferenceVideo && (
             <Port type="target" id="ref-video" color="green" label="Video" />
+          )}
+          {caps.supportsReferenceVideos && (
+            <Port type="target" id="ref-videos" color="green" label="Ref Videos ×3" />
+          )}
+          {caps.supportsReferenceAudios && (
+            <Port type="target" id="ref-audio" color="pink" label="Ref Audio ×3" />
           )}
           {caps.supportsMultiPrompt && (
             <Port type="target" id="multi-prompt" color="pink" label="Multi Prompt" />
@@ -1033,6 +1200,50 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
             <Port type="target" id="elements" color="green" label="Elements" />
           )}
         </div>
+
+        {/* ---------- Reference Image Tokens ---------- */}
+        {connectedRefImages.length > 0 && (
+          <div className="flex flex-col gap-2 px-0.5">
+            <FieldLabel>Referencias en prompt</FieldLabel>
+            <div className="flex flex-wrap gap-2">
+              {connectedRefImages.map((ref, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  title={`Copiar token: ${ref.token}`}
+                  onClick={() => {
+                    navigator.clipboard.writeText(ref.token);
+                    toast.success(`Copiado: ${ref.token}`, { duration: 1500 });
+                  }}
+                  className="nodrag group relative flex flex-col items-center gap-1 focus:outline-none"
+                >
+                  <div className="relative w-14 h-14 rounded-xl overflow-hidden border border-white/10 bg-white/5 group-hover:border-[#0A84FF]/60 transition-colors">
+                    {ref.imageUrl ? (
+                      <img
+                        src={ref.imageUrl}
+                        alt={ref.label}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon size={18} className="text-white/20" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Copy size={14} className="text-white" />
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-mono text-white/40 group-hover:text-[#0A84FF] transition-colors max-w-[56px] truncate">
+                    {ref.token}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[9px] text-white/25 leading-snug">
+              Click para copiar token → pégalo en tu prompt
+            </p>
+          </div>
+        )}
 
         <div className="w-full h-px bg-white/10" />
 
@@ -1135,8 +1346,9 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                 options={
                   data.model?.startsWith('bytedance/')
                     ? [
-                        { label: '480p', value: '480p' },
-                        { label: '720p', value: '720p' },
+                        { label: '480p — Fast', value: '480p' },
+                        { label: '720p — Balance', value: '720p' },
+                        { label: '1080p — HQ', value: '1080p' },
                       ]
                     : [
                         { label: '512px', value: '512px' },
@@ -1181,9 +1393,11 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                       ]
                     : data.model?.startsWith('bytedance/')
                     ? [
+                        { label: '4s', value: '4' },
                         { label: '5s', value: '5' },
                         { label: '8s', value: '8' },
                         { label: '10s', value: '10' },
+                        { label: '12s', value: '12' },
                         { label: '15s', value: '15' },
                       ]
                     : [
@@ -1374,6 +1588,15 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                       ]}
                     />
                   </div>
+                )}
+
+                {/* -- Seedance: NSFW filter -- */}
+                {caps.supportsNsfwChecker && (
+                  <ToggleRow
+                    label="NSFW Filter"
+                    value={!!data.nsfwChecker}
+                    onChange={(v) => set({ nsfwChecker: v })}
+                  />
                 )}
 
               </div>
