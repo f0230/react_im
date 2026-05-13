@@ -57,6 +57,8 @@ interface ModelCaps {
   supportsReferenceVideos?: boolean;  // reference_video_urls array (up to 3), optional
   supportsReferenceAudios?: boolean;  // reference_audio_urls array (up to 3)
   supportsNsfwChecker?: boolean;
+  supportsFixedLens?: boolean;    // Seedance 1.5 Pro: lock camera for static shots
+  supportsInputUrls?: boolean;    // Seedance 1.5 Pro: input_urls array (up to 2 images)
 }
 
 const MODEL_CAPS: Record<string, ModelCaps> = {
@@ -201,6 +203,21 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsNsfwChecker: true,
   },
 
+  /* ---- Bytedance Seedance 1.5 Pro ---- */
+  'bytedance/seedance-1.5-pro': {
+    kind: 'video',
+    provider: 'market',
+    supportsReferenceImage: true,
+    supportsSecondImage: true,
+    supportsInputUrls: true,
+    supportsAspectRatio: true,
+    supportsDuration: true,
+    supportsSound: true,
+    supportsResolution: true,
+    supportsFixedLens: true,
+    supportsNsfwChecker: true,
+  },
+
   /* ---- Veo ---- */
   veo3: {
     kind: 'video',
@@ -253,6 +270,7 @@ const MODEL_CREDITS: Record<string, string> = {
   'kling-3.0/motion-control':   '140 cr',
   'sora-2-text-to-video':       '300 cr',
   'sora-2-image-to-video':      '300 cr',
+  'bytedance/seedance-1.5-pro': '60–120 cr',
   'bytedance/seedance-2':       '100 cr',
   'bytedance/seedance-2-fast':  '50 cr',
   veo3:                         '500 cr',
@@ -280,6 +298,7 @@ const MODEL_OPTIONS = [
       { label: 'Kling 3.0 Motion', value: 'kling-3.0/motion-control' },
       { label: 'Sora 2 Text', value: 'sora-2-text-to-video' },
       { label: 'Sora 2 Image', value: 'sora-2-image-to-video' },
+      { label: 'Seedance 1.5 Pro', value: 'bytedance/seedance-1.5-pro' },
       { label: 'Seedance 2', value: 'bytedance/seedance-2' },
       { label: 'Seedance 2 Fast', value: 'bytedance/seedance-2-fast' },
       { label: 'Veo 3', value: 'veo3' },
@@ -483,6 +502,28 @@ function buildMarketInput(
       return { apiModel: 'sora-2-image-to-video', input };
     }
 
+    /* ---- Bytedance Seedance 1.5 Pro ---- */
+    case 'bytedance/seedance-1.5-pro': {
+      const validResolutions = ['480p', '720p', '1080p'];
+      const s15Resolution = validResolutions.includes(data.resolution)
+        ? data.resolution
+        : '720p';
+      const validDurations = ['4', '8', '12'];
+      const s15Duration = validDurations.includes(String(duration)) ? String(duration) : '8';
+      const input: Record<string, any> = {
+        prompt,
+        aspect_ratio: aspectRatio,
+        resolution: s15Resolution,
+        duration: s15Duration,
+        generate_audio: sound,
+        fixed_lens: !!data.fixedLens,
+      };
+      const inputUrls = [imageUrl, imageUrl2].filter(Boolean) as string[];
+      if (inputUrls.length) input.input_urls = inputUrls;
+      if (data.nsfwChecker) input.nsfw_checker = true;
+      return { apiModel: 'bytedance/seedance-1.5-pro', input };
+    }
+
     /* ---- Bytedance Seedance 2.0 ---- */
     case 'bytedance/seedance-2':
     case 'bytedance/seedance-2-fast': {
@@ -608,13 +649,16 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     const inputEdges = allEdges.filter((e) => e.target === id);
     const refs: Array<{ token: string; label: string; imageUrl: string | null }> = [];
 
+    // input_urls style (Seedance 1.5 Pro): label as [img1] / [img2]
+    const useInputUrls = caps.supportsInputUrls;
+
     if (caps.supportsReferenceImage) {
       const edge = inputEdges.find((e) => e.targetHandle === 'ref-image');
       if (edge) {
         const n = allNodes.find((nd) => nd.id === edge.source);
         refs.push({
-          token: caps.supportsSecondImage ? '[first_frame]' : '[img]',
-          label: caps.supportsSecondImage ? '1st Frame' : 'Img',
+          token: useInputUrls ? '[img1]' : caps.supportsSecondImage ? '[first_frame]' : '[img]',
+          label: useInputUrls ? 'Img 1' : caps.supportsSecondImage ? '1st Frame' : 'Img',
           imageUrl: ((n?.data?.imageUrl || n?.data?.resultUrl) as string) || null,
         });
       }
@@ -625,8 +669,8 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       if (edge) {
         const n = allNodes.find((nd) => nd.id === edge.source);
         refs.push({
-          token: '[last_frame]',
-          label: 'Last Frame',
+          token: useInputUrls ? '[img2]' : '[last_frame]',
+          label: useInputUrls ? 'Img 2' : 'Last Frame',
           imageUrl: ((n?.data?.imageUrl || n?.data?.resultUrl) as string) || null,
         });
       }
@@ -1258,7 +1302,11 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
               const patch: Record<string, any> = { model: v, modelType: newCaps.kind };
 
               // Reset aspect ratio when switching model families to avoid stale values
-              if (v.startsWith('bytedance/')) {
+              if (v === 'bytedance/seedance-1.5-pro') {
+                patch.aspectRatio = '16:9';
+                patch.resolution = '720p';
+                patch.duration = '8';
+              } else if (v.startsWith('bytedance/')) {
                 patch.aspectRatio = '16:9';
                 patch.resolution = '720p';
               } else if (newCaps.kind === 'image') {
@@ -1310,7 +1358,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                         { label: '16:9', value: '16:9' },
                         { label: '9:16', value: '9:16' },
                       ]
-                    : data.model?.startsWith('bytedance/')
+                    : data.model === 'bytedance/seedance-2' || data.model === 'bytedance/seedance-2-fast'
                     ? [
                         { label: '16:9', value: '16:9' },
                         { label: '9:16', value: '9:16' },
@@ -1319,6 +1367,15 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                         { label: '3:4', value: '3:4' },
                         { label: '21:9', value: '21:9' },
                         { label: 'Adaptive', value: 'adaptive' },
+                      ]
+                    : data.model === 'bytedance/seedance-1.5-pro'
+                    ? [
+                        { label: '16:9', value: '16:9' },
+                        { label: '9:16', value: '9:16' },
+                        { label: '1:1', value: '1:1' },
+                        { label: '4:3', value: '4:3' },
+                        { label: '3:4', value: '3:4' },
+                        { label: '21:9', value: '21:9' },
                       ]
                     : [
                         { label: '16:9', value: '16:9' },
@@ -1384,14 +1441,20 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                 value={data.duration || '5'}
                 onChange={(val) => set({ duration: val as string })}
                 options={
-                  data.model?.startsWith('kling-3.0')
+                  data.model === 'bytedance/seedance-1.5-pro'
+                    ? [
+                        { label: '4s', value: '4' },
+                        { label: '8s', value: '8' },
+                        { label: '12s', value: '12' },
+                      ]
+                    : data.model?.startsWith('kling-3.0')
                     ? [
                         { label: '3s', value: '3' },
                         { label: '5s', value: '5' },
                         { label: '10s', value: '10' },
                         { label: '15s', value: '15' },
                       ]
-                    : data.model?.startsWith('bytedance/')
+                    : data.model === 'bytedance/seedance-2' || data.model === 'bytedance/seedance-2-fast'
                     ? [
                         { label: '4s', value: '4' },
                         { label: '5s', value: '5' },
@@ -1463,6 +1526,13 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
               label="Sound"
               value={!!data.sound}
               onChange={(v) => set({ sound: v })}
+            />
+          )}
+          {caps.supportsFixedLens && (
+            <ToggleRow
+              label="Fixed Lens (cámara estática)"
+              value={!!data.fixedLens}
+              onChange={(v) => set({ fixedLens: v })}
             />
           )}
         </div>
