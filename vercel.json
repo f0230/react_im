@@ -70,10 +70,6 @@
       "destination": "/api/content?type=copywriter&action=generate-brand-docs"
     },
     {
-      "source": "/api/studio",
-      "destination": "/api/studio-ai?tool=studio"
-    },
-    {
       "source": "/api/studio-proxy",
       "destination": "/api/studio-ai?tool=studio&action=proxy"
     },
