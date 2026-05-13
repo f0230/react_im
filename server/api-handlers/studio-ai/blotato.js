@@ -540,7 +540,7 @@ async function handleCreatePost(req, res, supabase) {
   }
 
   if (createdPosts.length === 0) {
-    return res.status(500).json({ error: 'All posts failed to create', errors });
+    return res.status(422).json({ error: 'All posts failed to create', errors });
   }
 
   return res.status(200).json({
