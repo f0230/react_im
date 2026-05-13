@@ -186,8 +186,15 @@ function BlockRenderer({ block, onChildPageClick }) {
         };
 
         return (
-            <div className="rounded-2xl border border-neutral-200 bg-white p-4 transition hover:bg-neutral-50">
-                <p className="text-sm font-semibold text-neutral-900 mb-3">{block.title || 'Fila sin título'}</p>
+            <button
+                type="button"
+                onClick={() => onChildPageClick(block)}
+                className="w-full text-left rounded-2xl border border-neutral-200 bg-white p-4 transition hover:bg-neutral-50 hover:border-neutral-300"
+            >
+                <div className="flex items-center justify-between gap-3 mb-3">
+                    <p className="text-sm font-semibold text-neutral-900">{block.title || 'Fila sin título'}</p>
+                    <ChevronRight size={16} className="shrink-0 text-neutral-400" />
+                </div>
                 {propEntries.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                         {propEntries.map(([propName, prop]) => {
@@ -254,7 +261,7 @@ function BlockRenderer({ block, onChildPageClick }) {
                         })}
                     </div>
                 )}
-            </div>
+            </button>
         );
     }
 
