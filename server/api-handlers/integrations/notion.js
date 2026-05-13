@@ -183,10 +183,25 @@ function extractPageTitle(page) {
 function formatPageSummary(page) {
     return {
         id: page.id,
-        title: extractPageTitle(page),
+        title: page.title || extractPageTitle(page),
         url: page.url || null,
         lastEditedTime: page.last_edited_time || null,
     };
+}
+
+function getProperty(properties, names) {
+    return names.map((name) => properties?.[name]).find(Boolean);
+}
+
+function extractPropertyText(properties, names) {
+    const prop = getProperty(properties, names);
+    if (!prop) return '';
+    if (prop.type === 'title') return extractRichText(prop.title || []);
+    if (prop.type === 'rich_text') return extractRichText(prop.rich_text || []);
+    if (prop.type === 'select') return prop.select?.name || '';
+    if (prop.type === 'status') return prop.status?.name || '';
+    if (prop.type === 'date') return prop.date?.start || '';
+    return '';
 }
 
 function coerceToString(value, fallback = '') {
@@ -215,7 +230,7 @@ function formatBlock(block) {
         || text
         || '';
 
-    return {
+    const formatted = {
         id: block.id,
         type,
         hasChildren: Boolean(block.has_children),
@@ -230,21 +245,50 @@ function formatBlock(block) {
             null,
         title,
     };
+
+    if (type === 'table') {
+        formatted.tableWidth = typeof data.table_width === 'number' ? data.table_width : null;
+        formatted.hasColumnHeader = Boolean(data.has_column_header);
+        formatted.hasRowHeader = Boolean(data.has_row_header);
+        formatted.rows = [];
+    }
+
+    if (type === 'table_row') {
+        formatted.cells = Array.isArray(data.cells)
+            ? data.cells.map((cell) => extractRichText(cell || []))
+            : [];
+    }
+
+    return formatted;
 }
 
 function formatMeeting(page) {
     const p = page.properties || {};
+    const title = extractPropertyText(p, [
+        'Title',
+        'Name',
+        'Nombre',
+        'Nombre de la reunión',
+        'Reunión',
+        'Meeting',
+    ]) || extractPageTitle(page);
+
     return {
         id: page.id,
         url: page.url,
         lastEditedTime: page.last_edited_time,
-        title: extractRichText(p.Title?.title ?? p.Name?.title ?? []),
-        date: p.Date?.date?.start ?? null,
-        summary: extractRichText(p.Summary?.rich_text ?? []),
-        actionItems: extractRichText(p['Action Items']?.rich_text ?? []),
-        status: p.Status?.select?.name ?? null,
-        project: p.Project?.select?.name ?? null,
-        service: p.Service?.select?.name ?? null,
+        title,
+        date:
+            p.Date?.date?.start ??
+            p.Fecha?.date?.start ??
+            p['Fecha de reunión']?.date?.start ??
+            p['Meeting date']?.date?.start ??
+            null,
+        summary: extractPropertyText(p, ['Summary', 'Resumen', 'AI Summary', 'Notas', 'Notes']),
+        actionItems: extractPropertyText(p, ['Action Items', 'Acciones', 'Próximos pasos', 'Tareas']),
+        status: p.Status?.select?.name ?? p.Status?.status?.name ?? p.Estado?.select?.name ?? p.Estado?.status?.name ?? null,
+        project: p.Project?.select?.name ?? p.Proyecto?.select?.name ?? null,
+        service: p.Service?.select?.name ?? p.Servicio?.select?.name ?? p.Categoría?.select?.name ?? null,
     };
 }
 
@@ -389,6 +433,7 @@ function formatDatabaseRow(row) {
         hasChildren: false,
         text: titleValue,
         title: titleValue,
+        titlePropertyName: titleProp?.[0] || 'Nombre',
         url: row.url || null,
         properties: formattedProps,
         caption: '',
@@ -408,12 +453,17 @@ async function handleMeetings(req, res, projectId, token) {
         });
     }
 
-    const data = await queryNotionDb(
-        ids.notion_db_id,
-        token,
-        req.query?.cursor ?? null,
-        [{ property: 'Date', direction: 'descending' }]
-    );
+    let data;
+    try {
+        data = await queryNotionDb(
+            ids.notion_db_id,
+            token,
+            req.query?.cursor ?? null,
+            [{ property: 'Date', direction: 'descending' }]
+        );
+    } catch (err) {
+        data = await queryNotionDb(ids.notion_db_id, token, req.query?.cursor ?? null, null);
+    }
 
     return res.status(200).json({
         meetings: (data.results || []).map(formatMeeting),
@@ -545,6 +595,37 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
     }
 }
 
+async function fetchAllBlockChildren(blockId, token, pageSize = 100) {
+    const results = [];
+    let cursor = null;
+    let hasMore = true;
+
+    while (hasMore) {
+        const cursorSuffix = cursor ? `&start_cursor=${encodeURIComponent(cursor)}` : '';
+        const data = await notionRequest(`/blocks/${blockId}/children?page_size=${pageSize}${cursorSuffix}`, token);
+        results.push(...(data.results || []));
+        cursor = data.next_cursor ?? null;
+        hasMore = Boolean(data.has_more && cursor);
+    }
+
+    return results;
+}
+
+async function formatBlocksWithTableRows(blocks, token) {
+    return Promise.all((blocks || []).map(async (block) => {
+        const formatted = formatBlock(block);
+
+        if (block.type === 'table' && block.has_children) {
+            const children = await fetchAllBlockChildren(block.id, token);
+            formatted.rows = children
+                .filter((child) => child.type === 'table_row')
+                .map(formatBlock);
+        }
+
+        return formatted;
+    }));
+}
+
 async function handleProjectPage(req, res, projectId, token) {
     const settings = await getProjectNotionPage(projectId);
     if (!settings.notion_page_id) {
@@ -558,6 +639,7 @@ async function handleProjectPage(req, res, projectId, token) {
         ?? new URL(req.url, 'http://localhost').searchParams.get('cursor');
 
     const { page, children } = await tryLoadPageOrDatabase(settings.notion_page_id, token, cursor);
+    const blocks = await formatBlocksWithTableRows(children.results || [], token);
 
     return res.status(200).json({
         page: {
@@ -565,7 +647,7 @@ async function handleProjectPage(req, res, projectId, token) {
             title: settings.notion_page_title || extractPageTitle(page),
             url: settings.notion_page_url || page.url || null,
         },
-        blocks: (children.results || []).map(formatBlock),
+        blocks,
         nextCursor: children.next_cursor ?? null,
         hasMore: children.has_more ?? false,
     });
@@ -586,7 +668,7 @@ async function handleSubPage(req, res, projectId, token) {
 
     const blocks = result.type === 'database'
         ? result.children.results
-        : (result.children.results || []).map(formatBlock);
+        : await formatBlocksWithTableRows(result.children.results || [], token);
 
     return res.status(200).json({
         page: formatPageSummary(result.page),

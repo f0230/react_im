@@ -19,6 +19,48 @@ const SUPPORTED_TEXT_BLOCKS = new Set([
     'audio',
 ]);
 
+const NOTION_BADGE_COLORS = {
+    red: 'bg-red-100 text-red-700',
+    orange: 'bg-orange-100 text-orange-700',
+    yellow: 'bg-yellow-100 text-yellow-700',
+    green: 'bg-emerald-100 text-emerald-700',
+    blue: 'bg-blue-100 text-blue-700',
+    purple: 'bg-purple-100 text-purple-700',
+    pink: 'bg-pink-100 text-pink-700',
+    brown: 'bg-amber-100 text-amber-800',
+    gray: 'bg-neutral-100 text-neutral-600',
+    default: 'bg-neutral-100 text-neutral-600',
+};
+
+const BOARD_COLUMN_STYLES = {
+    red: 'border-red-100 bg-red-50/70',
+    orange: 'border-orange-100 bg-orange-50/70',
+    yellow: 'border-yellow-100 bg-yellow-50/70',
+    green: 'border-emerald-100 bg-emerald-50/70',
+    blue: 'border-blue-100 bg-blue-50/70',
+    purple: 'border-purple-100 bg-purple-50/70',
+    pink: 'border-pink-100 bg-pink-50/70',
+    brown: 'border-amber-100 bg-amber-50/70',
+    gray: 'border-neutral-200 bg-neutral-100/70',
+    default: 'border-neutral-200 bg-neutral-50',
+};
+
+const STATUS_ORDER = [
+    'not started',
+    'to do',
+    'todo',
+    'pendiente',
+    'in progress',
+    'en progreso',
+    'doing',
+    'done',
+    'complete',
+    'completed',
+    'completado',
+    'blocked',
+    'bloqueado',
+];
+
 function safeText(value) {
     if (value == null) return '';
     if (typeof value === 'string') return value;
@@ -29,6 +71,146 @@ function safeText(value) {
         return value.plain_text || value.name || value.content || '';
     }
     return String(value);
+}
+
+function normalizeLabel(value) {
+    return safeText(value).trim().toLowerCase();
+}
+
+function badgeColor(color) {
+    return NOTION_BADGE_COLORS[color] || NOTION_BADGE_COLORS.default;
+}
+
+function columnStyle(color) {
+    return BOARD_COLUMN_STYLES[color] || BOARD_COLUMN_STYLES.default;
+}
+
+function findStatusEntry(row) {
+    const entries = Object.entries(row?.properties || {});
+    return entries.find(([name, prop]) => {
+        const normalizedName = normalizeLabel(name);
+        return prop?.type === 'badge' && ['status', 'estado', 'state'].includes(normalizedName);
+    }) || entries.find(([, prop]) => {
+        if (prop?.type !== 'badge') return false;
+        return STATUS_ORDER.includes(normalizeLabel(prop.value));
+    });
+}
+
+function compareStatusLabels(a, b) {
+    const aIndex = STATUS_ORDER.indexOf(normalizeLabel(a));
+    const bIndex = STATUS_ORDER.indexOf(normalizeLabel(b));
+    if (aIndex !== -1 || bIndex !== -1) {
+        return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+    }
+    return safeText(a).localeCompare(safeText(b), 'es');
+}
+
+function PropertyPill({ prop }) {
+    if (!prop || prop.value == null || prop.value === '') return null;
+
+    if (prop.type === 'badge') {
+        return (
+            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeColor(prop.color)}`}>
+                {prop.value}
+            </span>
+        );
+    }
+
+    if (prop.type === 'badges' && Array.isArray(prop.value)) {
+        return prop.value.map((badge, idx) => (
+            <span
+                key={`${badge.name}-${idx}`}
+                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${badgeColor(badge.color)}`}
+            >
+                {badge.name}
+            </span>
+        ));
+    }
+
+    if (prop.type === 'date' && prop.value) {
+        return (
+            <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-600">
+                {new Date(prop.value).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' })}
+            </span>
+        );
+    }
+
+    if (prop.type === 'people' && Array.isArray(prop.value) && prop.value.length > 0) {
+        return (
+            <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-600">
+                {prop.value.join(', ')}
+            </span>
+        );
+    }
+
+    if (prop.type === 'checkbox') {
+        return <span className="inline-flex text-xs text-neutral-500">{prop.value ? '✓' : '○'}</span>;
+    }
+
+    if (prop.type === 'text' || prop.type === 'email' || prop.type === 'phone' || prop.type === 'url' || prop.type === 'number') {
+        return (
+            <span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-600">
+                {safeText(prop.value)}
+            </span>
+        );
+    }
+
+    return null;
+}
+
+function isEmptyProperty(prop) {
+    if (!prop) return true;
+    if (Array.isArray(prop.value)) return prop.value.length === 0;
+    return prop.value == null || prop.value === '';
+}
+
+function collectDatabaseColumns(rows) {
+    const titleLabel = rows.find((row) => row.titlePropertyName)?.titlePropertyName || 'Nombre';
+    const columns = [{ key: '__title', label: titleLabel, type: 'title' }];
+    const seen = new Set(['__title']);
+
+    rows.forEach((row) => {
+        Object.keys(row.properties || {}).forEach((name) => {
+            if (!seen.has(name)) {
+                seen.add(name);
+                columns.push({ key: name, label: name, type: row.properties[name]?.type });
+            }
+        });
+    });
+
+    return columns;
+}
+
+function isLongTextColumn(label) {
+    const normalized = normalizeLabel(label);
+    return ['resumen', 'summary', 'notas', 'notes', 'descripcion', 'descripción'].some((part) => normalized.includes(part));
+}
+
+function DatabaseTableValue({ prop }) {
+    if (isEmptyProperty(prop)) return <span className="text-neutral-300">-</span>;
+
+    if (prop.type === 'badge' || prop.type === 'badges' || prop.type === 'date' || prop.type === 'people' || prop.type === 'checkbox') {
+        return <div className="flex flex-wrap gap-1.5"><PropertyPill prop={prop} /></div>;
+    }
+
+    if (prop.type === 'url') {
+        return (
+            <a
+                href={prop.value}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="break-words text-sm font-medium text-blue-600 hover:text-blue-700"
+            >
+                {prop.value}
+            </a>
+        );
+    }
+
+    return (
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-neutral-700">
+            {safeText(prop.value)}
+        </p>
+    );
 }
 
 function BlockText({ block }) {
@@ -92,6 +274,188 @@ function BlockText({ block }) {
     }
 
     return <p className="text-sm leading-relaxed text-neutral-600">{block.text}</p>;
+}
+
+function DatabaseRowCard({ row, onClick, hiddenPropertyName }) {
+    const propEntries = Object.entries(row.properties || {})
+        .filter(([name]) => name !== hiddenPropertyName)
+        .slice(0, 5);
+
+    return (
+        <button
+            type="button"
+            onClick={() => onClick(row)}
+            className="w-full rounded-2xl border border-neutral-200 bg-white p-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition hover:border-neutral-300 hover:bg-neutral-50"
+        >
+            <p className="text-sm font-semibold leading-snug text-neutral-900">{row.title || 'Fila sin título'}</p>
+            {propEntries.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                    {propEntries.map(([propName, prop]) => (
+                        <PropertyPill key={propName} prop={prop} />
+                    ))}
+                </div>
+            )}
+        </button>
+    );
+}
+
+function NotionDatabaseBoard({ rows, onChildPageClick }) {
+    const groups = rows.reduce((acc, row) => {
+        const statusEntry = findStatusEntry(row);
+        const statusName = statusEntry?.[1]?.value || 'Sin estado';
+        const color = statusEntry?.[1]?.color || 'default';
+        const hiddenPropertyName = statusEntry?.[0] || null;
+
+        if (!acc.has(statusName)) {
+            acc.set(statusName, { name: statusName, color, hiddenPropertyName, rows: [] });
+        }
+        acc.get(statusName).rows.push(row);
+        return acc;
+    }, new Map());
+
+    const columns = Array.from(groups.values()).sort((a, b) => compareStatusLabels(a.name, b.name));
+
+    return (
+        <div className="flex gap-4 overflow-x-auto pb-2">
+            {columns.map((column) => (
+                <section
+                    key={column.name}
+                    className={`flex min-h-[220px] w-[300px] shrink-0 flex-col rounded-2xl border p-3 ${columnStyle(column.color)}`}
+                >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                            <span className={`h-2.5 w-2.5 rounded-full ${badgeColor(column.color).split(' ')[0]}`} />
+                            <h4 className="text-sm font-bold text-neutral-800">{column.name}</h4>
+                        </div>
+                        <span className="text-xs font-semibold text-neutral-400">{column.rows.length}</span>
+                    </div>
+                    <div className="flex flex-1 flex-col gap-2.5">
+                        {column.rows.map((row) => (
+                            <DatabaseRowCard
+                                key={row.id}
+                                row={row}
+                                hiddenPropertyName={column.hiddenPropertyName}
+                                onClick={onChildPageClick}
+                            />
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </div>
+    );
+}
+
+function NotionDatabaseTable({ rows, onChildPageClick }) {
+    const columns = collectDatabaseColumns(rows);
+
+    return (
+        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+            <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-left text-sm">
+                    <thead>
+                        <tr className="border-b border-neutral-200 bg-neutral-50">
+                            {columns.map((column) => (
+                                <th
+                                    key={column.key}
+                                    className={[
+                                        'px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500',
+                                        column.key === '__title' ? 'min-w-[220px]' : '',
+                                        isLongTextColumn(column.label) ? 'min-w-[420px]' : 'min-w-[180px]',
+                                    ].join(' ')}
+                                >
+                                    {column.label}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row) => (
+                            <tr key={row.id} className="border-b border-neutral-100 last:border-b-0">
+                                {columns.map((column) => {
+                                    if (column.key === '__title') {
+                                        return (
+                                            <td key={column.key} className="min-w-[220px] px-4 py-4 align-top">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onChildPageClick(row)}
+                                                    className="group flex w-full items-start justify-between gap-3 text-left"
+                                                >
+                                                    <span className="font-semibold leading-snug text-neutral-900 group-hover:text-neutral-700">
+                                                        {row.title || 'Fila sin título'}
+                                                    </span>
+                                                    <ChevronRight size={15} className="mt-0.5 shrink-0 text-neutral-300 group-hover:text-neutral-500" />
+                                                </button>
+                                            </td>
+                                        );
+                                    }
+
+                                    return (
+                                        <td
+                                            key={column.key}
+                                            className={[
+                                                'border-l border-neutral-100 px-4 py-4 align-top',
+                                                isLongTextColumn(column.label) ? 'min-w-[420px] max-w-[520px]' : 'min-w-[180px] max-w-[280px]',
+                                            ].join(' ')}
+                                        >
+                                            <DatabaseTableValue prop={row.properties?.[column.key]} />
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+function NotionTable({ block }) {
+    const rows = Array.isArray(block.rows) ? block.rows : [];
+    const width = block.tableWidth || Math.max(0, ...rows.map((row) => row.cells?.length || 0));
+
+    if (!rows.length || !width) {
+        return (
+            <div className="rounded-2xl border border-neutral-200 bg-white p-4">
+                <p className="text-sm text-neutral-500">Tabla de Notion sin filas visibles.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+            <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-left text-sm">
+                    <tbody>
+                        {rows.map((row, rowIndex) => (
+                            <tr key={row.id || rowIndex} className="border-b border-neutral-100 last:border-b-0">
+                                {Array.from({ length: width }).map((_, cellIndex) => {
+                                    const isColumnHeader = block.hasColumnHeader && rowIndex === 0;
+                                    const isRowHeader = block.hasRowHeader && cellIndex === 0;
+                                    const CellTag = isColumnHeader || isRowHeader ? 'th' : 'td';
+
+                                    return (
+                                        <CellTag
+                                            key={`${row.id || rowIndex}-${cellIndex}`}
+                                            scope={isColumnHeader ? 'col' : isRowHeader ? 'row' : undefined}
+                                            className={[
+                                                'min-w-[160px] border-r border-neutral-100 px-4 py-3 align-top last:border-r-0',
+                                                isColumnHeader || isRowHeader
+                                                    ? 'bg-neutral-50 font-semibold text-neutral-900'
+                                                    : 'text-neutral-700',
+                                            ].join(' ')}
+                                        >
+                                            {safeText(row.cells?.[cellIndex]) || <span className="text-neutral-300">-</span>}
+                                        </CellTag>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
 }
 
 function BlockRenderer({ block, onChildPageClick }) {
@@ -195,17 +559,6 @@ function BlockRenderer({ block, onChildPageClick }) {
         const properties = block.properties || {};
         const propEntries = Object.entries(properties).slice(0, 4);
 
-        const colorMap = {
-            red: 'bg-red-100 text-red-700',
-            orange: 'bg-orange-100 text-orange-700',
-            yellow: 'bg-yellow-100 text-yellow-700',
-            green: 'bg-green-100 text-green-700',
-            blue: 'bg-blue-100 text-blue-700',
-            purple: 'bg-purple-100 text-purple-700',
-            pink: 'bg-pink-100 text-pink-700',
-            gray: 'bg-neutral-100 text-neutral-600',
-        };
-
         return (
             <button
                 type="button"
@@ -222,11 +575,10 @@ function BlockRenderer({ block, onChildPageClick }) {
                             if (!prop || !prop.value) return null;
 
                             if (prop.type === 'badge' && prop.value) {
-                                const colorClass = colorMap[prop.color] || colorMap.gray;
                                 return (
                                     <span
                                         key={propName}
-                                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${colorClass}`}
+                                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${badgeColor(prop.color)}`}
                                     >
                                         {prop.value}
                                     </span>
@@ -237,11 +589,10 @@ function BlockRenderer({ block, onChildPageClick }) {
                                 return (
                                     <div key={propName} className="flex flex-wrap gap-1.5">
                                         {prop.value.map((badge, idx) => {
-                                            const colorClass = colorMap[badge.color] || colorMap.gray;
                                             return (
                                                 <span
                                                     key={idx}
-                                                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${colorClass}`}
+                                                    className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${badgeColor(badge.color)}`}
                                                 >
                                                     {badge.name}
                                                 </span>
@@ -311,11 +662,7 @@ function BlockRenderer({ block, onChildPageClick }) {
     }
 
     if (block.type === 'table') {
-        return (
-            <div className="rounded-2xl border border-neutral-200 bg-white overflow-x-auto p-4">
-                <p className="text-sm text-neutral-600">Tabla de Notion (contenido no renderizado)</p>
-            </div>
-        );
+        return <NotionTable block={block} />;
     }
 
     if (block.type === 'column_list') {
@@ -439,6 +786,12 @@ const NotionPageView = ({ projectId, onClose }) => {
         ];
     }, [navStack]);
 
+    const databaseRows = useMemo(() => blocks.filter((block) => block.type === 'database_row'), [blocks]);
+    const shouldRenderKanban = databaseRows.length > 0
+        && databaseRows.length === blocks.length
+        && databaseRows.some((row) => findStatusEntry(row));
+    const shouldRenderDatabaseTable = databaseRows.length > 0 && databaseRows.length === blocks.length;
+
     return (
         <div className="rounded-[28px] border border-neutral-200 bg-[#fafafa] p-6 md:p-8">
             {/* Header con título y controles */}
@@ -513,13 +866,19 @@ const NotionPageView = ({ projectId, onClose }) => {
                 </div>
             ) : (
                 <div className="space-y-3">
-                    {blocks.map((block) => (
-                        <BlockRenderer
-                            key={block.id}
-                            block={block}
-                            onChildPageClick={handleChildPageClick}
-                        />
-                    ))}
+                    {shouldRenderKanban ? (
+                        <NotionDatabaseBoard rows={databaseRows} onChildPageClick={handleChildPageClick} />
+                    ) : shouldRenderDatabaseTable ? (
+                        <NotionDatabaseTable rows={databaseRows} onChildPageClick={handleChildPageClick} />
+                    ) : (
+                        blocks.map((block) => (
+                            <BlockRenderer
+                                key={block.id}
+                                block={block}
+                                onChildPageClick={handleChildPageClick}
+                            />
+                        ))
+                    )}
                 </div>
             )}
 
