@@ -283,7 +283,7 @@ const TeamChat = () => {
             .from('team_messages')
             .select('channel_id, created_at')
             .order('created_at', { ascending: false })
-            .limit(500);
+            .limit(200);
         if (!Array.isArray(data)) return;
         const map = new Map();
         data.forEach(({ channel_id, created_at }) => {
@@ -332,12 +332,13 @@ const TeamChat = () => {
             .from('team_messages')
             .select(TEAM_MESSAGE_COLUMNS)
             .eq('channel_id', channelId)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: false })
+            .limit(100);
 
         if (supaError) {
             if (!background) setError(supaError.message || 'No se pudieron cargar los mensajes.');
         } else {
-            const hydrated = await hydrateMediaMessages(data || []);
+            const hydrated = await hydrateMediaMessages((data || []).reverse());
             setMessages(hydrated);
         }
 

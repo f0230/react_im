@@ -102,7 +102,7 @@ export const useUnreadCounts = () => {
             .select('client_id, created_at, sender_role')
             .eq('sender_role', 'client')
             .order('created_at', { ascending: false })
-            .limit(500);
+            .limit(200);
 
         if (error || !Array.isArray(data)) {
             if (isMissingRelationError(error)) {
@@ -197,7 +197,7 @@ export const useUnreadCounts = () => {
             .from('client_messages')
             .select('client_id, body, created_at, sender_role, client:clients(full_name, company_name, email, phone)')
             .order('created_at', { ascending: false })
-            .limit(300);
+            .limit(150);
 
         if (isClient && client?.id) {
             query = query.eq('client_id', client.id);
@@ -289,7 +289,7 @@ export const useUnreadCounts = () => {
         refreshTimeout.current = setTimeout(() => {
             refreshTimeout.current = null;
             refreshAll();
-        }, 350);
+        }, 1500);
     }, [refreshAll]);
 
     const handleExternalRefresh = useCallback(() => {

@@ -41,6 +41,8 @@ const useFinanceData = () => {
 
         if (!pendingRows.length) return items;
 
+        // Compute USD values in-memory only — DB writes happen lazily on next save to avoid
+        // N+1 UPDATE queries on every mount hammering Supabase compute.
         const updates = await Promise.all(pendingRows.map(async (row) => {
             try {
                 const invoiceAmountUsd = Number(row?.invoice?.amount_usd);
@@ -53,22 +55,7 @@ const useFinanceData = () => {
                 )
                     ? { amountUsd: invoiceAmountUsd, exchangeRate: invoiceExchangeRate }
                     : await buildUsdConversion(row.amount, row.currency || FINANCE_REPORTING_CURRENCY);
-                const patch = {
-                    amount_usd: conversion.amountUsd,
-                    exchange_rate: conversion.exchangeRate,
-                };
-
-                const { error: updateError } = await supabase
-                    .from(table)
-                    .update(patch)
-                    .eq('id', row.id);
-
-                if (updateError) {
-                    console.error(`Error normalizing ${table} row`, row.id, updateError);
-                    return row;
-                }
-
-                return { ...row, ...patch };
+                return { ...row, amount_usd: conversion.amountUsd, exchange_rate: conversion.exchangeRate };
             } catch (normalizeError) {
                 console.error(`Error computing USD normalization for ${table} row`, row.id, normalizeError);
                 return row;
@@ -109,28 +96,33 @@ const useFinanceData = () => {
                         invoice_id
                     `)
                     .order('transaction_date', { ascending: false })
-                    .order('created_at', { ascending: false }),
+                    .order('created_at', { ascending: false })
+                    .limit(1000),
                 // 4. Invoices (all statuses — tabs filter locally)
                 supabase
                     .from('invoices')
                     .select('id, invoice_number, description, amount, amount_usd, exchange_rate, currency, status, due_date, paid_at, project_id, updated_at, created_at')
-                    .order('updated_at', { ascending: false }),
+                    .order('updated_at', { ascending: false })
+                    .limit(500),
                 // 5. Projects (with client name for profitability)
                 supabase
                     .from('projects')
                     .select('*')
-                    .order('created_at', { ascending: false }),
+                    .order('created_at', { ascending: false })
+                    .limit(500),
                 // 6. Distributions
                 supabase
                     .from('finance_distributions')
                     .select('*')
-                    .order('period_id'),
+                    .order('period_id')
+                    .limit(500),
                 // 7. Company fund ledger
                 supabase
                     .from('finance_company_fund_movements')
                     .select('*')
                     .order('movement_date', { ascending: false })
-                    .order('created_at', { ascending: false }),
+                    .order('created_at', { ascending: false })
+                    .limit(500),
                 // 7. Profiles (admins + workers)
                 supabase
                     .from('profiles')

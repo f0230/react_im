@@ -134,7 +134,8 @@ const ClientChat = () => {
         const { data, error: supaError } = await supabase
             .from('clients')
             .select('id, user_id, full_name, company_name, email, phone, created_at')
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (supaError) {
             setError(supaError.message || 'No se pudo cargar la bandeja de clientes.');
@@ -247,7 +248,8 @@ const ClientChat = () => {
             .from('client_messages')
             .select('id, client_id, body, sender_id, sender_role, created_at, reply_to_id')
             .eq('client_id', clientId)
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: false })
+            .limit(100);
 
         if (supaError) {
             if (!background) {
@@ -261,7 +263,7 @@ const ClientChat = () => {
             setMessages([]);
         } else {
             setMigrationPending(false);
-            const nextMessages = data || [];
+            const nextMessages = (data || []).reverse();
             setMessages(nextMessages);
 
             // Mark read immediately after fetching to keep unread badges in sync
