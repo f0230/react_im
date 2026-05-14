@@ -218,6 +218,14 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
     supportsNsfwChecker: true,
   },
 
+  /* ---- GPT Image-2 ---- */
+  'gpt-image-2-text-to-image': {
+    kind: 'image',
+    provider: 'market',
+    supportsAspectRatio: true,
+    supportsResolution: true,
+  },
+
   /* ---- Veo ---- */
   veo3: {
     kind: 'video',
@@ -263,6 +271,7 @@ const MODEL_CREDITS: Record<string, string> = {
   'google/nano-banana-edit':    '6 cr / img',
   'nano-banana-2':              '8 cr / img',
   'nano-banana-pro':            '12 cr / img',
+  'gpt-image-2-text-to-image':  '~10 cr / img',
   'kling-2.6/text-to-video':    '70–140 cr',
   'kling-2.6/image-to-video':   '70–140 cr',
   'kling-2.6/motion-control':   '70 cr',
@@ -286,6 +295,7 @@ const MODEL_OPTIONS = [
       { label: 'Nano Banana Edit', value: 'google/nano-banana-edit' },
       { label: 'Nano Banana 2', value: 'nano-banana-2' },
       { label: 'Nano Banana Pro', value: 'nano-banana-pro' },
+      { label: 'GPT Image 2', value: 'gpt-image-2-text-to-image' },
     ],
   },
   {
@@ -551,6 +561,15 @@ function buildMarketInput(
         input.reference_audio_urls = extras.referenceAudioUrls.slice(0, 3);
       if (data.nsfwChecker) input.nsfw_checker = true;
       return { apiModel: model, input };
+    }
+
+    /* ---- GPT Image-2 ---- */
+    case 'gpt-image-2-text-to-image': {
+      const input: Record<string, any> = { prompt };
+      if (aspectRatio && aspectRatio !== 'auto') input.aspect_ratio = aspectRatio;
+      else if (aspectRatio === 'auto') input.aspect_ratio = 'auto';
+      if (resolution) input.resolution = resolution;
+      return { apiModel: 'gpt-image-2-text-to-image', input };
     }
 
     default:
@@ -1309,6 +1328,9 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
               } else if (v.startsWith('bytedance/')) {
                 patch.aspectRatio = '16:9';
                 patch.resolution = '720p';
+              } else if (v === 'gpt-image-2-text-to-image') {
+                patch.aspectRatio = 'auto';
+                patch.resolution = '1K';
               } else if (newCaps.kind === 'image') {
                 patch.aspectRatio = '1:1';
               } else {
@@ -1353,11 +1375,20 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                 onChange={(val) => set({ aspectRatio: val as string })}
                 options={
                   caps.kind === 'image'
-                    ? [
-                        { label: '1:1', value: '1:1' },
-                        { label: '16:9', value: '16:9' },
-                        { label: '9:16', value: '9:16' },
-                      ]
+                    ? data.model === 'gpt-image-2-text-to-image'
+                      ? [
+                          { label: 'Auto', value: 'auto' },
+                          { label: '1:1', value: '1:1' },
+                          { label: '16:9', value: '16:9' },
+                          { label: '9:16', value: '9:16' },
+                          { label: '4:3', value: '4:3' },
+                          { label: '3:4', value: '3:4' },
+                        ]
+                      : [
+                          { label: '1:1', value: '1:1' },
+                          { label: '16:9', value: '16:9' },
+                          { label: '9:16', value: '9:16' },
+                        ]
                     : data.model === 'bytedance/seedance-2' || data.model === 'bytedance/seedance-2-fast'
                     ? [
                         { label: '16:9', value: '16:9' },
@@ -1406,6 +1437,12 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                         { label: '480p — Fast', value: '480p' },
                         { label: '720p — Balance', value: '720p' },
                         { label: '1080p — HQ', value: '1080p' },
+                      ]
+                    : data.model === 'gpt-image-2-text-to-image'
+                    ? [
+                        { label: '1K', value: '1K' },
+                        { label: '2K', value: '2K' },
+                        { label: '4K (no 1:1)', value: '4K' },
                       ]
                     : [
                         { label: '512px', value: '512px' },
