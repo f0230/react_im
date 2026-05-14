@@ -18,11 +18,12 @@ const STUDIO_COLUMNS = `
     processing_started_at
 `;
 
-export async function listStudioTasks() {
+export async function listStudioTasks({ limit = 50 } = {}) {
     const { data, error } = await supabase
         .from("studio_generations")
         .select(STUDIO_COLUMNS)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(limit);
 
     if (error) throw error;
 

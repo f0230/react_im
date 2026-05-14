@@ -40,7 +40,7 @@ const ToolsOverlay = ({ isOpen, onClose }) => {
     }, [isOpen]);
 
     const fetchTools = async () => {
-        const { data, error } = await supabase.from('tools').select('*').order('created_at', { ascending: true });
+        const { data, error } = await supabase.from('tools').select('id, name, url, icon, color, created_at').order('created_at', { ascending: true }).limit(200);
         setTools(error || !data ? DEFAULT_TOOLS : [...DEFAULT_TOOLS, ...data]);
     };
 

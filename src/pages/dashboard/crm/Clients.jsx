@@ -49,7 +49,8 @@ const Clients = () => {
         const { data, error: supaError } = await supabase
             .from('clients')
             .select('id, created_at, full_name, company_name, email, phone, status, source, notes')
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false })
+            .limit(500);
 
         if (supaError) {
             setError('No se pudo cargar el CRM.');

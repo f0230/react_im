@@ -119,7 +119,8 @@ const Inbox = () => {
             .from('profiles')
             .select('id, full_name, email, role')
             .in('role', ['admin', 'worker'])
-            .order('full_name', { ascending: true });
+            .order('full_name', { ascending: true })
+            .limit(200);
 
         if (!supaError && data) {
             setAssignees(data);
@@ -141,7 +142,8 @@ const Inbox = () => {
         const fetchThreads = (columns) => supabase
             .from('whatsapp_threads')
             .select(columns)
-            .order('last_message_at', { ascending: false, nullsFirst: false });
+            .order('last_message_at', { ascending: false, nullsFirst: false })
+            .limit(300);
 
         let requestedColumns = buildWhatsappThreadColumns({
             supportsAiToggle: nextSupportsAiToggle,

@@ -43,12 +43,13 @@ const ProjectInvoices = () => {
       const [invoicesRes, projectRes] = await Promise.all([
         supabase
           .from('invoices')
-          .select('*')
+          .select('id, invoice_number, description, amount, amount_usd, exchange_rate, currency, status, due_date, paid_at, project_id, updated_at, created_at')
           .eq('project_id', projectId)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(500),
         supabase
           .from('projects')
-          .select('*, clients(*)')
+          .select('id, name, status, clients(id, full_name, company_name, email)')
           .eq('id', projectId)
           .single()
       ]);

@@ -8,8 +8,34 @@ import { supabase } from "../lib/supabaseClient";
 
 const KIE_API_BASE_URL = "https://api.kie.ai";
 export const STUDIO_SIGNED_URL_TTL = 60 * 60 * 24;
-const SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
+const SIGNED_URL_REFRESH_BUFFER_MS = 5 * 60 * 1000;
+const SIGNED_URL_LS_KEY = 'studio_signed_url_cache_v1';
 const studioSignedUrlCache = new Map();
+
+function loadSignedUrlCache() {
+    try {
+        const raw = localStorage.getItem(SIGNED_URL_LS_KEY);
+        if (!raw) return;
+        const entries = JSON.parse(raw);
+        const now = Date.now();
+        entries.forEach(([k, v]) => {
+            if (v.expiresAt > now + SIGNED_URL_REFRESH_BUFFER_MS) {
+                studioSignedUrlCache.set(k, v);
+            }
+        });
+    } catch { /* ignore */ }
+}
+
+function persistSignedUrlCache() {
+    try {
+        const now = Date.now();
+        const entries = [...studioSignedUrlCache.entries()]
+            .filter(([, v]) => v.expiresAt > now + SIGNED_URL_REFRESH_BUFFER_MS);
+        localStorage.setItem(SIGNED_URL_LS_KEY, JSON.stringify(entries));
+    } catch { /* ignore */ }
+}
+
+loadSignedUrlCache();
 
 export async function generateImage(task) {
     const kieTaskId = task.kieTaskId || await startImageGeneration(task);
@@ -113,6 +139,7 @@ export async function createStudioSignedUrl(path, expiresIn = STUDIO_SIGNED_URL_
             url: signedUrl,
             expiresAt: Date.now() + expiresIn * 1000,
         });
+        persistSignedUrlCache();
     }
 
     return signedUrl;

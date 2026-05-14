@@ -241,7 +241,7 @@ const Projects = () => {
             query = query.in('id', memberIds);
         }
 
-        const { data, error: fetchError } = await query.order('created_at', { ascending: false });
+        const { data, error: fetchError } = await query.order('created_at', { ascending: false }).limit(200);
 
         if (fetchError) {
             console.error('Error loading team members:', fetchError);
@@ -262,7 +262,7 @@ const Projects = () => {
             query = query.eq('id', profile.client_id);
         }
 
-        const { data, error: fetchError } = await query;
+        const { data, error: fetchError } = await query.limit(500);
         if (fetchError) {
             console.error('Error loading clients:', fetchError);
             return;
@@ -283,7 +283,7 @@ const Projects = () => {
             query = query.eq('client_id', profile.client_id);
         }
 
-        const { data, error: fetchError } = await query;
+        const { data, error: fetchError } = await query.limit(500);
 
         if (fetchError) {
             console.error('Error loading client users:', fetchError);

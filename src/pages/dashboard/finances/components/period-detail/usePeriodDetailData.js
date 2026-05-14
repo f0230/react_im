@@ -73,7 +73,8 @@ export const usePeriodDetailData = ({
                     .from('invoices')
                     .select('id, invoice_number, description, amount, amount_usd, exchange_rate, currency, project_id, status, paid_at, updated_at, created_at')
                     .eq('status', 'paid')
-                    .order('updated_at', { ascending: false }),
+                    .order('updated_at', { ascending: false })
+                    .limit(500),
             ]);
 
             if (periodError) {
