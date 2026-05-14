@@ -35,6 +35,7 @@ export default function Studio() {
     const activeTaskIdsRef = useRef(new Set());
     const promptQueueRef = useRef([]);
     const activeQueueCountRef = useRef(0);
+    const tasksRef = useRef([]);
 
     const syncBatchState = useCallback(() => {
         setBatchState({
@@ -51,6 +52,7 @@ export default function Studio() {
     }, []);
 
     const replaceTasks = useCallback((nextTasks) => {
+        tasksRef.current = nextTasks;
         setTasks(nextTasks);
         syncSelectedTask(nextTasks);
     }, [syncSelectedTask]);
@@ -62,6 +64,7 @@ export default function Studio() {
                 ? current.map((task) => (task.id === nextTask.id ? nextTask : task))
                 : [nextTask, ...current];
 
+            tasksRef.current = nextTasks;
             syncSelectedTask(nextTasks);
             return nextTasks;
         });
@@ -151,6 +154,7 @@ export default function Studio() {
                 referenceImages: config.referenceImages,
             });
 
+            // Save kieTaskId immediately so crash recovery can resume from this point
             const queuedTask = await updateStudioTask(createdTask.id, { kieTaskId });
             upsertTask(queuedTask);
 
@@ -283,6 +287,8 @@ export default function Studio() {
             if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
                 return;
             }
+            const hasPending = tasksRef.current.some((t) => t.status === 'generating');
+            if (!hasPending) return;
             void loadTasks({ silent: true, resumePending: hasApiKey });
         }, STUDIO_POLL_INTERVAL_MS);
 
