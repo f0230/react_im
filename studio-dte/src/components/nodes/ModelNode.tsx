@@ -361,7 +361,7 @@ function buildMarketInput(
   const sound = !!data.sound;
   const mode = (data.mode || 'std') as string;
   const googleSearch = !!data.googleSearch;
-  const nFrames = data.nFrames ? Number(data.nFrames) : undefined;
+  const nFrames = (data.nFrames as string) || undefined;
   const removeWatermark = !!data.removeWatermark;
   const uploadMethod = normalizeSoraUploadMethod(data.uploadMethod);
 
@@ -1608,10 +1608,13 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
                 {caps.supportsFrameCount && (
                   <div className="flex flex-col gap-1.5">
                     <FieldLabel>N Frames</FieldLabel>
-                    <SmallInput
-                      value={data.nFrames || ''}
-                      onChange={(v) => set({ nFrames: v })}
-                      placeholder="e.g. 48"
+                    <MultiUseSelect
+                      value={data.nFrames || '10'}
+                      onChange={(val) => set({ nFrames: val as string })}
+                      options={[
+                        { label: '10 frames (~5s)', value: '10' },
+                        { label: '15 frames (~8s)', value: '15' },
+                      ]}
                     />
                   </div>
                 )}
