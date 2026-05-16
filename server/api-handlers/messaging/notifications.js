@@ -15,7 +15,6 @@ import {
     handleReportsIngest,
 } from '../../services/reportsPipeline.js';
 import { getSupabaseAdmin } from '../../utils/supabaseServer.js';
-import { verifyAuthenticated } from '../../utils/auth.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -201,38 +200,11 @@ async function handleSlackNotify(req, res) {
 async function handleTeamChatMessage(req, res) {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { user, profile, error } = await verifyAuthenticated(req);
-    if (error) return res.status(401).json({ error });
-    if (!['admin', 'worker'].includes(profile?.role)) {
-        return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    const body = parseJsonBody(req);
-    const messageId = String(body?.messageId || body?.message_id || '').trim();
-    if (!messageId) return res.status(400).json({ error: 'Missing messageId' });
-
-    const supabase = getSupabaseAdmin();
-    if (!supabase) return res.status(500).json({ error: 'Database connection error' });
-
-    const { data: record, error: recordError } = await supabase
-        .from('team_messages')
-        .select('id, channel_id, author_id, author_name, body, file_name, message_type, media_url, created_at')
-        .eq('id', messageId)
-        .maybeSingle();
-
-    if (recordError) return res.status(500).json({ error: 'Failed to load message' });
-    if (!record) return res.status(404).json({ error: 'Message not found' });
-
-    if (record.author_id !== user.id && profile.role !== 'admin') {
-        return res.status(403).json({ error: 'Forbidden' });
-    }
-
-    const enrich = await enrichForSlack({ table: 'team_messages', record });
-    const text = formatSlackText({ event: 'INSERT', table: 'team_messages', record, enrich });
-    if (!text) return res.status(200).json({ ok: true, skipped: true });
-
-    const result = await sendSlackText(text);
-    return res.status(result.status).json(result.payload);
+    return res.status(200).json({
+        ok: true,
+        skipped: true,
+        reason: 'team_messages Slack notifications are sent by the database trigger',
+    });
 }
 
 // ─── Slack Channel Create ────────────────────────────────────────────────────

@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Hash, Image, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
+import { ArrowLeft, Circle, Hash, Image, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { useUnreadCounts } from '@/context/UnreadCountsContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
+import usePresence from '@/hooks/usePresence';
 import useThrottledCallback from '@/hooks/useThrottledCallback';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
+import ThreadPanel from '@/components/chat/ThreadPanel';
+import MessageSearch from '@/components/chat/MessageSearch';
 import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
 import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
 import { fetchReactionsForMessages, toggleReaction } from '@/services/chatReactions';
@@ -39,6 +42,8 @@ const TEAM_MEDIA_SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
 const teamMediaUrlCache = new Map();
 const MIKE_AVATAR_URL = 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=96&h=96&q=80&crop=faces&fit=crop';
 
+const mentionRegex = /@([\w][\w\s]*?)(?=\s|$|[,.!?¿¡])/g;
+
 const renderTextWithLinks = (text) => {
     if (!text) return null;
     const parts = text.split(linkRegex);
@@ -47,17 +52,34 @@ const renderTextWithLinks = (text) => {
             const href = part.startsWith('http') ? part : `https://${part}`;
             return (
                 <a
-                    key={`${part}-${index}`}
+                    key={`link-${index}`}
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="underline break-all text-blue-600 hover:text-blue-700"
+                    className="underline break-all text-indigo-600 hover:text-indigo-700"
                 >
                     {part}
                 </a>
             );
         }
-        return <span key={`${part}-${index}`}>{part}</span>;
+        // Resaltar @menciones dentro de texto plano
+        const subParts = [];
+        let lastIdx = 0;
+        let match;
+        mentionRegex.lastIndex = 0;
+        while ((match = mentionRegex.exec(part)) !== null) {
+            if (match.index > lastIdx) {
+                subParts.push(<span key={`t-${index}-${lastIdx}`}>{part.slice(lastIdx, match.index)}</span>);
+            }
+            subParts.push(
+                <span key={`m-${index}-${match.index}`} className="chat-mention">@{match[1]}</span>
+            );
+            lastIdx = match.index + match[0].length;
+        }
+        if (lastIdx < part.length) {
+            subParts.push(<span key={`t-${index}-end`}>{part.slice(lastIdx)}</span>);
+        }
+        return subParts.length > 0 ? <React.Fragment key={`part-${index}`}>{subParts}</React.Fragment> : <span key={`plain-${index}`}>{part}</span>;
     });
 };
 
@@ -79,6 +101,43 @@ const isMessageFromMike = (message) =>
     looksLikeMike(message?.author_name)
     || looksLikeMike(message?.author?.full_name)
     || looksLikeMike(message?.author?.email);
+
+const isGroupedWithPrevious = (message, prevMessage, thresholdMs = 5 * 60 * 1000) => {
+    if (!prevMessage) return false;
+    if (message.author_id !== prevMessage.author_id) return false;
+    if (isMessageFromMike(message) || isMessageFromMike(prevMessage)) return false;
+    if (message.reply_to_id) return false;
+    return new Date(message.created_at) - new Date(prevMessage.created_at) < thresholdMs;
+};
+
+const formatDateLabel = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    if (date.toDateString() === now.toDateString()) return 'Hoy';
+    if (date.toDateString() === yesterday.toDateString()) return 'Ayer';
+    return date.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+};
+
+const renderMentions = (text) => {
+    if (!text) return null;
+    const mentionRegex = /(@[\w][\w\s]*?)(?=\s|$|[,.!?¿¡])/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    while ((match = mentionRegex.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            parts.push(text.slice(lastIndex, match.index));
+        }
+        parts.push(
+            <span key={match.index} className="chat-mention">{match[1]}</span>
+        );
+        lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < text.length) parts.push(text.slice(lastIndex));
+    return parts.length > 0 ? parts : text;
+};
 
 const getProjectLabel = (project) => {
     if (!project) return '';
@@ -152,6 +211,15 @@ const TeamChat = () => {
     const [channelReads, setChannelReads] = useState([]);
     const [lightboxImage, setLightboxImage] = useState(null);
     const [channelLastMsgAt, setChannelLastMsgAt] = useState(new Map());
+    const [threadRootMessage, setThreadRootMessage] = useState(null);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    const presenceUser = useMemo(() => ({
+        id: user?.id,
+        full_name: profile?.full_name || user?.email,
+        avatar_url: profile?.avatar_url || user?.user_metadata?.avatar_url,
+    }), [user?.id, profile?.full_name, profile?.avatar_url, user?.email, user?.user_metadata?.avatar_url]);
+    const { presenceMap, onlineCount, isOnline } = usePresence('team-chat', presenceUser);
 
     const recorderRef = useRef(null);
     const streamRef = useRef(null);
@@ -520,32 +588,6 @@ const TeamChat = () => {
         }
     }, [selectedChannelId]);
 
-    const notifySlackTeamMessage = useCallback(async (messageId) => {
-        if (!messageId) return;
-
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const accessToken = session?.access_token;
-            if (!accessToken) return;
-
-            const response = await fetch('/api/notifications?action=team-chat-message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({ messageId }),
-            });
-
-            if (!response.ok) {
-                const payload = await response.json().catch(() => ({}));
-                console.error('TeamChat Slack notify failed:', payload?.error || response.status);
-            }
-        } catch (error) {
-            console.error('TeamChat Slack notify failed:', error);
-        }
-    }, []);
-
     const handleSend = useCallback(async () => {
         if (!selectedChannelId || sending || !user?.id) return;
         const body = messageText.trim();
@@ -574,7 +616,6 @@ const TeamChat = () => {
             setMessageText('');
             setReplyingTo(null);
             if (insertedMessage?.id) {
-                void notifySlackTeamMessage(insertedMessage.id);
                 if (hasMikeMention(body)) {
                     void invokeMikeTeamChat({
                         prompt: body,
@@ -585,7 +626,7 @@ const TeamChat = () => {
         }
 
         setSending(false);
-    }, [invokeMikeTeamChat, messageText, notifySlackTeamMessage, replyingTo, selectedChannelId, sending, user?.id]);
+    }, [invokeMikeTeamChat, messageText, replyingTo, selectedChannelId, sending, user?.id]);
 
     const uploadAudioBlob = useCallback(async (blob, fileName) => {
         if (!selectedChannelId || !user?.id) return;
@@ -608,7 +649,7 @@ const TeamChat = () => {
 
             if (uploadError) throw uploadError;
 
-            const { data: insertedMessage, error: insertError } = await supabase
+            const { error: insertError } = await supabase
                 .from('team_messages')
                 .insert({
                     channel_id: selectedChannelId,
@@ -617,20 +658,15 @@ const TeamChat = () => {
                     message_type: 'audio',
                     media_url: storagePath,
                     file_name: safeName,
-                })
-                .select('id')
-                .single();
+                });
 
             if (insertError) throw insertError;
-            if (insertedMessage?.id) {
-                void notifySlackTeamMessage(insertedMessage.id);
-            }
         } catch (err) {
             setSendError(err.message || 'No se pudo subir el audio.');
         } finally {
             setUploadingAudio(false);
         }
-    }, [notifySlackTeamMessage, selectedChannelId, user?.id]);
+    }, [selectedChannelId, user?.id]);
 
     const uploadImageFile = useCallback(async (file) => {
         if (!file || !selectedChannelId || !user?.id) return;
@@ -660,7 +696,7 @@ const TeamChat = () => {
 
             if (uploadError) throw uploadError;
 
-            const { data: insertedMessage, error: insertError } = await supabase
+            const { error: insertError } = await supabase
                 .from('team_messages')
                 .insert({
                     channel_id: selectedChannelId,
@@ -669,20 +705,15 @@ const TeamChat = () => {
                     message_type: 'image',
                     media_url: storagePath,
                     file_name: safeName,
-                })
-                .select('id')
-                .single();
+                });
 
             if (insertError) throw insertError;
-            if (insertedMessage?.id) {
-                void notifySlackTeamMessage(insertedMessage.id);
-            }
         } catch (err) {
             setSendError(err.message || 'No se pudo subir la imagen.');
         } finally {
             setUploadingImage(false);
         }
-    }, [notifySlackTeamMessage, selectedChannelId, user?.id]);
+    }, [selectedChannelId, user?.id]);
 
     const handleImageUpload = useCallback((event) => {
         const file = event.target.files?.[0];
@@ -1148,7 +1179,7 @@ const TeamChat = () => {
             }}
         >
             <MessagingTabs />
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-0">
+            <div className={`flex-1 grid grid-cols-1 min-h-0 ${threadRootMessage ? 'lg:grid-cols-[260px_1fr_340px]' : 'lg:grid-cols-[260px_1fr]'}`}>
                 <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-100 bg-white ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-neutral-100 space-y-3">
                         <div className="flex items-center justify-between">
@@ -1229,52 +1260,23 @@ const TeamChat = () => {
                         {filteredChannels.map((channel) => {
                             const isActive = channel.id === selectedChannelId;
                             const unreadCount = unreadByChannel.get(channel.id) || 0;
-                            const channelProject = channel?.project_id ? projectsById.get(channel.project_id) : null;
-                            const channelProjectLabel = channel?.project_id
-                                ? (getProjectLabel(channelProject) || `Proyecto ${channel.project_id.slice(0, 8)}`)
-                                : '';
                             return (
                                 <button
                                     key={channel.id}
                                     onClick={() => setSelectedChannelId(channel.id)}
-                                    className={`chat-sidebar-item w-full text-left rounded-xl px-3 py-2.5 ${isActive
-                                        ? 'chat-sidebar-active text-white'
-                                        : 'hover:bg-neutral-50'
-                                        }`}
+                                    className={`chat-sidebar-item w-full text-left rounded-md px-2.5 py-1.5 ${isActive ? 'chat-sidebar-active' : ''}`}
                                 >
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2.5 min-w-0">
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-white/10' : 'bg-neutral-100'}`}>
-                                                <Hash size={14} className={isActive ? 'text-white/80' : 'text-neutral-500'} />
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className={`text-[13px] font-semibold truncate ${isActive ? 'text-white' : 'text-neutral-800'}`}>
-                                                    {channel.name}
-                                                </p>
-                                                <span className={`text-[10px] ${isActive ? 'text-white/50' : 'text-neutral-400'}`}>
-                                                    {formatTimestamp(lastMsgAtByChannel.get(channel.id) || channel.created_at)}
-                                                </span>
-                                            </div>
+                                    <div className="flex items-center justify-between gap-1.5">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className="text-[13px] text-neutral-400 shrink-0 font-normal">#</span>
+                                            <span className={`text-[13px] truncate ${isActive ? 'text-neutral-900 font-semibold' : unreadCount > 0 ? 'text-neutral-900 font-semibold' : 'text-neutral-500 font-medium'}`}>
+                                                {channel.name}
+                                            </span>
                                         </div>
-                                        <div className="flex items-center shrink-0">
-                                            {unreadCount > 0 && (
-                                                <span
-                                                    className={`inline-flex items-center justify-center min-w-[20px] h-[20px] rounded-full px-1 text-[10px] font-bold ${isActive
-                                                        ? 'bg-white/20 text-white'
-                                                        : 'bg-red-500 text-white'
-                                                        }`}
-                                                    aria-label={`${formatUnread(unreadCount)} mensajes sin leer`}
-                                                >
-                                                    {formatUnread(unreadCount)}
-                                                </span>
-                                            )}
-                                        </div>
+                                        {unreadCount > 0 && !isActive && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" aria-label={`${formatUnread(unreadCount)} sin leer`} />
+                                        )}
                                     </div>
-                                    {channel.description && (
-                                        <p className={`text-[11px] mt-0.5 ml-[42px] truncate ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
-                                            {channel.description}
-                                        </p>
-                                    )}
                                 </button>
                             );
                         })}
@@ -1285,51 +1287,64 @@ const TeamChat = () => {
                     {selectedChannel ? (
                         <>
                             <div className="sticky top-0 z-40 shrink-0 chat-header">
-                                <div className="px-4 py-3 flex items-center justify-between gap-4">
-                                    <div className="min-w-0 flex items-center gap-3">
+                                <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+                                    <div className="min-w-0 flex items-center gap-2.5">
                                         <button
                                             onClick={() => setSelectedChannelId(null)}
-                                            className="lg:hidden p-2 -ml-2 text-neutral-400 hover:text-neutral-800 transition-colors"
+                                            className="lg:hidden p-1.5 -ml-1.5 text-neutral-400 hover:text-neutral-700 transition-colors"
                                             aria-label="Volver"
                                         >
-                                            <ArrowLeft size={20} />
+                                            <ArrowLeft size={18} />
                                         </button>
-                                        <div className="w-10 h-10 rounded-xl bg-neutral-100 flex items-center justify-center shrink-0">
-                                            <Hash size={18} className="text-neutral-500" />
-                                        </div>
+                                        <span className="text-neutral-300 text-lg font-light hidden lg:block">#</span>
                                         <div className="min-w-0">
                                             {selectedChannel.project_id ? (
                                                 <button
                                                     type="button"
                                                     onClick={() => navigate(`/dashboard/tasks?projectId=${selectedChannel.project_id}`)}
-                                                    className="text-[15px] font-bold text-neutral-900 flex items-center gap-1 min-w-0 hover:text-blue-600 transition-colors group/title"
+                                                    className="text-[14px] font-semibold text-neutral-900 hover:text-indigo-600 transition-colors"
                                                     title="Ver proyecto"
                                                 >
-                                                    <span className="truncate underline-offset-2 group-hover/title:underline">{selectedChannel.name}</span>
+                                                    {selectedChannel.name}
                                                 </button>
                                             ) : (
-                                                <p className="text-[15px] font-bold text-neutral-900 truncate">
+                                                <p className="text-[14px] font-semibold text-neutral-900 truncate">
                                                     {selectedChannel.name}
                                                 </p>
                                             )}
-                                            {selectedChannelProjectLabel && (
-                                                <p className="text-[11px] text-neutral-400 truncate">{selectedChannelProjectLabel}</p>
-                                            )}
+                                            <div className="flex items-center gap-2">
+                                                {selectedChannelProjectLabel && (
+                                                    <p className="text-[11px] text-neutral-400 truncate leading-tight">{selectedChannelProjectLabel}</p>
+                                                )}
+                                                {onlineCount > 0 && (
+                                                    <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium leading-tight">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                                                        {onlineCount} online
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                    {canCreateChannel && (
-                                        <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            onClick={() => setIsSearchOpen(true)}
+                                            className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+                                            title="Buscar mensajes"
+                                        >
+                                            <Search size={15} />
+                                        </button>
+                                        {canCreateChannel && (
                                             <button
                                                 onClick={() => {
                                                     setIsMembersOpen(true);
                                                     loadMembers(selectedChannelId);
                                                 }}
-                                                className="rounded-lg bg-neutral-100 px-3 py-1.5 text-xs font-semibold text-neutral-600 hover:text-neutral-800 hover:bg-neutral-200 transition-colors"
+                                                className="text-xs font-medium text-neutral-500 hover:text-neutral-800 px-2.5 py-1.5 rounded-md hover:bg-neutral-100 transition-colors"
                                             >
                                                 Miembros
                                             </button>
-                                        </div>
-                                    )}
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -1353,7 +1368,11 @@ const TeamChat = () => {
                                         <p className="text-xs text-neutral-400 mt-1">Inicia la conversacion enviando un mensaje</p>
                                     </div>
                                 )}
-                                {messages.map((message) => {
+                                {messages.map((message, index) => {
+                                    const prevMessage = index > 0 ? messages[index - 1] : null;
+                                    const showDateSep = !prevMessage ||
+                                        new Date(message.created_at).toDateString() !== new Date(prevMessage.created_at).toDateString();
+                                    const grouped = isGroupedWithPrevious(message, prevMessage);
                                     const botMessage = isMessageFromMike(message);
                                     const isOutbound = message.author_id === user?.id && !botMessage;
                                     const authorName = isOutbound
@@ -1386,126 +1405,149 @@ const TeamChat = () => {
                                             ? profile?.full_name || user?.email || 'Tu'
                                             : authorName);
                                     return (
-                                        <ChatBubble
-                                            key={message.id}
-                                            variant={isOutbound ? 'sent' : 'received'}
-                                            layout={botMessage ? 'ai' : 'default'}
-                                            className="chat-animate-in mb-2 w-full group"
-                                        >
-                                            <ChatBubbleAvatar
-                                                src={avatarSrc}
-                                                fallback={avatarFallback}
-                                                className="h-9 w-9 shrink-0 ring-1 ring-black/5"
-                                            />
-                                            <div className={`flex min-w-0 max-w-[80%] flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
-                                                <div className="flex items-center gap-1.5 mb-0.5 px-1">
-                                                {isOutbound && (
-                                                    <button
-                                                        onClick={() => setReplyingTo(message)}
-                                                        className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600 leading-none"
-                                                    >
-                                                        Responder
-                                                    </button>
-                                                )}
-                                                <span className={`text-[10px] font-bold leading-none ${getUserColor(authorName)}`}>
-                                                    {authorName}
-                                                </span>
-                                                <span className="text-[9px] text-neutral-400/80 leading-none">
-                                                    {formatShortDateTime(message.created_at)}
-                                                </span>
-                                                {isSeen && (
-                                                    <span className="text-[9px] font-semibold leading-none text-emerald-500">
-                                                        Leído
-                                                    </span>
-                                                )}
-                                                {!isOutbound && (
-                                                    <button
-                                                        onClick={() => setReplyingTo(message)}
-                                                        className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600 leading-none"
-                                                    >
-                                                        Responder
-                                                    </button>
-                                                )}
+                                        <React.Fragment key={message.id}>
+                                            {showDateSep && (
+                                                <div className="chat-date-separator">
+                                                    <span>{formatDateLabel(message.created_at)}</span>
                                                 </div>
-                                                <ReactionPickerPopover
-                                                    onSelect={(emoji) => handleToggleReaction(message.id, emoji)}
-                                                    openOnClick={false}
-                                                >
-                                                    <ChatBubbleMessage
-                                                        id={`msg-${message.id}`}
-                                                        variant={isOutbound ? 'sent' : 'received'}
-                                                        role="button"
-                                                        tabIndex={0}
-                                                        className={cn(
-                                                            'chat-bubble relative max-w-full px-3 py-2 text-sm shadow-sm',
-                                                            isOutbound
-                                                                ? 'chat-bubble-out bg-transparent text-neutral-900'
-                                                                : 'chat-bubble-in bg-transparent text-neutral-900',
+                                            )}
+                                            <ChatBubble
+                                                variant={isOutbound ? 'sent' : 'received'}
+                                                layout={botMessage ? 'ai' : 'default'}
+                                                className={`chat-animate-in w-full group ${grouped ? 'mt-0.5' : 'mt-3'}`}
+                                            >
+                                                {grouped ? (
+                                                    <div className="w-9 shrink-0" />
+                                                ) : (
+                                                    <div className="relative shrink-0">
+                                                        <ChatBubbleAvatar
+                                                            src={avatarSrc}
+                                                            fallback={avatarFallback}
+                                                            className="h-9 w-9 ring-1 ring-black/5"
+                                                        />
+                                                        {!botMessage && isOnline(message.author_id) && (
+                                                            <span className="presence-dot" />
                                                         )}
-                                                    >
-                                                        {message.reply_to_id && (
-                                                            <div
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const el = document.getElementById(`msg-${message.reply_to_id}`);
-                                                                    if (el) {
-                                                                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                                        el.classList.add('bg-black/10', 'transition-colors', 'duration-500');
-                                                                        setTimeout(() => {
-                                                                            el.classList.remove('bg-black/10');
-                                                                        }, 1500);
-                                                                    }
-                                                                }}
-                                                                className="chat-reply-preview mb-2 w-full min-w-0 max-w-full overflow-hidden p-2 text-[11px] cursor-pointer hover:opacity-80 transition-opacity"
+                                                    </div>
+                                                )}
+                                                <div className={`flex min-w-0 max-w-[78%] flex-col ${isOutbound ? 'items-end' : 'items-start'}`}>
+                                                    {!grouped && (
+                                                        <div className="flex items-center gap-1.5 mb-1 px-0.5">
+                                                            <span className={`text-[12px] font-semibold leading-none ${getUserColor(authorName)}`}>
+                                                                {authorName}
+                                                            </span>
+                                                            <span className="text-[10px] text-neutral-400 leading-none">
+                                                                {formatShortDateTime(message.created_at)}
+                                                            </span>
+                                                            {isSeen && (
+                                                                <span className="text-[10px] font-medium leading-none text-emerald-500">✓</span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    <div className={`relative flex items-end gap-1 ${isOutbound ? 'flex-row-reverse' : 'flex-row'}`}>
+                                                        <div className={`flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOutbound ? 'flex-row-reverse' : ''}`}>
+                                                            <button
+                                                                onClick={() => setReplyingTo(message)}
+                                                                className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                                                                title="Responder"
                                                             >
-                                                                <p className="font-semibold text-neutral-600 truncate">
-                                                                    Respondiendo a {repliedAuthor}
-                                                                </p>
-                                                                <p className="truncate max-w-full text-neutral-500">
-                                                                    {repliedBody}
-                                                                </p>
-                                                            </div>
-                                                        )}
-                                                        {isAudio ? (
-                                                            <ChatAudioPlayer
-                                                                src={mediaUrl}
-                                                                fileName={message.file_name}
-                                                                variant={isOutbound ? 'outbound' : 'inbound'}
-                                                            />
-                                                        ) : isImage ? (
-                                                            <div className="space-y-2">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => openLightbox(mediaUrl, message.file_name)}
-                                                                    className="block focus:outline-none"
-                                                                >
-                                                                    <img
-                                                                        src={mediaUrl}
-                                                                        alt={message.file_name || 'Imagen compartida'}
-                                                                        className="max-h-64 rounded-lg object-cover cursor-zoom-in"
-                                                                        loading="lazy"
-                                                                    />
-                                                                </button>
-                                                                {message.file_name && (
-                                                                    <p className="text-[11px] text-neutral-500 break-all">{message.file_name}</p>
+                                                                <MessageSquare size={13} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => setThreadRootMessage(message)}
+                                                                className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                                                                title="Abrir hilo"
+                                                            >
+                                                                <Hash size={13} />
+                                                            </button>
+                                                        </div>
+                                                        <ReactionPickerPopover
+                                                            onSelect={(emoji) => handleToggleReaction(message.id, emoji)}
+                                                            openOnClick={false}
+                                                        >
+                                                            <ChatBubbleMessage
+                                                                id={`msg-${message.id}`}
+                                                                variant={isOutbound ? 'sent' : 'received'}
+                                                                role="button"
+                                                                tabIndex={0}
+                                                                className={cn(
+                                                                    'chat-bubble relative max-w-full px-3 py-2 text-[13px] leading-relaxed',
+                                                                    isOutbound
+                                                                        ? 'chat-bubble-out text-neutral-900'
+                                                                        : 'chat-bubble-in text-neutral-900',
                                                                 )}
-                                                            </div>
-                                                        ) : message?.message_type === 'audio' ? (
-                                                            <p className="text-xs text-neutral-500">Audio no disponible.</p>
-                                                        ) : message?.message_type === 'image' ? (
-                                                            <p className="text-xs text-neutral-500">Imagen no disponible.</p>
-                                                        ) : (
-                                                            <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderTextWithLinks(message.body)}</p>
-                                                        )}
-                                                    </ChatBubbleMessage>
-                                                </ReactionPickerPopover>
-                                                <MessageReactionsBar
-                                                    reactions={reactionsByMessage[message.id] || []}
-                                                    currentUserId={user?.id}
-                                                    onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
-                                                />
-                                            </div>
-                                        </ChatBubble>
+                                                            >
+                                                                {grouped && (
+                                                                    <span className="absolute -top-5 right-1 text-[10px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                                        {formatTime(message.created_at)}
+                                                                        {isSeen && <span className="ml-1 text-emerald-500">✓</span>}
+                                                                    </span>
+                                                                )}
+                                                                {message.reply_to_id && (
+                                                                    <div
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            const el = document.getElementById(`msg-${message.reply_to_id}`);
+                                                                            if (el) {
+                                                                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                                el.classList.add('bg-black/10', 'transition-colors', 'duration-500');
+                                                                                setTimeout(() => el.classList.remove('bg-black/10'), 1500);
+                                                                            }
+                                                                        }}
+                                                                        className="chat-reply-preview mb-2 w-full min-w-0 max-w-full overflow-hidden p-2 text-[11px] cursor-pointer hover:opacity-80 transition-opacity"
+                                                                    >
+                                                                        <p className="font-semibold text-neutral-600 truncate">
+                                                                            {repliedAuthor}
+                                                                        </p>
+                                                                        <p className="truncate max-w-full text-neutral-500">
+                                                                            {repliedBody}
+                                                                        </p>
+                                                                    </div>
+                                                                )}
+                                                                {isAudio ? (
+                                                                    <ChatAudioPlayer
+                                                                        src={mediaUrl}
+                                                                        fileName={message.file_name}
+                                                                        variant={isOutbound ? 'outbound' : 'inbound'}
+                                                                    />
+                                                                ) : isImage ? (
+                                                                    <div className="space-y-1.5">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => openLightbox(mediaUrl, message.file_name)}
+                                                                            className="block focus:outline-none"
+                                                                        >
+                                                                            <img
+                                                                                src={mediaUrl}
+                                                                                alt={message.file_name || 'Imagen compartida'}
+                                                                                className="max-h-64 rounded-lg object-cover cursor-zoom-in"
+                                                                                loading="lazy"
+                                                                            />
+                                                                        </button>
+                                                                        {message.file_name && (
+                                                                            <p className="text-[11px] text-neutral-400 break-all">{message.file_name}</p>
+                                                                        )}
+                                                                    </div>
+                                                                ) : message?.message_type === 'audio' ? (
+                                                                    <p className="text-xs text-neutral-400">Audio no disponible.</p>
+                                                                ) : message?.message_type === 'image' ? (
+                                                                    <p className="text-xs text-neutral-400">Imagen no disponible.</p>
+                                                                ) : (
+                                                                    <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                                                                        {renderTextWithLinks(message.body)}
+                                                                    </p>
+                                                                )}
+                                                            </ChatBubbleMessage>
+                                                        </ReactionPickerPopover>
+                                                    </div>
+                                                    <MessageReactionsBar
+                                                        reactions={reactionsByMessage[message.id] || []}
+                                                        currentUserId={user?.id}
+                                                        onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
+                                                    />
+                                                </div>
+                                            </ChatBubble>
+                                        </React.Fragment>
                                     );
                                 })}
                                 <div ref={messagesEndRef} />
@@ -1514,34 +1556,34 @@ const TeamChat = () => {
                             <div
                                 ref={composerRef}
                                 className="shrink-0 chat-composer px-4 py-3"
-                                style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+                                style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
                             >
-                                <div className="space-y-2">
-                                    {replyingTo && (
-                                        <div className="chat-reply-preview chat-animate-in flex items-center justify-between gap-2 p-2.5 mb-1 rounded-lg">
-                                            <div className="min-w-0 flex-1">
-                                                <p className={`text-[11px] font-semibold truncate ${getUserColor(replyingTo.author_name || replyingTo.author?.full_name)}`}>
-                                                    Respondiendo a {replyingTo.author_name || replyingTo.author?.full_name || 'Equipo'}
-                                                </p>
-                                                <p className="text-[11px] text-neutral-500 truncate max-w-full">{replyingTo.body}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => setReplyingTo(null)}
-                                                className="shrink-0 p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-black/5 transition-colors"
-                                            >
-                                                <span className="text-xs font-bold">✕</span>
-                                            </button>
+                                {replyingTo && (
+                                    <div className="chat-reply-preview chat-animate-in flex items-center justify-between gap-2 px-3 py-2 mb-2 rounded-md">
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`text-[11px] font-semibold truncate ${getUserColor(replyingTo.author_name || replyingTo.author?.full_name)}`}>
+                                                ↩ {replyingTo.author_name || replyingTo.author?.full_name || 'Equipo'}
+                                            </p>
+                                            <p className="text-[11px] text-neutral-500 truncate max-w-full">{replyingTo.body}</p>
                                         </div>
-                                    )}
-                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            onClick={() => setReplyingTo(null)}
+                                            className="shrink-0 p-1 rounded text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors text-xs"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="flex items-end gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 focus-within:border-neutral-300 transition-colors">
+                                    <div className="flex items-center gap-1 pb-1">
                                         <button
                                             type="button"
-                                            className={`p-2 rounded-lg transition disabled:opacity-50 ${uploadingImage ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/60'}`}
+                                            className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors disabled:opacity-40"
                                             title="Adjuntar imagen"
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={uploadingImage || !selectedChannelId}
                                         >
-                                            {uploadingImage ? <RefreshCw size={20} className="animate-spin" /> : <Image size={20} />}
+                                            {uploadingImage ? <RefreshCw size={16} className="animate-spin" /> : <Image size={16} />}
                                         </button>
                                         <input
                                             ref={fileInputRef}
@@ -1551,74 +1593,94 @@ const TeamChat = () => {
                                             className="hidden"
                                         />
                                         <button
-                                            className={`p-2 rounded-lg transition disabled:opacity-50 ${isRecording ? 'text-red-500 bg-red-50' : uploadingAudio ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700 hover:bg-white/60'}`}
+                                            className={`p-1 rounded-md transition-colors disabled:opacity-40 ${isRecording ? 'text-red-500 bg-red-50' : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'}`}
                                             title={isRecording ? 'Detener grabación' : 'Grabar nota de voz'}
-                                            onClick={() => {
-                                                if (isRecording) {
-                                                    stopRecording();
-                                                } else {
-                                                    startRecording();
-                                                }
-                                            }}
+                                            onClick={() => isRecording ? stopRecording() : startRecording()}
                                             disabled={uploadingAudio}
                                         >
                                             {uploadingAudio
-                                                ? <RefreshCw size={20} className="animate-spin" />
+                                                ? <RefreshCw size={16} className="animate-spin" />
                                                 : isRecording
-                                                    ? <Square size={20} />
-                                                    : <Mic size={20} />
+                                                    ? <Square size={16} />
+                                                    : <Mic size={16} />
                                             }
                                         </button>
-                                        <textarea
-                                            ref={textareaRef}
-                                            value={messageText}
-                                            onChange={(event) => setMessageText(event.target.value)}
-                                            placeholder="Escribe un mensaje..."
-                                            className="flex-1 min-h-[40px] max-h-32 rounded-xl bg-white px-4 py-2.5 text-base lg:text-[14px] focus:outline-none focus:ring-1 focus:ring-neutral-300 resize-none transition-all custom-scrollbar shadow-sm"
-                                            onPaste={(event) => {
-                                                const items = event.clipboardData?.items;
-                                                if (!items || items.length === 0) return;
-                                                const imageItem = Array.from(items).find((item) => item.type?.startsWith('image/'));
-                                                if (!imageItem) return;
-                                                const file = imageItem.getAsFile();
-                                                if (!file) return;
-                                                event.preventDefault();
-                                                uploadImageFile(file);
-                                            }}
-                                            onKeyDown={(event) => {
-                                                if (event.key === 'Enter' && !event.shiftKey) {
-                                                    event.preventDefault();
-                                                    handleSend();
-                                                }
-                                            }}
-                                        />
-                                        <button
-                                            onClick={handleSend}
-                                            disabled={sending || !messageText.trim()}
-                                            className={`p-2.5 rounded-xl transition-all disabled:opacity-30 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-sm' : 'text-neutral-400'}`}
-                                        >
-                                            {sending ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-                                        </button>
                                     </div>
-                                    {sendError && <p className="text-xs text-red-600 mt-1">{sendError}</p>}
+                                    <textarea
+                                        ref={textareaRef}
+                                        value={messageText}
+                                        onChange={(event) => setMessageText(event.target.value)}
+                                        placeholder="Escribe un mensaje... (@nombre para mencionar)"
+                                        className="flex-1 min-h-[32px] max-h-32 bg-transparent text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none resize-none custom-scrollbar leading-relaxed py-0.5"
+                                        onPaste={(event) => {
+                                            const items = event.clipboardData?.items;
+                                            if (!items || items.length === 0) return;
+                                            const imageItem = Array.from(items).find((item) => item.type?.startsWith('image/'));
+                                            if (!imageItem) return;
+                                            const file = imageItem.getAsFile();
+                                            if (!file) return;
+                                            event.preventDefault();
+                                            uploadImageFile(file);
+                                        }}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' && !event.shiftKey) {
+                                                event.preventDefault();
+                                                handleSend();
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={handleSend}
+                                        disabled={sending || !messageText.trim()}
+                                        className={`p-1.5 rounded-lg transition-all disabled:opacity-30 shrink-0 mb-0.5 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-700' : 'text-neutral-300'}`}
+                                    >
+                                        {sending ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
+                                    </button>
                                 </div>
+                                {sendError && <p className="text-xs text-red-500 mt-1.5">{sendError}</p>}
                             </div>
                         </>
                     ) : (
-                        <div className="flex-1 flex items-center justify-center chat-bg">
+                        <div className="flex-1 flex items-center justify-center bg-white">
                             <div className="text-center chat-empty-state">
-                                <div className="w-16 h-16 rounded-2xl bg-white/80 flex items-center justify-center mx-auto mb-4 shadow-sm">
-                                    <MessageSquare size={28} className="text-neutral-300" />
+                                <div className="w-12 h-12 rounded-xl bg-neutral-100 flex items-center justify-center mx-auto mb-3">
+                                    <Hash size={22} className="text-neutral-300" />
                                 </div>
-                                <p className="font-semibold text-neutral-600">Selecciona un canal</p>
-                                <p className="text-[13px] text-neutral-400 mt-1">
+                                <p className="text-[13px] font-medium text-neutral-500">Selecciona un canal</p>
+                                <p className="text-[12px] text-neutral-400 mt-0.5">
                                     Elige un canal para ver los mensajes
                                 </p>
                             </div>
                         </div>
                     )}
                 </div>
+                {threadRootMessage && (
+                    <div className="hidden lg:flex flex-col min-h-0 h-full overflow-hidden">
+                        <ThreadPanel
+                            rootMessage={threadRootMessage}
+                            channelId={selectedChannelId}
+                            onClose={() => setThreadRootMessage(null)}
+                        />
+                    </div>
+                )}
             </div>
+            {isSearchOpen && (
+                <MessageSearch
+                    onClose={() => setIsSearchOpen(false)}
+                    onNavigate={(channelId, messageId) => {
+                        setIsSearchOpen(false);
+                        setSelectedChannelId(channelId);
+                        setTimeout(() => {
+                            const el = document.getElementById(`msg-${messageId}`);
+                            if (el) {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                el.classList.add('bg-indigo-50', 'transition-colors', 'duration-700');
+                                setTimeout(() => el.classList.remove('bg-indigo-50'), 1800);
+                            }
+                        }, 400);
+                    }}
+                />
+            )}
             {
                 isMembersOpen && canCreateChannel && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
