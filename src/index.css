@@ -381,6 +381,98 @@ a, button, [role="button"], input, select, textarea, .cursor-pointer {
   right: 0;
 }
 
+/* ─── Chat Dark Mode ─── */
+/* Se activa con data-chat-dark="true" en el contenedor raíz del chat */
+
+[data-chat-dark] {
+  color-scheme: dark;
+}
+
+/* Fondos principales */
+[data-chat-dark] .chat-bg          { background-color: #111111; }
+[data-chat-dark] .chat-header      { background: #161616; border-bottom-color: #252525; }
+[data-chat-dark] .chat-composer    { background: #161616; border-top-color: #252525; }
+[data-chat-dark] .chat-thread-panel{ background: #131313; border-left-color: #252525; }
+
+/* Burbujas */
+[data-chat-dark] .chat-bubble-out  { background: #1e2a1e; }
+[data-chat-dark] .chat-bubble-in   { background: #1e1e1e; }
+
+/* Sidebar */
+[data-chat-dark] .chat-sidebar-item:hover { background: #1e1e1e; }
+[data-chat-dark] .chat-sidebar-active     { background: #252525; }
+
+/* Misc */
+[data-chat-dark] .chat-reply-preview {
+  background: #1e1e1e;
+  border-left-color: #3a3a3a;
+}
+[data-chat-dark] .chat-date-separator       { color: #555555; }
+[data-chat-dark] .chat-date-separator::before,
+[data-chat-dark] .chat-date-separator::after { background: #252525; }
+[data-chat-dark] .chat-mention             { background: #1e1e3a; color: #a5b4fc; }
+[data-chat-dark] .chat-thread-link         { color: #818cf8; }
+[data-chat-dark] .chat-thread-link:hover   { background: #1e1e3a; }
+[data-chat-dark] .chat-empty-state         { color: #444444; }
+[data-chat-dark] .presence-dot             { border-color: #161616; }
+
+/* Tailwind overrides — fondos */
+[data-chat-dark] .bg-white          { background-color: #161616 !important; }
+[data-chat-dark] .bg-neutral-50     { background-color: #1a1a1a !important; }
+[data-chat-dark] .bg-neutral-100    { background-color: #222222 !important; }
+[data-chat-dark] .bg-neutral-200    { background-color: #2a2a2a !important; }
+[data-chat-dark] .hover\:bg-neutral-50:hover  { background-color: #1e1e1e !important; }
+[data-chat-dark] .hover\:bg-neutral-100:hover { background-color: #252525 !important; }
+[data-chat-dark] .hover\:bg-neutral-200:hover { background-color: #2e2e2e !important; }
+[data-chat-dark] .focus-within\:border-neutral-300:focus-within { border-color: #3a3a3a !important; }
+
+/* Texto */
+[data-chat-dark] .text-neutral-900  { color: #e8e8e8 !important; }
+[data-chat-dark] .text-neutral-800  { color: #d0d0d0 !important; }
+[data-chat-dark] .text-neutral-700  { color: #b8b8b8 !important; }
+[data-chat-dark] .text-neutral-600  { color: #999999 !important; }
+[data-chat-dark] .text-neutral-500  { color: #777777 !important; }
+[data-chat-dark] .text-neutral-400  { color: #555555 !important; }
+[data-chat-dark] .hover\:text-neutral-800:hover { color: #e0e0e0 !important; }
+[data-chat-dark] .hover\:text-neutral-700:hover { color: #cccccc !important; }
+[data-chat-dark] .hover\:text-neutral-600:hover { color: #aaaaaa !important; }
+
+/* Bordes */
+[data-chat-dark] .border-neutral-100 { border-color: #222222 !important; }
+[data-chat-dark] .border-neutral-200 { border-color: #2a2a2a !important; }
+[data-chat-dark] .border-neutral-300 { border-color: #333333 !important; }
+
+/* Inputs y textareas */
+[data-chat-dark] input,
+[data-chat-dark] textarea {
+  background-color: transparent;
+  color: #e8e8e8;
+}
+[data-chat-dark] input::placeholder,
+[data-chat-dark] textarea::placeholder { color: #444444; }
+[data-chat-dark] input:focus,
+[data-chat-dark] textarea:focus { --tw-ring-color: #3a3a3a; }
+
+/* Scrollbar en dark */
+[data-chat-dark] .custom-scrollbar::-webkit-scrollbar-track { background: #111111; }
+[data-chat-dark] .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #2a2a2a; }
+
+/* Send button */
+[data-chat-dark] .bg-neutral-900 { background-color: #e8e8e8 !important; }
+[data-chat-dark] .text-white { color: #111111 !important; }
+[data-chat-dark] .hover\:bg-neutral-800:hover { background-color: #d0d0d0 !important; }
+[data-chat-dark] .hover\:bg-neutral-700:hover { background-color: #cccccc !important; }
+
+/* Imágenes con shadow */
+[data-chat-dark] .shadow-sm  { box-shadow: 0 1px 3px rgba(0,0,0,0.5) !important; }
+[data-chat-dark] .shadow-2xl { box-shadow: 0 25px 50px rgba(0,0,0,0.7) !important; }
+
+/* Transición suave al cambiar tema */
+[data-chat-dark],
+[data-chat-dark] * {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+
 /* ── Banana Image Studio ── */
 .glass-panel {
   @apply bg-[#1a1a1a]/80 backdrop-blur-xl border border-white/10 rounded-2xl;

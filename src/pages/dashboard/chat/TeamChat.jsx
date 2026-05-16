@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Circle, Hash, Image, MessageSquare, Mic, Plus, RefreshCw, Search, Send, Square } from 'lucide-react';
+import { ArrowLeft, Circle, Hash, Image, MessageSquare, Mic, Moon, Plus, RefreshCw, Search, Send, Square, Sun } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
@@ -213,6 +213,16 @@ const TeamChat = () => {
     const [channelLastMsgAt, setChannelLastMsgAt] = useState(new Map());
     const [threadRootMessage, setThreadRootMessage] = useState(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isDarkChat, setIsDarkChat] = useState(() => {
+        try { return localStorage.getItem('chat-dark') === 'true'; } catch { return false; }
+    });
+    const toggleDark = useCallback(() => {
+        setIsDarkChat((prev) => {
+            const next = !prev;
+            try { localStorage.setItem('chat-dark', String(next)); } catch { }
+            return next;
+        });
+    }, []);
 
     const presenceUser = useMemo(() => ({
         id: user?.id,
@@ -1173,6 +1183,7 @@ const TeamChat = () => {
     return (
         <div
             className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
+            data-chat-dark={isDarkChat ? 'true' : undefined}
             style={{
                 top: '45px',
                 height: 'calc(var(--app-height, 100dvh) + var(--app-viewport-offset-top, 0px) - 45px)',
@@ -1325,13 +1336,20 @@ const TeamChat = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1">
                                         <button
                                             onClick={() => setIsSearchOpen(true)}
                                             className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
                                             title="Buscar mensajes"
                                         >
                                             <Search size={15} />
+                                        </button>
+                                        <button
+                                            onClick={toggleDark}
+                                            className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+                                            title={isDarkChat ? 'Modo claro' : 'Modo oscuro'}
+                                        >
+                                            {isDarkChat ? <Sun size={15} /> : <Moon size={15} />}
                                         </button>
                                         {canCreateChannel && (
                                             <button
