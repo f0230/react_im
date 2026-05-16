@@ -14,6 +14,68 @@
           "value": "unsafe-none"
         }
       ]
+    },
+    {
+      "source": "/dashboard",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/dashboard/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/admin",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/registro",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    },
+    {
+      "source": "/complete-profile",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/Nosotros",
+      "destination": "/nosotros",
+      "permanent": true
+    },
+    {
+      "source": "/Contacto",
+      "destination": "/contacto",
+      "permanent": true
+    },
+    {
+      "source": "/terminos-y-condiciones",
+      "destination": "/tyc",
+      "permanent": true
     }
   ],
   "rewrites": [

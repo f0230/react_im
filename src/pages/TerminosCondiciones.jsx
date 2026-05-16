@@ -1,24 +1,28 @@
 // src/pages/TerminosCondiciones.jsx
 import React from 'react';
-import SEO from '../components/SEO';
 import FadeContent from '../components/ui/FadeContent';
 import Layout from '../components/Layout';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { breadcrumbSchema } from '@/config/seo';
 
 const TerminosCondiciones = () => {
     return (
         <>
+            <Layout
+                seo={{
+                    title: "Términos y Condiciones | Grupo DTE",
+                    description: "Lee los términos y condiciones de uso del sitio web de Grupo DTE. Información legal, uso del sitio, propiedad intelectual y contacto.",
+                    url: "/tyc",
+                    structuredData: [
+                        breadcrumbSchema([
+                            { name: "Inicio", path: "/" },
+                            { name: "Términos y Condiciones", path: "/tyc" },
+                        ]),
+                    ],
+                }}
+            >
 
-        
-            <SEO
-                title="Términos y Condiciones | Grupo DTE"
-                description="Lee los términos y condiciones de uso del sitio web de Grupo DTE. Información legal, uso del sitio, propiedad intelectual y contacto."
-                image="https://www.grupodte.com/og-image.jpg" // reemplazalo si tenés una imagen definida
-                url="https://www.grupodte.com/terminos-y-condiciones"
-            />
-            <Layout>
-
-            <main className="px-6 py-16 max-w-4xl mx-auto text-neutral-800">
+            <article className="px-6 py-16 max-w-4xl mx-auto text-neutral-800">
                 <FadeContent>
                     <h1 className="text-3xl md:text-5xl font-bold mb-4">Términos y Condiciones de Uso</h1>
                     <p className="text-sm text-neutral-500 mb-10">
@@ -94,7 +98,7 @@ grupo@grupodte.com`
                         </FadeContent>
                     ))}
                 </section>
-            </main>
+            </article>
             </Layout>
         </>
     );

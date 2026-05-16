@@ -223,7 +223,7 @@ function ClosingSection() {
 
         <FadeContent initialOpacity={0} delay={350}>
           <a
-            href="/Contacto"
+            href="/contacto"
             className="group inline-flex h-14 items-center gap-2 rounded-full bg-[#19d327] px-10 font-product text-sm font-semibold text-black transition-shadow duration-300 hover:shadow-[0_0_32px_rgba(25,211,39,0.4)]"
           >
             <span>Hablemos</span>

@@ -1,22 +1,28 @@
 // src/pages/PoliticaPrivacidad.jsx
 import React from 'react';
-import SEO from '../components/SEO';
 import FadeContent from '../components/ui/FadeContent';
 import Layout from '../components/Layout';
+import { breadcrumbSchema } from '@/config/seo';
 
 const PoliticaPrivacidad = () => {
     return (
         <>
 
-        <Layout>
-            <SEO
-                title="Política de Privacidad | Grupo DTE"
-                description="Conocé cómo recopilamos, usamos y protegemos tus datos personales en Grupo DTE. Transparencia y compromiso con tu privacidad."
-                image="https://www.grupodte.com/og-image.jpg" // reemplazalo si tenés una imagen específica
-                url="https://www.grupodte.com/politica-privacidad"
-            />
+        <Layout
+            seo={{
+                title: "Política de Privacidad | Grupo DTE",
+                description: "Conocé cómo recopilamos, usamos y protegemos tus datos personales en Grupo DTE. Transparencia y compromiso con tu privacidad.",
+                url: "/politica-privacidad",
+                structuredData: [
+                    breadcrumbSchema([
+                        { name: "Inicio", path: "/" },
+                        { name: "Política de Privacidad", path: "/politica-privacidad" },
+                    ]),
+                ],
+            }}
+        >
 
-            <main className="px-6 py-16 max-w-4xl mx-auto text-neutral-800">
+            <article className="px-6 py-16 max-w-4xl mx-auto text-neutral-800">
                 <FadeContent>
                     <h1 className="text-3xl md:text-5xl font-bold mb-4">Política de Privacidad</h1>
                     <p className="text-sm text-neutral-500 mb-10">
@@ -103,7 +109,7 @@ Podés ejercer estos derechos escribiéndonos a grupo@grupodte.com.`
                         </FadeContent>
                     ))}
                 </section>
-            </main>
+            </article>
             </Layout>
         </>
     );

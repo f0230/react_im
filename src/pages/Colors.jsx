@@ -8,7 +8,8 @@ const Colors = () => {
       <SEO
         title="Colors | Grupo DTE"
         description="Página de prueba para el componente AnimatedDots."
-        url="https://www.grupodte.com/colors"
+        url="/colors"
+        robots="noindex, nofollow"
       />
 
       <main className="fixed inset-0 h-screen w-screen overflow-hidden">

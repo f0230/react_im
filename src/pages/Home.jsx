@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 import Layout from "@/components/Layout";
+import { breadcrumbSchema } from "@/config/seo";
 
 import HeroSection from "@/components/Section1";
 import Section2 from "@/components/Section2";
@@ -61,7 +62,16 @@ const Home = () => {
   }, []);
 
   return (
-    <Layout>
+    <Layout
+      seo={{
+        title: t("layout.seo.defaultTitle"),
+        description: t("layout.seo.defaultDescription"),
+        url: "/",
+        structuredData: [
+          breadcrumbSchema([{ name: "Inicio", path: "/" }]),
+        ],
+      }}
+    >
       <div className="relative mx-auto flex w-full max-w-[1440px] flex-col gap-[10px] overflow-x-hidden">
         <div className="relative w-full">
           <HeroSection

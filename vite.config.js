@@ -7,11 +7,16 @@ import dotenv from 'dotenv';
 import { visualizer } from 'rollup-plugin-visualizer';
 // import { imagetools } from 'vite-imagetools'; // Comentado temporalmente
 // import imagePresets from 'vite-plugin-image-presets'; // Comentado temporalmente
-import Pages from 'vite-plugin-pages';
-import PagesSitemap from 'vite-plugin-pages-sitemap';
 import Sitemap from 'vite-plugin-sitemap';
+import { SITE_URL, publicRoutes, robotsDisallowPathPrefixes } from './src/config/seo.js';
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+const sitemapRoutes = publicRoutes
+  .map(({ path: routePath }) => routePath)
+  .filter((routePath) => routePath !== '/');
+const sitemapChangefreq = Object.fromEntries(publicRoutes.map(({ path: routePath, changefreq }) => [routePath, changefreq]));
+const sitemapPriority = Object.fromEntries(publicRoutes.map(({ path: routePath, priority }) => [routePath, priority]));
 
 const devApiPlugin = () => {
   const calHandlerUrl          = pathToFileURL(path.resolve(__dirname, './api/cal/index.js')).href;
@@ -287,11 +292,6 @@ export default defineConfig({
     //     sizes: '100vw',
     //   },
     // }),
-    Pages(),
-    PagesSitemap({
-      hostname: 'https://www.grupodte.com',
-      exclude: ['/404'],
-    }),
     visualizer({
       filename: './dist/stats.html',
       open: false,
@@ -299,15 +299,19 @@ export default defineConfig({
       brotliSize: true,
     }),
     Sitemap({
-      hostname: 'https://www.grupodte.com',
-      routes: [
-        '/',
-        '/Nosotros',
-        '/Contacto',
-        '/servicios',
-        '/despega',
-        '/tyc',
-        '/politica-privacidad'
+      hostname: SITE_URL,
+      dynamicRoutes: sitemapRoutes,
+      exclude: ['/stats'],
+      readable: true,
+      changefreq: sitemapChangefreq,
+      priority: sitemapPriority,
+      generateRobotsTxt: true,
+      robots: [
+        {
+          userAgent: '*',
+          allow: '/',
+          disallow: robotsDisallowPathPrefixes,
+        },
       ],
     }),
   ],

@@ -2,13 +2,13 @@ import React, { memo, useCallback, useMemo, useRef } from 'react';
 import { motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import Layout from '@/components/Layout';
-import SEO from '@/components/SEO';
 import ScrollVelocity from '@/components/ui/ScrollVelocity';
 import { ShatterButton } from '@/components/ui/shatter-button';
 import BlurText from '@/components/ui/TextBlur';
 import { BubbleAnimation } from '@/components/ui/bubble-animation';
 import Noise from '@/components/ui/Noise';
 import { servicios, categories } from '@/data/serviciosList';
+import { breadcrumbSchema } from '@/config/seo';
 
 import portadaImg from '@/assets/PORTADA_1.webp';
 import campanaImg from '@/assets/BANNER_CAMPAÑA.webp';
@@ -229,6 +229,29 @@ const Servicios = () => {
     return { introService: intro, categorized: grouped };
   }, []);
 
+  const serviceStructuredData = useMemo(() => ({
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Servicios de Grupo DTE',
+    itemListElement: servicios.slice(1).map((service, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      item: {
+        '@type': 'Service',
+        name: t(service.titleKey),
+        description: t(service.textKey),
+        provider: {
+          '@type': 'Organization',
+          name: 'Grupo DTE',
+        },
+        areaServed: [
+          { '@type': 'Country', name: 'Uruguay' },
+          { '@type': 'Place', name: 'Latinoamérica' },
+        ],
+      },
+    })),
+  }), [t]);
+
   const handleHeroMouseMove = useCallback((event) => {
     const rect = event.currentTarget.getBoundingClientRect();
     mouseX.set(((event.clientX - rect.left) / rect.width - 0.5) * 2);
@@ -242,14 +265,21 @@ const Servicios = () => {
 
   return (
     <>
-      <SEO
-        title={t('servicesPage.seo.title')}
-        description={t('servicesPage.seo.description')}
-        image="https://grupodte.com/og-servicios.jpg"
-        url="https://grupodte.com/servicios"
-      />
-
-      <Layout noFooter>
+      <Layout
+        noFooter
+        seo={{
+          title: t('servicesPage.seo.title'),
+          description: t('servicesPage.seo.description'),
+          url: '/servicios',
+          structuredData: [
+            breadcrumbSchema([
+              { name: 'Inicio', path: '/' },
+              { name: 'Servicios', path: '/servicios' },
+            ]),
+            serviceStructuredData,
+          ],
+        }}
+      >
         <div className="font-google-sans-flex">
           {/* ── HERO ─────────────────────────────────────── */}
           <section

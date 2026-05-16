@@ -1,13 +1,11 @@
 // src/pages/LandingDespega.jsx
 import React, { useState } from 'react';
-import OptimizedImage from '@/components/OptimizedImage';
-
 import Navbar from "@/components/Navbar";
 // import bgHeroVideo from '@/assets/hero-video-loop.mp4'; // usar imagen si no hay video
 import bgHeroImage from '@/assets/BgWeb_dtelohace.webp';
 
-import Aurora from '@/components/ui/Aurora';
 import { useTranslation } from "react-i18next";
+import SEO from '@/components/SEO';
 
 const LandingDespega = () => {
     const { t } = useTranslation();
@@ -24,9 +22,15 @@ const LandingDespega = () => {
     };
 
     return (
-
-        <div className="font-product">
-            <Navbar />
+        <>
+            <SEO
+                title="Despega | Grupo DTE"
+                description="Landing de diagnóstico para marcas que quieren profesionalizar su presencia digital con Grupo DTE."
+                url="/despega"
+                robots="noindex, follow"
+            />
+            <div className="font-product">
+                <Navbar />
 
             {/* Hero Section */}
             <section className="relative h-[100vh] flex items-center justify-center text-center text-white overflow-hidden">
@@ -93,7 +97,8 @@ const LandingDespega = () => {
             </section>
 
 
-        </div>
+            </div>
+        </>
     );
 };
 

@@ -9,6 +9,8 @@ import { lazyRoute, routeKeys, scheduleIdlePreload } from "@/router/routePrefetc
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UIProvider, useUI } from "@/context/UIContext";
 import useCycleLockedVisibility from "@/hooks/useCycleLockedVisibility";
+import SEO from "@/components/SEO";
+import { shouldNoIndexPath } from "@/config/seo";
 
 const Home = lazyRoute(routeKeys.home);
 const Brief = lazyRoute(routeKeys.brief);
@@ -56,6 +58,21 @@ const FinancesPeriodRedirect = () => {
 const ProjectIntegrationsRedirect = () => {
   const { projectId } = useParams();
   return <Navigate to={projectId ? `/dashboard/projects/${projectId}/services` : '/dashboard/projects'} replace />;
+};
+
+const RouteRobotsMeta = () => {
+  const location = useLocation();
+
+  if (!shouldNoIndexPath(location.pathname)) return null;
+
+  return (
+    <SEO
+      title="Grupo DTE"
+      description="Área privada o herramienta operativa de Grupo DTE."
+      url={location.pathname}
+      robots="noindex, nofollow"
+    />
+  );
 };
 
 const AppContent = () => {
@@ -129,7 +146,8 @@ const AppContent = () => {
     }
   }, [user, onboardingStatus, isProfileIncomplete, navigate, location.pathname]);
 
-  const shouldShowAuthLoader = loading;
+  const shouldBlockForAuth = isDashboardPath || location.pathname.toLowerCase().startsWith('/complete-profile');
+  const shouldShowAuthLoader = loading && shouldBlockForAuth;
   const showAuthLoader = useCycleLockedVisibility(Boolean(shouldShowAuthLoader), BRAND_LOADER_CYCLE_MS);
   const showDashboardReloadBrandFallback = useCycleLockedVisibility(
     isDashboardPath && isDashboardReloadFallback,
@@ -144,6 +162,7 @@ const AppContent = () => {
   return (
     <div className="relative min-h-screen">
       <ScrollToTop />
+      <RouteRobotsMeta />
 
       {/* Overlay de efecto blur 2px */}
       {isNavbarOpen && (
@@ -165,11 +184,14 @@ const AppContent = () => {
           <Route path="/" element={<Home />} />
           <Route path="/brief/:bookingId?" element={<Brief />} />
           <Route path="/colors" element={<Colors />} />
-          <Route path="/Nosotros" element={<About />} />
-          <Route path="/Contacto" element={<Contact />} />
+          <Route path="/Nosotros" caseSensitive element={<Navigate to="/nosotros" replace />} />
+          <Route path="/Contacto" caseSensitive element={<Navigate to="/contacto" replace />} />
+          <Route path="/nosotros" element={<About />} />
+          <Route path="/contacto" element={<Contact />} />
           <Route path="/servicios" element={<Services />} />
           <Route path="/despega" element={<LandingDespega />} />
           <Route path="/tyc" element={<Terminos />} />
+          <Route path="/terminos-y-condiciones" element={<Navigate to="/tyc" replace />} />
           <Route path="/politica-privacidad" element={<PoliticaPrivacidad />} />
           <Route path="/desarrollo" element={<Navigate to="/servicios" replace />} />
           <Route path="/dte" element={<LandingDTE />} />

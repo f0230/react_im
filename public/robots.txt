@@ -1,4 +1,11 @@
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /api
+Disallow: /brief
+Disallow: /complete-profile
+Disallow: /dashboard
+Disallow: /invite
+Disallow: /registro
 
 Sitemap: https://grupodte.com/sitemap.xml

@@ -3,6 +3,8 @@ import Navbar from "@/components/Navbar";
 import { motion } from 'framer-motion';
 import { ArrowRight, CheckCircle, TrendingUp, Shield, Zap, Search, Clock, Users, Activity, BarChart } from 'lucide-react';
 import heroImage from '@/assets/Landing/Rectangle 80.webp';
+import SEO from '@/components/SEO';
+import { breadcrumbSchema } from '@/config/seo';
 
 const LandingDTE = () => {
     const scrollToDiagnostico = () => {
@@ -10,8 +12,20 @@ const LandingDTE = () => {
     };
 
     return (
-        <div className="font-product bg-black text-white selection:bg-violet-500 selection:text-white">
-            <Navbar />
+        <>
+            <SEO
+                title="DTE | Sistemas de crecimiento y automatización"
+                description="Infraestructura digital, automatización e inteligencia aplicada para empresas que buscan crecer con procesos medibles."
+                url="/dte"
+                structuredData={[
+                    breadcrumbSchema([
+                        { name: 'Inicio', path: '/' },
+                        { name: 'DTE', path: '/dte' },
+                    ]),
+                ]}
+            />
+            <div className="font-product bg-black text-white selection:bg-violet-500 selection:text-white">
+                <Navbar />
 
             {/* 1. SECCIÓN HERO (El Gancho Irresistible) */}
             <section className="relative h-[90vh] flex flex-col justify-end items-center text-center overflow-hidden pb-16">
@@ -327,7 +341,8 @@ const LandingDTE = () => {
                     </div>
                 </div>
             </section>
-        </div>
+            </div>
+        </>
     );
 };
 
