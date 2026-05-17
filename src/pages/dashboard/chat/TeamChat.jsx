@@ -1189,33 +1189,46 @@ const TeamChat = () => {
                 height: 'calc(var(--app-height, 100dvh) + var(--app-viewport-offset-top, 0px) - 45px)',
             }}
         >
-            <MessagingTabs />
             <div className={`flex-1 grid grid-cols-1 min-h-0 ${threadRootMessage ? 'lg:grid-cols-[260px_1fr_340px]' : 'lg:grid-cols-[260px_1fr]'}`}>
                 <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-100 bg-white ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
-                    <div className="p-4 border-b border-neutral-100 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <Hash size={18} className="text-neutral-400" />
-                                <p className="text-[13px] font-bold text-neutral-800 tracking-tight">Canales</p>
+                    {/* tabs integradas en el sidebar */}
+                    <MessagingTabs variant="sidebar" />
+
+                    <div className="px-3 pb-2 space-y-2 border-b border-neutral-100">
+                        {/* búsqueda + acciones globales */}
+                        <div className="flex items-center gap-1.5">
+                            <div className="relative flex-1">
+                                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+                                <input
+                                    value={searchTerm}
+                                    onChange={(event) => setSearchTerm(event.target.value)}
+                                    placeholder="Buscar canales..."
+                                    className="w-full rounded-lg border border-neutral-200 bg-neutral-50 pl-7 pr-2 py-1.5 text-[12px] focus:border-neutral-300 focus:bg-white transition-all"
+                                />
                             </div>
+                            <button
+                                onClick={() => setIsSearchOpen(true)}
+                                className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors shrink-0"
+                                title="Buscar mensajes"
+                            >
+                                <Search size={14} />
+                            </button>
+                            <button
+                                onClick={toggleDark}
+                                className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors shrink-0"
+                                title={isDarkChat ? 'Modo claro' : 'Modo oscuro'}
+                            >
+                                {isDarkChat ? <Sun size={14} /> : <Moon size={14} />}
+                            </button>
                             {canCreateChannel && (
                                 <button
                                     onClick={() => setIsCreateOpen((prev) => !prev)}
-                                    className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+                                    className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors shrink-0"
                                     title="Crear canal"
                                 >
-                                    <Plus size={16} />
+                                    <Plus size={14} />
                                 </button>
                             )}
-                        </div>
-                        <div className="relative">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                            <input
-                                value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
-                                placeholder="Buscar canales..."
-                                className="w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-9 pr-3 py-2 text-xs focus:border-neutral-300 focus:bg-white focus:shadow-sm transition-all"
-                            />
                         </div>
                         {isCreateOpen && canCreateChannel && (
                             <div className="space-y-2">
@@ -1336,33 +1349,17 @@ const TeamChat = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1">
+                                    {canCreateChannel && (
                                         <button
-                                            onClick={() => setIsSearchOpen(true)}
-                                            className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-                                            title="Buscar mensajes"
+                                            onClick={() => {
+                                                setIsMembersOpen(true);
+                                                loadMembers(selectedChannelId);
+                                            }}
+                                            className="text-[12px] font-medium text-neutral-400 hover:text-neutral-700 px-2.5 py-1.5 rounded-md hover:bg-neutral-100 transition-colors shrink-0"
                                         >
-                                            <Search size={15} />
+                                            Miembros
                                         </button>
-                                        <button
-                                            onClick={toggleDark}
-                                            className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
-                                            title={isDarkChat ? 'Modo claro' : 'Modo oscuro'}
-                                        >
-                                            {isDarkChat ? <Sun size={15} /> : <Moon size={15} />}
-                                        </button>
-                                        {canCreateChannel && (
-                                            <button
-                                                onClick={() => {
-                                                    setIsMembersOpen(true);
-                                                    loadMembers(selectedChannelId);
-                                                }}
-                                                className="text-xs font-medium text-neutral-500 hover:text-neutral-800 px-2.5 py-1.5 rounded-md hover:bg-neutral-100 transition-colors"
-                                            >
-                                                Miembros
-                                            </button>
-                                        )}
-                                    </div>
+                                    )}
                                 </div>
                             </div>
 
