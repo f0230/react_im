@@ -344,16 +344,31 @@ export default defineConfig({
       output: {
         // Code splitting agresivo para reducir bundle inicial
         manualChunks: {
-          // Vendor crítico - carga primero
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // Animaciones - carga diferida
-          'vendor-animations': ['framer-motion', 'gsap'],
-          // i18n - carga diferida
-          'vendor-i18n': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
-          // UI libs
-          'vendor-ui': ['lucide-react', 'swiper'],
-          // Supabase/Auth
+          // Critical path — loaded on every page
+          'vendor-react': ['react', 'react-dom', 'react-router-dom', 'react-helmet-async', 'react-hot-toast'],
+          // Supabase/Auth — needed before dashboard renders
           'vendor-backend': ['@supabase/supabase-js', '@react-oauth/google'],
+          // i18n — small, needed early for text rendering
+          'vendor-i18n': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+          // UI primitives — shared across many components
+          'vendor-ui': [
+            'lucide-react', 'swiper',
+            '@radix-ui/react-accordion', '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu', '@radix-ui/react-popover',
+            '@radix-ui/react-tooltip', '@radix-ui/react-avatar',
+            '@radix-ui/react-slot', '@radix-ui/react-aspect-ratio',
+            'class-variance-authority', 'clsx', 'tailwind-merge',
+          ],
+          // Animations — deferred until interactions
+          'vendor-animations': ['framer-motion', 'gsap', 'lenis'],
+          // AI SDKs — only used in Studio/dashboard
+          'vendor-ai': ['openai', '@google/genai'],
+          // Calendar/date — only in appointments & scheduling views
+          'vendor-calendar': ['react-big-calendar', 'react-datepicker', 'date-fns', 'ics'],
+          // Emoji picker — only in chat views
+          'vendor-emoji': ['@emoji-mart/data', '@emoji-mart/react'],
+          // React Flow — only in StudioDTE workflow view
+          'vendor-flow': ['@xyflow/react', '@dagrejs/dagre'],
         },
       },
     },

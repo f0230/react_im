@@ -7,7 +7,37 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { HelmetProvider } from 'react-helmet-async';
 import './i18n';
 
+// ─── SERVICE WORKER ────────────────────────────────────────────
+// Only register in production. In dev, the Vite HMR server handles caching.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then((registration) => {
+        registration.update();
 
+        registration.addEventListener('updatefound', () => {
+          const next = registration.installing;
+          if (!next) return;
+          next.addEventListener('statechange', () => {
+            if (next.state === 'installed' && navigator.serviceWorker.controller) {
+              // New SW is waiting — tell the app so it can show the update banner.
+              window.dispatchEvent(new CustomEvent('sw:update-available', { detail: registration }));
+            }
+          });
+        });
+      })
+      .catch((err) => console.warn('[SW] Registration failed:', err));
+
+    // When a new SW takes control, reload once to get fresh assets.
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!reloading) {
+        reloading = true;
+        window.location.reload();
+      }
+    });
+  });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   const rootElement = document.getElementById('root');

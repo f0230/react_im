@@ -267,6 +267,10 @@ export const AuthProvider = ({ children }) => {
 
     const signOut = useCallback(async () => {
         try {
+            // Tell the SW to wipe user-specific API cache before signing out.
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'USER_LOGOUT' });
+            }
             await supabase.auth.signOut();
             // State is reset by the SIGNED_OUT event in onAuthStateChange
         } catch (error) {

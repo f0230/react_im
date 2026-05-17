@@ -1,6 +1,7 @@
 // App.jsx
 import React, { Suspense, useEffect, useState, lazy } from "react";
 import { Toaster } from "react-hot-toast";
+import UpdateBanner from "@/components/ui/UpdateBanner";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
@@ -254,6 +255,7 @@ const App = () => {
           <AppContent />
         </AuthProvider>
       </UIProvider>
+      <UpdateBanner />
       <Toaster
         position="bottom-right"
         toastOptions={{
