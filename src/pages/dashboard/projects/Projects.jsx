@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, BookOpen, Briefcase, CalendarDays, ChevronRight, FileText, Folder, Pencil } from 'lucide-react';
+import { BarChart3, BookOpen, Briefcase, CalendarDays, ChevronRight, FileText, Folder, Pencil, FolderOpen } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
@@ -8,6 +8,8 @@ import { useAuth } from '@/context/AuthContext';
 import LoadingFallback from '@/components/ui/LoadingFallback';
 import CreateProjectModal from '@/components/CreateProjectModal';
 import EditProjectModal from '@/components/EditProjectModal';
+import figmaIcon from '@/assets/figma-icon.svg';
+import driveLogo from '@/assets/google-drive.svg';
 
 const getProjectTitle = (project, fallback) =>
     project?.title || project?.name || project?.project_name || fallback;
@@ -412,6 +414,44 @@ const Projects = () => {
                                                 })}
                                             </div>
                                         </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {(ctxProject?.figma_url || ctxProject?.jam_url || ctxProject?.drive_url) && (
+                                <div className="flex gap-2 px-4 py-2.5 border-b border-neutral-100">
+                                    {ctxProject?.figma_url && (
+                                        <a
+                                            href={ctxProject.figma_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-2 rounded-lg hover:bg-neutral-100 opacity-60 hover:opacity-100 transition-opacity"
+                                            title="Abrir Figma Design"
+                                        >
+                                            <img src={figmaIcon} alt="Figma" className="w-5 h-5" />
+                                        </a>
+                                    )}
+                                    {ctxProject?.jam_url && (
+                                        <a
+                                            href={ctxProject.jam_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-2 rounded-lg hover:bg-neutral-100 opacity-60 hover:opacity-100 transition-opacity"
+                                            title="Abrir Figma JAM"
+                                        >
+                                            <img src={figmaIcon} alt="Figma JAM" className="w-5 h-5" />
+                                        </a>
+                                    )}
+                                    {ctxProject?.drive_url && (
+                                        <a
+                                            href={ctxProject.drive_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-2 rounded-lg hover:bg-neutral-100 opacity-60 hover:opacity-100 transition-opacity"
+                                            title="Abrir Google Drive"
+                                        >
+                                            <img src={driveLogo} alt="Google Drive" className="w-5 h-5" />
+                                        </a>
                                     )}
                                 </div>
                             )}
