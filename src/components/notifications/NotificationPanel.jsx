@@ -19,7 +19,6 @@ const formatTimestamp = (value) => {
 const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead, onMarkRead }) => {
     const navigate = useNavigate();
 
-    // Only show unread notifications in this panel, similar to how MessagePanel works
     const unreadNotifications = useMemo(() =>
         notifications.filter(n => !n.read_at),
         [notifications]);
@@ -55,7 +54,6 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
     const handleItemClick = async (item) => {
         const to = getTo(item);
 
-        // Mark as read if unread
         if (!item.read_at && onMarkRead) {
             await onMarkRead(item.id);
         }
@@ -68,6 +66,9 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
         e.stopPropagation();
         if (onMarkRead) {
             await onMarkRead(item.id);
+            if (unreadNotifications.length === 1) {
+                onClose();
+            }
         }
     };
 
@@ -88,9 +89,9 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
                         <button
                             type="button"
                             onClick={onMarkAllRead}
-                            className="text-[11px] text-neutral-700 hover:text-black"
+                            className="text-[11px] text-neutral-700 hover:text-black transition-colors"
                         >
-                            Marcar todo leido
+                            Marcar todo leído
                         </button>
                     )}
                 </div>
@@ -107,34 +108,42 @@ const NotificationPanel = ({ isOpen, onClose, notifications = [], onMarkAllRead,
 
             {unreadNotifications.length > 0 && (
                 <div className="max-h-[380px] overflow-y-auto py-2 custom-scrollbar">
-                    {unreadNotifications.map((item) => {
-                        return (
-                            <div
-                                key={item.id}
-                                onClick={() => handleItemClick(item)}
-                                className="px-4 py-3 hover:bg-white/5 transition border-b border-white/5 last:border-b-0 cursor-pointer group"
-                            >
-                                <div className="flex items-start gap-3">
-                                    <span className="mt-1.5 w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className="text-xs font-semibold text-neutral-700 truncate">
-                                                {item.title || 'Notificación'}
-                                            </p>
-                                            <span className="text-[10px] text-neutral-500 shrink-0">
-                                                {formatTimestamp(item.created_at)}
-                                            </span>
-                                        </div>
-                                        {item.body && (
-                                            <p className="text-[11px] text-neutral-600 mt-0.5 break-words line-clamp-2">
-                                                {item.body}
-                                            </p>
-                                        )}
+                    {unreadNotifications.map((item) => (
+                        <div
+                            key={item.id}
+                            className="px-4 py-3 hover:bg-white/5 transition border-b border-white/5 last:border-b-0 group"
+                        >
+                            <div className="flex items-start gap-3">
+                                <span className="mt-1.5 w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                                <div
+                                    className="flex-1 min-w-0 cursor-pointer"
+                                    onClick={() => handleItemClick(item)}
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className="text-xs font-semibold text-neutral-700 truncate">
+                                            {item.title || 'Notificación'}
+                                        </p>
+                                        <span className="text-[10px] text-neutral-500 shrink-0">
+                                            {formatTimestamp(item.created_at)}
+                                        </span>
                                     </div>
+                                    {item.body && (
+                                        <p className="text-[11px] text-neutral-600 mt-0.5 break-words line-clamp-2">
+                                            {item.body}
+                                        </p>
+                                    )}
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={(e) => handleDismiss(e, item)}
+                                    className="mt-1 text-neutral-500 hover:text-neutral-700 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                                    aria-label="Descartar notificación"
+                                >
+                                    <X size={16} />
+                                </button>
                             </div>
-                        );
-                    })}
+                        </div>
+                    ))}
                 </div>
             )}
         </PopoverPanel>

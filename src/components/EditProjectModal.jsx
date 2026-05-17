@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2, BookOpen, CheckCircle2, Loader2, Search } from 'lucide-react';
+import { X, Camera, Link as LinkIcon, Save, MessageSquare, Share2, BookOpen, CheckCircle2, Loader2, Search, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -9,12 +9,24 @@ import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { BlotatoConfigModal } from '@/components/projects/BlotatoConfigModal';
 import { useAuth } from '@/context/AuthContext';
 import { saveNotionSettings, searchNotionPages } from '@/services/notionService';
+import { MemberSelector } from '@/components/ui/member-selector';
 
 const EditProjectModal = ({
     isOpen,
     onClose,
     project,
     onUpdated,
+    isAdmin = false,
+    isClientLeader = false,
+    teamMemberOptions = [],
+    initialTeamIds = [],
+    onTeamAssignmentChange,
+    clients = [],
+    allClientUsers = [],
+    initialClientIds = [],
+    initialClientUserIds = [],
+    onClientAssignmentChange,
+    onClientUserAssignmentChange,
 }) => {
     const { t } = useTranslation();
     const navigate = useNavigate();
@@ -38,12 +50,39 @@ const EditProjectModal = ({
     const [notionSearchResults, setNotionSearchResults] = useState([]);
     const [notionSearching, setNotionSearching] = useState(false);
     const [notionError, setNotionError] = useState('');
+    const [localTeamIds, setLocalTeamIds] = useState([]);
+    const [localClientIds, setLocalClientIds] = useState([]);
+    const [localClientUserIds, setLocalClientUserIds] = useState([]);
+
     const {
         allAccounts,
         assignedAccounts,
         syncing: blotatoSyncing,
     } = useBlotatoAccounts(project?.id);
     const canConfigureNotion = profile?.role === 'admin';
+
+    const clientCompanyMap = useMemo(() =>
+        new Map(clients.map(c => [c.id, c.company_name || c.full_name || c.email || 'Cliente']))
+    , [clients]);
+
+    const clientEntityOptions = useMemo(() => clients.map(c => ({
+        id: c.id,
+        name: c.company_name || c.full_name || c.email || 'Cliente',
+        email: c.email || null,
+        subtitle: c.company_name && c.full_name ? c.full_name : c.email || 'Cliente principal',
+    })), [clients]);
+
+    const clientUserOptions = useMemo(() => {
+        const relevant = isAdmin
+            ? allClientUsers.filter(u => localClientIds.includes(u.client_id))
+            : allClientUsers;
+        return relevant.map(u => ({
+            id: u.id,
+            name: u.full_name || u.email || 'Usuario',
+            email: u.email || null,
+            subtitle: u.client_id ? (clientCompanyMap.get(u.client_id) || 'Empresa') : 'Cliente',
+        }));
+    }, [allClientUsers, localClientIds, isAdmin, clientCompanyMap]);
 
     useEffect(() => {
         if (isOpen && project) {
@@ -62,6 +101,9 @@ const EditProjectModal = ({
             setNotionSearchQuery(project.notion_page_title || project.name || project.title || project.project_name || '');
             setNotionSearchResults([]);
             setLinkedChannel(null);
+            setLocalTeamIds(initialTeamIds);
+            setLocalClientIds(initialClientIds);
+            setLocalClientUserIds(initialClientUserIds);
 
             // Load the linked TeamChat channel
             if (project.team_channel_id) {
@@ -199,6 +241,16 @@ const EditProjectModal = ({
 
             if (canConfigureNotion && notionChanged) {
                 await saveNotionSettings(project.id, notionData);
+            }
+
+            if (onTeamAssignmentChange && isAdmin) {
+                await onTeamAssignmentChange(project.id, localTeamIds);
+            }
+            if (onClientAssignmentChange && (isAdmin || isClientLeader)) {
+                await onClientAssignmentChange(project.id, localClientIds);
+            }
+            if (onClientUserAssignmentChange && (isAdmin || isClientLeader)) {
+                await onClientUserAssignmentChange(project.id, localClientUserIds);
             }
 
             if (onUpdated) {
@@ -485,6 +537,62 @@ const EditProjectModal = ({
                                                                 );
                                                             })}
                                                         </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {isAdmin && (
+                                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <Users size={15} className="text-neutral-400 shrink-0" />
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Equipo DTE</p>
+                                                    </div>
+                                                    <MemberSelector
+                                                        members={teamMemberOptions}
+                                                        selected={localTeamIds}
+                                                        onChange={setLocalTeamIds}
+                                                        maxVisible={6}
+                                                        label=""
+                                                        addLabel="Sumar"
+                                                        searchPlaceholder="Buscar worker o admin..."
+                                                        emptyMessage="No encontramos miembros del equipo."
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {(isAdmin || isClientLeader) && (
+                                                <div className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3.5 space-y-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <Users size={15} className="text-blue-400 shrink-0" />
+                                                        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">Clientes & Team</p>
+                                                    </div>
+                                                    {isAdmin && (
+                                                        <MemberSelector
+                                                            members={clientEntityOptions}
+                                                            selected={localClientIds}
+                                                            onChange={setLocalClientIds}
+                                                            maxVisible={6}
+                                                            label="Empresas / clientes principales"
+                                                            addLabel="Asignar"
+                                                            searchPlaceholder="Buscar empresa o cliente..."
+                                                            emptyMessage="No encontramos clientes."
+                                                        />
+                                                    )}
+                                                    {isAdmin && localClientIds.length === 0 ? (
+                                                        <div className="rounded-[20px] border-2 border-dashed border-neutral-200 px-4 py-6 text-center">
+                                                            <p className="text-xs text-neutral-400">Seleccioná una empresa para habilitar su team.</p>
+                                                        </div>
+                                                    ) : (
+                                                        <MemberSelector
+                                                            members={clientUserOptions}
+                                                            selected={localClientUserIds}
+                                                            onChange={setLocalClientUserIds}
+                                                            maxVisible={6}
+                                                            label="Team del cliente"
+                                                            addLabel="Agregar"
+                                                            searchPlaceholder="Buscar integrante del cliente..."
+                                                            emptyMessage={isClientLeader ? 'Todavía no tenés equipo invitado.' : 'Este cliente no tiene usuarios asociados.'}
+                                                        />
                                                     )}
                                                 </div>
                                             )}

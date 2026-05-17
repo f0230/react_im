@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, MessageSquare, RefreshCw, Search, Send } from 'lucide-react';
+import { ArrowLeft, MessageSquare, RefreshCw, Send } from 'lucide-react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
 import useThrottledCallback from '@/hooks/useThrottledCallback';
-import MessagingTabs from '@/components/messaging/MessagingTabs';
+import ChatShell from '@/components/messaging/ChatShell';
 import MessageReactionsBar from '@/components/chat/MessageReactionsBar';
 import ReactionPickerPopover from '@/components/chat/ReactionPickerPopover';
 import { fetchReactionsForMessages, toggleReaction } from '@/services/chatReactions';
@@ -446,262 +446,237 @@ const ClientChat = () => {
         );
     }
 
-    return (
-        <div
-            className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
-            style={{
-                top: '45px',
-                height: 'calc(var(--app-height, 100dvh) + var(--app-viewport-offset-top, 0px) - 45px)',
-            }}
-        >
-            <MessagingTabs />
-            <div className={`flex-1 grid min-h-0 ${isStaff ? 'grid-cols-1 lg:grid-cols-[320px_1fr]' : 'grid-cols-1'}`}>
-                {isStaff && (
-                    <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-100 bg-white ${selectedClientId ? 'hidden lg:flex' : 'flex'}`}>
-                        <div className="p-4 border-b border-neutral-100">
-                            <div className="relative">
-                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                                <input
-                                    value={searchTerm}
-                                    onChange={(event) => setSearchTerm(event.target.value)}
-                                    placeholder="Buscar cliente..."
-                                    className="w-full rounded-xl border border-neutral-200 bg-neutral-50 pl-9 pr-3 py-2 text-xs focus:border-neutral-300 focus:bg-white focus:shadow-sm transition-all"
-                                />
+    const staffSidebarList = isStaff ? (
+        <>
+            {loadingThreads && filteredThreads.length === 0 && (
+                <div className="text-xs text-neutral-400 px-3 py-4 flex items-center gap-2">
+                    <RefreshCw size={12} className="animate-spin" />
+                    Cargando clientes...
+                </div>
+            )}
+            {!loadingThreads && filteredThreads.length === 0 && (
+                <div className="text-sm text-neutral-400 px-3 py-4">No hay clientes para mostrar.</div>
+            )}
+            {filteredThreads.map((thread) => {
+                const isActive = thread.id === selectedClientId;
+                return (
+                    <button
+                        key={thread.id}
+                        onClick={() => setSelectedClientId(thread.id)}
+                        className={`chat-sidebar-item w-full text-left rounded-xl px-3 py-2.5 transition ${isActive ? 'chat-sidebar-active' : 'hover:bg-neutral-50'}`}
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-semibold shrink-0 ${isActive ? 'chat-avatar-active' : 'chat-avatar'}`}>
+                                {getInitial(getThreadDisplayName(thread))}
                             </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar overscroll-y-contain">
-                            {loadingThreads && filteredThreads.length === 0 && (
-                                <div className="text-xs text-neutral-400 px-3 py-4 flex items-center gap-2">
-                                    <RefreshCw size={12} className="animate-spin" />
-                                    Cargando clientes...
-                                </div>
-                            )}
-                            {!loadingThreads && filteredThreads.length === 0 && (
-                                <div className="text-sm text-neutral-400 px-3 py-4">No hay clientes para mostrar.</div>
-                            )}
-                            {filteredThreads.map((thread) => {
-                                const isActive = thread.id === selectedClientId;
-                                return (
-                                    <button
-                                        key={thread.id}
-                                        onClick={() => setSelectedClientId(thread.id)}
-                                        className={`chat-sidebar-item w-full text-left rounded-xl px-3 py-2.5 transition ${isActive
-                                            ? 'chat-sidebar-active text-white'
-                                            : 'hover:bg-neutral-50'
-                                            }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-semibold shrink-0 ${isActive ? 'chat-avatar-active' : 'chat-avatar'}`}>
-                                                {getInitial(getThreadDisplayName(thread))}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className={`text-[13px] font-semibold truncate ${isActive ? 'text-white' : 'text-neutral-800'}`}>
-                                                    {getThreadDisplayName(thread)}
-                                                </p>
-                                                <p className={`text-[11px] truncate ${isActive ? 'text-white/60' : 'text-neutral-400'}`}>
-                                                    {thread.email || formatPhoneForDisplay(thread.phone) || 'Sin contacto'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                <div className={`relative flex flex-col min-h-0 h-full overflow-hidden bg-white ${isStaff && !selectedClientId ? 'hidden lg:flex' : 'flex'}`}>
-                    {selectedThread ? (
-                        <>
-                            <div className="sticky top-0 z-40 shrink-0 chat-header">
-                                <div className="px-4 py-3 flex items-center justify-between gap-4">
-                                    <div className="min-w-0 flex items-center gap-3">
-                                        {isStaff && (
-                                            <button
-                                                onClick={() => setSelectedClientId(null)}
-                                                className="lg:hidden p-2 -ml-2 text-neutral-400 hover:text-neutral-800 transition-colors"
-                                                aria-label="Volver"
-                                            >
-                                                <ArrowLeft size={20} />
-                                            </button>
-                                        )}
-                                        <div className="w-10 h-10 rounded-xl chat-avatar flex items-center justify-center text-sm font-semibold">
-                                            {getInitial(getThreadDisplayName(selectedThread))}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-[15px] font-bold text-neutral-900 truncate">
-                                                {getThreadDisplayName(selectedThread)}
-                                            </p>
-                                            <p className="text-[11px] text-neutral-400 truncate">
-                                                {selectedThread.email || formatPhoneForDisplay(selectedThread.phone) || 'Canal directo'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div
-                                ref={messagesContainerRef}
-                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-1.5 custom-scrollbar overscroll-y-contain chat-bg"
-                            >
-                                {loadingMessages && (
-                                    <div className="flex items-center gap-2 text-xs text-neutral-400 py-8 justify-center">
-                                        <RefreshCw size={14} className="animate-spin" />
-                                        Cargando mensajes...
-                                    </div>
-                                )}
-                                {!loadingMessages && messages.length === 0 && (
-                                    <div className="chat-empty-state flex flex-col items-center justify-center py-16 text-center">
-                                        <div className="w-14 h-14 rounded-2xl bg-white/80 flex items-center justify-center mb-3 shadow-sm">
-                                            <MessageSquare size={24} className="text-neutral-300" />
-                                        </div>
-                                        <p className="text-sm font-medium text-neutral-500">No hay mensajes en esta conversacion</p>
-                                        <p className="text-xs text-neutral-400 mt-1">Inicia la conversacion enviando un mensaje</p>
-                                    </div>
-                                )}
-                                {messages.map((message) => {
-                                    const isOutbound = message.sender_id === user?.id;
-                                    const senderName = isOutbound
-                                        ? 'Tú'
-                                        : message.sender_role === 'client'
-                                            ? getThreadDisplayName(selectedThread)
-                                            : 'Equipo DTE';
-                                    const isSeen = isOutbound && otherReadAt
-                                        ? new Date(otherReadAt) >= new Date(message.created_at)
-                                        : false;
-                                    return (
-                                        <div key={message.id} id={`msg-${message.id}`} className={`chat-animate-in flex flex-col max-w-[80%] group ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
-                                            <div className="flex items-center gap-1.5 mb-0.5 px-1">
-                                                <span className={`text-[10px] font-bold ${getUserColor(senderName)}`}>
-                                                    {senderName}
-                                                </span>
-                                                <span className="text-[9px] text-neutral-400/80">
-                                                    {formatShortDateTime(message.created_at)}
-                                                </span>
-                                                <button
-                                                    onClick={() => setReplyingTo(message)}
-                                                    className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600"
-                                                >
-                                                    Responder
-                                                </button>
-                                            </div>
-                                            <ReactionPickerPopover onSelect={(emoji) => handleToggleReaction(message.id, emoji)}>
-                                                <div className={`chat-bubble relative px-3 py-2 text-sm ${isOutbound ? 'chat-bubble-out text-neutral-900' : 'chat-bubble-in text-neutral-900'}`}>
-                                                    {message.reply_to_id && (
-                                                        <div
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                const el = document.getElementById(`msg-${message.reply_to_id}`);
-                                                                if (el) {
-                                                                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                                                    el.classList.add('bg-black/10', 'transition-colors', 'duration-500');
-                                                                    setTimeout(() => {
-                                                                        el.classList.remove('bg-black/10');
-                                                                    }, 1500);
-                                                                }
-                                                            }}
-                                                            className="chat-reply-preview mb-2 p-2 text-[11px] cursor-pointer hover:opacity-80 transition-opacity"
-                                                        >
-                                                            <p className="font-semibold text-neutral-600">Respondiendo a:</p>
-                                                            <p className="truncate text-neutral-500">
-                                                                {messages.find(m => m.id === message.reply_to_id)?.body || 'Mensaje original'}
-                                                            </p>
-                                                        </div>
-                                                    )}
-                                                    <p className="whitespace-pre-wrap">{message.body}</p>
-                                                    {isOutbound && (
-                                                        <div className="mt-1 flex items-center justify-end gap-1 text-[10px]">
-                                                            <span className={isSeen ? 'text-blue-500' : 'text-neutral-400'}>{isSeen ? '✓✓' : '✓'}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </ReactionPickerPopover>
-                                            <MessageReactionsBar
-                                                reactions={reactionsByMessage[message.id] || []}
-                                                currentUserId={user?.id}
-                                                onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="shrink-0 chat-composer px-4 py-3" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
-                                {migrationPending && (
-                                    <p className="text-xs text-amber-600 mb-2">
-                                        Para habilitar este chat, ejecuta `supabase/client-messaging.sql`.
-                                    </p>
-                                )}
-                                {readTrackingPending && !migrationPending && (
-                                    <p className="text-xs text-amber-600 mb-2">
-                                        Ejecuta `supabase/client-messaging.sql` para activar notificaciones no leídas.
-                                    </p>
-                                )}
-                                <div className="space-y-2">
-                                    {replyingTo && (
-                                        <div className="chat-reply-preview chat-animate-in flex items-center justify-between p-2.5 mb-1 rounded-lg">
-                                            <div className="min-w-0">
-                                                <p className={`text-[11px] font-semibold ${getUserColor(replyingTo.sender_role === 'client' ? getThreadDisplayName(selectedThread) : 'Equipo DTE')}`}>
-                                                    Respondiendo a {replyingTo.sender_role === 'client' ? getThreadDisplayName(selectedThread) : 'Equipo DTE'}
-                                                </p>
-                                                <p className="text-[11px] text-neutral-500 truncate">{replyingTo.body}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => setReplyingTo(null)}
-                                                className="shrink-0 p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-black/5 transition-colors"
-                                            >
-                                                <span className="text-xs font-bold">✕</span>
-                                            </button>
-                                        </div>
-                                    )}
-                                    <div className="flex items-center gap-1.5">
-                                        <input
-                                            ref={inputRef}
-                                            value={messageText}
-                                            onChange={(event) => setMessageText(event.target.value)}
-                                            placeholder="Escribe un mensaje..."
-                                            className="flex-1 rounded-xl bg-white px-4 py-2.5 text-base lg:text-[14px] focus:outline-none focus:ring-1 focus:ring-neutral-300 transition-all shadow-sm"
-                                            onKeyDown={(event) => {
-                                                if (event.key === 'Enter' && !event.shiftKey) {
-                                                    event.preventDefault();
-                                                    handleSend();
-                                                }
-                                            }}
-                                        />
-                                        <button
-                                            onClick={handleSend}
-                                            disabled={sending || !messageText.trim() || migrationPending}
-                                            className={`p-2.5 rounded-xl transition-all disabled:opacity-30 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-800 shadow-sm' : 'text-neutral-400'}`}
-                                        >
-                                            {sending ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-                                        </button>
-                                    </div>
-                                </div>
-                                {sendError && <p className="text-xs text-red-600 mt-1">{sendError}</p>}
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex-1 flex items-center justify-center chat-bg">
-                            <div className="text-center chat-empty-state">
-                                <div className="w-16 h-16 rounded-2xl bg-white/80 flex items-center justify-center mx-auto mb-4 shadow-sm">
-                                    <MessageSquare size={28} className="text-neutral-300" />
-                                </div>
-                                <p className="font-semibold text-neutral-600">Selecciona una conversacion</p>
-                                <p className="text-[13px] text-neutral-400 mt-1">
-                                    Elige un cliente para abrir el chat
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-semibold truncate text-neutral-800">
+                                    {getThreadDisplayName(thread)}
+                                </p>
+                                <p className="text-[11px] truncate text-neutral-400">
+                                    {thread.email || formatPhoneForDisplay(thread.phone) || 'Sin contacto'}
                                 </p>
                             </div>
                         </div>
-                    )}
-                </div>
-            </div>
+                    </button>
+                );
+            })}
+        </>
+    ) : null;
 
-            {error && (
-                <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-2.5 text-xs text-amber-700 shadow-sm">
-                    {error}
+    return (
+        <ChatShell
+            selectedId={selectedClientId}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            searchPlaceholder="Buscar cliente..."
+            sidebarList={staffSidebarList}
+        >
+            {selectedThread ? (
+                <>
+                    <div className="sticky top-0 z-40 shrink-0 chat-header">
+                        <div className="px-4 py-3 flex items-center gap-3">
+                            {isStaff && (
+                                <button
+                                    onClick={() => setSelectedClientId(null)}
+                                    className="lg:hidden p-2 -ml-2 text-neutral-400 hover:text-neutral-800 transition-colors"
+                                    aria-label="Volver"
+                                >
+                                    <ArrowLeft size={20} />
+                                </button>
+                            )}
+                            <div className="w-9 h-9 rounded-xl chat-avatar flex items-center justify-center text-sm font-semibold shrink-0">
+                                {getInitial(getThreadDisplayName(selectedThread))}
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[15px] font-bold text-neutral-900 truncate">
+                                    {getThreadDisplayName(selectedThread)}
+                                </p>
+                                <p className="text-[11px] text-neutral-400 truncate">
+                                    {selectedThread.email || formatPhoneForDisplay(selectedThread.phone) || 'Canal directo'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        ref={messagesContainerRef}
+                        className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-1.5 custom-scrollbar overscroll-y-contain chat-bg"
+                    >
+                        {loadingMessages && (
+                            <div className="flex items-center gap-2 text-xs text-neutral-400 py-8 justify-center">
+                                <RefreshCw size={14} className="animate-spin" />
+                                Cargando mensajes...
+                            </div>
+                        )}
+                        {!loadingMessages && messages.length === 0 && (
+                            <div className="chat-empty-state flex flex-col items-center justify-center py-16 text-center">
+                                <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center mb-3 shadow-sm">
+                                    <MessageSquare size={24} className="text-neutral-300" />
+                                </div>
+                                <p className="text-sm font-medium text-neutral-500">No hay mensajes en esta conversacion</p>
+                                <p className="text-xs text-neutral-400 mt-1">Inicia la conversacion enviando un mensaje</p>
+                            </div>
+                        )}
+                        {messages.map((message) => {
+                            const isOutbound = message.sender_id === user?.id;
+                            const senderName = isOutbound
+                                ? 'Tú'
+                                : message.sender_role === 'client'
+                                    ? getThreadDisplayName(selectedThread)
+                                    : 'Equipo DTE';
+                            const isSeen = isOutbound && otherReadAt
+                                ? new Date(otherReadAt) >= new Date(message.created_at)
+                                : false;
+                            return (
+                                <div key={message.id} id={`msg-${message.id}`} className={`chat-animate-in flex flex-col max-w-[80%] group ${isOutbound ? 'ml-auto items-end' : 'mr-auto items-start'}`}>
+                                    <div className="flex items-center gap-1.5 mb-0.5 px-1">
+                                        <span className={`text-[10px] font-bold ${getUserColor(senderName)}`}>
+                                            {senderName}
+                                        </span>
+                                        <span className="text-[9px] text-neutral-400/80">
+                                            {formatShortDateTime(message.created_at)}
+                                        </span>
+                                        <button
+                                            onClick={() => setReplyingTo(message)}
+                                            className="text-[9px] text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity hover:text-neutral-600"
+                                        >
+                                            Responder
+                                        </button>
+                                    </div>
+                                    <ReactionPickerPopover onSelect={(emoji) => handleToggleReaction(message.id, emoji)}>
+                                        <div className={`chat-bubble relative px-3 py-2 text-sm ${isOutbound ? 'chat-bubble-out text-neutral-900' : 'chat-bubble-in text-neutral-900'}`}>
+                                            {message.reply_to_id && (
+                                                <div
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const el = document.getElementById(`msg-${message.reply_to_id}`);
+                                                        if (el) {
+                                                            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                            el.classList.add('bg-black/10', 'transition-colors', 'duration-500');
+                                                            setTimeout(() => el.classList.remove('bg-black/10'), 1500);
+                                                        }
+                                                    }}
+                                                    className="chat-reply-preview mb-2 p-2 text-[11px] cursor-pointer hover:opacity-80 transition-opacity"
+                                                >
+                                                    <p className="font-semibold text-neutral-600">Respondiendo a:</p>
+                                                    <p className="truncate text-neutral-500">
+                                                        {messages.find(m => m.id === message.reply_to_id)?.body || 'Mensaje original'}
+                                                    </p>
+                                                </div>
+                                            )}
+                                            <p className="whitespace-pre-wrap">{message.body}</p>
+                                            {isOutbound && (
+                                                <div className="mt-1 flex items-center justify-end gap-1 text-[10px]">
+                                                    <span className={isSeen ? 'text-blue-500' : 'text-neutral-400'}>{isSeen ? '✓✓' : '✓'}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ReactionPickerPopover>
+                                    <MessageReactionsBar
+                                        reactions={reactionsByMessage[message.id] || []}
+                                        currentUserId={user?.id}
+                                        onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
+                                    />
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="shrink-0 chat-composer px-4 py-3" style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}>
+                        {migrationPending && (
+                            <p className="text-xs text-amber-600 mb-2">
+                                Para habilitar este chat, ejecuta `supabase/client-messaging.sql`.
+                            </p>
+                        )}
+                        {readTrackingPending && !migrationPending && (
+                            <p className="text-xs text-amber-600 mb-2">
+                                Ejecuta `supabase/client-messaging.sql` para activar notificaciones no leídas.
+                            </p>
+                        )}
+                        <div className="space-y-2">
+                            {replyingTo && (
+                                <div className="chat-reply-preview chat-animate-in flex items-center justify-between p-2.5 mb-1 rounded-lg">
+                                    <div className="min-w-0">
+                                        <p className={`text-[11px] font-semibold ${getUserColor(replyingTo.sender_role === 'client' ? getThreadDisplayName(selectedThread) : 'Equipo DTE')}`}>
+                                            Respondiendo a {replyingTo.sender_role === 'client' ? getThreadDisplayName(selectedThread) : 'Equipo DTE'}
+                                        </p>
+                                        <p className="text-[11px] text-neutral-500 truncate">{replyingTo.body}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setReplyingTo(null)}
+                                        className="shrink-0 p-1.5 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-black/5 transition-colors"
+                                    >
+                                        <span className="text-xs font-bold">✕</span>
+                                    </button>
+                                </div>
+                            )}
+                            <div className="flex items-center gap-1.5">
+                                <input
+                                    ref={inputRef}
+                                    value={messageText}
+                                    onChange={(event) => setMessageText(event.target.value)}
+                                    placeholder="Escribe un mensaje..."
+                                    className="flex-1 rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-2.5 text-base lg:text-[14px] focus:outline-none focus:border-neutral-300 focus:bg-white transition-all"
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' && !event.shiftKey) {
+                                            event.preventDefault();
+                                            handleSend();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    onClick={handleSend}
+                                    disabled={sending || !messageText.trim() || migrationPending}
+                                    className={`p-2.5 rounded-xl transition-all disabled:opacity-30 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-800' : 'text-neutral-400'}`}
+                                >
+                                    {sending ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                                </button>
+                            </div>
+                        </div>
+                        {sendError && <p className="text-xs text-red-600 mt-1">{sendError}</p>}
+                    </div>
+
+                    {error && (
+                        <div className="absolute bottom-3 left-3 right-3 rounded-xl border border-amber-100 bg-amber-50 px-4 py-2.5 text-xs text-amber-700 shadow-sm">
+                            {error}
+                        </div>
+                    )}
+                </>
+            ) : (
+                <div className="flex-1 flex items-center justify-center chat-bg">
+                    <div className="text-center chat-empty-state">
+                        <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center mx-auto mb-4 shadow-sm">
+                            <MessageSquare size={28} className="text-neutral-300" />
+                        </div>
+                        <p className="font-semibold text-neutral-600">Selecciona una conversacion</p>
+                        <p className="text-[13px] text-neutral-400 mt-1">
+                            Elige un cliente para abrir el chat
+                        </p>
+                    </div>
                 </div>
             )}
-        </div>
+        </ChatShell>
     );
 };
 

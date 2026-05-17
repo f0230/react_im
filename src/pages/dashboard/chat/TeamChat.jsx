@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useUnreadCounts } from '@/context/UnreadCountsContext';
 import useViewportHeight from '@/hooks/useViewportHeight';
 import usePresence from '@/hooks/usePresence';
+import useChatDark from '@/hooks/useChatDark';
 import useThrottledCallback from '@/hooks/useThrottledCallback';
 import MessagingTabs from '@/components/messaging/MessagingTabs';
 import ThreadPanel from '@/components/chat/ThreadPanel';
@@ -36,7 +37,7 @@ const linkRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 const isHttpUrl = (value) => /^https?:\/\//i.test(value);
 const TEAM_CHANNEL_COLUMNS = 'id, name, slug, created_by, project_id, created_at';
 const TEAM_PROJECT_COLUMNS = 'id, name';
-const TEAM_MESSAGE_COLUMNS = 'id, body, created_at, author_id, author_name, message_type, media_url, file_name, reply_to_id, author:profiles(id, full_name, email, avatar_url)';
+const TEAM_MESSAGE_COLUMNS = 'id, body, created_at, author_id, author_name, message_type, media_url, file_name, reply_to_id, thread_root_id, author:profiles(id, full_name, email, avatar_url)';
 const TEAM_MEDIA_SIGNED_URL_TTL = 60 * 60 * 24;
 const TEAM_MEDIA_SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
 const teamMediaUrlCache = new Map();
@@ -213,16 +214,8 @@ const TeamChat = () => {
     const [channelLastMsgAt, setChannelLastMsgAt] = useState(new Map());
     const [threadRootMessage, setThreadRootMessage] = useState(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [isDarkChat, setIsDarkChat] = useState(() => {
-        try { return localStorage.getItem('chat-dark') === 'true'; } catch { return false; }
-    });
-    const toggleDark = useCallback(() => {
-        setIsDarkChat((prev) => {
-            const next = !prev;
-            try { localStorage.setItem('chat-dark', String(next)); } catch { }
-            return next;
-        });
-    }, []);
+    const [threadCounts, setThreadCounts] = useState(new Map());
+    const { isDark: isDarkChat, toggle: toggleDark } = useChatDark();
 
     const presenceUser = useMemo(() => ({
         id: user?.id,
@@ -477,6 +470,21 @@ const TeamChat = () => {
 
         setMembersLoading(false);
     }, [canCreateChannel]);
+
+    const loadThreadCounts = useCallback(async (channelId) => {
+        if (!channelId) return;
+        const { data, error } = await supabase
+            .from('team_messages')
+            .select('thread_root_id')
+            .eq('channel_id', channelId)
+            .not('thread_root_id', 'is', null);
+        if (error) return;
+        const map = new Map();
+        (data || []).forEach(({ thread_root_id }) => {
+            map.set(thread_root_id, (map.get(thread_root_id) || 0) + 1);
+        });
+        setThreadCounts(map);
+    }, []);
 
     const loadChannelReads = useCallback(async (channelId) => {
         if (!channelId || !user?.id) return;
@@ -1014,7 +1022,9 @@ const TeamChat = () => {
         if (!selectedChannelId || !isAllowed) return;
 
         setMessages([]);
+        setThreadCounts(new Map());
         loadMessages(selectedChannelId);
+        loadThreadCounts(selectedChannelId);
 
         const messageSubscription = supabase
             .channel(`team-messages-${selectedChannelId}`)
@@ -1028,9 +1038,21 @@ const TeamChat = () => {
                 },
                 async (payload) => {
                     const fullMessage = await fetchMessageById(payload.new.id);
+                    const incoming = fullMessage || payload.new;
+
+                    if (incoming.thread_root_id) {
+                        // Es una reply de hilo — actualizar count, NO mostrar en canal
+                        setThreadCounts((prev) => {
+                            const next = new Map(prev);
+                            next.set(incoming.thread_root_id, (next.get(incoming.thread_root_id) || 0) + 1);
+                            return next;
+                        });
+                        return;
+                    }
+
                     setMessages((prev) => {
                         if (prev.some((message) => message.id === payload.new.id)) return prev;
-                        return [...prev, fullMessage || payload.new];
+                        return [...prev, incoming];
                     });
                     setChannelLastMsgAt((prev) => {
                         const next = new Map(prev);
@@ -1045,7 +1067,7 @@ const TeamChat = () => {
         return () => {
             supabase.removeChannel(messageSubscription);
         };
-    }, [fetchMessageById, isAllowed, loadMessages, markChannelRead, selectedChannelId]);
+    }, [fetchMessageById, isAllowed, loadMessages, loadThreadCounts, markChannelRead, selectedChannelId]);
 
     useEffect(() => {
         if (!selectedChannelId || !messageIdKey) {
@@ -1383,8 +1405,8 @@ const TeamChat = () => {
                                         <p className="text-xs text-neutral-400 mt-1">Inicia la conversacion enviando un mensaje</p>
                                     </div>
                                 )}
-                                {messages.map((message, index) => {
-                                    const prevMessage = index > 0 ? messages[index - 1] : null;
+                                {messages.filter((m) => !m.thread_root_id).map((message, index, arr) => {
+                                    const prevMessage = index > 0 ? arr[index - 1] : null;
                                     const showDateSep = !prevMessage ||
                                         new Date(message.created_at).toDateString() !== new Date(prevMessage.created_at).toDateString();
                                     const grouped = isGroupedWithPrevious(message, prevMessage);
@@ -1560,6 +1582,15 @@ const TeamChat = () => {
                                                         currentUserId={user?.id}
                                                         onToggle={(emoji) => handleToggleReaction(message.id, emoji)}
                                                     />
+                                                    {threadCounts.get(message.id) > 0 && (
+                                                        <button
+                                                            onClick={() => setThreadRootMessage(message)}
+                                                            className="chat-thread-link mt-1"
+                                                        >
+                                                            <MessageSquare size={11} />
+                                                            {threadCounts.get(message.id)} {threadCounts.get(message.id) === 1 ? 'respuesta' : 'respuestas'}
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </ChatBubble>
                                         </React.Fragment>
