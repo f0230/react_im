@@ -4,6 +4,7 @@
     "development": "Development",
     "portalClients": "Client Portal",
     "accessClients": "Client Access",
+    "teamAccess": "Team / Admin",
     "scheduleCall": "Schedule Call",
     "languageLabel": "Language"
   },

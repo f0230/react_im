@@ -4,6 +4,7 @@
     "development": "Desarrollo",
     "portalClients": "Portal Clientes",
     "accessClients": "Acceso Clientes",
+    "teamAccess": "Equipo / Admin",
     "scheduleCall": "Agendar Cita",
     "languageLabel": "Idioma"
   },

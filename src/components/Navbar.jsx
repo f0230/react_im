@@ -4,7 +4,7 @@ import HamburgerButton from "./ui/HamburgerButton";
 import logo from "../assets/Group 255.svg";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { User, LayoutDashboard, LogOut, ChevronDown } from "lucide-react";
+import { User, LayoutDashboard, LogOut, ChevronDown, ShieldCheck, Users } from "lucide-react";
 
 import { menuItems } from "@/config/nav";
 import LoginModal from "./LoginModal";
@@ -107,6 +107,11 @@ const Navbar = () => {
             ? "bg-white text-black border-white"
             : "text-white border-white/40 hover:border-white"
         }`;
+    const mobileLanguageButtonClass = (lng) =>
+        `h-8 min-w-8 rounded-full text-[12px] font-semibold transition-all ${currentLang === lng
+            ? "bg-white text-black shadow-[0_8px_24px_rgba(255,255,255,0.22)]"
+            : "bg-white/8 text-white/70 ring-1 ring-white/12 hover:bg-white/12 hover:text-white"
+        }`;
 
     useEffect(() => {
         const handleScroll = () => {
@@ -199,12 +204,8 @@ const Navbar = () => {
                 );
 
                 if (glowRef.current) {
-                    gsap.to(glowRef.current, {
-                        boxShadow: "0 0 40px rgba(255, 255, 255, 0.4)",
-                        duration: 2,
-                        repeat: -1,
-                        yoyo: true,
-                        ease: "sine.inOut",
+                    gsap.set(glowRef.current, {
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.16)",
                     });
                 }
             }, menuRef);
@@ -270,6 +271,12 @@ const Navbar = () => {
         await signOut();
         setIsUserMenuOpen(false);
         navigate('/');
+    };
+
+    const handleAdminAccess = () => {
+        setIsMenuOpen(false);
+        void preloadRoute('/admin');
+        navigate('/admin');
     };
 
     return (
@@ -368,12 +375,22 @@ const Navbar = () => {
                                     )}
                                 </>
                             ) : (
-                                <button
-                                    onClick={() => setIsLoginModalOpen(true)}
-                                    className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors border border-white/10 flex items-center gap-2"
-                                >
-                                    <span>{t("nav.portalClients")}</span>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setIsLoginModalOpen(true)}
+                                        className="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-full font-medium transition-colors border border-white/10 flex items-center gap-2"
+                                    >
+                                        <Users size={14} />
+                                        <span>{t("nav.portalClients")}</span>
+                                    </button>
+                                    <button
+                                        onClick={handleAdminAccess}
+                                        className="bg-white text-black hover:bg-green text-xs px-3 py-1.5 rounded-full font-semibold transition-colors flex items-center gap-2"
+                                    >
+                                        <ShieldCheck size={14} />
+                                        <span>{t("nav.teamAccess")}</span>
+                                    </button>
+                                </div>
                             )}
                         </li>
                     </ul>
@@ -388,23 +405,23 @@ const Navbar = () => {
             {/* Menú móvil */}
             {isMenuVisible && (
                 <>
-                <div className="mobile-menu-backdrop fixed inset-0 top-[45px] z-30 pointer-events-none bg-gradient-to-b from-black/55 via-black/72 to-black/88" />
+                <div className="mobile-menu-backdrop fixed inset-0 top-[45px] z-30 pointer-events-none bg-black/62 backdrop-blur-[6px]" />
                 <div
                     ref={menuRef}
                     id="mobile-menu"
-                    className="fixed top-[53px] right-4 rounded-[20px] backdrop-blur-md flex flex-col p-5 z-40 bg-white/5 border border-white/10 min-w-[200px]"
+                    className="fixed top-[55px] right-3 z-40 flex w-[min(260px,calc(100vw-24px))] flex-col overflow-hidden rounded-[28px] border border-white/18 bg-[rgba(36,36,38,0.66)] p-2.5 shadow-[0_24px_80px_rgba(0,0,0,0.46),inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-2xl backdrop-saturate-150"
                 >
                     <div
                         ref={glowRef}
-                        className="absolute inset-0 pointer-events-none rounded-[20px]"
+                        className="absolute inset-0 pointer-events-none rounded-[28px]"
                     />
                     <nav className="w-full">
-                        <ul className="flex flex-col gap-3">
+                        <ul className="relative flex flex-col gap-1.5">
                             {menuItems?.map((item, i) => (
                                 <li key={i} className="menu-item opacity-0 transform">
                                     <button
                                         onClick={() => handleMenuItemClick(item.url)}
-                                        className="text-white text-[14px] font-medium tracking-wide hover:opacity-70 transition-opacity duration-200 w-full text-left"
+                                        className="w-full rounded-[18px] px-3.5 py-3 text-left text-[15px] font-semibold text-white transition-colors duration-200 hover:bg-white/10"
                                     >
                                         {t(item.key)}
                                     </button>
@@ -412,14 +429,16 @@ const Navbar = () => {
                             ))}
 
                             {/* Idioma */}
-                            <li className="menu-item opacity-0 transform flex items-center gap-2 pt-1">
-                                <span className="text-white/50 text-[11px]">{t("nav.languageLabel")}</span>
-                                <button type="button" className={languageButtonClass("es")} onClick={() => setLanguage("es")} aria-pressed={currentLang === "es"}>ES</button>
-                                <button type="button" className={languageButtonClass("en")} onClick={() => setLanguage("en")} aria-pressed={currentLang === "en"}>EN</button>
+                            <li className="menu-item opacity-0 transform flex items-center justify-between rounded-[18px] px-3.5 py-2.5">
+                                <span className="text-[13px] font-medium text-white/70">{t("nav.languageLabel")}</span>
+                                <div className="flex items-center gap-1.5 rounded-full bg-black/18 p-1 ring-1 ring-white/8">
+                                    <button type="button" className={mobileLanguageButtonClass("es")} onClick={() => setLanguage("es")} aria-pressed={currentLang === "es"}>ES</button>
+                                    <button type="button" className={mobileLanguageButtonClass("en")} onClick={() => setLanguage("en")} aria-pressed={currentLang === "en"}>EN</button>
+                                </div>
                             </li>
 
                             {/* Divider */}
-                            <li className="border-t border-white/10" />
+                            <li className="mx-3 border-t border-white/10" />
 
                             {/* Login / User */}
                             <li className="menu-item opacity-0 transform flex flex-col gap-2">
@@ -427,26 +446,36 @@ const Navbar = () => {
                                     <>
                                         <button
                                             onClick={() => { setIsMenuOpen(false); void preloadRoute('/dashboard'); navigate('/dashboard'); }}
-                                            className="bg-white text-black px-4 py-2 rounded-full text-sm font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                                            className="flex items-center justify-center gap-2 rounded-[18px] bg-white px-4 py-3 text-sm font-bold text-black shadow-[0_12px_34px_rgba(255,255,255,0.18)] transition-transform hover:scale-[0.99]"
                                         >
                                             <LayoutDashboard size={15} />
                                             Dashboard
                                         </button>
                                         <button
                                             onClick={handleSignOut}
-                                            className="text-red-400 text-sm font-medium flex items-center gap-2 hover:text-red-300 transition-colors px-1"
+                                            className="flex items-center gap-2 rounded-[18px] px-3.5 py-2.5 text-sm font-semibold text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200"
                                         >
                                             <LogOut size={14} />
                                             Logout
                                         </button>
                                     </>
                                 ) : (
-                                    <button
-                                        onClick={() => { setIsMenuOpen(false); setIsLoginModalOpen(true); }}
-                                        className="bg-white text-black px-4 py-2 rounded-full text-sm font-bold hover:opacity-90 transition-opacity"
-                                    >
-                                        {t("nav.accessClients")}
-                                    </button>
+                                    <div className="grid gap-2">
+                                        <button
+                                            onClick={() => { setIsMenuOpen(false); setIsLoginModalOpen(true); }}
+                                            className="flex items-center justify-center gap-2 rounded-[20px] bg-white px-4 py-3 text-[15px] font-bold text-black shadow-[0_14px_34px_rgba(255,255,255,0.2)] transition-transform hover:scale-[0.99]"
+                                        >
+                                            <Users size={15} />
+                                            {t("nav.accessClients")}
+                                        </button>
+                                        <button
+                                            onClick={handleAdminAccess}
+                                            className="flex items-center justify-center gap-2 rounded-[20px] border border-white/12 bg-white/9 px-4 py-3 text-[15px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition-colors hover:bg-white/14"
+                                        >
+                                            <ShieldCheck size={15} />
+                                            {t("nav.teamAccess")}
+                                        </button>
+                                    </div>
                                 )}
                             </li>
 
@@ -455,7 +484,7 @@ const Navbar = () => {
                                 <li className="menu-item opacity-0 transform">
                                     <button
                                         onClick={() => { setIsMenuOpen(false); setIsToolsOverlayOpen(true); }}
-                                        className="text-white text-[14px] font-medium tracking-wide hover:opacity-70 transition-opacity duration-200 w-full text-left"
+                                        className="w-full rounded-[18px] px-3.5 py-3 text-left text-[15px] font-semibold text-white transition-colors duration-200 hover:bg-white/10"
                                     >
                                         Tools
                                     </button>
