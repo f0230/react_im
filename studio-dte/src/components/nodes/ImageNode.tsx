@@ -5,6 +5,7 @@ import BaseNode from './BaseNode';
 import { Port } from './Port';
 import toast from 'react-hot-toast';
 import { persistMediaUrl } from '../../lib/mediaStorage';
+import { recordAsset } from '../../lib/studioHistory';
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -50,6 +51,7 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
         `ref-${id}-${Date.now()}`,
       );
       updateNodeData(id, { imageUrl: signedUrl, aspectRatio, storagePath });
+      void recordAsset({ storagePath, resultUrl: signedUrl, aspectRatio });
     } catch (error) {
       console.warn('[image-node] Persisting reference image failed:', error);
       // Keep the data URL fallback to avoid losing the image on refresh.
@@ -96,6 +98,7 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
                   `ref-url-${id}-${Date.now()}`,
                 );
                 updateNodeData(id, { imageUrl: signedUrl, aspectRatio: ratio, storagePath });
+                void recordAsset({ storagePath, resultUrl: signedUrl, aspectRatio: ratio });
               } catch (error) {
                 console.warn('[image-node] Persisting pasted URL failed:', error);
                 toast.error('No se pudo guardar la referencia en storage, usando fallback local.');
@@ -110,6 +113,7 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
                   `ref-url-${id}-${Date.now()}`,
                 );
                 updateNodeData(id, { imageUrl: signedUrl, aspectRatio: 1, storagePath });
+                void recordAsset({ storagePath, resultUrl: signedUrl, aspectRatio: 1 });
               } catch (error) {
                 console.warn('[image-node] Persisting pasted URL failed:', error);
                 toast.error('No se pudo guardar la referencia en storage, usando fallback local.');

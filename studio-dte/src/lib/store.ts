@@ -82,6 +82,8 @@ export function getDefaultData(type: string): Record<string, any> {
       return { segments: DEFAULT_MULTI_PROMPT_DATA.segments.map((s) => ({ ...s })) };
     case 'element':
       return { ...DEFAULT_ELEMENT_DATA };
+    case 'note':
+      return { text: '', color: 'yellow' };
     default:
       return {};
   }
@@ -294,6 +296,8 @@ export const useWorkflowStore = create<WorkflowState>()(
             ...getDefaultData(type),
             ...(opts?.pinned !== undefined && { pinned: opts.pinned }),
           },
+          // Notes are resizable — give them an initial box size.
+          ...(type === 'note' && { width: 240, height: 170 }),
         };
         set({ nodes: [...get().nodes, newNode] });
         return newNodeId;

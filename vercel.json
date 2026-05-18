@@ -145,6 +145,10 @@
       "destination": "/api/content?type=copywriter&action=generate-brand-docs"
     },
     {
+      "source": "/api/client-message-ai",
+      "destination": "/api/content?type=client-message"
+    },
+    {
       "source": "/api/studio-proxy",
       "destination": "/api/studio-ai?tool=studio&action=proxy"
     },

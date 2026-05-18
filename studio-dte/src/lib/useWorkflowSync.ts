@@ -126,6 +126,7 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
         setHasLoaded(true);
       });
 
+      
     return () => {
       cancelled = true;
     };

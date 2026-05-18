@@ -5,9 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { Menu } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useUnreadCounts } from '@/context/UnreadCountsContext';
-import MessageIcon from '@/components/notifications/MessageIcon';
 import NotificationBell from '@/components/notifications/NotificationBell';
-import MessagePanel from '@/components/notifications/MessagePanel';
 import NotificationPanel from '@/components/notifications/NotificationPanel';
 
 import ProfileMenu from './ProfileMenu';
@@ -32,7 +30,6 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
     const [isToolsOpen, setIsToolsOpen] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-    const [isMessagesOpen, setIsMessagesOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
     const [supportsHoverReveal, setSupportsHoverReveal] = useState(() => detectHoverRevealSupport());
     const [isRevealHotspotActive, setIsRevealHotspotActive] = useState(false);
@@ -98,7 +95,6 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
             setIsToolsOpen(false);
             setIsMenuOpen(false);
             setIsProfileOpen(false);
-            setIsMessagesOpen(false);
             setIsNotificationsOpen(false);
         };
 
@@ -132,7 +128,6 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
         setIsToolsOpen(false);
         setIsMenuOpen(false);
         setIsProfileOpen(false);
-        setIsMessagesOpen(false);
         setIsNotificationsOpen(false);
         clearHideIntent();
         clearRevealIntent();
@@ -145,7 +140,6 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
         isToolsOpen ||
         isMenuOpen ||
         isProfileOpen ||
-        isMessagesOpen ||
         isNotificationsOpen;
 
     const shouldAutoHide = autoHideInStudio && supportsHoverReveal;
@@ -228,7 +222,6 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                                         isOpen={isToolsOpen}
                                         onToggle={() => {
                                             setIsToolsOpen((prev) => !prev);
-                                            setIsMessagesOpen(false);
                                             setIsNotificationsOpen(false);
                                             setIsProfileOpen(false);
                                             setIsMenuOpen(false);
@@ -239,34 +232,12 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                             )}
 
                             <div className="relative shrink-0">
-                                <MessageIcon
-                                    unreadCount={messageUnreadTotal}
-                                    isOpen={isMessagesOpen}
-                                    onClick={() => {
-                                        setIsMessagesOpen((prev) => !prev);
-                                        setIsToolsOpen(false);
-                                        setIsNotificationsOpen(false);
-                                        setIsProfileOpen(false);
-                                        setIsMenuOpen(false);
-                                    }}
-                                />
-                                <MessagePanel
-                                    isOpen={isMessagesOpen}
-                                    onClose={() => setIsMessagesOpen(false)}
-                                    teamItems={teamPreviews}
-                                    whatsappItems={whatsappPreviews}
-                                    clientItems={clientPreviews}
-                                />
-                            </div>
-
-                            <div className="relative shrink-0">
                                 <NotificationBell
-                                    unreadCount={counts.unreadNotifications}
+                                    unreadCount={counts.unreadNotifications + messageUnreadTotal}
                                     isOpen={isNotificationsOpen}
                                     onClick={() => {
                                         setIsNotificationsOpen((prev) => !prev);
                                         setIsToolsOpen(false);
-                                        setIsMessagesOpen(false);
                                         setIsProfileOpen(false);
                                         setIsMenuOpen(false);
                                     }}
@@ -275,6 +246,9 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                                     isOpen={isNotificationsOpen}
                                     onClose={() => setIsNotificationsOpen(false)}
                                     notifications={notifications}
+                                    teamItems={teamPreviews}
+                                    whatsappItems={whatsappPreviews}
+                                    clientItems={clientPreviews}
                                     onMarkAllRead={markAllNotificationsRead}
                                     onMarkRead={markNotificationRead}
                                 />
@@ -287,7 +261,6 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                                     onClick={() => {
                                         setIsProfileOpen((prev) => !prev);
                                         setIsToolsOpen(false);
-                                        setIsMessagesOpen(false);
                                         setIsNotificationsOpen(false);
                                         setIsMenuOpen(false);
                                         setImgError(false); // Reset error when opening
@@ -321,7 +294,6 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                                         setIsMenuOpen((prev) => !prev);
                                         setIsToolsOpen(false);
                                         setIsProfileOpen(false);
-                                        setIsMessagesOpen(false);
                                         setIsNotificationsOpen(false);
                                     }}
                                     className={`flex items-center group ${isMenuOpen ? 'text-skyblue' : 'text-white hover:text-skyblue'}`}

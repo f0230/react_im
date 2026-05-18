@@ -2,6 +2,7 @@
 import React, { Suspense, useEffect, useState, lazy } from "react";
 import { Toaster } from "react-hot-toast";
 import UpdateBanner from "@/components/ui/UpdateBanner";
+import AiClientMessageChat from "@/components/tools/AiClientMessageChat";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import LoadingFallback from "@/components/ui/LoadingFallback";
@@ -164,6 +165,7 @@ const AppContent = () => {
     <div className="relative min-h-screen">
       <ScrollToTop />
       <RouteRobotsMeta />
+      <AiClientMessageChat />
 
       {/* Overlay de efecto blur 2px */}
       {isNavbarOpen && (

@@ -16,6 +16,8 @@ import {
   CloudOff,
   Loader2,
   Plus,
+  History,
+  Play,
 } from 'lucide-react';
 import { ContextMenu } from './components/ui/context-menu';
 import {
@@ -25,6 +27,7 @@ import {
   Controls,
   MiniMap,
   Node,
+  Edge,
   NodeTypes,
   useReactFlow,
 } from '@xyflow/react';
@@ -39,13 +42,20 @@ import OutputNode from './components/nodes/OutputNode';
 import EnhancerNode from './components/nodes/EnhancerNode';
 import MultiPromptNode from './components/nodes/MultiPromptNode';
 import ElementNode from './components/nodes/ElementNode';
+import NoteNode from './components/nodes/NoteNode';
 import WorkflowEdge from './components/edges/WorkflowEdge';
 import { CreditIndicator } from './components/CreditIndicator';
+import { HistoryPanel } from './components/HistoryPanel';
+import { QueuePanel } from './components/QueuePanel';
+import { TemplatesMenu } from './components/TemplatesMenu';
+import { useGenerationQueue } from './lib/queueStore';
+import { topoSortModels } from './lib/workflowGraph';
 import { createInitialWorkflow, useWorkflowStore } from './lib/store';
 import { useElkLayout } from './lib/useElkLayout';
 import { useWorkflowSync } from './lib/useWorkflowSync';
 import { supabase } from './lib/supabaseClient';
 import { persistMediaUrl } from './lib/mediaStorage';
+import { recordAsset } from './lib/studioHistory';
 
 const nodeTypes: NodeTypes = {
   prompt: PromptNode,
@@ -55,6 +65,7 @@ const nodeTypes: NodeTypes = {
   enhancer: EnhancerNode,
   multiPrompt: MultiPromptNode,
   element: ElementNode,
+  note: NoteNode,
 };
 
 const edgeTypes = {
@@ -247,6 +258,8 @@ function WorkflowApp() {
   const deleteNodeIdRef = useRef<string | undefined>(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addNodeButtonRef = useRef<HTMLButtonElement>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [isRunningAll, setIsRunningAll] = useState(false);
 
   const getCanvasCenterPosition = useCallback(
     () =>
@@ -319,6 +332,15 @@ function WorkflowApp() {
   }, [getCanvasCenterPosition, getClampedMenuPosition]);
 
   const onPaneClick = useCallback(() => setMenu(null), []);
+
+  // Snapshot before any node removal so keyboard/box delete is undoable.
+  const handleNodesChange = useCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      if (changes.some((c) => c.type === 'remove')) pushSnapshot();
+      onNodesChange(changes);
+    },
+    [onNodesChange, pushSnapshot],
+  );
 
   // ---- Add node at cursor (A2) ----
   const handleAddNode = useCallback(
@@ -443,6 +465,11 @@ function WorkflowApp() {
                         : n,
                     ),
                   );
+                  void recordAsset({
+                    storagePath,
+                    resultUrl: signedUrl,
+                    aspectRatio,
+                  });
                 } catch (error) {
                   console.warn('[app] Could not persist pasted image:', error);
                   toast.error(
@@ -564,6 +591,88 @@ function WorkflowApp() {
     toast.success('Workflow reset');
   }, [resetWorkflow]);
 
+  // ---- Run the whole workflow (DAG order) ----
+  const handleRunAll = useCallback(async () => {
+    if (isRunningAll) return;
+    const waves = topoSortModels(nodes, edges);
+    if (waves.length === 0) {
+      toast.error('No hay nodos Model en el workflow');
+      return;
+    }
+
+    setIsRunningAll(true);
+    toast('Ejecutando workflow…', { icon: '▶️' });
+
+    // Waits until every model in a wave has settled (no running jobs), or a
+    // grace window passes with no job at all (model skipped a validation).
+    const waitForWave = async (modelIds: string[], triggerTime: number) => {
+      const HARD_TIMEOUT = 12 * 60 * 1000;
+      const NO_JOB_GRACE = 20000;
+      const start = Date.now();
+      while (Date.now() - start < HARD_TIMEOUT) {
+        const jobs = useGenerationQueue.getState().jobs;
+        const allSettled = modelIds.every((mid) => {
+          const own = jobs.filter(
+            (j) => j.modelNodeId === mid && j.startedAt >= triggerTime,
+          );
+          if (own.length === 0) return Date.now() - triggerTime > NO_JOB_GRACE;
+          return own.every((j) => j.status !== 'running');
+        });
+        if (allSettled) return;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    };
+
+    try {
+      for (const wave of waves) {
+        const triggerTime = Date.now();
+        setNodes((nds) =>
+          nds.map((n) =>
+            wave.includes(n.id)
+              ? { ...n, data: { ...n.data, runToken: triggerTime } }
+              : n,
+          ),
+        );
+        await waitForWave(wave, triggerTime);
+      }
+      toast.success('Workflow completado');
+    } finally {
+      setIsRunningAll(false);
+    }
+  }, [isRunningAll, nodes, edges, setNodes]);
+
+  // ---- Apply a saved workflow template ----
+  const handleApplyTemplate = useCallback(
+    (tNodes: Node[], tEdges: Edge[]) => {
+      pushSnapshot();
+      setNodes(tNodes);
+      setEdges(tEdges);
+      requestAnimationFrame(() => void fitView({ padding: 0.2, duration: 200 }));
+    },
+    [pushSnapshot, setNodes, setEdges, fitView],
+  );
+
+  // ---- Drop a history image onto the canvas as an Image node ----
+  const handleUseHistoryImage = useCallback(
+    (url: string) => {
+      const center = getCanvasCenterPosition();
+      const nodeId = `image-${Date.now()}`;
+      pushSnapshot();
+      setNodes((nds) => [
+        ...nds,
+        {
+          id: nodeId,
+          type: 'image',
+          position: center,
+          data: { imageUrl: url, aspectRatio: 1, storagePath: null },
+        },
+      ]);
+      setHistoryOpen(false);
+      toast.success('Imagen agregada al canvas');
+    },
+    [getCanvasCenterPosition, pushSnapshot, setNodes],
+  );
+
   return (
     <div className="w-full h-full bg-[#0a0a0c] text-white font-sans flex flex-col relative overflow-hidden">
       {/* Ambient Background Blobs */}
@@ -591,6 +700,46 @@ function WorkflowApp() {
 
         {/* Credit indicator */}
         <CreditIndicator />
+
+        <div className="w-px h-5 bg-white/10" />
+
+        {/* Run entire workflow */}
+        <button
+          type="button"
+          onClick={handleRunAll}
+          disabled={isRunningAll}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[12px] font-medium text-[#32D74B] hover:bg-[#32D74B]/10 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
+          title="Ejecutar todo el workflow en orden"
+        >
+          {isRunningAll ? (
+            <Loader2 size={13} className="animate-spin" />
+          ) : (
+            <Play size={13} className="fill-[#32D74B]" />
+          )}
+          Run All
+        </button>
+
+        <div className="w-px h-5 bg-white/10" />
+
+        {/* Workflow templates */}
+        <TemplatesMenu nodes={nodes} edges={edges} onApply={handleApplyTemplate} />
+
+        <div className="w-px h-5 bg-white/10" />
+
+        {/* History panel toggle */}
+        <button
+          type="button"
+          onClick={() => setHistoryOpen((o) => !o)}
+          className={`p-1.5 rounded-lg transition-colors ${
+            historyOpen
+              ? 'text-white bg-white/10'
+              : 'text-white/60 hover:text-white hover:bg-white/10'
+          }`}
+          aria-label="Historial de generaciones"
+          title="Historial de generaciones"
+        >
+          <History size={14} />
+        </button>
 
         <div className="w-px h-5 bg-white/10" />
 
@@ -687,7 +836,7 @@ function WorkflowApp() {
           proOptions={{ hideAttribution: true }}
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
           onNodeContextMenu={onNodeContextMenu}
@@ -703,6 +852,13 @@ function WorkflowApp() {
           minZoom={0.1}
           maxZoom={2}
           zoomOnDoubleClick={false}
+          /* Hold Ctrl/Cmd and drag to box-select; Ctrl/Cmd+click adds to the
+             selection. Delete/Backspace removes everything selected at once. */
+          selectionKeyCode={['Control', 'Meta']}
+          multiSelectionKeyCode={['Control', 'Meta']}
+          deleteKeyCode={['Delete', 'Backspace']}
+          selectionOnDrag={false}
+          panOnDrag
         >
           <Background gap={24} size={2} color="rgba(255,255,255,0.04)" />
 
@@ -734,6 +890,15 @@ function WorkflowApp() {
           />
         </ReactFlow>
       </div>
+
+      <QueuePanel />
+
+      <HistoryPanel
+        projectId={projectId}
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        onUseImage={handleUseHistoryImage}
+      />
     </div>
   );
 }

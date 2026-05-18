@@ -7,6 +7,7 @@
 
 import copywriterHandler from '../../server/api-handlers/content/copywriter.js';
 import plannerHandler from '../../server/api-handlers/content/planner.js';
+import clientMessageHandler from '../../server/api-handlers/content/clientMessage.js';
 
 function getType(req) {
   let type = req.query?.type || req.query?.service;
@@ -40,10 +41,13 @@ export default async function handler(req, res) {
       case 'services-planner':
       case 'services':
         return await plannerHandler(req, res);
+      case 'client-message':
+      case 'client-message-ai':
+        return await clientMessageHandler(req, res);
       default:
         return res.status(400).json({
           error: 'Invalid type parameter',
-          available: ['copywriter', 'planner'],
+          available: ['copywriter', 'planner', 'client-message'],
           received: type || '(empty)',
         });
     }

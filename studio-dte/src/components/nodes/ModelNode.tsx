@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import {
   Play,
   Square,
@@ -20,6 +20,8 @@ import {
   pollVeoTask,
 } from '../../lib/kie';
 import { persistMediaUrl } from '../../lib/mediaStorage';
+import { recordGeneration } from '../../lib/studioHistory';
+import { useGenerationQueue } from '../../lib/queueStore';
 import toast from 'react-hot-toast';
 import { ElasticSwitch } from '../ui/elastic-switch';
 
@@ -1173,13 +1175,58 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
 
       // Launch generations with a concurrency cap so connecting many output
       // nodes doesn't fire all API calls (and credit spend) at once.
+      const modelLabel =
+        MODEL_OPTIONS.flatMap((g) => g.options).find(
+          (o) => o.value === selectedModel,
+        )?.label ?? selectedModel;
+
       const results = await runWithConcurrency(
         genCount,
         MAX_CONCURRENT_GENERATIONS,
-        () => generateOne(),
+        async (index) => {
+          const jobId = `${id}-${Date.now()}-${index}`;
+          useGenerationQueue.getState().addJob({
+            id: jobId,
+            modelNodeId: id,
+            model: selectedModel,
+            label: genCount > 1 ? `${modelLabel} #${index + 1}` : modelLabel,
+            status: 'running',
+            startedAt: Date.now(),
+          });
+          try {
+            const value = await generateOne();
+            useGenerationQueue
+              .getState()
+              .updateJob(jobId, { status: 'done', finishedAt: Date.now() });
+            return value;
+          } catch (e) {
+            useGenerationQueue.getState().updateJob(jobId, {
+              status: 'error',
+              finishedAt: Date.now(),
+              error: e instanceof Error ? e.message : String(e),
+            });
+            throw e;
+          }
+        },
       );
 
       if (abortRef.current) return;
+
+      // Append every successful result to the project generation history.
+      results.forEach((r) => {
+        if (r.status === 'fulfilled' && r.value.resultUrl) {
+          void recordGeneration({
+            model: selectedModel,
+            prompt: promptText,
+            resultUrl: r.value.resultUrl,
+            storagePath: r.value.storagePath,
+            resultType,
+            aspectRatio: actualAspectRatio,
+            taskId: r.value.taskId,
+            provider: selectedCaps.provider,
+          });
+        }
+      });
 
       // Update each output node with its own result
       let successCount = 0;
@@ -1259,6 +1306,21 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
       );
     }
   };
+
+  // -----------------------------------------------------------------------
+  // External trigger — lets Output "Retry" and the global "Run All" action
+  // start this model's generation by bumping `data.runToken`.
+  // -----------------------------------------------------------------------
+  const handleGenerateRef = useRef(handleGenerate);
+  handleGenerateRef.current = handleGenerate;
+  const lastRunTokenRef = useRef(data.runToken);
+
+  useEffect(() => {
+    if (data.runToken && data.runToken !== lastRunTokenRef.current) {
+      lastRunTokenRef.current = data.runToken;
+      void handleGenerateRef.current();
+    }
+  }, [data.runToken]);
 
   // -----------------------------------------------------------------------
   // Render

@@ -108,10 +108,10 @@ const devApiPlugin = () => {
     },
     {
       name: '/api/post-copywriter',
-      matches: (pathname) => pathname === '/api/post-copywriter' || pathname === '/api/generate-brand-docs',
+      matches: (pathname) => pathname === '/api/post-copywriter' || pathname === '/api/generate-brand-docs' || pathname === '/api/client-message-ai',
       resolveQuery: (pathname, searchParams) => {
         const query = Object.fromEntries(searchParams.entries());
-        query.type = 'copywriter';
+        query.type = pathname === '/api/client-message-ai' ? 'client-message' : 'copywriter';
         if (!query.action && pathname === '/api/generate-brand-docs') query.action = 'generate-brand-docs';
         return query;
       },

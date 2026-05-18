@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutGrid, Plus, Sparkles, Workflow, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
+import { LayoutGrid, MessageSquareText, Plus, Sparkles, Workflow, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
 import PopoverPanel from './ui/PopoverPanel';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
@@ -25,12 +25,20 @@ const DEFAULT_TOOLS = [
         url: '/dashboard/studio/workflow',
         icon: 'Workflow',
         color: 'from-neutral-300 to-white'
+    },
+    {
+        id: 'client-message-ai',
+        name: 'Mensajes IA',
+        action: 'client-message-ai',
+        icon: 'MessageSquareText',
+        color: 'from-[#2f80ed] to-[#7b2ff7]'
     }
 ];
 
 const ICONS = {
     Sparkles,
     Workflow,
+    MessageSquareText,
     Globe,
     LinkIcon
 };
@@ -117,18 +125,28 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
         return ICONS[iconName] || Globe;
     };
 
+    const openToolAction = (tool) => {
+        if (tool.action === 'client-message-ai') {
+            window.dispatchEvent(new CustomEvent('dte:open-client-message-ai'));
+            closePopover();
+        }
+    };
+
     // Modo inline: grid directo sin popover flotante
     if (inline) {
         return (
             <div className="grid grid-cols-4 gap-4 py-1">
                 {tools.map((tool) => {
                     const IconComp = getIcon(tool.icon);
+                    const Tag = tool.action ? 'button' : 'a';
                     return (
-                        <a
+                        <Tag
                             key={tool.id}
-                            href={tool.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                            href={tool.action ? undefined : tool.url}
+                            target={tool.action ? undefined : '_blank'}
+                            rel={tool.action ? undefined : 'noopener noreferrer'}
+                            type={tool.action ? 'button' : undefined}
+                            onClick={tool.action ? () => openToolAction(tool) : undefined}
                             className="group flex flex-col items-center gap-1"
                         >
                             <div className={cn(
@@ -140,7 +158,7 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
                             <span className="text-[10px] text-white/60 text-center font-medium truncate w-full group-hover:text-white transition-colors">
                                 {tool.name}
                             </span>
-                        </a>
+                        </Tag>
                     );
                 })}
             </div>
@@ -226,12 +244,15 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
                             {tools.map((tool) => {
                                 const IconComp = getIcon(tool.icon);
                                 const isLight = tool.id === 'studio-ia' || tool.id === 'workflows';
+                                const Tag = tool.action ? 'button' : 'a';
                                 return (
-                                    <a
+                                    <Tag
                                         key={tool.id}
-                                        href={tool.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        href={tool.action ? undefined : tool.url}
+                                        target={tool.action ? undefined : '_blank'}
+                                        rel={tool.action ? undefined : 'noopener noreferrer'}
+                                        type={tool.action ? 'button' : undefined}
+                                        onClick={tool.action ? () => openToolAction(tool) : undefined}
                                         className="group flex flex-col items-center gap-2 relative"
                                     >
                                         {/* Icono grande con fondo tipo carpeta iOS */}
@@ -247,7 +268,7 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
                                         <span className="text-[11px] text-white/80 text-center font-medium w-full truncate group-hover:text-white transition-colors">
                                             {tool.name}
                                         </span>
-                                    </a>
+                                    </Tag>
                                 );
                             })}
 

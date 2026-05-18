@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Globe, Sparkles, Workflow, Link as LinkIcon, X, Plus } from 'lucide-react';
+import { Globe, MessageSquareText, Sparkles, Workflow, Link as LinkIcon, X, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
@@ -25,10 +25,17 @@ const DEFAULT_TOOLS = [
         url: '/dashboard/studio/workflow',
         icon: 'Workflow',
         color: 'bg-gradient-to-br from-neutral-200 to-white text-black'
+    },
+    {
+        id: 'client-message-ai',
+        name: 'Mensajes IA',
+        action: 'client-message-ai',
+        icon: 'MessageSquareText',
+        color: 'bg-gradient-to-br from-[#2f80ed] to-[#7b2ff7]'
     }
 ];
 
-const ICONS = { Sparkles, Workflow, Globe, LinkIcon };
+const ICONS = { Sparkles, Workflow, MessageSquareText, Globe, LinkIcon };
 
 const ToolsOverlay = ({ isOpen, onClose }) => {
     const [tools, setTools] = useState([]);
@@ -59,6 +66,13 @@ const ToolsOverlay = ({ isOpen, onClose }) => {
     };
 
     const getIcon = (iconName) => ICONS[iconName] || Globe;
+
+    const openToolAction = (tool) => {
+        if (tool.action === 'client-message-ai') {
+            window.dispatchEvent(new CustomEvent('dte:open-client-message-ai'));
+            onClose?.();
+        }
+    };
 
     return (
         <AnimatePresence>
@@ -111,12 +125,15 @@ const ToolsOverlay = ({ isOpen, onClose }) => {
                         <div className="grid grid-cols-4 gap-x-4 gap-y-6">
                             {tools.map((tool) => {
                                 const IconComp = getIcon(tool.icon);
+                                const MotionTag = tool.action ? motion.button : motion.a;
                                 return (
-                                    <motion.a
+                                    <MotionTag
                                         key={tool.id}
-                                        href={tool.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        href={tool.action ? undefined : tool.url}
+                                        target={tool.action ? undefined : '_blank'}
+                                        rel={tool.action ? undefined : 'noopener noreferrer'}
+                                        type={tool.action ? 'button' : undefined}
+                                        onClick={tool.action ? () => openToolAction(tool) : undefined}
                                         className="group flex flex-col items-center gap-2"
                                         whileTap={{ scale: 0.9 }}
                                     >
@@ -129,7 +146,7 @@ const ToolsOverlay = ({ isOpen, onClose }) => {
                                         <span className="text-[11px] text-white/75 text-center font-medium w-full truncate group-hover:text-white transition-colors">
                                             {tool.name}
                                         </span>
-                                    </motion.a>
+                                    </MotionTag>
                                 );
                             })}
 

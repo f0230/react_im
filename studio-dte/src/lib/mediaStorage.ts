@@ -147,6 +147,34 @@ export async function persistMediaUrl(
   }, { attempts: 2, baseDelayMs: 600 });
 }
 
+/**
+ * Batch-signs a list of storage paths. Returns a path → signed URL map;
+ * paths that fail to sign are simply omitted.
+ */
+export async function createStudioSignedUrls(
+  paths: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (paths.length === 0) return map;
+
+  try {
+    const entries = await withRetry(async () => {
+      const { data, error } = await supabase.storage
+        .from(STUDIO_BUCKET)
+        .createSignedUrls(paths, SIGNED_URL_TTL_SECONDS);
+      if (error) throw error;
+      return data;
+    });
+    (entries ?? []).forEach((entry) => {
+      if (entry.signedUrl && entry.path) map.set(entry.path, entry.signedUrl);
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn('[media-storage] Batch sign failed:', message);
+  }
+  return map;
+}
+
 export async function hydrateNodeMediaUrls(nodes: Node[]): Promise<Node[]> {
   // Collect all nodes that need a signed URL renewal
   const nodesNeedingHydration: Array<{ index: number; node: Node; storagePath: string }> = [];

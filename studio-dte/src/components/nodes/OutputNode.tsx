@@ -7,7 +7,9 @@ import {
   ChevronDown,
   Copy,
   Check,
+  RotateCcw,
 } from 'lucide-react';
+import { useReactFlow } from '@xyflow/react';
 import BaseNode from './BaseNode';
 import { Port } from './Port';
 import { createUpscaleTask, pollMarketTask } from '../../lib/kie';
@@ -20,6 +22,24 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
   const [downloading, setDownloading] = useState(false);
   const [upscaling, setUpscaling] = useState(false);
   const [showFactors, setShowFactors] = useState(false);
+  const { getEdges, getNodes, updateNodeData } = useReactFlow();
+
+  // Re-run the upstream Model node that feeds this output.
+  const handleRetry = () => {
+    const inEdge = getEdges().find(
+      (e) => e.target === id && e.targetHandle === 'in',
+    );
+    if (!inEdge) {
+      toast.error('Sin nodo Model conectado a esta salida');
+      return;
+    }
+    const source = getNodes().find((n) => n.id === inEdge.source);
+    if (source?.type !== 'model') {
+      toast.error('La entrada no proviene de un nodo Model');
+      return;
+    }
+    updateNodeData(inEdge.source, { runToken: Date.now() });
+  };
 
   const isVideo = data.resultType === 'video';
   const factors = isVideo ? UPSCALE_FACTORS_VIDEO : UPSCALE_FACTORS_IMAGE;
@@ -180,6 +200,12 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
             <div className="flex flex-col items-center justify-center p-6 text-center">
               <div className="text-[#FF3B30] text-[13px] font-semibold mb-2">Generation failed</div>
               <div className="text-[#FF3B30]/70 text-[11px] break-words w-full bg-[#FF3B30]/10 p-3 rounded-lg border border-[#FF3B30]/20">{data.error || 'Unknown error'}</div>
+              <button
+                onClick={handleRetry}
+                className="nodrag mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-[12px] font-medium transition-all"
+              >
+                <RotateCcw size={12} /> Reintentar
+              </button>
             </div>
           ) : (
             <>

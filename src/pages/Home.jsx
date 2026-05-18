@@ -1,9 +1,7 @@
 // Home.jsx — mobile-first optimizado
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ShieldCheck } from "lucide-react";
-import ScrollToTopButton from "@/components/ui/ScrollToTopButton";
 import Layout from "@/components/Layout";
 import { breadcrumbSchema } from "@/config/seo";
 
@@ -133,16 +131,6 @@ const Home = () => {
             </div>
           </>
         )}
-        <ScrollToTopButton />
-
-        {/* Admin access — discreto, solo visible en hover */}
-        <Link
-          to="/admin"
-          aria-label="Acceso administrador"
-          className="fixed bottom-5 left-4 z-50 p-2 rounded-full text-white/20 hover:text-white/70 hover:bg-white/5 transition-all duration-300"
-        >
-          <ShieldCheck size={16} />
-        </Link>
       </div>
     </Layout>
   );
