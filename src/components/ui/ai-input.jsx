@@ -250,11 +250,21 @@ export function MorphPanel({
                   spellCheck={false}
                 />
 
-                {isRecording && (
-                  <div className="mt-3 flex items-center justify-center">
-                    <AudioVisualizer isActive={isRecording} />
-                  </div>
-                )}
+                <div className="h-6 overflow-hidden">
+                  <AnimatePresence mode="wait">
+                    {isRecording && (
+                      <motion.div
+                        key="visualizer"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="flex items-center justify-center h-6"
+                      >
+                        <AudioVisualizer isActive={isRecording} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
 
                 {generatedMessage ? (
                   <div className="mt-2 max-h-20 overflow-y-auto rounded-[14px] bg-white/6 px-3 py-2 text-xs leading-relaxed text-white/75">
