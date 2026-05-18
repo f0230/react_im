@@ -17,7 +17,36 @@ interface SyncOptions {
 
 type SyncStatus = 'idle' | 'loading' | 'saving' | 'saved' | 'error';
 
-const DEBOUNCE_MS = 800;
+// Longer debounce keeps a drag (which fires dozens of change events) down to
+// a single DB write once the user settles.
+const DEBOUNCE_MS = 2500;
+
+/**
+ * Builds a stable signature of the meaningful workflow state. Transient
+ * React Flow fields (selection, drag flags, measured size) are excluded so a
+ * pure selection or hover change does not trigger a redundant DB write.
+ */
+function workflowSignature(
+  nodes: Node[],
+  edges: Edge[],
+  viewport: Viewport | null,
+): string {
+  const nodeSig = nodes.map((n) => ({
+    id: n.id,
+    type: n.type,
+    position: n.position,
+    data: n.data,
+  }));
+  const edgeSig = edges.map((e) => ({
+    id: e.id,
+    source: e.source,
+    target: e.target,
+    sourceHandle: e.sourceHandle,
+    targetHandle: e.targetHandle,
+    data: e.data,
+  }));
+  return JSON.stringify({ nodeSig, edgeSig, viewport });
+}
 
 /**
  * Manages debounced persistence of workflow state to Supabase.
@@ -35,6 +64,8 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
   const revisionRef = useRef<number>(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSaveRef = useRef<WorkflowSnapshot | null>(null);
+  // Signature of the last state we persisted — skips redundant writes.
+  const lastSavedSigRef = useRef<string | null>(null);
 
   // --------------------------------------------------------------------------
   // Load snapshot on project change
@@ -45,6 +76,7 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
       debounceRef.current = null;
     }
     pendingSaveRef.current = null;
+    lastSavedSigRef.current = null;
 
     if (!projectId) {
       setSnapshot(null);
@@ -102,9 +134,77 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
   // --------------------------------------------------------------------------
   // Debounced save
   // --------------------------------------------------------------------------
+  // performSave does the actual DB write. Kept in a ref so the unmount cleanup
+  // can flush a pending save without re-running the effect on every change.
+  const performSaveRef = useRef<(toSave: WorkflowSnapshot) => Promise<void>>();
+  performSaveRef.current = async (toSave: WorkflowSnapshot) => {
+    if (!projectId) return;
+
+    setStatus('saving');
+
+    // Normalize output runtime state before persisting.
+    // Keep generated media URLs so refresh does not wipe previews.
+    const cleanNodes = toSave.nodes.map((n) => {
+      if (n.type === 'output') {
+        const nodeData = (n.data && typeof n.data === 'object' ? n.data : {}) as Record<string, any>;
+        const hasResult = Boolean(nodeData.resultUrl);
+        const safeStatus =
+          nodeData.status === 'loading'
+            ? (hasResult ? 'success' : 'idle')
+            : (nodeData.status ?? (hasResult ? 'success' : 'idle'));
+
+        return {
+          ...n,
+          data: {
+            ...nodeData,
+            status: safeStatus,
+          },
+        };
+      }
+      return n;
+    });
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from('studio_workflow_snapshots')
+      .upsert(
+        {
+          project_id: projectId,
+          nodes: cleanNodes,
+          edges: toSave.edges,
+          viewport: toSave.viewport,
+          revision: toSave.revision + 1,
+          updated_by: user?.id ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'project_id',
+          ignoreDuplicates: false,
+        },
+      );
+
+    if (error) {
+      console.error('[workflow-sync] save error:', error.message);
+      setStatus('error');
+      return;
+    }
+
+    revisionRef.current = toSave.revision + 1;
+    setStatus('saved');
+
+    // Reset to idle after a moment so the UI indicator fades
+    setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), 1500);
+  };
+
   const save = useCallback(
     (nodes: Node[], edges: Edge[], viewport: Viewport | null) => {
       if (!projectId || !hasLoaded) return;
+
+      // Skip writes when nothing meaningful changed (e.g. selecting a node).
+      const signature = workflowSignature(nodes, edges, viewport);
+      if (signature === lastSavedSigRef.current) return;
+      lastSavedSigRef.current = signature;
 
       const pending: WorkflowSnapshot = {
         nodes,
@@ -116,74 +216,22 @@ export function useWorkflowSync({ projectId, debounceMs = DEBOUNCE_MS }: SyncOpt
 
       if (debounceRef.current) clearTimeout(debounceRef.current);
 
-      debounceRef.current = setTimeout(async () => {
+      debounceRef.current = setTimeout(() => {
         const toSave = pendingSaveRef.current;
-        if (!toSave || !projectId) return;
-
-        setStatus('saving');
-
-        // Normalize output runtime state before persisting.
-        // Keep generated media URLs so refresh does not wipe previews.
-        const cleanNodes = toSave.nodes.map((n) => {
-          if (n.type === 'output') {
-            const nodeData = (n.data && typeof n.data === 'object' ? n.data : {}) as Record<string, any>;
-            const hasResult = Boolean(nodeData.resultUrl);
-            const safeStatus =
-              nodeData.status === 'loading'
-                ? (hasResult ? 'success' : 'idle')
-                : (nodeData.status ?? (hasResult ? 'success' : 'idle'));
-
-            return {
-              ...n,
-              data: {
-                ...nodeData,
-                status: safeStatus,
-              },
-            };
-          }
-          return n;
-        });
-
-        const { data: { user } } = await supabase.auth.getUser();
-
-        const { error } = await supabase
-          .from('studio_workflow_snapshots')
-          .upsert(
-            {
-              project_id: projectId,
-              nodes: cleanNodes,
-              edges: toSave.edges,
-              viewport: toSave.viewport,
-              revision: toSave.revision + 1,
-              updated_by: user?.id ?? null,
-              updated_at: new Date().toISOString(),
-            },
-            {
-              onConflict: 'project_id',
-              ignoreDuplicates: false,
-            },
-          );
-
-        if (error) {
-          console.error('[workflow-sync] save error:', error.message);
-          setStatus('error');
-          return;
-        }
-
-        revisionRef.current = toSave.revision + 1;
-        setStatus('saved');
-
-        // Reset to idle after a moment so the UI indicator fades
-        setTimeout(() => setStatus((s) => (s === 'saved' ? 'idle' : s)), 1500);
+        pendingSaveRef.current = null;
+        if (toSave) void performSaveRef.current?.(toSave);
       }, debounceMs);
     },
     [projectId, debounceMs, hasLoaded],
   );
 
-  // Flush on unmount
+  // Flush any pending save on unmount so in-flight changes are not lost.
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      const toSave = pendingSaveRef.current;
+      pendingSaveRef.current = null;
+      if (toSave) void performSaveRef.current?.(toSave);
     };
   }, []);
 

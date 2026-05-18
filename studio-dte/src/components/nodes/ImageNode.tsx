@@ -98,6 +98,7 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
                 updateNodeData(id, { imageUrl: signedUrl, aspectRatio: ratio, storagePath });
               } catch (error) {
                 console.warn('[image-node] Persisting pasted URL failed:', error);
+                toast.error('No se pudo guardar la referencia en storage, usando fallback local.');
               }
             };
             img.onerror = async () => {
@@ -111,6 +112,7 @@ export default function ImageNode({ id, data }: { id: string; data: any }) {
                 updateNodeData(id, { imageUrl: signedUrl, aspectRatio: 1, storagePath });
               } catch (error) {
                 console.warn('[image-node] Persisting pasted URL failed:', error);
+                toast.error('No se pudo guardar la referencia en storage, usando fallback local.');
               }
             };
             img.src = trimmed;

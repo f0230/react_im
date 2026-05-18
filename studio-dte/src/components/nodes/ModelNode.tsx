@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import {
   Play,
   Square,
@@ -261,6 +261,39 @@ const MODEL_CAPS: Record<string, ModelCaps> = {
 
 function getCaps(model: string): ModelCaps {
   return MODEL_CAPS[model] ?? { kind: 'image', provider: 'market' };
+}
+
+// Max generations running at once. Prevents N parallel API calls (and credit
+// spikes) when many output nodes are connected to a single model.
+const MAX_CONCURRENT_GENERATIONS = 3;
+
+/**
+ * Runs `task` `count` times with at most `limit` concurrent executions.
+ * Results are returned in index order, mirroring Promise.allSettled.
+ */
+async function runWithConcurrency<T>(
+  count: number,
+  limit: number,
+  task: (index: number) => Promise<T>,
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = new Array(count);
+  let cursor = 0;
+
+  const worker = async (): Promise<void> => {
+    while (true) {
+      const index = cursor++;
+      if (index >= count) return;
+      try {
+        results[index] = { status: 'fulfilled', value: await task(index) };
+      } catch (reason) {
+        results[index] = { status: 'rejected', reason };
+      }
+    }
+  };
+
+  const workerCount = Math.min(Math.max(limit, 1), count);
+  await Promise.all(Array.from({ length: workerCount }, worker));
+  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -655,7 +688,7 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const abortRef = useRef(false);
 
-  const caps = getCaps(data.model);
+  const caps = useMemo(() => getCaps(data.model), [data.model]);
   const isVideo = caps.kind === 'video';
   const isMotionControl = !!caps.supportsReferenceVideo;
 
@@ -747,7 +780,10 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
     caps.provider === 'veo'; // generationType
 
   // Shorthand updater
-  const set = (patch: Record<string, any>) => updateNodeData(id, patch);
+  const set = useCallback(
+    (patch: Record<string, any>) => updateNodeData(id, patch),
+    [updateNodeData, id],
+  );
 
   // -----------------------------------------------------------------------
   // Generate handler
@@ -1135,9 +1171,12 @@ export default function ModelNode({ id, data }: { id: string; data: any }) {
         return { resultUrl: persistedUrl, taskId, storagePath };
       };
 
-      // Launch all generations in parallel
-      const results = await Promise.allSettled(
-        Array.from({ length: genCount }, () => generateOne()),
+      // Launch generations with a concurrency cap so connecting many output
+      // nodes doesn't fire all API calls (and credit spend) at once.
+      const results = await runWithConcurrency(
+        genCount,
+        MAX_CONCURRENT_GENERATIONS,
+        () => generateOne(),
       );
 
       if (abortRef.current) return;

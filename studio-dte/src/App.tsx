@@ -75,21 +75,35 @@ function ProjectSelector({
 }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase
       .from('projects')
       .select('id, name')
       .order('name')
+      .limit(200)
       .then(({ data }) => {
         if (data) setProjects(data as Project[]);
       });
   }, []);
 
+  // Close the dropdown on any click outside of it.
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as globalThis.Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
   const current = projects.find((p) => p.id === projectId);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-[12px] text-white/70 hover:text-white hover:bg-white/8 transition-colors max-w-[140px]"
@@ -431,6 +445,9 @@ function WorkflowApp() {
                   );
                 } catch (error) {
                   console.warn('[app] Could not persist pasted image:', error);
+                  toast.error(
+                    'No se pudo guardar la imagen en storage — se perderá al recargar.',
+                  );
                 }
               })();
 

@@ -1,12 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Zap, AlertCircle } from 'lucide-react';
+
+// Base poll interval. Jitter is added so concurrent users don't all hit the
+// endpoint at the same instant.
+const POLL_INTERVAL_MS = 120000;
+const POLL_JITTER_MS = 15000;
 
 export function CreditIndicator() {
   const [credits, setCredits] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Guards against overlapping requests if a poll fires while one is in flight.
+  const inFlightRef = useRef(false);
 
-  const fetchCredits = async () => {
+  const fetchCredits = useCallback(async () => {
+    if (inFlightRef.current) return;
+    inFlightRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -21,14 +30,39 @@ export function CreditIndicator() {
       console.warn('[CreditIndicator] Failed to fetch credits:', err);
     } finally {
       setLoading(false);
+      inFlightRef.current = false;
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchCredits();
-    const interval = setInterval(fetchCredits, 60000);
-    return () => clearInterval(interval);
-  }, []);
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const scheduleNext = () => {
+      const delay = POLL_INTERVAL_MS + Math.random() * POLL_JITTER_MS;
+      timeoutId = setTimeout(tick, delay);
+    };
+
+    const tick = () => {
+      // Skip polling while the tab is hidden — resumes on visibilitychange.
+      if (document.visibilityState === 'visible') {
+        void fetchCredits();
+      }
+      scheduleNext();
+    };
+
+    void fetchCredits();
+    scheduleNext();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void fetchCredits();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [fetchCredits]);
 
   if (error) {
     return (
