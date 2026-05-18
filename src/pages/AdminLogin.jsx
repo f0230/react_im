@@ -17,6 +17,13 @@ const FigmaLogo = ({ className }) => (
     </svg>
 );
 
+const getAppUrl = () => {
+    const configuredUrl = import.meta.env.VITE_APP_URL?.trim();
+    const fallbackUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+    return (configuredUrl || fallbackUrl).replace(/\/+$/, '');
+};
+
 const AdminLogin = () => {
     const { t } = useTranslation();
     const [searchParams] = useSearchParams();
@@ -46,7 +53,7 @@ const AdminLogin = () => {
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/dashboard`,
+                    emailRedirectTo: `${getAppUrl()}/dashboard`,
                     shouldCreateUser: false,
                 },
             });
@@ -67,7 +74,7 @@ const AdminLogin = () => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'figma',
                 options: {
-                    redirectTo: `${window.location.origin}/dashboard`,
+                    redirectTo: `${getAppUrl()}/dashboard`,
                 },
             });
             if (error) throw error;

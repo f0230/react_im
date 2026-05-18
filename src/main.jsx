@@ -7,6 +7,25 @@ import { SpeedInsights } from "@vercel/speed-insights/react";
 import { HelmetProvider } from 'react-helmet-async';
 import './i18n';
 
+const lockViewportZoom = () => {
+  const preventGesture = (event) => {
+    event.preventDefault();
+  };
+
+  const preventMultiTouch = (event) => {
+    if (event.touches?.length > 1) {
+      event.preventDefault();
+    }
+  };
+
+  document.addEventListener('gesturestart', preventGesture, { passive: false });
+  document.addEventListener('gesturechange', preventGesture, { passive: false });
+  document.addEventListener('gestureend', preventGesture, { passive: false });
+  document.addEventListener('touchmove', preventMultiTouch, { passive: false });
+};
+
+lockViewportZoom();
+
 // ─── SERVICE WORKER ────────────────────────────────────────────
 // Only register in production. In dev, the Vite HMR server handles caching.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

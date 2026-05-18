@@ -152,7 +152,7 @@ export default function OutputNode({ id, data }: { id: string; data: any }) {
           ) : hasResult ? (
             <>
               {data.resultType === 'video' ? (
-                <video src={data.resultUrl} controls autoPlay loop className="w-full h-full object-cover" />
+                <video src={data.resultUrl} controls loop className="w-full h-full object-cover" />
               ) : (
                 <img src={data.resultUrl} alt="Generated Output" className="w-full h-full object-cover" referrerPolicy="no-referrer" crossOrigin="anonymous" />
               )}

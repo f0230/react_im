@@ -3,6 +3,13 @@ import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from "react-i18next";
 import dteWhite from '../assets/dte-white.svg';
 
+const getAppUrl = () => {
+    const configuredUrl = import.meta.env.VITE_APP_URL?.trim();
+    const fallbackUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+    return (configuredUrl || fallbackUrl).replace(/\/+$/, '');
+};
+
 const LoginPanelBody = ({ showLogo = true, showDescription = true, redirectTo = "/dashboard" }) => {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
@@ -15,7 +22,7 @@ const LoginPanelBody = ({ showLogo = true, showDescription = true, redirectTo = 
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}${redirectTo}`,
+                    redirectTo: `${getAppUrl()}${redirectTo}`,
                     queryParams: {
                         access_type: 'offline',
                         prompt: 'consent',

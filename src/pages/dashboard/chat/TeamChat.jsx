@@ -1620,17 +1620,8 @@ const TeamChat = () => {
                                         </button>
                                     </div>
                                 )}
-                                <div className="flex items-end gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 focus-within:border-neutral-300 transition-colors">
-                                    <div className="flex items-center gap-1 pb-1">
-                                        <button
-                                            type="button"
-                                            className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors disabled:opacity-40"
-                                            title="Adjuntar imagen"
-                                            onClick={() => fileInputRef.current?.click()}
-                                            disabled={uploadingImage || !selectedChannelId}
-                                        >
-                                            {uploadingImage ? <RefreshCw size={16} className="animate-spin" /> : <Image size={16} />}
-                                        </button>
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-1.5">
                                         <input
                                             ref={fileInputRef}
                                             type="file"
@@ -1639,49 +1630,59 @@ const TeamChat = () => {
                                             className="hidden"
                                         />
                                         <button
-                                            className={`p-1 rounded-md transition-colors disabled:opacity-40 ${isRecording ? 'text-red-500 bg-red-50' : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'}`}
+                                            type="button"
+                                            className={`p-2 rounded-lg transition disabled:opacity-50 ${uploadingImage ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'}`}
+                                            title="Adjuntar imagen"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadingImage || !selectedChannelId}
+                                        >
+                                            {uploadingImage ? <RefreshCw size={18} className="animate-spin" /> : <Image size={18} />}
+                                        </button>
+                                        <textarea
+                                            ref={textareaRef}
+                                            value={messageText}
+                                            onChange={(event) => setMessageText(event.target.value)}
+                                            placeholder="Escribe un mensaje... (@nombre para mencionar)"
+                                            rows={1}
+                                            className="flex-1 rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-2.5 text-base lg:text-[14px] focus:outline-none focus:border-neutral-300 focus:bg-white transition-all resize-none min-h-[44px] max-h-32 leading-normal custom-scrollbar"
+                                            onPaste={(event) => {
+                                                const items = event.clipboardData?.items;
+                                                if (!items || items.length === 0) return;
+                                                const imageItem = Array.from(items).find((item) => item.type?.startsWith('image/'));
+                                                if (!imageItem) return;
+                                                const file = imageItem.getAsFile();
+                                                if (!file) return;
+                                                event.preventDefault();
+                                                uploadImageFile(file);
+                                            }}
+                                            onKeyDown={(event) => {
+                                                if (event.key === 'Enter' && !event.shiftKey) {
+                                                    event.preventDefault();
+                                                    handleSend();
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${isRecording ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'}`}
                                             title={isRecording ? 'Detener grabación' : 'Grabar nota de voz'}
                                             onClick={() => isRecording ? stopRecording() : startRecording()}
                                             disabled={uploadingAudio}
                                         >
                                             {uploadingAudio
-                                                ? <RefreshCw size={16} className="animate-spin" />
+                                                ? <RefreshCw size={18} className="animate-spin" />
                                                 : isRecording
-                                                    ? <Square size={16} />
-                                                    : <Mic size={16} />
+                                                    ? <Square size={18} />
+                                                    : <Mic size={18} />
                                             }
                                         </button>
+                                        <button
+                                            onClick={handleSend}
+                                            disabled={sending || !messageText.trim()}
+                                            className={`p-2.5 rounded-xl transition-all disabled:opacity-30 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-800' : 'text-neutral-400'}`}
+                                        >
+                                            {sending ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                                        </button>
                                     </div>
-                                    <textarea
-                                        ref={textareaRef}
-                                        value={messageText}
-                                        onChange={(event) => setMessageText(event.target.value)}
-                                        placeholder="Escribe un mensaje... (@nombre para mencionar)"
-                                        className="flex-1 min-h-[32px] max-h-32 bg-transparent text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none resize-none custom-scrollbar leading-relaxed py-0.5"
-                                        onPaste={(event) => {
-                                            const items = event.clipboardData?.items;
-                                            if (!items || items.length === 0) return;
-                                            const imageItem = Array.from(items).find((item) => item.type?.startsWith('image/'));
-                                            if (!imageItem) return;
-                                            const file = imageItem.getAsFile();
-                                            if (!file) return;
-                                            event.preventDefault();
-                                            uploadImageFile(file);
-                                        }}
-                                        onKeyDown={(event) => {
-                                            if (event.key === 'Enter' && !event.shiftKey) {
-                                                event.preventDefault();
-                                                handleSend();
-                                            }
-                                        }}
-                                    />
-                                    <button
-                                        onClick={handleSend}
-                                        disabled={sending || !messageText.trim()}
-                                        className={`p-1.5 rounded-lg transition-all disabled:opacity-30 shrink-0 mb-0.5 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-700' : 'text-neutral-300'}`}
-                                    >
-                                        {sending ? <RefreshCw size={15} className="animate-spin" /> : <Send size={15} />}
-                                    </button>
                                 </div>
                                 {sendError && <p className="text-xs text-red-500 mt-1.5">{sendError}</p>}
                             </div>

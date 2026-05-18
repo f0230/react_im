@@ -28,13 +28,17 @@ html {
 
 html,
 body {
-  touch-action: pan-x pan-y;
-  -ms-touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 #root {
   display: block;
   width: 100%;
+  min-height: 100%;
+  overscroll-behavior: none;
 }
 
 @layer components {
