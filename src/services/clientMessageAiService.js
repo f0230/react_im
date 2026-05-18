@@ -43,13 +43,25 @@ async function postJson(payload) {
 
 export async function transcribeClientAudio(audioBlob) {
   const audioBase64 = await blobToBase64(audioBlob);
-  const data = await postJson({
+  const transcribeData = await postJson({
     action: 'transcribe',
     audioBase64,
     mimeType: audioBlob.type || 'audio/webm',
   });
 
-  return data.transcript || '';
+  const transcript = transcribeData.transcript || '';
+  if (!transcript) return '';
+
+  // Automatically generate polished message after transcription
+  const generateData = await postJson({
+    action: 'generate',
+    transcript,
+    tone: 'profesional cercano',
+    channel: 'WhatsApp',
+  });
+
+  // Return the polished message directly, not the raw transcript
+  return generateData.output?.message || transcript;
 }
 
 export async function generateClientMessage({

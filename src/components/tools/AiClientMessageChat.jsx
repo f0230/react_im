@@ -105,13 +105,13 @@ const AiClientMessageChat = () => {
     if (!blob?.size) return;
 
     setIsTranscribing(true);
-    setStatusText('Transcribiendo audio...');
+    setStatusText('Transcribiendo y procesando...');
 
     try {
-      const text = await transcribeClientAudio(blob);
-      setTranscript(text);
-      if (!text) toast.error('No pude detectar texto en el audio');
-      setStatusText(text ? 'Transcripción lista. Podés ajustar el texto antes de generar.' : '');
+      const message = await transcribeClientAudio(blob);
+      setGeneratedMessage(message);
+      if (!message) toast.error('No pude detectar texto en el audio');
+      setStatusText(message ? 'Mensaje listo para copiar.' : '');
     } catch (error) {
       toast.error(error?.message || 'No se pudo transcribir el audio');
       setStatusText('No pude transcribir el audio. Probá dictar de nuevo o escribí la idea.');

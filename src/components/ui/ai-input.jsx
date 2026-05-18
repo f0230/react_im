@@ -320,18 +320,22 @@ export function MorphPanel({
                       {isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={17} />}
                     </button>
                   </div>
-                  <motion.button
-                    type="submit"
-                    disabled={isLoading || !value?.trim()}
-                    animate={isLoading ? { backgroundColor: ['rgb(109, 40, 217)', 'rgb(124, 58, 255)', 'rgb(109, 40, 217)'] } : {}}
-                    transition={isLoading ? { duration: 1.5, repeat: Infinity } : {}}
-                    className="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-violet-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-45"
-                  >
-                    <motion.div animate={isLoading ? { rotate: 360 } : {}} transition={isLoading ? { duration: 1, repeat: Infinity, ease: 'linear' } : {}}>
-                      {isLoading ? <Loader2 size={15} /> : <Send size={15} />}
-                    </motion.div>
-                    {isLoading ? loadingLabel : 'Generar'}
-                  </motion.button>
+                  {generatedMessage ? (
+                    <motion.button
+                      type="button"
+                      onClick={onSubmit}
+                      disabled={isLoading}
+                      animate={isLoading ? { backgroundColor: ['rgb(109, 40, 217)', 'rgb(124, 58, 255)', 'rgb(109, 40, 217)'] } : {}}
+                      transition={isLoading ? { duration: 1.5, repeat: Infinity } : {}}
+                      className="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-violet-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-45"
+                      title="Regenerar otro mensaje"
+                    >
+                      <motion.div animate={isLoading ? { rotate: 360 } : {}} transition={isLoading ? { duration: 1, repeat: Infinity, ease: 'linear' } : {}}>
+                        {isLoading ? <Loader2 size={15} /> : <Send size={15} />}
+                      </motion.div>
+                      {isLoading ? 'Regenerando' : 'Regenerar'}
+                    </motion.button>
+                  ) : null}
                   {generatedMessage ? (
                     <button
                       type="button"
