@@ -24,6 +24,26 @@ const getSpeechRecognition = () => {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 };
 
+const requestMicrophoneStream = () => {
+  const streamPromise = navigator.mediaDevices.getUserMedia({
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+    },
+  });
+
+  const timeoutPromise = new Promise((_, reject) => {
+    window.setTimeout(() => {
+      const error = new Error('Microphone permission request timed out');
+      error.name = 'PermissionTimeoutError';
+      reject(error);
+    }, 7000);
+  });
+
+  return Promise.race([streamPromise, timeoutPromise]);
+};
+
 const getMicrophoneErrorMessage = (error) => {
   if (!window.isSecureContext) {
     return 'El micrófono necesita HTTPS o localhost. Abrí la app desde localhost o producción HTTPS.';
@@ -47,6 +67,10 @@ const getMicrophoneErrorMessage = (error) => {
 
   if (error?.name === 'NotReadableError') {
     return 'El micrófono está siendo usado por otra app o el sistema lo bloqueó.';
+  }
+
+  if (error?.name === 'PermissionTimeoutError') {
+    return 'El navegador no respondió al permiso del micrófono. Probá abrirlo en Chrome normal o revisá permisos del sitio.';
   }
 
   return 'No pude acceder al micrófono. Probá permitir el acceso o abrir la app en Chrome.';
@@ -141,11 +165,18 @@ const AiClientMessageChat = () => {
       speechRecognitionRef.current = null;
     };
 
-    recognition.start();
-    return true;
+    try {
+      recognition.start();
+      return true;
+    } catch {
+      speechRecognitionRef.current = null;
+      return false;
+    }
   };
 
   const startRecording = async () => {
+    setStatusText('Solicitando permiso del micrófono...');
+
     const unsupportedMessage = getMicrophoneErrorMessage();
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       if (startSpeechDictation()) return;
@@ -155,13 +186,7 @@ const AiClientMessageChat = () => {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      const stream = await requestMicrophoneStream();
       streamRef.current = stream;
       chunksRef.current = [];
       const mimeType = getSupportedAudioMimeType();

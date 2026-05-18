@@ -246,7 +246,10 @@ export function MorphPanel({
                 <div className="mt-2 flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={onRecord}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      onRecord?.();
+                    }}
                     disabled={isLoading && !isRecording}
                     className={cn(
                       'flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50',
