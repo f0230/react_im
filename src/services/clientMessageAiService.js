@@ -50,18 +50,24 @@ export async function transcribeClientAudio(audioBlob) {
   });
 
   const transcript = transcribeData.transcript || '';
-  if (!transcript) return '';
+  if (!transcript) throw new Error('No se detectó audio');
 
-  // Automatically generate polished message after transcription
-  const generateData = await postJson({
-    action: 'generate',
-    transcript,
-    tone: 'profesional cercano',
-    channel: 'WhatsApp',
-  });
+  try {
+    // Automatically generate polished message after transcription
+    const generateData = await postJson({
+      action: 'generate',
+      transcript,
+      tone: 'profesional cercano',
+      channel: 'WhatsApp',
+    });
 
-  // Return the polished message directly, not the raw transcript
-  return generateData.output?.message || transcript;
+    // Return the polished message directly, not the raw transcript
+    return generateData.output?.message || transcript;
+  } catch (error) {
+    // If generation fails, return raw transcript as fallback
+    console.warn('Generation failed, returning raw transcript:', error);
+    return transcript;
+  }
 }
 
 export async function generateClientMessage({

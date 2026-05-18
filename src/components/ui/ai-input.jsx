@@ -288,38 +288,22 @@ export function MorphPanel({
                 ) : null}
 
                 <div className="mt-2 flex items-center gap-2">
-                  <div className="relative flex h-9 w-9 items-center justify-center">
-                    {isRecording && (
-                      <>
-                        <motion.div
-                          className="absolute inset-0 rounded-full bg-red-500"
-                          initial={{ scale: 0.8, opacity: 1 }}
-                          animate={{ scale: 1.4, opacity: 0 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'easeOut' }}
-                        />
-                        <motion.div
-                          className="absolute inset-0 rounded-full bg-red-500"
-                          initial={{ scale: 0.8, opacity: 1 }}
-                          animate={{ scale: 1.4, opacity: 0 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'easeOut', delay: 0.2 }}
-                        />
-                      </>
+                  <motion.button
+                    type="button"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      onRecord?.();
+                    }}
+                    disabled={isLoading && !isRecording}
+                    animate={isRecording ? { scale: [1, 1.05, 1] } : {}}
+                    transition={isRecording ? { duration: 0.6, repeat: Infinity } : {}}
+                    className={cn(
+                      'flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50',
+                      isRecording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'
                     )}
-                    <button
-                      type="button"
-                      onPointerDown={(event) => {
-                        event.preventDefault();
-                        onRecord?.();
-                      }}
-                      disabled={isLoading && !isRecording}
-                      className={cn(
-                        'relative z-10 flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50',
-                        isRecording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'
-                      )}
-                    >
-                      {isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={17} />}
-                    </button>
-                  </div>
+                  >
+                    {isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={17} />}
+                  </motion.button>
                   {generatedMessage ? (
                     <motion.button
                       type="button"
