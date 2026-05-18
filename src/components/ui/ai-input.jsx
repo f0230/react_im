@@ -114,6 +114,23 @@ const KeyHint = ({ children, className }) => (
   </kbd>
 );
 
+const AudioVisualizer = ({ isActive }) => {
+  const bars = Array.from({ length: 5 });
+
+  return (
+    <div className="flex items-center gap-1">
+      {bars.map((_, idx) => (
+        <motion.div
+          key={idx}
+          className="w-1 bg-red-400 rounded-full"
+          animate={isActive ? { height: [12, 20, 12, 24, 12] } : { height: 4 }}
+          transition={isActive ? { duration: 0.6, repeat: Infinity, delay: idx * 0.1 } : {}}
+        />
+      ))}
+    </div>
+  );
+};
+
 export function MorphPanel({
   isOpen,
   onOpen,
@@ -233,6 +250,12 @@ export function MorphPanel({
                   spellCheck={false}
                 />
 
+                {isRecording && (
+                  <div className="mt-3 flex items-center justify-center">
+                    <AudioVisualizer isActive={isRecording} />
+                  </div>
+                )}
+
                 {generatedMessage ? (
                   <div className="mt-2 max-h-20 overflow-y-auto rounded-[14px] bg-white/6 px-3 py-2 text-xs leading-relaxed text-white/75">
                     {generatedMessage}
@@ -240,32 +263,75 @@ export function MorphPanel({
                 ) : null}
 
                 {statusText ? (
-                  <p className="mt-2 px-1 text-[11px] leading-snug text-white/45">{statusText}</p>
+                  <div className="mt-2 flex items-center gap-2 px-1">
+                    {(isLoading) && (
+                      <div className="flex items-center gap-0.5">
+                        <motion.div
+                          className="h-1.5 w-1.5 rounded-full bg-white/60"
+                          animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
+                          transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+                        />
+                        <motion.div
+                          className="h-1.5 w-1.5 rounded-full bg-white/60"
+                          animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
+                          transition={{ duration: 0.8, repeat: Infinity, delay: 0.15 }}
+                        />
+                        <motion.div
+                          className="h-1.5 w-1.5 rounded-full bg-white/60"
+                          animate={{ scale: [1, 1.2, 1], opacity: [0.6, 1, 0.6] }}
+                          transition={{ duration: 0.8, repeat: Infinity, delay: 0.3 }}
+                        />
+                      </div>
+                    )}
+                    <p className="text-[11px] leading-snug text-white/45">{statusText}</p>
+                  </div>
                 ) : null}
 
                 <div className="mt-2 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onPointerDown={(event) => {
-                      event.preventDefault();
-                      onRecord?.();
-                    }}
-                    disabled={isLoading && !isRecording}
-                    className={cn(
-                      'flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50',
-                      isRecording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'
+                  <div className="relative flex h-9 w-9 items-center justify-center">
+                    {isRecording && (
+                      <>
+                        <motion.div
+                          className="absolute inset-0 rounded-full bg-red-500"
+                          initial={{ scale: 0.8, opacity: 1 }}
+                          animate={{ scale: 1.4, opacity: 0 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'easeOut' }}
+                        />
+                        <motion.div
+                          className="absolute inset-0 rounded-full bg-red-500"
+                          initial={{ scale: 0.8, opacity: 1 }}
+                          animate={{ scale: 1.4, opacity: 0 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'easeOut', delay: 0.2 }}
+                        />
+                      </>
                     )}
-                  >
-                    {isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={17} />}
-                  </button>
-                  <button
+                    <button
+                      type="button"
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        onRecord?.();
+                      }}
+                      disabled={isLoading && !isRecording}
+                      className={cn(
+                        'relative z-10 flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50',
+                        isRecording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'
+                      )}
+                    >
+                      {isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={17} />}
+                    </button>
+                  </div>
+                  <motion.button
                     type="submit"
                     disabled={isLoading || !value?.trim()}
+                    animate={isLoading ? { backgroundColor: ['rgb(109, 40, 217)', 'rgb(124, 58, 255)', 'rgb(109, 40, 217)'] } : {}}
+                    transition={isLoading ? { duration: 1.5, repeat: Infinity } : {}}
                     className="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-violet-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    {isLoading ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                    <motion.div animate={isLoading ? { rotate: 360 } : {}} transition={isLoading ? { duration: 1, repeat: Infinity, ease: 'linear' } : {}}>
+                      {isLoading ? <Loader2 size={15} /> : <Send size={15} />}
+                    </motion.div>
                     {isLoading ? loadingLabel : 'Generar'}
-                  </button>
+                  </motion.button>
                   {generatedMessage ? (
                     <button
                       type="button"
