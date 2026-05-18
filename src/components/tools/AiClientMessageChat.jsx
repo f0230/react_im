@@ -19,6 +19,11 @@ const getSupportedAudioMimeType = () => {
   ].find((type) => MediaRecorder.isTypeSupported(type)) || '';
 };
 
+const getSpeechRecognition = () => {
+  if (typeof window === 'undefined') return null;
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+};
+
 const getMicrophoneErrorMessage = (error) => {
   if (!window.isSecureContext) {
     return 'El micrófono necesita HTTPS o localhost. Abrí la app desde localhost o producción HTTPS.';
@@ -50,13 +55,14 @@ const getMicrophoneErrorMessage = (error) => {
 const AiClientMessageChat = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [clientContext, setClientContext] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedMessage, setGeneratedMessage] = useState('');
   const [copied, setCopied] = useState(false);
+  const [statusText, setStatusText] = useState('');
   const mediaRecorderRef = useRef(null);
+  const speechRecognitionRef = useRef(null);
   const chunksRef = useRef([]);
   const streamRef = useRef(null);
 
@@ -75,27 +81,87 @@ const AiClientMessageChat = () => {
     if (!blob?.size) return;
 
     setIsTranscribing(true);
+    setStatusText('Transcribiendo audio...');
 
     try {
       const text = await transcribeClientAudio(blob);
       setTranscript(text);
       if (!text) toast.error('No pude detectar texto en el audio');
+      setStatusText(text ? 'Transcripción lista. Podés ajustar el texto antes de generar.' : '');
     } catch (error) {
       toast.error(error?.message || 'No se pudo transcribir el audio');
+      setStatusText('No pude transcribir el audio. Probá dictar de nuevo o escribí la idea.');
     } finally {
       setIsTranscribing(false);
     }
   };
 
+  const startSpeechDictation = () => {
+    const SpeechRecognition = getSpeechRecognition();
+    if (!SpeechRecognition) return false;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-UY';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    speechRecognitionRef.current = recognition;
+
+    let finalText = transcript.trim();
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+      setStatusText('Escuchando dictado...');
+    };
+
+    recognition.onresult = (event) => {
+      let interimText = '';
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (result.isFinal) {
+          finalText = `${finalText} ${result[0].transcript}`.trim();
+        } else {
+          interimText += result[0].transcript;
+        }
+      }
+      setTranscript([finalText, interimText].filter(Boolean).join(' ').trim());
+    };
+
+    recognition.onerror = (event) => {
+      const message = event?.error === 'not-allowed'
+        ? 'El permiso del micrófono fue bloqueado. Permitilo desde los permisos del sitio.'
+        : 'No pude iniciar el dictado. Probá escribir la idea manualmente.';
+      toast.error(message);
+      setStatusText(message);
+      setIsRecording(false);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      setStatusText(finalText ? 'Dictado listo. Podés ajustar el texto antes de generar.' : '');
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.start();
+    return true;
+  };
+
   const startRecording = async () => {
     const unsupportedMessage = getMicrophoneErrorMessage();
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      if (startSpeechDictation()) return;
+      setStatusText(unsupportedMessage);
       toast.error(unsupportedMessage);
       return;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
       streamRef.current = stream;
       chunksRef.current = [];
       const mimeType = getSupportedAudioMimeType();
@@ -111,16 +177,24 @@ const AiClientMessageChat = () => {
         handleAudioBlob(blob);
       };
 
-      recorder.start();
+      recorder.start(250);
       setIsRecording(true);
+      setStatusText('Grabando audio...');
     } catch (error) {
       stopStream();
+      if (startSpeechDictation()) return;
       const message = getMicrophoneErrorMessage(error);
+      setStatusText(message);
       toast.error(message);
     }
   };
 
   const stopRecording = () => {
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+      return;
+    }
+
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== 'inactive') recorder.stop();
     setIsRecording(false);
@@ -139,14 +213,15 @@ const AiClientMessageChat = () => {
     try {
       const output = await generateClientMessage({
         transcript: text,
-        clientContext,
         tone: 'profesional cercano',
         channel: 'WhatsApp',
       });
 
       setGeneratedMessage(output?.message || '');
+      setStatusText(output?.message ? 'Mensaje listo para copiar.' : '');
     } catch (error) {
       toast.error(error?.message || 'No se pudo generar el mensaje');
+      setStatusText('No pude generar el mensaje. Revisá la idea y probamos de nuevo.');
     } finally {
       setIsGenerating(false);
     }
@@ -162,6 +237,7 @@ const AiClientMessageChat = () => {
 
   const close = () => {
     if (isRecording) stopRecording();
+    stopStream();
     setIsOpen(false);
   };
 
@@ -180,8 +256,6 @@ const AiClientMessageChat = () => {
             onClose={close}
             value={transcript}
             onChange={setTranscript}
-            contextValue={clientContext}
-            onContextChange={setClientContext}
             onRecord={isRecording ? stopRecording : startRecording}
             onSubmit={handleGenerate}
             onCopy={copyMessage}
@@ -190,6 +264,7 @@ const AiClientMessageChat = () => {
             loadingLabel={isTranscribing ? 'Transcribiendo' : 'Redactando'}
             generatedMessage={generatedMessage}
             copied={copied}
+            statusText={statusText}
           />
         </motion.div>
       )}

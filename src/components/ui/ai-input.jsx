@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 const SPEED_FACTOR = 1;
 const FORM_WIDTH = 380;
-const FORM_HEIGHT = 300;
+const FORM_HEIGHT = 270;
 
 export const ColorOrb = ({
   dimension = '192px',
@@ -120,8 +120,6 @@ export function MorphPanel({
   onClose,
   value,
   onChange,
-  contextValue,
-  onContextChange,
   onRecord,
   onSubmit,
   onCopy,
@@ -130,6 +128,7 @@ export function MorphPanel({
   loadingLabel = 'Procesando',
   generatedMessage = '',
   copied = false,
+  statusText = '',
 }) {
   const textareaRef = React.useRef(null);
 
@@ -163,7 +162,12 @@ export function MorphPanel({
           delay: isOpen ? 0 : 0.08,
         }}
       >
-        <footer className="mt-auto flex h-[44px] items-center justify-center whitespace-nowrap select-none">
+        <footer
+          className={cn(
+            'mt-auto flex h-[44px] items-center justify-center whitespace-nowrap select-none transition-opacity',
+            isOpen && 'pointer-events-none opacity-0'
+          )}
+        >
           <div className="flex items-center justify-center gap-2 px-3">
             <AnimatePresence mode="wait">
               {!isOpen ? (
@@ -216,9 +220,9 @@ export function MorphPanel({
                   ref={textareaRef}
                   value={value}
                   onChange={(event) => onChange?.(event.target.value)}
-                  placeholder="Dictá o escribí la idea..."
+                  placeholder="Dictá o escribí la idea del mensaje..."
                   name="message"
-                  className="min-h-0 flex-1 resize-none rounded-md bg-[#2f3130] p-4 text-sm text-white outline-0 placeholder:text-white/35"
+                  className="min-h-0 flex-1 resize-none rounded-[14px] bg-[#2f3130] p-4 text-sm leading-relaxed text-white outline-0 placeholder:text-white/35"
                   onKeyDown={(event) => {
                     if (event.key === 'Escape') onClose?.();
                     if (event.key === 'Enter' && event.metaKey) {
@@ -229,24 +233,21 @@ export function MorphPanel({
                   spellCheck={false}
                 />
 
-                <input
-                  value={contextValue}
-                  onChange={(event) => onContextChange?.(event.target.value)}
-                  placeholder="Contexto opcional: cliente, objetivo, canal..."
-                  className="mt-2 h-9 rounded-md bg-[#2f3130] px-3 text-xs text-white outline-0 placeholder:text-white/32"
-                />
-
                 {generatedMessage ? (
-                  <div className="mt-2 max-h-20 overflow-y-auto rounded-md bg-white/6 px-3 py-2 text-xs leading-relaxed text-white/75">
+                  <div className="mt-2 max-h-20 overflow-y-auto rounded-[14px] bg-white/6 px-3 py-2 text-xs leading-relaxed text-white/75">
                     {generatedMessage}
                   </div>
+                ) : null}
+
+                {statusText ? (
+                  <p className="mt-2 px-1 text-[11px] leading-snug text-white/45">{statusText}</p>
                 ) : null}
 
                 <div className="mt-2 flex items-center gap-2">
                   <button
                     type="button"
                     onClick={onRecord}
-                    disabled={isLoading}
+                    disabled={isLoading && !isRecording}
                     className={cn(
                       'flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50',
                       isRecording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'
