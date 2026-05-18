@@ -309,7 +309,7 @@ export function MorphPanel({
                     transition={isRecording ? { duration: 0.6, repeat: Infinity } : {}}
                     className={cn(
                       'flex h-9 w-9 items-center justify-center rounded-full transition-colors disabled:opacity-50',
-                      isRecording ? 'bg-red-500 text-white' : 'bg-blue-600 text-white hover:bg-blue-500'
+                      isRecording ? 'bg-red-500 text-white' : 'bg-white/15 text-white hover:bg-white/20'
                     )}
                   >
                     {isRecording ? <Square size={14} fill="currentColor" /> : <Mic size={17} />}
@@ -319,9 +319,9 @@ export function MorphPanel({
                       type="button"
                       onClick={onSubmit}
                       disabled={isLoading}
-                      animate={isLoading ? { backgroundColor: ['rgb(109, 40, 217)', 'rgb(124, 58, 255)', 'rgb(109, 40, 217)'] } : {}}
+                      animate={isLoading ? { backgroundColor: ['rgba(255, 255, 255, 0.15)', 'rgba(255, 255, 255, 0.25)', 'rgba(255, 255, 255, 0.15)'] } : {}}
                       transition={isLoading ? { duration: 1.5, repeat: Infinity } : {}}
-                      className="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-violet-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-45"
+                      className="flex h-9 flex-1 items-center justify-center gap-2 rounded-full bg-white/15 px-4 text-sm font-semibold text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-45"
                       title="Regenerar otro mensaje"
                     >
                       <motion.div animate={isLoading ? { rotate: 360 } : {}} transition={isLoading ? { duration: 1, repeat: Infinity, ease: 'linear' } : {}}>
