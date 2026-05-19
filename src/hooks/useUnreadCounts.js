@@ -245,7 +245,7 @@ export const useUnreadCounts = () => {
             const clientRecord = Array.isArray(row?.client) ? row.client[0] : row?.client;
             const clientName = getClientName(clientRecord);
             const lastReadAt = readsMap.get(row.client_id);
-            const isUnread = row.sender_role === 'client' && isAfter(row.created_at, lastReadAt);
+            const isUnread = isAfter(row.created_at, lastReadAt);
 
             if (!latestByClient.has(row.client_id)) {
                 latestByClient.set(row.client_id, {
