@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  AlertTriangle,
   Bold,
   Calendar,
   Check,
@@ -17,6 +18,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Music,
+  RotateCcw,
   Save,
   Send,
   Sparkles,
@@ -27,7 +29,11 @@ import { format } from 'date-fns';
 import { createPost, deleteDraftGroup, getPlatformName, PLATFORM_CONFIG, saveDraftPost, uploadMediaFile } from '@/services/blotatoService';
 import { generateProjectPostCopy } from '@/services/aiCopyService';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
+import { useImageCompression } from '@/hooks/useImageCompression';
+import { useMediaDraft } from '@/hooks/useMediaDraft';
+import { getMediaWarnings } from '@/utils/platformMediaSpecs';
 import { PlatformIcon } from './PlatformIcon';
+import { SortableMediaGrid } from './SortableMediaGrid';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -432,11 +438,15 @@ export function CreatePostModal({
   aiPlanning = null,
 }) {
   const { accountsForPosting: accounts, loading: accountsLoading } = useBlotatoAccounts(projectId);
+  const { compress } = useImageCompression();
+  const { saveDraft, loadDraft, clearDraft } = useMediaDraft(projectId);
 
   // Content
   const [content, setContent]       = useState(initialContent);
   const [mediaItems, setMediaItems]  = useState([]);
   const [isDragging, setIsDragging]  = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const mediaIdCounter = useRef(0);
 
   // Instagram reel cover image
   const [coverImageUrl, setCoverImageUrl]       = useState('');
@@ -472,15 +482,29 @@ export function CreatePostModal({
   const coverInputRef = useRef(null);
   const textareaRef   = useRef(null);
 
-  // Reset on open
+  // Reset on open — integrates draft recovery
   useEffect(() => {
     if (!isOpen) return;
-    setContent(initialContent);
+
+    // Try to recover draft (only when not editing an existing draft and no initial content was passed)
+    const savedDraft = !draftGroupId && !initialContent ? loadDraft() : null;
+
+    const restoredContent     = savedDraft?.content ?? initialContent;
+    const restoredDate        = savedDraft?.scheduledDate ?? (initialDate || '');
+    const restoredTime        = savedDraft?.scheduledTime ?? (initialDate ? '10:00' : '');
+    const restoredCollabs     = savedDraft?.collaborators ?? [];
+    const restoredShowPicker  = !!(savedDraft?.scheduledDate && savedDraft?.scheduledTime);
+
+    setContent(restoredContent);
     setMediaItems(
       (initialMediaUrls || []).map((url) => ({
+        id: `init-${++mediaIdCounter.current}`,
         name: url.split('/').pop() || 'media',
+        file: null,
+        previewUrl: url,
         url,
         uploading: false,
+        compressing: false,
         error: null,
         isVideo: isVideoUrl(url),
         mimeType: '',
@@ -489,18 +513,30 @@ export function CreatePostModal({
     );
     setCoverImageUrl('');
     setIsCoverUploading(false);
-    setCollaborators([]);
+    setCollaborators(restoredCollabs);
     setCollaboratorInput('');
     setFormatOverride(null);
     setPageSelections({});
     setSelectedAccountKeys(new Set());
-    setShowDatePicker(false);
-    setScheduledDate(initialDate || '');
-    setScheduledTime(initialDate ? '10:00' : '');
+    setShowDatePicker(restoredShowPicker);
+    setScheduledDate(restoredDate);
+    setScheduledTime(restoredTime);
     setIsGeneratingCopy(false);
     setIsSavingDraft(false);
     setError(null);
-  }, [isOpen, initialContent, initialDate, initialMediaUrls]);
+    setDraftRestored(!!savedDraft);
+  }, [isOpen, initialContent, initialDate, initialMediaUrls, draftGroupId, loadDraft]);
+
+  // Autosave draft (text-only) while modal is open
+  useEffect(() => {
+    if (!isOpen || draftGroupId) return; // don't autosave when editing a server draft
+
+    const id = setInterval(() => {
+      saveDraft({ content, scheduledDate, scheduledTime, collaborators });
+    }, 30_000);
+
+    return () => clearInterval(id);
+  }, [isOpen, draftGroupId, content, scheduledDate, scheduledTime, collaborators, saveDraft]);
 
   const allAccountSelectionKeys = useMemo(
     () => accounts.map((account) => getAccountSelectionKey(account)),
@@ -553,11 +589,12 @@ export function CreatePostModal({
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
-  const uploadedMediaItems = mediaItems.filter((item) => item.url && !item.uploading && !item.error);
-  const uploadedMediaUrls  = uploadedMediaItems.map((item) => item.url);
-  const uploadedVideos     = uploadedMediaItems.filter((item) => item.isVideo || isVideoUrl(item.url));
-  const uploadedImages     = uploadedMediaItems.filter((item) => !item.isVideo && !isVideoUrl(item.url));
-  const isUploadingMedia   = mediaItems.some((item) => item.uploading);
+  // "Ready" = compression done, no error. Either has a `file` (local) or `url` (already uploaded from initial draft).
+  const uploadedMediaItems = mediaItems.filter((item) => !item.compressing && !item.uploading && !item.error && (item.file || item.url));
+  const uploadedMediaUrls  = uploadedMediaItems.map((item) => item.url).filter(Boolean);
+  const uploadedVideos     = uploadedMediaItems.filter((item) => item.isVideo || isVideoUrl(item.previewUrl || item.url || ''));
+  const uploadedImages     = uploadedMediaItems.filter((item) => !item.isVideo && !isVideoUrl(item.previewUrl || item.url || ''));
+  const isUploadingMedia   = mediaItems.some((item) => item.uploading || item.compressing);
 
   // Base format inferred from media
   const inferredFormat = useMemo(() => {
@@ -596,7 +633,7 @@ export function CreatePostModal({
     if (!accounts.length) return 'Sin cuentas conectadas. Agrega una en Configuración.';
     if (!selectedAccounts.length) return 'Selecciona al menos una cuenta para publicar.';
     if (!content.trim() && !isStory) return 'Escribe algo antes de publicar.';
-    if (isUploadingMedia) return 'Espera a que terminen de subir los archivos.';
+    if (isUploadingMedia) return 'Espera a que terminen de procesarse los archivos.';
     if (isCoverUploading) return 'Espera a que termine de subir la portada.';
     if (mediaItems.some((item) => item.error)) return 'Elimina o vuelve a subir los archivos con error.';
     if (facebookAccountsNeedingPage.length > 0) return 'Selecciona una página para la cuenta de Facebook.';
@@ -615,38 +652,115 @@ export function CreatePostModal({
     if (!accounts.length) return 'Sin cuentas conectadas.';
     if (!selectedAccounts.length) return 'Selecciona al menos una cuenta.';
     if (!content.trim() && !isStory) return 'Escribe algo antes de guardar el borrador.';
-    if (isUploadingMedia) return 'Espera a que terminen de subir los archivos.';
+    if (isUploadingMedia) return 'Espera a que terminen de procesarse los archivos.';
     if (isCoverUploading) return 'Espera a que termine de subir la portada.';
     if (mediaItems.some((item) => item.error)) return 'Elimina o vuelve a subir los archivos con error.';
     return null;
   }, [accountsLoading, accounts.length, selectedAccounts.length, content, isUploadingMedia, isCoverUploading, mediaItems]);
 
+  // Non-blocking platform-specific warnings
+  const mediaWarnings = useMemo(
+    () => getMediaWarnings(uploadedMediaItems, selectedPlatforms, effectiveFormat),
+    [uploadedMediaItems, selectedPlatforms, effectiveFormat]
+  );
+
   // ── File handling ─────────────────────────────────────────────────────────
 
+  // Add files: compress images locally and keep File + blob URL in state. No upload yet.
   const handleFiles = useCallback(async (files) => {
     if (!files.length) return;
-    const startIndex = mediaItems.length;
-    const placeholders = files.map((file) => ({
-      name: file.name, url: null, uploading: true, error: null,
-      isVideo: isVideoMime(file.type), mimeType: file.type || '', sizeBytes: Number(file.size || 0),
-    }));
+
+    // Insert compressing placeholders immediately
+    const placeholders = files.map((file) => {
+      const id = `local-${++mediaIdCounter.current}`;
+      return {
+        id,
+        name: file.name,
+        file: null,
+        previewUrl: null,
+        url: null,
+        uploading: false,
+        compressing: true,
+        error: null,
+        isVideo: isVideoMime(file.type),
+        mimeType: file.type || '',
+        sizeBytes: Number(file.size || 0),
+      };
+    });
     setMediaItems((prev) => [...prev, ...placeholders]);
+
+    // Process each file in parallel
     await Promise.all(files.map(async (file, offset) => {
-      const idx = startIndex + offset;
+      const id = placeholders[offset].id;
       try {
-        const url = await uploadMediaFile(file);
-        setMediaItems((prev) => { const next = [...prev]; next[idx] = { ...next[idx], url, uploading: false }; return next; });
+        const processedFile = await compress(file);
+        const previewUrl = URL.createObjectURL(processedFile);
+        setMediaItems((prev) => prev.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                file: processedFile,
+                previewUrl,
+                compressing: false,
+                sizeBytes: processedFile.size,
+                mimeType: processedFile.type || item.mimeType,
+              }
+            : item
+        ));
       } catch (err) {
-        setMediaItems((prev) => { const next = [...prev]; next[idx] = { ...next[idx], uploading: false, error: err.message }; return next; });
+        setMediaItems((prev) => prev.map((item) =>
+          item.id === id ? { ...item, compressing: false, error: err?.message || 'Error' } : item
+        ));
       }
     }));
-  }, [mediaItems.length]);
+  }, [compress]);
 
   const handleFileSelect = (e) => { handleFiles(Array.from(e.target.files || [])); e.target.value = ''; };
   const handleDragOver  = (e) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
   const handleDrop      = (e) => { e.preventDefault(); setIsDragging(false); handleFiles(Array.from(e.dataTransfer.files || [])); };
-  const removeMedia     = (index) => setMediaItems((prev) => prev.filter((_, i) => i !== index));
+
+  // Revoke blob URL when an item is removed to avoid leaks
+  const removeMedia = useCallback((index) => {
+    setMediaItems((prev) => {
+      const target = prev[index];
+      if (target?.previewUrl?.startsWith('blob:')) {
+        try { URL.revokeObjectURL(target.previewUrl); } catch { /* noop */ }
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  }, []);
+
+  const reorderMedia = useCallback((nextItems) => {
+    setMediaItems(nextItems);
+  }, []);
+
+  // Cleanup all blob URLs when the modal closes / unmounts
+  useEffect(() => {
+    if (isOpen) return;
+    setMediaItems((prev) => {
+      prev.forEach((item) => {
+        if (item.previewUrl?.startsWith('blob:')) {
+          try { URL.revokeObjectURL(item.previewUrl); } catch { /* noop */ }
+        }
+      });
+      return prev;
+    });
+  }, [isOpen]);
+
+  useEffect(() => {
+    return () => {
+      // Final unmount cleanup
+      setMediaItems((prev) => {
+        prev.forEach((item) => {
+          if (item.previewUrl?.startsWith('blob:')) {
+            try { URL.revokeObjectURL(item.previewUrl); } catch { /* noop */ }
+          }
+        });
+        return prev;
+      });
+    };
+  }, []);
 
   const handleCoverImage = async (e) => {
     const file = e.target.files?.[0];
@@ -786,15 +900,44 @@ export function CreatePostModal({
     return { id: account.id, platform: account.platform, targetConfig: tc };
   });
 
+  // Upload media files to Supabase in order, returning the resulting URLs.
+  // Items that already have a `url` (loaded from initial draft) skip the upload.
+  // The `url` on each item is also updated in state so reusing handleSubmit after
+  // a partial failure does not re-upload already-uploaded files.
+  const uploadPendingMedia = useCallback(async () => {
+    const ready = mediaItems.filter((item) => !item.compressing && !item.uploading && !item.error && (item.file || item.url));
+
+    // Optimistically mark items that need uploading
+    setMediaItems((prev) => prev.map((item) =>
+      ready.find((r) => r.id === item.id && !item.url) ? { ...item, uploading: true } : item
+    ));
+
+    const urls = [];
+    for (const item of ready) {
+      if (item.url) { urls.push(item.url); continue; }
+      try {
+        const url = await uploadMediaFile(item.file);
+        urls.push(url);
+        setMediaItems((prev) => prev.map((it) => it.id === item.id ? { ...it, url, uploading: false } : it));
+      } catch (err) {
+        setMediaItems((prev) => prev.map((it) => it.id === item.id ? { ...it, uploading: false, error: err?.message || 'Error de subida' } : it));
+        throw new Error(`No se pudo subir "${item.name}": ${err?.message || 'error desconocido'}`);
+      }
+    }
+    return urls;
+  }, [mediaItems]);
+
   const handleSubmit = async () => {
     if (validationError) { setError(validationError); return; }
+    if (isSubmitting) return; // hard guard against double-submit
     setIsSubmitting(true);
     setError(null);
     try {
+      const uploadedUrls = await uploadPendingMedia();
       const result = await createPost({
         serviceId, projectId,
         contentText: content.trim(),
-        mediaUrls:   uploadedMediaUrls,
+        mediaUrls:   uploadedUrls,
         accounts:    buildAccountsPayload(),
         scheduling:  buildScheduling(),
       });
@@ -803,11 +946,13 @@ export function CreatePostModal({
         setError(result.posts.length > 0 ? `Publicado en ${result.posts.length} cuenta(s), con fallos: ${detail}` : `Falló: ${detail}`);
         if (result.posts.length > 0) {
           if (draftGroupId) await deleteDraftGroup(draftGroupId).catch(() => {});
+          clearDraft();
           onClose();
         }
         return;
       }
       if (draftGroupId) await deleteDraftGroup(draftGroupId).catch(() => {});
+      clearDraft();
       onClose();
     } catch (err) {
       setError(err.message);
@@ -818,23 +963,36 @@ export function CreatePostModal({
 
   const handleSaveDraft = async () => {
     if (draftValidationError) { setError(draftValidationError); return; }
+    if (isSavingDraft) return;
     setIsSavingDraft(true);
     setError(null);
     try {
+      const uploadedUrls = await uploadPendingMedia();
       await saveDraftPost({
         serviceId,
         projectId,
         contentText: content.trim(),
-        mediaUrls: uploadedMediaUrls,
+        mediaUrls: uploadedUrls,
         accounts: buildAccountsPayload(),
       });
       if (draftGroupId) await deleteDraftGroup(draftGroupId).catch(() => {});
+      clearDraft();
       onClose();
     } catch (err) {
       setError(err.message);
     } finally {
       setIsSavingDraft(false);
     }
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft();
+    setContent('');
+    setScheduledDate('');
+    setScheduledTime('');
+    setCollaborators([]);
+    setShowDatePicker(false);
+    setDraftRestored(false);
   };
 
   if (!isOpen) return null;
@@ -899,6 +1057,19 @@ export function CreatePostModal({
                   Tocá una cuenta para incluirla o excluirla de esta publicación.
                 </p>
               )}
+
+              {draftRestored && (
+                <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20 w-fit">
+                  <RotateCcw size={11} className="text-teal-400" />
+                  <span className="text-[10px] text-teal-400 font-medium">Borrador recuperado</span>
+                  <button
+                    onClick={handleDiscardDraft}
+                    className="text-[10px] text-teal-400/60 hover:text-teal-400 underline underline-offset-2"
+                  >
+                    Descartar
+                  </button>
+                </div>
+              )}
             </div>
 
             <button onClick={onClose} className="p-1.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.06] transition-colors">
@@ -952,24 +1123,14 @@ export function CreatePostModal({
                   <input ref={fileInputRef} type="file" accept={ACCEPTED_MEDIA} multiple className="hidden" onChange={handleFileSelect} />
                 </div>
 
-                {/* Thumbnails */}
+                {/* Thumbnails (sortable) */}
                 {mediaItems.length > 0 && (
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                    {mediaItems.map((item, index) => (
-                      <div key={`${item.name}-${index}`} className={`relative aspect-square rounded-lg overflow-hidden border ${item.error ? 'border-rose-500/40 bg-rose-500/10' : 'border-white/[0.08] bg-[#2a2a2a]'}`}>
-                        {item.uploading ? (
-                          <div className="w-full h-full flex items-center justify-center"><Loader2 size={16} className="animate-spin text-white/30" /></div>
-                        ) : item.error ? (
-                          <div className="w-full h-full flex flex-col items-center justify-center gap-1 px-1"><X size={14} className="text-rose-400" /><span className="text-[8px] text-rose-400">Error</span></div>
-                        ) : item.isVideo || isVideoUrl(item.url) ? (
-                          <video src={item.url} className="w-full h-full object-cover" autoPlay muted playsInline onCanPlay={(e) => e.currentTarget.pause()} style={{ pointerEvents: 'none' }} />
-                        ) : (
-                          <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
-                        )}
-                        <button onClick={() => removeMedia(index)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center text-white/80 hover:bg-black"><X size={9} /></button>
-                      </div>
-                    ))}
-                  </div>
+                  <SortableMediaGrid
+                    items={mediaItems}
+                    onReorder={reorderMedia}
+                    onRemove={removeMedia}
+                    showCarouselBadges={effectiveFormat === 'carousel' || uploadedImages.length >= 2}
+                  />
                 )}
               </div>
 
@@ -1122,7 +1283,7 @@ export function CreatePostModal({
                   platform={previewPlatform}
                   accounts={selectedAccounts}
                   content={content}
-                  mediaItems={uploadedMediaItems}
+                  mediaItems={uploadedMediaItems.map((m) => ({ ...m, url: m.url || m.previewUrl }))}
                   format={effectiveFormat}
                 />
               </div>
@@ -1143,6 +1304,15 @@ export function CreatePostModal({
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {mediaWarnings.length > 0 && !error && (
+              <div className="flex items-start gap-2 text-xs text-amber-400/90 bg-amber-500/[0.06] border border-amber-500/15 rounded-xl px-3 py-2">
+                <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-400/80" />
+                <ul className="space-y-0.5 leading-relaxed">
+                  {mediaWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                </ul>
+              </div>
+            )}
 
             {error && <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2 leading-relaxed">{error}</p>}
 
@@ -1167,7 +1337,9 @@ export function CreatePostModal({
                 title={draftValidationError || 'Guardar como borrador'}
               >
                 {isSavingDraft ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-                {isSavingDraft ? 'Guardando...' : 'Borrador'}
+                {isSavingDraft
+                  ? (mediaItems.some((m) => m.uploading) ? 'Subiendo...' : 'Guardando...')
+                  : 'Borrador'}
               </button>
 
               <button
@@ -1179,9 +1351,16 @@ export function CreatePostModal({
                   : 'bg-white hover:bg-white/90 text-black shadow-md'
                 }`}
               >
-                {isSubmitting ? <><Loader2 size={14} className="animate-spin" /> Publicando...</>
-                  : showDatePicker && scheduledDate && scheduledTime ? <><Calendar size={14} /> Programar</>
-                  : <><Send size={14} /> Publicar ahora</>}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    {mediaItems.some((m) => m.uploading) ? 'Subiendo...' : 'Publicando...'}
+                  </>
+                ) : showDatePicker && scheduledDate && scheduledTime ? (
+                  <><Calendar size={14} /> Programar</>
+                ) : (
+                  <><Send size={14} /> Publicar ahora</>
+                )}
               </button>
             </div>
           </div>
