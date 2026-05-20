@@ -482,22 +482,47 @@ export function CreatePostModal({
   const coverInputRef = useRef(null);
   const textareaRef   = useRef(null);
 
-  // Reset on open — integrates draft recovery
+  // Capture initial values in refs so they don't trigger resets when the parent re-renders
+  const initialContentRef    = useRef(initialContent);
+  const initialDateRef       = useRef(initialDate);
+  const initialMediaUrlsRef  = useRef(initialMediaUrls);
+  const draftGroupIdRef      = useRef(draftGroupId);
+  const loadDraftRef         = useRef(loadDraft);
+  const wasOpenRef           = useRef(false);
+
+  // Keep refs up to date without triggering the reset effect
+  useEffect(() => { initialContentRef.current = initialContent; }, [initialContent]);
+  useEffect(() => { initialDateRef.current = initialDate; }, [initialDate]);
+  useEffect(() => { initialMediaUrlsRef.current = initialMediaUrls; }, [initialMediaUrls]);
+  useEffect(() => { draftGroupIdRef.current = draftGroupId; }, [draftGroupId]);
+  useEffect(() => { loadDraftRef.current = loadDraft; }, [loadDraft]);
+
+  // Reset only when isOpen transitions from false → true (not on parent re-renders)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
+    }
+    if (wasOpenRef.current) return; // already initialized in this open session
+    wasOpenRef.current = true;
+
+    const currentInitialContent   = initialContentRef.current;
+    const currentInitialDate      = initialDateRef.current;
+    const currentInitialMediaUrls = initialMediaUrlsRef.current;
+    const currentDraftGroupId     = draftGroupIdRef.current;
 
     // Try to recover draft (only when not editing an existing draft and no initial content was passed)
-    const savedDraft = !draftGroupId && !initialContent ? loadDraft() : null;
+    const savedDraft = !currentDraftGroupId && !currentInitialContent ? loadDraftRef.current() : null;
 
-    const restoredContent     = savedDraft?.content ?? initialContent;
-    const restoredDate        = savedDraft?.scheduledDate ?? (initialDate || '');
-    const restoredTime        = savedDraft?.scheduledTime ?? (initialDate ? '10:00' : '');
+    const restoredContent     = savedDraft?.content ?? currentInitialContent;
+    const restoredDate        = savedDraft?.scheduledDate ?? (currentInitialDate || '');
+    const restoredTime        = savedDraft?.scheduledTime ?? (currentInitialDate ? '10:00' : '');
     const restoredCollabs     = savedDraft?.collaborators ?? [];
     const restoredShowPicker  = !!(savedDraft?.scheduledDate && savedDraft?.scheduledTime);
 
     setContent(restoredContent);
     setMediaItems(
-      (initialMediaUrls || []).map((url) => ({
+      (currentInitialMediaUrls || []).map((url) => ({
         id: `init-${++mediaIdCounter.current}`,
         name: url.split('/').pop() || 'media',
         file: null,
@@ -525,7 +550,7 @@ export function CreatePostModal({
     setIsSavingDraft(false);
     setError(null);
     setDraftRestored(!!savedDraft);
-  }, [isOpen, initialContent, initialDate, initialMediaUrls, draftGroupId]);
+  }, [isOpen]);
 
   // Autosave draft (text-only) while modal is open
   useEffect(() => {
