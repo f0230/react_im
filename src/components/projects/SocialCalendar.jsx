@@ -619,7 +619,8 @@ export function SocialCalendar({ projectId, canManage }) {
     setIsCreateOpen(false);
     setPreselectedDate('');
     setEditingDraft(null);
-  }, []);
+    loadPosts();
+  }, [loadPosts]);
 
   const currentStatusFilterLabel =
     STATUS_FILTER_OPTIONS.find((o) => o.id === statusFilter)?.label || 'Todas las publicaciones';
