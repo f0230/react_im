@@ -44,9 +44,9 @@ export function usePostStatusPolling(posts, onUpdate) {
     postsToPoll.forEach(post => {
       if (pollingRef.current[post.id]) return;
 
-      // Poll inmediatamente y luego cada 5 segundos
+      // Poll inmediatamente y luego cada 15 segundos
       pollPost(post);
-      pollingRef.current[post.id] = setInterval(() => pollPost(post), 5000);
+      pollingRef.current[post.id] = setInterval(() => pollPost(post), 15000);
     });
 
     // Limpiar polling de posts que ya no necesitan

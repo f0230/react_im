@@ -525,7 +525,7 @@ export function CreatePostModal({
     setIsSavingDraft(false);
     setError(null);
     setDraftRestored(!!savedDraft);
-  }, [isOpen, initialContent, initialDate, initialMediaUrls, draftGroupId, loadDraft]);
+  }, [isOpen, initialContent, initialDate, initialMediaUrls, draftGroupId]);
 
   // Autosave draft (text-only) while modal is open
   useEffect(() => {
