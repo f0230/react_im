@@ -549,7 +549,7 @@ export function CreatePostModal({
     setPreviewPlatform((current) => (platforms.includes(current) ? current : platforms[0]));
   }, [selectedAccounts]);
 
-  useEffect(() => { setError(null); }, [content, mediaItems, scheduledDate, scheduledTime]);
+  useEffect(() => { setError(null); }, [content, mediaItems]);
 
   // ── Derived ──────────────────────────────────────────────────────────────
 

@@ -503,10 +503,12 @@ export function SocialCalendar({ projectId, canManage }) {
     return () => sub.unsubscribe();
   }, [projectId]);
 
-  usePostStatusPolling(posts, (postId, updatedPost) => {
+  const handlePostStatusUpdate = useCallback((postId, updatedPost) => {
     setPosts((prev) => prev.map((p) => (p.id === postId ? updatedPost : p)));
     setSelectedPost((prev) => (prev?.id === postId ? updatedPost : prev));
-  });
+  }, []);
+
+  usePostStatusPolling(posts, handlePostStatusUpdate);
 
   // Week helpers
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -593,25 +595,31 @@ export function SocialCalendar({ projectId, canManage }) {
   const getPostsForDay = (day) =>
     postsByDay.get(format(day, 'yyyy-MM-dd')) || [];
 
-  const handleEditDraft = (post) => {
+  const handleEditDraft = useCallback((post) => {
     setSelectedPost(null);
     setEditingDraft(post);
     setPreselectedDate('');
     setIsCreateOpen(true);
-  };
+  }, []);
 
-  const handleDayClick = (day) => {
+  const handleDayClick = useCallback((day) => {
     if (!canManage) return;
     setPreselectedDate(format(day, 'yyyy-MM-dd'));
     setSelectedPost(null);
     setIsCreateOpen(true);
-  };
+  }, [canManage]);
 
-  const handleNewPost = () => {
+  const handleNewPost = useCallback(() => {
     setPreselectedDate('');
     setSelectedPost(null);
     setIsCreateOpen(true);
-  };
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    setIsCreateOpen(false);
+    setPreselectedDate('');
+    setEditingDraft(null);
+  }, []);
 
   const currentStatusFilterLabel =
     STATUS_FILTER_OPTIONS.find((o) => o.id === statusFilter)?.label || 'Todas las publicaciones';
@@ -792,7 +800,7 @@ export function SocialCalendar({ projectId, canManage }) {
       {/* Create post modal */}
       <CreatePostModal
         isOpen={isCreateOpen}
-        onClose={() => { setIsCreateOpen(false); setPreselectedDate(''); setEditingDraft(null); }}
+        onClose={handleModalClose}
         projectId={projectId}
         serviceId={editingDraft?.service_id ?? null}
         initialDate={preselectedDate}

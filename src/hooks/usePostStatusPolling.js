@@ -8,7 +8,7 @@ import { checkPostStatus } from '@/services/blotatoService';
 export function usePostStatusPolling(posts, onUpdate) {
   const pollingRef = useRef({});
   const onUpdateRef = useRef(onUpdate);
-  
+
   // Mantener referencia actualizada del callback
   useEffect(() => {
     onUpdateRef.current = onUpdate;
@@ -17,11 +17,11 @@ export function usePostStatusPolling(posts, onUpdate) {
   const pollPost = useCallback(async (post) => {
     try {
       const result = await checkPostStatus(post.id);
-      
+
       if (onUpdateRef.current) {
         onUpdateRef.current(post.id, result.post);
       }
-      
+
       // Si es estado final, detener polling
       if (result.isFinal) {
         if (pollingRef.current[post.id]) {
@@ -36,7 +36,7 @@ export function usePostStatusPolling(posts, onUpdate) {
 
   useEffect(() => {
     // Filtrar posts que necesitan polling
-    const postsToPoll = posts.filter(p => 
+    const postsToPoll = posts.filter(p =>
       ['publishing', 'scheduled'].includes(p.status)
     );
 
@@ -63,3 +63,4 @@ export function usePostStatusPolling(posts, onUpdate) {
     };
   }, [posts, pollPost]);
 }
+
