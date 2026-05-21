@@ -258,7 +258,7 @@ const Projects = () => {
     const ctxTeam = ctxAssignedIds.map(id => teamMembers.find(m => m.id === id)).filter(Boolean);
 
     return (
-        <div className="mx-auto max-w-[1350px] px-6 md:px-10 font-product text-neutral-900 pb-16 pt-6" style={{ zoom: '0.65' }}>
+        <div className="mx-auto max-w-[1350px] px-4 sm:px-6 md:px-10 font-product text-neutral-900 pb-16 pt-6">
             <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-2xl md:text-3xl font-bold text-neutral-900 whitespace-nowrap">
                     {t('dashboard.projects.title')}
@@ -362,31 +362,31 @@ const Projects = () => {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.92, y: 14 }}
                             transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-                            className="relative z-[200] flex h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-none sm:h-auto sm:max-h-[86vh] sm:max-w-5xl sm:rounded-[34px] sm:border sm:border-white/[0.14] sm:shadow-[0_40px_120px_rgba(0,0,0,0.35)]"
+                            className="relative z-[200] flex h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl md:max-w-4xl lg:max-w-5xl sm:rounded-3xl sm:border sm:border-white/[0.14] sm:shadow-[0_40px_120px_rgba(0,0,0,0.35)]"
                         >
                             <div className="flex min-h-0 flex-col overflow-y-auto bg-[#f5f5f7] sm:bg-white">
-                                <div className="relative overflow-visible bg-neutral-950 px-5 pb-8 pt-[calc(env(safe-area-inset-top)+22px)] text-white sm:overflow-hidden sm:px-8 sm:py-8 md:px-12 md:py-10">
+                                <div className="relative overflow-visible bg-neutral-950 px-4 pb-6 pt-[calc(env(safe-area-inset-top)+16px)] text-white sm:overflow-hidden sm:px-8 sm:py-8 md:px-12 md:py-10">
                                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_10%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.10),transparent_28%)]" />
-                                    <div className="relative flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-5 sm:text-left">
-                                        <div className="flex min-w-0 flex-1 flex-col items-center gap-4 sm:items-start sm:gap-6 md:flex-row md:items-center">
+                                    <div className="relative flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:text-left md:gap-5">
+                                        <div className="flex min-w-0 flex-1 flex-col items-center gap-3 sm:items-start sm:gap-4 md:gap-6 md:flex-row md:items-center">
                                             {ctxAvatar ? (
-                                                <img src={ctxAvatar} alt={ctxTitle} className="h-28 w-28 shrink-0 rounded-full border-4 border-white/[0.14] object-cover shadow-2xl sm:h-32 sm:w-32 md:h-40 md:w-40" />
+                                                <img src={ctxAvatar} alt={ctxTitle} className="h-24 w-24 shrink-0 rounded-full border-4 border-white/[0.14] object-cover shadow-2xl sm:h-28 sm:w-28 md:h-40 md:w-40" />
                                             ) : (
-                                                <div className={`h-28 w-28 shrink-0 rounded-full border-4 border-white/[0.14] bg-gradient-to-br ${ctxColorClass} flex items-center justify-center text-3xl font-black text-black shadow-2xl sm:h-32 sm:w-32 sm:text-4xl md:h-40 md:w-40 md:text-5xl`}>
+                                                <div className={`h-24 w-24 shrink-0 rounded-full border-4 border-white/[0.14] bg-gradient-to-br ${ctxColorClass} flex items-center justify-center text-2xl font-black text-black shadow-2xl sm:h-28 sm:w-28 sm:text-3xl md:h-40 md:w-40 md:text-5xl`}>
                                                     {getInitials(ctxTitle)}
                                                 </div>
                                             )}
                                             <div className="min-w-0 max-w-full">
-                                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white/45 sm:mb-2 sm:text-xs sm:tracking-[0.28em]">Proyecto</p>
-                                                <h2 className="max-w-full break-words text-3xl font-black leading-[0.95] tracking-tight text-white sm:text-4xl md:text-6xl">{ctxTitle}</h2>
-                                                <div className="mt-4 flex flex-wrap items-center justify-center gap-3 sm:mt-5 sm:justify-start">
+                                                <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.2em] text-white/45 sm:mb-2 sm:text-xs sm:tracking-[0.24em]">Proyecto</p>
+                                                <h2 className="max-w-full break-words text-2xl font-black leading-[0.95] tracking-tight text-white sm:text-3xl md:text-5xl lg:text-6xl">{ctxTitle}</h2>
+                                                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:mt-4 sm:gap-3 sm:justify-start">
                                                     {(isAdmin || isClientLeader) && (
                                                         <button
                                                             onClick={() => { setCtxMenu(null); setProjectToEdit(ctxProject); }}
-                                                            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-black shadow-lg transition-transform hover:scale-105 sm:px-5 sm:py-3 sm:text-base"
+                                                            className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-bold text-black shadow-lg transition-transform hover:scale-105 sm:px-4 sm:py-2.5 sm:text-sm md:px-5 md:py-3 md:text-base"
                                                         >
-                                                            <Pencil size={16} />
-                                                            Editar proyecto
+                                                            <Pencil size={14} className="sm:w-4 sm:h-4" />
+                                                            <span className="truncate">Editar</span>
                                                         </button>
                                                     )}
                                                 </div>
@@ -394,19 +394,19 @@ const Projects = () => {
                                         </div>
                                         <button
                                             onClick={() => setCtxMenu(null)}
-                                            className="absolute right-0 top-[calc(env(safe-area-inset-top)+2px)] flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors active:scale-95 hover:bg-white hover:text-black sm:static sm:h-12 sm:w-12"
+                                            className="absolute right-2 top-[calc(env(safe-area-inset-top)+8px)] flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors active:scale-95 hover:bg-white hover:text-black sm:static sm:h-10 sm:w-10 md:h-12 md:w-12"
                                             title="Cerrar"
                                         >
-                                            <X size={22} />
+                                            <X size={18} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
                                         </button>
                                     </div>
                                 </div>
 
-                                <div className="grid gap-4 px-4 py-4 sm:gap-6 sm:px-8 sm:py-8 md:grid-cols-[1fr_1fr] md:px-12">
+                                <div className="grid gap-4 px-4 py-4 sm:gap-6 sm:px-8 sm:py-8 md:gap-8 md:grid-cols-[1fr_1fr] md:px-12 lg:gap-10">
                                     {(ctxTeam.length > 0 || (ctxProject?.project_clients || []).length > 0) && (
                                         <div className="rounded-[26px] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)] sm:rounded-3xl sm:bg-neutral-50 sm:p-6 sm:shadow-none">
-                                            <h3 className="mb-4 text-lg font-black text-neutral-950 sm:mb-5 sm:text-xl">Personas</h3>
-                                            <div className="grid gap-6 sm:grid-cols-2">
+                                            <h3 className="mb-4 text-lg font-black text-neutral-950 sm:mb-5 sm:text-xl md:text-base">Personas</h3>
+                                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:gap-3">
                                                 {ctxTeam.length > 0 && (
                                                     <div>
                                                         <span className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">Equipo</span>
@@ -452,17 +452,17 @@ const Projects = () => {
 
                                     {(ctxProject?.figma_url || ctxProject?.jam_url || ctxProject?.drive_url) && (
                                         <div className="rounded-[26px] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)] sm:rounded-3xl sm:bg-neutral-50 sm:p-6 sm:shadow-none">
-                                            <h3 className="mb-4 text-lg font-black text-neutral-950 sm:mb-5 sm:text-xl">Archivos</h3>
-                                            <div className="grid gap-3">
+                                            <h3 className="mb-4 text-lg font-black text-neutral-950 sm:mb-5 sm:text-xl md:text-base">Archivos</h3>
+                                            <div className="grid gap-2 sm:gap-3">
                                                 {ctxProject?.figma_url && (
                                                     <a
                                                         href={ctxProject.figma_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center gap-3 rounded-[20px] bg-[#f5f5f7] px-4 py-3.5 text-base font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-4 sm:bg-white sm:py-4 sm:text-lg sm:shadow-sm"
+                                                        className="flex items-center gap-2 rounded-lg bg-[#f5f5f7] px-3 py-2.5 text-sm font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-3 sm:rounded-xl sm:bg-white sm:px-4 sm:py-3 sm:text-base sm:shadow-sm md:gap-4"
                                                     >
-                                                        <img src={figmaIcon} alt="Figma" className="h-7 w-7 sm:h-8 sm:w-8" />
-                                                        Figma Design
+                                                        <img src={figmaIcon} alt="Figma" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                                        <span className="truncate">Figma Design</span>
                                                     </a>
                                                 )}
                                                 {ctxProject?.jam_url && (
@@ -470,10 +470,10 @@ const Projects = () => {
                                                         href={ctxProject.jam_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center gap-3 rounded-[20px] bg-[#f5f5f7] px-4 py-3.5 text-base font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-4 sm:bg-white sm:py-4 sm:text-lg sm:shadow-sm"
+                                                        className="flex items-center gap-2 rounded-lg bg-[#f5f5f7] px-3 py-2.5 text-sm font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-3 sm:rounded-xl sm:bg-white sm:px-4 sm:py-3 sm:text-base sm:shadow-sm md:gap-4"
                                                     >
-                                                        <img src={figmaIcon} alt="Figma JAM" className="h-7 w-7 sm:h-8 sm:w-8" />
-                                                        Figma JAM
+                                                        <img src={figmaIcon} alt="Figma JAM" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                                        <span className="truncate">Figma JAM</span>
                                                     </a>
                                                 )}
                                                 {ctxProject?.drive_url && (
@@ -481,10 +481,10 @@ const Projects = () => {
                                                         href={ctxProject.drive_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center gap-3 rounded-[20px] bg-[#f5f5f7] px-4 py-3.5 text-base font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-4 sm:bg-white sm:py-4 sm:text-lg sm:shadow-sm"
+                                                        className="flex items-center gap-2 rounded-lg bg-[#f5f5f7] px-3 py-2.5 text-sm font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-3 sm:rounded-xl sm:bg-white sm:px-4 sm:py-3 sm:text-base sm:shadow-sm md:gap-4"
                                                     >
-                                                        <img src={driveLogo} alt="Google Drive" className="h-7 w-7 sm:h-8 sm:w-8" />
-                                                        Google Drive
+                                                        <img src={driveLogo} alt="Google Drive" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                                        <span className="truncate">Google Drive</span>
                                                     </a>
                                                 )}
                                             </div>
@@ -493,8 +493,8 @@ const Projects = () => {
                                 </div>
 
                                 <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] sm:px-8 sm:pb-10 md:px-12">
-                                    <h3 className="mb-4 text-lg font-black text-neutral-950 sm:text-xl">Secciones</h3>
-                                    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                                    <h3 className="mb-4 text-lg font-black text-neutral-950 sm:text-xl md:text-2xl">Secciones</h3>
+                                    <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4">
                                         {actionCards.map(({ key, label, icon: Icon, suffix }) => {
                                             const href = suffix === 'tasks'
                                                 ? getProjectServicesHref(ctxProject?.id)
@@ -503,15 +503,15 @@ const Projects = () => {
                                                 <button
                                                     key={key}
                                                     onClick={() => { if (href) navigate(href); setCtxMenu(null); }}
-                                                    className="group flex min-h-[74px] items-center justify-between gap-3 rounded-[24px] bg-neutral-950 px-4 py-4 text-left text-white shadow-[0_12px_30px_rgba(0,0,0,0.16)] transition-transform active:scale-[0.98] hover:-translate-y-1 hover:scale-[1.02] sm:min-h-[120px] sm:gap-4 sm:rounded-3xl sm:px-6 sm:py-5"
+                                                    className="group flex min-h-[60px] items-center justify-between gap-2 rounded-xl bg-neutral-950 px-3 py-3 text-left text-white shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-transform active:scale-[0.98] hover:-translate-y-0.5 hover:scale-[1.02] sm:min-h-[90px] sm:gap-3 sm:rounded-2xl sm:px-5 sm:py-4 lg:min-h-[110px] lg:gap-4 lg:rounded-3xl lg:px-6 lg:py-5"
                                                 >
-                                                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-                                                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-black sm:h-14 sm:w-14">
-                                                            <Icon size={22} />
+                                                    <div className="flex min-w-0 items-center gap-2 sm:gap-3 lg:gap-4">
+                                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-black sm:h-12 sm:w-12 lg:h-14 lg:w-14">
+                                                            <Icon size={18} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
                                                         </span>
-                                                        <span className="truncate text-base font-black sm:text-xl">{label}</span>
+                                                        <span className="truncate text-sm font-black sm:text-base lg:text-lg">{label}</span>
                                                     </div>
-                                                    <ChevronRight size={22} className="shrink-0 text-white/45 transition-transform group-hover:translate-x-1 sm:h-6 sm:w-6" />
+                                                    <ChevronRight size={18} className="shrink-0 text-white/45 transition-transform group-hover:translate-x-0.5 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
                                                 </button>
                                             );
                                         })}

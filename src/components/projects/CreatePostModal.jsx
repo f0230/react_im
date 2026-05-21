@@ -34,6 +34,7 @@ import { useMediaDraft } from '@/hooks/useMediaDraft';
 import { getMediaWarnings } from '@/utils/platformMediaSpecs';
 import { PlatformIcon } from './PlatformIcon';
 import { SortableMediaGrid } from './SortableMediaGrid';
+import { FigmaFramePicker } from './FigmaFramePicker';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -478,6 +479,9 @@ export function CreatePostModal({
   const [isSavingDraft, setIsSavingDraft]       = useState(false);
   const [error, setError]                       = useState(null);
 
+  // Figma import
+  const [figmaPickerOpen, setFigmaPickerOpen] = useState(false);
+
   const fileInputRef  = useRef(null);
   const coverInputRef = useRef(null);
   const textareaRef   = useRef(null);
@@ -744,6 +748,29 @@ export function CreatePostModal({
   const handleDragOver  = (e) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
   const handleDrop      = (e) => { e.preventDefault(); setIsDragging(false); handleFiles(Array.from(e.dataTransfer.files || [])); };
+
+  const handleImportFromFigma = useCallback((urls) => {
+    if (!Array.isArray(urls) || urls.length === 0) return;
+
+    const newItems = urls.map((url) => {
+      const id = `figma-${++mediaIdCounter.current}`;
+      return {
+        id,
+        name: `Figma frame ${mediaIdCounter.current}`,
+        file: null,
+        previewUrl: null,
+        url,
+        uploading: false,
+        compressing: false,
+        error: null,
+        isVideo: false,
+        mimeType: 'image/png',
+        sizeBytes: 0,
+      };
+    });
+
+    setMediaItems((prev) => [...prev, ...newItems]);
+  }, []);
 
   // Revoke blob URL when an item is removed to avoid leaks
   const removeMedia = useCallback((index) => {
@@ -1136,16 +1163,28 @@ export function CreatePostModal({
 
               {/* Media */}
               <div className="px-4 pb-3 space-y-3">
-                {/* Drop zone */}
-                <div
-                  onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`w-full rounded-xl border-2 border-dashed cursor-pointer transition-all flex items-center justify-center gap-2 py-3 text-sm ${
-                    isDragging ? 'border-teal-500/60 bg-teal-500/5 text-teal-400' : 'border-white/[0.1] hover:border-white/[0.2] text-white/35 hover:text-white/55 hover:bg-white/[0.02]'
-                  }`}
-                >
-                  <Upload size={15} /><span>Haz clic o arrastra aquí media</span>
-                  <input ref={fileInputRef} type="file" accept={ACCEPTED_MEDIA} multiple className="hidden" onChange={handleFileSelect} />
+                {/* Drop zone and Figma button */}
+                <div className="flex gap-2">
+                  <div
+                    onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`flex-1 rounded-xl border-2 border-dashed cursor-pointer transition-all flex items-center justify-center gap-2 py-3 text-sm ${
+                      isDragging ? 'border-teal-500/60 bg-teal-500/5 text-teal-400' : 'border-white/[0.1] hover:border-white/[0.2] text-white/35 hover:text-white/55 hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <Upload size={15} /><span>Haz clic o arrastra aquí media</span>
+                    <input ref={fileInputRef} type="file" accept={ACCEPTED_MEDIA} multiple className="hidden" onChange={handleFileSelect} />
+                  </div>
+                  <button
+                    onClick={() => setFigmaPickerOpen(true)}
+                    title="Importar frames de Figma"
+                    className="px-4 py-3 rounded-xl border-2 border-white/[0.1] hover:border-white/[0.2] text-white/35 hover:text-white/55 hover:bg-white/[0.02] transition-all flex items-center gap-2 text-sm whitespace-nowrap"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M9 3C5.13 3 2 6.13 2 10c0 3.87 3.13 7 7 7 1.5 0 2.89-.48 4.05-1.28.17.12.35.23.53.32l-3.5 3.5c-.29.29-.29.77 0 1.06l1.06 1.06c.29.29.77.29 1.06 0l3.5-3.5c.09.18.2.36.32.53.8 1.16 1.28 2.55 1.28 4.05 0 3.87 3.13 7 7 7s7-3.13 7-7-3.13-7-7-7c-1.5 0-2.89.48-4.05 1.28-.17-.12-.35-.23-.53-.32l3.5-3.5c.29-.29.29-.77 0-1.06l-1.06-1.06c-.29-.29-.77-.29-1.06 0l-3.5 3.5c-.09-.18-.2-.36-.32-.53C11.89 3.48 10.5 3 9 3z" />
+                    </svg>
+                    Figma
+                  </button>
                 </div>
 
                 {/* Thumbnails (sortable) */}
@@ -1395,7 +1434,18 @@ export function CreatePostModal({
     </AnimatePresence>
   );
 
-  return createPortal(modalContent, document.body);
+  return createPortal(
+    <>
+      {modalContent}
+      <FigmaFramePicker
+        open={figmaPickerOpen}
+        onClose={() => setFigmaPickerOpen(false)}
+        onImport={handleImportFromFigma}
+        projectId={projectId}
+      />
+    </>,
+    document.body
+  );
 }
 
 export default CreatePostModal;

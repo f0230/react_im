@@ -136,8 +136,8 @@ async function handleWebhook(req, res) {
 
 async function handleComments(req, res) {
     const { file_key, comment_id } = req.query;
-    const token = process.env.FIGMA_API_TOKEN;
-    if (!token) return res.status(500).json({ error: 'FIGMA_API_TOKEN not configured' });
+    const token = process.env.FIGMA_ACCESS_TOKEN;
+    if (!token) return res.status(500).json({ error: 'FIGMA_ACCESS_TOKEN not configured' });
     if (!file_key) return res.status(400).json({ error: 'file_key is required' });
 
     const baseUrl = `https://api.figma.com/v1/files/${file_key}/comments`;
@@ -162,6 +162,94 @@ async function handleComments(req, res) {
     }
 }
 
+// ─── Figma Frames & Images Import ───────────────────────────────────────────
+
+function extractFileKeyFromUrl(url) {
+    if (!url) return null;
+    const match = url.match(/figma\.com\/design\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
+}
+
+async function handleGetFrames(req, res) {
+    const { fileKey } = req.query;
+    const token = process.env.FIGMA_ACCESS_TOKEN;
+
+    if (!token) return res.status(500).json({ error: 'FIGMA_ACCESS_TOKEN not configured' });
+    if (!fileKey) return res.status(400).json({ error: 'fileKey is required' });
+
+    try {
+        const response = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
+            headers: { 'X-Figma-Token': token },
+        });
+
+        if (!response.ok) {
+            return res.status(response.status).json({ error: 'Failed to fetch Figma file' });
+        }
+
+        const data = await response.json();
+
+        function extractFrames(node, frames = []) {
+            if (node.type === 'FRAME') {
+                frames.push({
+                    nodeId: node.id,
+                    name: node.name,
+                    width: node.width,
+                    height: node.height,
+                });
+            }
+            if (node.children) {
+                node.children.forEach(child => extractFrames(child, frames));
+            }
+            return frames;
+        }
+
+        const pages = data.document.children.map(page => ({
+            id: page.id,
+            name: page.name,
+            frames: extractFrames(page),
+        }));
+
+        return res.status(200).json({ pages });
+    } catch (error) {
+        console.error('[figma] get-frames error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
+async function handleExportImages(req, res) {
+    const { fileKey, nodeIds } = req.query;
+    const token = process.env.FIGMA_ACCESS_TOKEN;
+
+    if (!token) return res.status(500).json({ error: 'FIGMA_ACCESS_TOKEN not configured' });
+    if (!fileKey) return res.status(400).json({ error: 'fileKey is required' });
+    if (!nodeIds) return res.status(400).json({ error: 'nodeIds is required' });
+
+    try {
+        const nodeIdList = String(nodeIds).split(',').filter(Boolean);
+        if (nodeIdList.length === 0) return res.status(400).json({ error: 'nodeIds must be non-empty' });
+
+        const params = new URLSearchParams({
+            ids: nodeIdList.join(','),
+            format: 'png',
+            scale: '2',
+        });
+
+        const response = await fetch(`https://api.figma.com/v1/images/${fileKey}?${params}`, {
+            headers: { 'X-Figma-Token': token },
+        });
+
+        if (!response.ok) {
+            return res.status(response.status).json({ error: 'Failed to export Figma images' });
+        }
+
+        const data = await response.json();
+        return res.status(200).json({ images: data.images || {} });
+    } catch (error) {
+        console.error('[figma] export-images error:', error);
+        return res.status(500).json({ error: 'Internal Server Error' });
+    }
+}
+
 // ─── Main router ─────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -176,6 +264,8 @@ export default async function handler(req, res) {
     if (action === 'auth-callback') return handleAuthCallback(req, res);
     if (action === 'webhook') return handleWebhook(req, res);
     if (action === 'comments') return handleComments(req, res);
+    if (action === 'get-frames') return handleGetFrames(req, res);
+    if (action === 'export-images') return handleExportImages(req, res);
 
-    return res.status(400).json({ error: 'Missing or unknown ?action. Valid: auth-login, auth-callback, webhook, comments' });
+    return res.status(400).json({ error: 'Missing or unknown ?action. Valid: auth-login, auth-callback, webhook, comments, get-frames, export-images' });
 }
