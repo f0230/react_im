@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, MessageSquareText, Plus, Sparkles, Workflow, X, Check, Link as LinkIcon, Globe } from 'lucide-react';
 import PopoverPanel from './ui/PopoverPanel';
+import { MOBILE_POPOVER_BACKDROP_CLASS, POPOVER_PANEL_CLASS } from './ui/popoverStyles';
 import { cn } from '../lib/utils';
 import { supabase } from '../lib/supabaseClient';
 
@@ -182,13 +183,8 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
             <PopoverPanel
                 isOpen={isOpen}
                 onClose={closePopover}
-                className={[
-                    'fixed left-3 right-3 top-[61px] z-50 min-h-[280px] rounded-[32px]',
-                    'max-h-[calc(100dvh-73px)] overflow-y-auto lg:absolute lg:left-auto lg:right-0 lg:top-full lg:mt-2 lg:w-[380px] lg:min-h-0 lg:max-h-[480px] lg:overflow-hidden',
-                    'bg-[#1c1c1e]/95 backdrop-blur-2xl border border-white/8',
-                    'shadow-[0_32px_100px_rgba(0,0,0,0.55)] z-50 origin-top flex flex-col',
-                ].join(' ')}
-                backdropClassName="fixed inset-x-0 top-[56px] bottom-0 bg-black/50 backdrop-blur-md z-40"
+                className={`${POPOVER_PANEL_CLASS} lg:w-[380px]`}
+                backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
                 initial={{ opacity: 0, scale: 0.92, y: -8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.92, y: -8 }}

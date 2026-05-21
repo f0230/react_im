@@ -18,7 +18,6 @@ import { fetchCalBookings } from '@/lib/calBookings';
 import { useTranslation } from "react-i18next";
 import heroBgMobile from '../../assets/PORTADA_1_MOVIL.webp';
 import heroBgDesktop from '../../assets/PORTADA_1.webp';
-import dteLogo from '../../assets/LOGODTE.svg';
 import dteWhite from '../../assets/dte-white.svg';
 import { formatScheduleDate, SCHEDULE_TIME_ZONE } from '@/utils/scheduleTime';
 
@@ -36,6 +35,8 @@ const DashboardHome = () => {
     });
     const [statsLoading, setStatsLoading] = useState(true);
     const [showSchedulePrompt, setShowSchedulePrompt] = useState(false);
+    const profileAvatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
+    const profileInitial = (profile?.full_name || profile?.name || user?.email || 'U').charAt(0).toUpperCase();
 
     useEffect(() => {
         const run = async () => {
@@ -236,15 +237,7 @@ const DashboardHome = () => {
                     <motion.div
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex justify-center mb-4"
-                    >
-                        <img src={dteLogo} alt="Grupo DTE" className="w-[150px] md:w-[220px]" />
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center justify-center gap-2 text-skyblue text-[11px] md:text-sm font-bold uppercase tracking-[0.24em] mb-2"
+                        className="flex items-center justify-center gap-2 text-black text-[11px] md:text-sm font-bold uppercase tracking-[0.24em] mb-2"
                     >
                         <Sparkles size={14} />
                         {dashboardContent.sectionLabel}
@@ -254,16 +247,24 @@ const DashboardHome = () => {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
-                        className="text-4xl md:text-5xl font-black text-black tracking-tight text-center"
+                        className="flex flex-wrap items-center justify-center gap-3 text-4xl md:text-5xl font-black text-black tracking-tight text-center"
                     >
-                        {dashboardContent.title}
+                        <span className="inline-flex h-10 w-10 md:h-12 md:w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-black text-sm md:text-base font-bold text-white ring-2 ring-white/70">
+                            {profileAvatarUrl ? (
+                                <img src={profileAvatarUrl} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                                profileInitial
+                            )}
+                        </span>
+                        <span>{dashboardContent.title}</span>
+                        <span aria-hidden="true" className="text-3xl md:text-4xl leading-none">👋</span>
                     </motion.h1>
 
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
-                        className="text-neutral-700 mt-4 text-base md:text-lg max-w-2xl mx-auto text-center leading-relaxed"
+                        className="text-white mt-4 text-base md:text-lg max-w-2xl mx-auto text-center leading-relaxed"
                     >
                         {dashboardContent.description}
                     </motion.p>
@@ -276,14 +277,14 @@ const DashboardHome = () => {
                     >
                         <Link
                             to={dashboardContent.primaryLink.path}
-                            className="inline-flex items-center justify-center px-5 py-2.5 bg-skyblue text-white text-sm md:text-base rounded-full font-semibold hover:bg-skyblue/95 transition"
+                            className="inline-flex items-center justify-center px-5 py-2.5 bg-black text-white text-sm md:text-base rounded-full font-semibold hover:bg-black/90 transition"
                         >
                             {dashboardContent.primaryLink.label}
                         </Link>
                         {dashboardContent.secondaryLink && (
                             <Link
                                 to={dashboardContent.secondaryLink.path}
-                                className="inline-flex items-center justify-center px-5 py-2.5 bg-white text-skyblue text-sm md:text-base rounded-full font-semibold border border-white/80 hover:bg-white/90 transition"
+                                className="inline-flex items-center justify-center px-5 py-2.5 bg-white text-black text-sm md:text-base rounded-full font-semibold border border-white/80 hover:bg-white/90 transition"
                             >
                                 {dashboardContent.secondaryLink.label}
                             </Link>

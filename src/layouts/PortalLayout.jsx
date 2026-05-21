@@ -31,6 +31,20 @@ const PortalLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const isStudioRoute = location.pathname.startsWith('/dashboard/studio');
+    const isChatRoute = [
+        '/dashboard/team-chat',
+        '/dashboard/client-chat',
+        '/dashboard/inbox',
+        '/dashboard/messages',
+    ].some((path) => location.pathname.startsWith(path));
+    const [isChatDark, setIsChatDark] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        try {
+            return window.localStorage.getItem('chat-dark') === 'true';
+        } catch {
+            return false;
+        }
+    });
     const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
         if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
         return window.matchMedia('(min-width: 768px)').matches;
@@ -56,6 +70,35 @@ const PortalLayout = () => {
         document.documentElement.classList.add('dashboard-mobile-compact');
         return () => {
             document.documentElement.classList.remove('dashboard-mobile-compact');
+        };
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+
+        const syncChatDark = () => {
+            try {
+                setIsChatDark(window.localStorage.getItem('chat-dark') === 'true');
+            } catch {
+                setIsChatDark(false);
+            }
+        };
+
+        const handleChatDarkChange = (event) => {
+            if (typeof event?.detail?.isDark === 'boolean') {
+                setIsChatDark(event.detail.isDark);
+                return;
+            }
+            syncChatDark();
+        };
+
+        syncChatDark();
+        window.addEventListener('storage', syncChatDark);
+        window.addEventListener('chat-dark-change', handleChatDarkChange);
+
+        return () => {
+            window.removeEventListener('storage', syncChatDark);
+            window.removeEventListener('chat-dark-change', handleChatDarkChange);
         };
     }, []);
 
@@ -196,12 +239,12 @@ const PortalLayout = () => {
     }
 
     const dashboardNavbarOffset = shouldAutoHideStudioNavbar
-        ? (isStudioNavbarVisible ? (isDesktopViewport ? 45 : 56) : 0)
-        : (isDesktopViewport ? 45 : 56);
+        ? (isStudioNavbarVisible ? (isDesktopViewport ? 45 : 44) : 0)
+        : (isDesktopViewport ? 45 : 44);
 
     return (
         <div
-            className={`min-h-screen font-product ${isStudioRoute ? 'bg-black' : 'bg-[#f2f2f2]'}`}
+            className={`min-h-screen font-product ${isStudioRoute || (isChatRoute && isChatDark) ? 'bg-black' : 'bg-[#f2f2f2]'}`}
             style={{ '--dashboard-navbar-offset': `${dashboardNavbarOffset}px` }}
         >
             <UnreadCountsProvider>
