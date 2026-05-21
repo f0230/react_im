@@ -9,6 +9,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
 
 function extractFileKeyFromUrl(url) {
   if (!url) return null;
@@ -98,7 +99,35 @@ export function FigmaFramePicker({
 
   const fileKey = useMemo(() => extractFileKeyFromUrl(figmaInput), [figmaInput]);
 
-  // Load images for the selected page
+  // When opening the modal: load project's figma_url if available
+  useEffect(() => {
+    if (!open || !projectId || figmaInput) return;
+
+    const loadProjectFigmaUrl = async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('projects')
+          .select('figma_url')
+          .eq('id', projectId)
+          .single();
+
+        if (fetchError) {
+          console.warn('Could not load project figma_url:', fetchError.message);
+          return;
+        }
+
+        if (data?.figma_url) {
+          setFigmaInput(data.figma_url);
+        }
+      } catch (err) {
+        console.warn('Error loading project figma_url:', err);
+      }
+    };
+
+    loadProjectFigmaUrl();
+  }, [open, projectId, figmaInput]);
+
+  // Load images for the selected page (in batches to avoid huge URLs)
   useEffect(() => {
     if (!selectedPage || !fileKey) return;
 
@@ -108,24 +137,31 @@ export function FigmaFramePicker({
         return;
       }
 
+      setFrameImages({});
+
       try {
-        const nodeIds = selectedPage.frames.map(f => f.nodeId).join(',');
-        const params = new URLSearchParams({
-          fileKey: encodeURIComponent(fileKey),
-          nodeIds: encodeURIComponent(nodeIds),
-        });
+        // Batch in groups of 20 to avoid URL too long
+        const BATCH_SIZE = 20;
+        const allFrames = selectedPage.frames;
 
-        const response = await fetch(
-          `/api/figma?action=export-images&${params.toString()}`
-        );
+        for (let i = 0; i < allFrames.length; i += BATCH_SIZE) {
+          const batch = allFrames.slice(i, i + BATCH_SIZE);
+          const nodeIds = batch.map(f => f.nodeId).join(',');
 
-        if (!response.ok) throw new Error('Failed to load images');
+          const response = await fetch(
+            `/api/figma?action=export-images&fileKey=${encodeURIComponent(fileKey)}&nodeIds=${encodeURIComponent(nodeIds)}`
+          );
 
-        const data = await response.json();
-        setFrameImages(data.images || {});
+          if (!response.ok) {
+            console.warn('Failed to load image batch', i);
+            continue;
+          }
+
+          const data = await response.json();
+          setFrameImages(prev => ({ ...prev, ...(data.images || {}) }));
+        }
       } catch (err) {
         console.error('Failed to load page images:', err);
-        setFrameImages({});
       }
     };
 
@@ -134,7 +170,7 @@ export function FigmaFramePicker({
 
   const handleLoadFrames = useCallback(async () => {
     if (!fileKey) {
-      setError('Invalid Figma URL');
+      setError('URL de Figma inválida. Debe ser tipo: https://figma.com/design/...');
       return;
     }
 
@@ -142,29 +178,35 @@ export function FigmaFramePicker({
     setError(null);
     setPages([]);
     setSelectedFrames(new Set());
+    setFrameImages({});
 
     try {
       const response = await fetch(
         `/api/figma?action=get-frames&fileKey=${encodeURIComponent(fileKey)}`
       );
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error('Failed to load Figma frames');
+        throw new Error(data.error || `Error ${response.status}: No se pudieron cargar los frames`);
       }
 
-      const data = await response.json();
-      const pagesWithFileKey = data.pages.map(page => ({
+      const pagesWithFileKey = (data.pages || []).map(page => ({
         ...page,
-        frames: page.frames.map(frame => ({ ...frame, fileKey })),
+        frames: (page.frames || []).map(frame => ({ ...frame, fileKey })),
       }));
 
       setPages(pagesWithFileKey);
       if (pagesWithFileKey.length > 0) {
-        setSelectedPage(pagesWithFileKey[0]);
+        // Pick first page that has frames
+        const firstWithFrames = pagesWithFileKey.find(p => p.frames.length > 0) || pagesWithFileKey[0];
+        setSelectedPage(firstWithFrames);
+      } else {
+        setError('No se encontraron páginas en este archivo de Figma');
       }
     } catch (err) {
       console.error('Error loading frames:', err);
-      setError(err.message || 'Failed to load frames');
+      setError(err.message || 'Error al cargar los frames');
     } finally {
       setLoading(false);
     }
@@ -241,7 +283,7 @@ export function FigmaFramePicker({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={e => {
           if (e.target === e.currentTarget) onClose();
         }}
