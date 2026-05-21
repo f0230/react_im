@@ -125,9 +125,17 @@ export function FigmaFramePicker({
   const [pageDropdownOpen, setPageDropdownOpen] = useState(false);
   const [frameImages, setFrameImages] = useState({}); // { [nodeId]: imageUrl }
   const [frameStatus, setFrameStatus] = useState({}); // { [nodeId]: 'pending' | 'loading' | 'loaded' | 'error' }
+  const [cooldownSec, setCooldownSec] = useState(0); // Countdown after 429
   const dropdownRef = useRef(null);
   const queueRef = useRef(new Set()); // nodeIds waiting to be loaded
   const processingRef = useRef(false);
+
+  // Cooldown timer
+  useEffect(() => {
+    if (cooldownSec <= 0) return;
+    const t = setTimeout(() => setCooldownSec(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldownSec]);
 
   const fileKey = useMemo(() => extractFileKeyFromUrl(figmaInput), [figmaInput]);
   const nodeIdFromUrl = useMemo(() => extractNodeIdFromUrl(figmaInput), [figmaInput]);
@@ -194,15 +202,15 @@ export function FigmaFramePicker({
           );
 
           if (response.status === 429) {
-            // Rate limited - re-queue and wait longer
+            // Rate limited - stop the queue and trigger cooldown
             batch.forEach(id => queueRef.current.add(id));
             setFrameStatus(prev => {
               const next = { ...prev };
               batch.forEach(id => { next[id] = 'pending'; });
               return next;
             });
-            await new Promise(r => setTimeout(r, 3000));
-            continue;
+            setCooldownSec(60);
+            break; // Stop processing entirely
           }
 
           if (response.ok) {
@@ -272,6 +280,11 @@ export function FigmaFramePicker({
       );
 
       const data = await response.json().catch(() => ({}));
+
+      if (response.status === 429) {
+        setCooldownSec(60);
+        throw new Error('Figma alcanzó el límite de requests. Esperá 60 segundos sin hacer clicks.');
+      }
 
       if (!response.ok) {
         throw new Error(data.error || `Error ${response.status}: No se pudieron cargar los frames`);
@@ -412,7 +425,7 @@ export function FigmaFramePicker({
                 />
                 <button
                   onClick={handleLoadFrames}
-                  disabled={!fileKey || loading}
+                  disabled={!fileKey || loading || cooldownSec > 0}
                   className="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                 >
                   {loading ? (
@@ -420,7 +433,7 @@ export function FigmaFramePicker({
                   ) : (
                     <Search size={16} />
                   )}
-                  Cargar
+                  {cooldownSec > 0 ? `Esperá ${cooldownSec}s` : 'Cargar'}
                 </button>
               </div>
               <p className="mt-2 text-[11px] text-white/40 leading-relaxed">
