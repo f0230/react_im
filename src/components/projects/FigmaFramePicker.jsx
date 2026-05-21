@@ -156,7 +156,7 @@ export function FigmaFramePicker({
           const nodeIds = batch.map(f => f.nodeId).join(',');
 
           const response = await fetch(
-            `/api/figma?action=export-images&fileKey=${encodeURIComponent(fileKey)}&nodeIds=${encodeURIComponent(nodeIds)}`
+            `/api/integrations?service=figma&action=export-images&fileKey=${encodeURIComponent(fileKey)}&nodeIds=${encodeURIComponent(nodeIds)}`
           );
 
           if (!response.ok) {
@@ -190,7 +190,7 @@ export function FigmaFramePicker({
     try {
       const nodeParam = nodeIdFromUrl ? `&nodeId=${encodeURIComponent(nodeIdFromUrl)}` : '';
       const response = await fetch(
-        `/api/figma?action=get-frames&fileKey=${encodeURIComponent(fileKey)}${nodeParam}`
+        `/api/integrations?service=figma&action=get-frames&fileKey=${encodeURIComponent(fileKey)}${nodeParam}`
       );
 
       const data = await response.json().catch(() => ({}));
@@ -241,7 +241,7 @@ export function FigmaFramePicker({
 
     try {
       const response = await fetch(
-        `/api/figma?action=export-images&fileKey=${encodeURIComponent(fileKey)}&nodeIds=${encodeURIComponent(nodeIds)}`
+        `/api/integrations?service=figma&action=export-images&fileKey=${encodeURIComponent(fileKey)}&nodeIds=${encodeURIComponent(nodeIds)}`
       );
 
       if (!response.ok) {
