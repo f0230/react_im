@@ -8,7 +8,10 @@ const useChatDark = () => {
     const toggle = useCallback(() => {
         setIsDark((prev) => {
             const next = !prev;
-            try { localStorage.setItem('chat-dark', String(next)); } catch { }
+            try {
+                localStorage.setItem('chat-dark', String(next));
+                window.dispatchEvent(new CustomEvent('chat-dark-change', { detail: { isDark: next } }));
+            } catch { }
             return next;
         });
     }, []);

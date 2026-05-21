@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart3, BookOpen, Briefcase, CalendarDays, ChevronRight, FileText, Folder, Pencil, FolderOpen } from 'lucide-react';
+import { BarChart3, BookOpen, Briefcase, CalendarDays, ChevronRight, FileText, Folder, Pencil, FolderOpen, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabaseClient';
@@ -39,8 +40,13 @@ const gradientClasses = [
 ];
 
 const logoVariants = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: { opacity: 1, scale: 1, transition: { duration: 0.2, ease: 'easeOut' } },
+    hidden: { opacity: 0, scale: 0.75, y: 14 },
+    visible: {
+        opacity: 1,
+        scale: 1,
+        y: 0,
+        transition: { type: 'spring', stiffness: 420, damping: 22, mass: 0.75 },
+    },
 };
 
 const Projects = () => {
@@ -295,10 +301,10 @@ const Projects = () => {
                 </div>
             ) : (
                 <motion.div
-                    className="flex flex-wrap gap-8"
+                    className="flex flex-wrap items-start justify-center gap-x-10 gap-y-9 px-3 py-4 md:gap-x-12 md:px-8"
                     initial="hidden"
                     animate="visible"
-                    variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}
+                    variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.075 } } }}
                 >
                     {projects.map((project, index) => {
                         const title = getProjectTitle(project, t('dashboard.projects.untitled'));
@@ -308,178 +314,215 @@ const Projects = () => {
                             <motion.div
                                 key={project?.id ?? index}
                                 variants={logoVariants}
-                                className="flex flex-col items-center gap-2.5 cursor-pointer group select-none"
+                                whileHover={{ scale: 1.08, y: -7 }}
+                                whileTap={{ scale: 0.97 }}
+                                transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+                                className="flex flex-col items-center gap-3 cursor-pointer group select-none"
                                 onClick={(e) => {
                                     e.preventDefault();
-                                    const rect = e.currentTarget.getBoundingClientRect();
                                     setCtxMenu({
                                         project,
                                         index,
-                                        top: Math.min(rect.bottom + 8, window.innerHeight - 340),
-                                        left: Math.min(rect.left, window.innerWidth - 300),
                                     });
                                 }}
                             >
                                 {projectAvatar ? (
                                     <img
+                                        data-project-avatar
                                         src={projectAvatar}
                                         alt={title}
-                                        className="h-24 w-24 rounded-full object-cover shadow-lg border-[3px] border-white group-hover:scale-105 transition-transform duration-200"
+                                        className="h-28 w-28 rounded-full object-cover shadow-xl border-[3px] border-white transition-shadow duration-200 group-hover:shadow-2xl md:h-32 md:w-32"
                                     />
                                 ) : (
-                                    <div className={`h-24 w-24 rounded-full bg-gradient-to-br ${colorClass} flex items-center justify-center text-2xl font-bold text-black shadow-lg border-[3px] border-white group-hover:scale-105 transition-transform duration-200`}>
+                                    <div data-project-avatar className={`h-28 w-28 rounded-full bg-gradient-to-br ${colorClass} flex items-center justify-center text-3xl font-bold text-black shadow-xl border-[3px] border-white transition-shadow duration-200 group-hover:shadow-2xl md:h-32 md:w-32`}>
                                         {getInitials(title)}
                                     </div>
                                 )}
-                                <span className="text-sm font-semibold text-neutral-700 text-center max-w-[96px] truncate">{title}</span>
+                                <span data-project-label className="max-w-[120px] truncate text-center text-sm font-semibold text-neutral-800 md:max-w-[138px]">{title}</span>
                             </motion.div>
                         );
                     })}
                 </motion.div>
             )}
 
+            {typeof document !== 'undefined' && createPortal((
             <AnimatePresence>
                 {ctxMenu && (
-                    <>
-                        <div className="fixed inset-0 z-[190]" onClick={() => setCtxMenu(null)} />
+                    <div className="fixed inset-0 z-[190] flex items-stretch justify-center bg-white px-0 py-0 sm:items-center sm:bg-transparent sm:px-5 sm:py-8">
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="absolute inset-0 hidden bg-black/0 backdrop-blur-[50px] sm:block"
+                            onClick={() => setCtxMenu(null)}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 18 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.93, y: -4 }}
-                            transition={{ duration: 0.12 }}
-                            className="fixed z-[200] w-72 bg-white rounded-2xl shadow-2xl border border-neutral-200 overflow-hidden"
-                            style={{ top: ctxMenu.top, left: ctxMenu.left }}
+                            exit={{ opacity: 0, scale: 0.92, y: 14 }}
+                            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+                            className="relative z-[200] flex h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-none sm:h-auto sm:max-h-[86vh] sm:max-w-5xl sm:rounded-[34px] sm:border sm:border-white/[0.14] sm:shadow-[0_40px_120px_rgba(0,0,0,0.35)]"
                         >
-                            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-100">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    {ctxAvatar ? (
-                                        <img src={ctxAvatar} alt={ctxTitle} className="h-8 w-8 rounded-full object-cover shrink-0" />
-                                    ) : (
-                                        <div className={`h-8 w-8 rounded-full bg-gradient-to-br ${ctxColorClass} flex items-center justify-center text-xs font-bold text-black shrink-0`}>
-                                            {getInitials(ctxTitle)}
-                                        </div>
-                                    )}
-                                    <span className="font-bold text-sm text-neutral-900 truncate">{ctxTitle}</span>
-                                </div>
-                                {(isAdmin || isClientLeader) && (
-                                    <button
-                                        onClick={() => { setCtxMenu(null); setProjectToEdit(ctxProject); }}
-                                        className="p-1.5 rounded-lg hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 transition-colors shrink-0"
-                                        title="Editar proyecto"
-                                    >
-                                        <Pencil size={13} />
-                                    </button>
-                                )}
-                            </div>
-
-                            {(ctxTeam.length > 0 || (ctxProject?.project_clients || []).length > 0) && (
-                                <div className="flex gap-5 px-4 py-2.5 border-b border-neutral-100">
-                                    {ctxTeam.length > 0 && (
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Equipo</span>
-                                            <div className="flex items-center">
-                                                {ctxTeam.slice(0, 6).map((m, i) => (
-                                                    <div
-                                                        key={m.id}
-                                                        title={m.full_name || m.email}
-                                                        className="h-6 w-6 rounded-full bg-neutral-200 border-2 border-white flex items-center justify-center text-[8px] font-bold text-neutral-600 overflow-hidden"
-                                                        style={{ marginLeft: i > 0 ? '-6px' : '0' }}
-                                                    >
-                                                        {m.avatar_url
-                                                            ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                            : getInitials(m.full_name || m.email)
-                                                        }
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {(ctxProject?.project_clients || []).length > 0 && (
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider">Clientes</span>
-                                            <div className="flex items-center">
-                                                {(ctxProject.project_clients || []).slice(0, 6).map((pc, i) => {
-                                                    const c = pc.clients || pc.client;
-                                                    if (!c) return null;
-                                                    return (
-                                                        <div
-                                                            key={pc.client_id}
-                                                            title={c.company_name || c.full_name}
-                                                            className="h-6 w-6 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-[8px] font-bold text-blue-700"
-                                                            style={{ marginLeft: i > 0 ? '-6px' : '0' }}
+                            <div className="flex min-h-0 flex-col overflow-y-auto bg-[#f5f5f7] sm:bg-white">
+                                <div className="relative overflow-visible bg-neutral-950 px-5 pb-8 pt-[calc(env(safe-area-inset-top)+22px)] text-white sm:overflow-hidden sm:px-8 sm:py-8 md:px-12 md:py-10">
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_10%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.10),transparent_28%)]" />
+                                    <div className="relative flex flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-5 sm:text-left">
+                                        <div className="flex min-w-0 flex-1 flex-col items-center gap-4 sm:items-start sm:gap-6 md:flex-row md:items-center">
+                                            {ctxAvatar ? (
+                                                <img src={ctxAvatar} alt={ctxTitle} className="h-28 w-28 shrink-0 rounded-full border-4 border-white/[0.14] object-cover shadow-2xl sm:h-32 sm:w-32 md:h-40 md:w-40" />
+                                            ) : (
+                                                <div className={`h-28 w-28 shrink-0 rounded-full border-4 border-white/[0.14] bg-gradient-to-br ${ctxColorClass} flex items-center justify-center text-3xl font-black text-black shadow-2xl sm:h-32 sm:w-32 sm:text-4xl md:h-40 md:w-40 md:text-5xl`}>
+                                                    {getInitials(ctxTitle)}
+                                                </div>
+                                            )}
+                                            <div className="min-w-0 max-w-full">
+                                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-white/45 sm:mb-2 sm:text-xs sm:tracking-[0.28em]">Proyecto</p>
+                                                <h2 className="max-w-full break-words text-3xl font-black leading-[0.95] tracking-tight text-white sm:text-4xl md:text-6xl">{ctxTitle}</h2>
+                                                <div className="mt-4 flex flex-wrap items-center justify-center gap-3 sm:mt-5 sm:justify-start">
+                                                    {(isAdmin || isClientLeader) && (
+                                                        <button
+                                                            onClick={() => { setCtxMenu(null); setProjectToEdit(ctxProject); }}
+                                                            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-black shadow-lg transition-transform hover:scale-105 sm:px-5 sm:py-3 sm:text-base"
                                                         >
-                                                            {getInitials(c.company_name || c.full_name)}
+                                                            <Pencil size={16} />
+                                                            Editar proyecto
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setCtxMenu(null)}
+                                            className="absolute right-0 top-[calc(env(safe-area-inset-top)+2px)] flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors active:scale-95 hover:bg-white hover:text-black sm:static sm:h-12 sm:w-12"
+                                            title="Cerrar"
+                                        >
+                                            <X size={22} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid gap-4 px-4 py-4 sm:gap-6 sm:px-8 sm:py-8 md:grid-cols-[1fr_1fr] md:px-12">
+                                    {(ctxTeam.length > 0 || (ctxProject?.project_clients || []).length > 0) && (
+                                        <div className="rounded-[26px] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)] sm:rounded-3xl sm:bg-neutral-50 sm:p-6 sm:shadow-none">
+                                            <h3 className="mb-4 text-lg font-black text-neutral-950 sm:mb-5 sm:text-xl">Personas</h3>
+                                            <div className="grid gap-6 sm:grid-cols-2">
+                                                {ctxTeam.length > 0 && (
+                                                    <div>
+                                                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">Equipo</span>
+                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                            {ctxTeam.slice(0, 8).map((m) => (
+                                                                <div
+                                                                    key={m.id}
+                                                                    title={m.full_name || m.email}
+                                                                    className="h-10 w-10 rounded-full border-2 border-white bg-neutral-200 flex items-center justify-center overflow-hidden text-xs font-bold text-neutral-700 shadow-sm sm:h-12 sm:w-12 sm:text-sm"
+                                                                >
+                                                                    {m.avatar_url
+                                                                        ? <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
+                                                                        : getInitials(m.full_name || m.email)
+                                                                    }
+                                                                </div>
+                                                            ))}
                                                         </div>
-                                                    );
-                                                })}
+                                                    </div>
+                                                )}
+                                                {(ctxProject?.project_clients || []).length > 0 && (
+                                                    <div>
+                                                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">Clientes</span>
+                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                            {(ctxProject.project_clients || []).slice(0, 8).map((pc) => {
+                                                                const c = pc.clients || pc.client;
+                                                                if (!c) return null;
+                                                                return (
+                                                                    <div
+                                                                        key={pc.client_id}
+                                                                        title={c.company_name || c.full_name}
+                                                                        className="h-10 w-10 rounded-full border-2 border-white bg-neutral-900 flex items-center justify-center text-xs font-bold text-white shadow-sm sm:h-12 sm:w-12 sm:text-sm"
+                                                                    >
+                                                                        {getInitials(c.company_name || c.full_name)}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {(ctxProject?.figma_url || ctxProject?.jam_url || ctxProject?.drive_url) && (
+                                        <div className="rounded-[26px] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)] sm:rounded-3xl sm:bg-neutral-50 sm:p-6 sm:shadow-none">
+                                            <h3 className="mb-4 text-lg font-black text-neutral-950 sm:mb-5 sm:text-xl">Archivos</h3>
+                                            <div className="grid gap-3">
+                                                {ctxProject?.figma_url && (
+                                                    <a
+                                                        href={ctxProject.figma_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-3 rounded-[20px] bg-[#f5f5f7] px-4 py-3.5 text-base font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-4 sm:bg-white sm:py-4 sm:text-lg sm:shadow-sm"
+                                                    >
+                                                        <img src={figmaIcon} alt="Figma" className="h-7 w-7 sm:h-8 sm:w-8" />
+                                                        Figma Design
+                                                    </a>
+                                                )}
+                                                {ctxProject?.jam_url && (
+                                                    <a
+                                                        href={ctxProject.jam_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-3 rounded-[20px] bg-[#f5f5f7] px-4 py-3.5 text-base font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-4 sm:bg-white sm:py-4 sm:text-lg sm:shadow-sm"
+                                                    >
+                                                        <img src={figmaIcon} alt="Figma JAM" className="h-7 w-7 sm:h-8 sm:w-8" />
+                                                        Figma JAM
+                                                    </a>
+                                                )}
+                                                {ctxProject?.drive_url && (
+                                                    <a
+                                                        href={ctxProject.drive_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-3 rounded-[20px] bg-[#f5f5f7] px-4 py-3.5 text-base font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-4 sm:bg-white sm:py-4 sm:text-lg sm:shadow-sm"
+                                                    >
+                                                        <img src={driveLogo} alt="Google Drive" className="h-7 w-7 sm:h-8 sm:w-8" />
+                                                        Google Drive
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
                                     )}
                                 </div>
-                            )}
 
-                            {(ctxProject?.figma_url || ctxProject?.jam_url || ctxProject?.drive_url) && (
-                                <div className="flex gap-2 px-4 py-2.5 border-b border-neutral-100">
-                                    {ctxProject?.figma_url && (
-                                        <a
-                                            href={ctxProject.figma_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-2 rounded-lg hover:bg-neutral-100 opacity-60 hover:opacity-100 transition-opacity"
-                                            title="Abrir Figma Design"
-                                        >
-                                            <img src={figmaIcon} alt="Figma" className="w-5 h-5" />
-                                        </a>
-                                    )}
-                                    {ctxProject?.jam_url && (
-                                        <a
-                                            href={ctxProject.jam_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-2 rounded-lg hover:bg-neutral-100 opacity-60 hover:opacity-100 transition-opacity"
-                                            title="Abrir Figma JAM"
-                                        >
-                                            <img src={figmaIcon} alt="Figma JAM" className="w-5 h-5" />
-                                        </a>
-                                    )}
-                                    {ctxProject?.drive_url && (
-                                        <a
-                                            href={ctxProject.drive_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="p-2 rounded-lg hover:bg-neutral-100 opacity-60 hover:opacity-100 transition-opacity"
-                                            title="Abrir Google Drive"
-                                        >
-                                            <img src={driveLogo} alt="Google Drive" className="w-5 h-5" />
-                                        </a>
-                                    )}
+                                <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] sm:px-8 sm:pb-10 md:px-12">
+                                    <h3 className="mb-4 text-lg font-black text-neutral-950 sm:text-xl">Secciones</h3>
+                                    <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                                        {actionCards.map(({ key, label, icon: Icon, suffix }) => {
+                                            const href = suffix === 'tasks'
+                                                ? getProjectServicesHref(ctxProject?.id)
+                                                : getProjectSectionHref(ctxProject?.id, suffix);
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => { if (href) navigate(href); setCtxMenu(null); }}
+                                                    className="group flex min-h-[74px] items-center justify-between gap-3 rounded-[24px] bg-neutral-950 px-4 py-4 text-left text-white shadow-[0_12px_30px_rgba(0,0,0,0.16)] transition-transform active:scale-[0.98] hover:-translate-y-1 hover:scale-[1.02] sm:min-h-[120px] sm:gap-4 sm:rounded-3xl sm:px-6 sm:py-5"
+                                                >
+                                                    <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                                                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-black sm:h-14 sm:w-14">
+                                                            <Icon size={22} />
+                                                        </span>
+                                                        <span className="truncate text-base font-black sm:text-xl">{label}</span>
+                                                    </div>
+                                                    <ChevronRight size={22} className="shrink-0 text-white/45 transition-transform group-hover:translate-x-1 sm:h-6 sm:w-6" />
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            )}
-
-                            <div className="py-1">
-                                {actionCards.map(({ key, label, icon: Icon, suffix }) => {
-                                    const href = suffix === 'tasks'
-                                        ? getProjectServicesHref(ctxProject?.id)
-                                        : getProjectSectionHref(ctxProject?.id, suffix);
-                                    return (
-                                        <button
-                                            key={key}
-                                            onClick={() => { if (href) navigate(href); setCtxMenu(null); }}
-                                            className="w-full flex items-center justify-between gap-3 px-4 py-2.5 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <Icon size={15} className="text-neutral-400 shrink-0" />
-                                                {label}
-                                            </div>
-                                            <ChevronRight size={13} className="text-neutral-300" />
-                                        </button>
-                                    );
-                                })}
                             </div>
                         </motion.div>
-                    </>
+                    </div>
                 )}
             </AnimatePresence>
+            ), document.body)}
 
             <EditProjectModal
                 isOpen={!!projectToEdit}

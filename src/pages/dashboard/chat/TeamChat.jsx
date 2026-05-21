@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Circle, Hash, Image, MessageSquare, Mic, Moon, Plus, RefreshCw, Search, Send, Square, Sun } from 'lucide-react';
+import { ArrowLeft, BarChart3, BookOpen, CalendarDays, ChevronRight, Circle, FileText, Folder, Hash, Image, MessageSquare, Mic, Moon, Plus, RefreshCw, Search, Send, Square, Sun } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
@@ -36,7 +36,7 @@ const buildSlug = (value) => {
 const linkRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 const isHttpUrl = (value) => /^https?:\/\//i.test(value);
 const TEAM_CHANNEL_COLUMNS = 'id, name, slug, created_by, project_id, created_at';
-const TEAM_PROJECT_COLUMNS = 'id, name';
+const TEAM_PROJECT_COLUMNS = '*';
 const TEAM_MESSAGE_COLUMNS = 'id, body, created_at, author_id, author_name, message_type, media_url, file_name, reply_to_id, thread_root_id, author:profiles(id, full_name, email, avatar_url)';
 const TEAM_MEDIA_SIGNED_URL_TTL = 60 * 60 * 24;
 const TEAM_MEDIA_SIGNED_URL_REFRESH_BUFFER_MS = 60 * 1000;
@@ -148,6 +148,35 @@ const getProjectLabel = (project) => {
         || (project?.id ? `Proyecto ${String(project.id).slice(0, 8)}` : 'Proyecto');
 };
 
+const normalizeProjectLookupKey = (value) => {
+    if (!value || typeof value !== 'string') return '';
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/^#\s*/, '')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim()
+        .replace(/\s+/g, ' ');
+};
+
+const getProjectServicesHref = (projectId) => projectId ? `/dashboard/projects/${projectId}/services` : null;
+
+const getProjectSectionHref = (projectId, suffix) => {
+    if (!projectId) return null;
+    if (suffix === 'tasks') return getProjectServicesHref(projectId);
+    if (suffix === 'brand-docs') return `/dashboard/projects/${projectId}/brand-docs`;
+    return `/dashboard/${suffix}?projectId=${projectId}`;
+};
+
+const projectActionItems = [
+    { key: 'tasks', label: 'Servicios', icon: Folder, suffix: 'tasks' },
+    { key: 'reports', label: 'Informes', icon: BarChart3, suffix: 'reports' },
+    { key: 'content-planning', label: 'Contenido', icon: CalendarDays, suffix: 'content-planning' },
+    { key: 'invoices', label: 'Facturas', icon: FileText, suffix: 'invoices' },
+    { key: 'brand-docs', label: 'Brand Docs', icon: BookOpen, suffix: 'brand-docs' },
+];
+
 const isMissingProjectColumnError = (error) => {
     const code = String(error?.code || '');
     const message = String(error?.message || '').toLowerCase();
@@ -215,6 +244,7 @@ const TeamChat = () => {
     const [threadRootMessage, setThreadRootMessage] = useState(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [threadCounts, setThreadCounts] = useState(new Map());
+    const [projectMenu, setProjectMenu] = useState(null);
     const { isDark: isDarkChat, toggle: toggleDark } = useChatDark();
 
     const presenceUser = useMemo(() => ({
@@ -249,11 +279,69 @@ const TeamChat = () => {
         [projects]
     );
 
+    const projectsByLookupKey = useMemo(() => {
+        const map = new Map();
+        projects.forEach((project) => {
+            [
+                project?.name,
+                project?.title,
+                project?.project_name,
+            ].forEach((value) => {
+                const key = normalizeProjectLookupKey(value);
+                if (key && !map.has(key)) map.set(key, project);
+            });
+        });
+        return map;
+    }, [projects]);
+
     const selectedChannelProjectLabel = useMemo(() => {
         if (!selectedChannel?.project_id) return '';
         const relatedProject = projectsById.get(selectedChannel.project_id);
         return getProjectLabel(relatedProject) || `Proyecto ${selectedChannel.project_id.slice(0, 8)}`;
     }, [projectsById, selectedChannel]);
+
+    const getChannelProject = useCallback((channel) => {
+        if (!channel) return null;
+        if (channel.project_id && projectsById.has(channel.project_id)) {
+            return projectsById.get(channel.project_id);
+        }
+        const nameKey = normalizeProjectLookupKey(channel.name);
+        if (nameKey && projectsByLookupKey.has(nameKey)) {
+            return projectsByLookupKey.get(nameKey);
+        }
+        const slugKey = normalizeProjectLookupKey(channel.slug);
+        if (slugKey && projectsByLookupKey.has(slugKey)) {
+            return projectsByLookupKey.get(slugKey);
+        }
+        return null;
+    }, [projectsById, projectsByLookupKey]);
+
+    const getChannelAvatar = useCallback((channel) => {
+        const relatedProject = getChannelProject(channel);
+        return relatedProject?.profile_image_url || relatedProject?.avatar_url || '';
+    }, [getChannelProject]);
+
+    const getChannelTitle = useCallback((channel) => {
+        const relatedProject = getChannelProject(channel);
+        return getProjectLabel(relatedProject) || channel?.name || 'Canal';
+    }, [getChannelProject]);
+
+    const openProjectMenu = useCallback((event, channel) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const relatedProject = getChannelProject(channel);
+        const projectId = channel?.project_id || relatedProject?.id;
+        if (!projectId) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        setProjectMenu({
+            channelId: channel.id,
+            projectId,
+            title: getChannelTitle(channel),
+            avatarUrl: getChannelAvatar(channel),
+            top: Math.min(rect.bottom + 6, window.innerHeight - 250),
+            left: Math.min(rect.left, window.innerWidth - 245),
+        });
+    }, [getChannelAvatar, getChannelProject, getChannelTitle]);
 
     const messageIdKey = useMemo(
         () => messages.map((message) => message.id).join(','),
@@ -417,7 +505,7 @@ const TeamChat = () => {
     }, [hydrateMediaMessages, isAllowed]);
 
     const loadProjects = useCallback(async () => {
-        if (!canCreateChannel) return;
+        if (!isAllowed) return;
         setProjectsLoading(true);
         setProjectsError('');
 
@@ -433,7 +521,7 @@ const TeamChat = () => {
         }
 
         setProjectsLoading(false);
-    }, [canCreateChannel]);
+    }, [isAllowed]);
 
     const loadPeople = useCallback(async () => {
         if (!canCreateChannel) return;
@@ -1003,9 +1091,9 @@ const TeamChat = () => {
     }, [canCreateChannel, loadPeople]);
 
     useEffect(() => {
-        if (!canCreateChannel) return;
+        if (!isAllowed) return;
         loadProjects();
-    }, [canCreateChannel, loadProjects]);
+    }, [isAllowed, loadProjects]);
 
     useEffect(() => {
         if (!canCreateChannel) return;
@@ -1204,7 +1292,7 @@ const TeamChat = () => {
 
     return (
         <div
-            className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
+            className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white chat-shell-ios"
             data-chat-dark={isDarkChat ? 'true' : undefined}
             style={{
                 top: '45px',
@@ -1212,7 +1300,7 @@ const TeamChat = () => {
             }}
         >
             <div className={`flex-1 grid grid-cols-1 min-h-0 ${threadRootMessage ? 'lg:grid-cols-[260px_1fr_340px]' : 'lg:grid-cols-[260px_1fr]'}`}>
-                <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-100 bg-white ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
+                <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-100 bg-white chat-sidebar-ios ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     {/* tabs integradas en el sidebar */}
                     <MessagingTabs variant="sidebar" />
 
@@ -1306,30 +1394,119 @@ const TeamChat = () => {
                         {filteredChannels.map((channel) => {
                             const isActive = channel.id === selectedChannelId;
                             const unreadCount = unreadByChannel.get(channel.id) || 0;
+                            const channelProject = getChannelProject(channel);
+                            const channelAvatar = getChannelAvatar(channel);
+                            const channelTitle = getChannelTitle(channel);
                             return (
-                                <button
+                                <div
                                     key={channel.id}
-                                    onClick={() => setSelectedChannelId(channel.id)}
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => {
+                                        setProjectMenu(null);
+                                        setSelectedChannelId(channel.id);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            setProjectMenu(null);
+                                            setSelectedChannelId(channel.id);
+                                        }
+                                    }}
                                     className={`chat-sidebar-item w-full text-left rounded-md px-2.5 py-1.5 ${isActive ? 'chat-sidebar-active' : ''}`}
                                 >
                                     <div className="flex items-center justify-between gap-1.5">
                                         <div className="flex items-center gap-1.5 min-w-0">
-                                            <span className="text-[13px] text-neutral-400 shrink-0 font-normal">#</span>
+                                            {channelAvatar ? (
+                                                <img
+                                                    src={channelAvatar}
+                                                    alt={channelTitle}
+                                                    className="h-8 w-8 rounded-full object-cover shrink-0"
+                                                />
+                                            ) : (
+                                                <span className="h-8 w-8 rounded-full bg-neutral-100 text-[11px] text-neutral-500 shrink-0 font-semibold flex items-center justify-center">
+                                                    {getInitials(channelTitle)}
+                                                </span>
+                                            )}
                                             <span className={`text-[13px] truncate ${isActive ? 'text-neutral-900 font-semibold' : unreadCount > 0 ? 'text-neutral-900 font-semibold' : 'text-neutral-500 font-medium'}`}>
-                                                {channel.name}
+                                                {channel.name?.toLocaleUpperCase('es-UY')}
                                             </span>
                                         </div>
-                                        {unreadCount > 0 && !isActive && (
-                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" aria-label={`${formatUnread(unreadCount)} sin leer`} />
-                                        )}
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            {unreadCount > 0 && !isActive && (
+                                                <span
+                                                    className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold leading-none text-black shadow-sm"
+                                                    aria-label={`${formatUnread(unreadCount)} sin leer`}
+                                                >
+                                                    {formatUnread(unreadCount)}
+                                                </span>
+                                            )}
+                                            {(channel.project_id || channelProject?.id) && (
+                                                <span
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={(event) => openProjectMenu(event, channel)}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === 'Enter' || event.key === ' ') openProjectMenu(event, channel);
+                                                    }}
+                                            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-neutral-300 hover:bg-neutral-100 hover:text-neutral-700 transition-colors"
+                                                    title="Opciones del proyecto"
+                                                    aria-label={`Opciones de ${channel.name}`}
+                                                >
+                                                    <ChevronRight size={13} />
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
-                                </button>
+                                </div>
                             );
                         })}
                     </div>
+                    {projectMenu && (
+                        <>
+                            <div className="fixed inset-0 z-[180]" onClick={() => setProjectMenu(null)} />
+                            <div
+                                className="fixed z-[190] w-56 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl"
+                                style={{ top: projectMenu.top, left: projectMenu.left }}
+                            >
+                                <div className="flex items-center gap-2.5 border-b border-neutral-100 px-3 py-2.5">
+                                    {projectMenu.avatarUrl ? (
+                                        <img src={projectMenu.avatarUrl} alt={projectMenu.title} className="h-7 w-7 rounded-full object-cover shrink-0" />
+                                    ) : (
+                                        <div className="h-7 w-7 rounded-full bg-neutral-100 text-[10px] font-semibold text-neutral-600 flex items-center justify-center shrink-0">
+                                            {getInitials(projectMenu.title)}
+                                        </div>
+                                    )}
+                                    <p className="min-w-0 truncate text-[13px] font-semibold text-neutral-900">{projectMenu.title}</p>
+                                </div>
+                                <div className="py-1">
+                                    {projectActionItems.map(({ key, label, icon: Icon, suffix }) => {
+                                        const href = getProjectSectionHref(projectMenu.projectId, suffix);
+                                        return (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                onClick={() => {
+                                                    if (href) navigate(href);
+                                                    setProjectMenu(null);
+                                                }}
+                                                className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-[13px] text-neutral-700 hover:bg-neutral-50 transition-colors"
+                                            >
+                                                <span className="flex items-center gap-2.5">
+                                                    <Icon size={14} className="text-neutral-400 shrink-0" />
+                                                    {label}
+                                                </span>
+                                                <ChevronRight size={12} className="text-neutral-300" />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
-                <div className={`relative flex flex-col min-h-0 h-full overflow-hidden bg-white ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
+                <div className={`relative flex flex-col min-h-0 h-full overflow-hidden bg-white chat-main-ios ${!selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
                     {selectedChannel ? (
                         <>
                             <div className="sticky top-0 z-40 shrink-0 chat-header">
@@ -1337,7 +1514,7 @@ const TeamChat = () => {
                                     <div className="min-w-0 flex items-center gap-2.5">
                                         <button
                                             onClick={() => setSelectedChannelId(null)}
-                                            className="lg:hidden p-1.5 -ml-1.5 text-neutral-400 hover:text-neutral-700 transition-colors"
+                                            className="lg:hidden p-1.5 -ml-1.5 rounded-full text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
                                             aria-label="Volver"
                                         >
                                             <ArrowLeft size={18} />
@@ -1387,8 +1564,7 @@ const TeamChat = () => {
 
                             <div
                                 ref={messagesContainerRef}
-                                className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-1.5 custom-scrollbar overscroll-y-contain chat-bg"
-                                style={{ paddingBottom: `calc(${composerHeight}px)` }}
+                                className="flex-1 min-h-0 overflow-y-auto px-4 pt-4 pb-3 space-y-1.5 custom-scrollbar overscroll-y-contain chat-bg"
                             >
                                 {loadingMessages && (
                                     <div className="flex items-center gap-2 text-xs text-neutral-400 py-8 justify-center">
@@ -1451,7 +1627,7 @@ const TeamChat = () => {
                                             <ChatBubble
                                                 variant={isOutbound ? 'sent' : 'received'}
                                                 layout={botMessage ? 'ai' : 'default'}
-                                                className={`chat-animate-in w-full group ${grouped ? 'mt-0.5' : 'mt-3'}`}
+                                                className={`chat-animate-in w-full group gap-1.5 !mb-1 ${grouped ? 'mt-0.5' : 'mt-2'}`}
                                             >
                                                 {grouped ? (
                                                     <div className="w-9 shrink-0" />
@@ -1460,7 +1636,7 @@ const TeamChat = () => {
                                                         <ChatBubbleAvatar
                                                             src={avatarSrc}
                                                             fallback={avatarFallback}
-                                                            className="h-9 w-9 ring-1 ring-black/5"
+                                                            className="h-8 w-8 ring-2 ring-white shadow-sm"
                                                         />
                                                         {!botMessage && isOnline(message.author_id) && (
                                                             <span className="presence-dot" />
@@ -1481,18 +1657,18 @@ const TeamChat = () => {
                                                             )}
                                                         </div>
                                                     )}
-                                                    <div className={`relative flex items-end gap-1 ${isOutbound ? 'flex-row-reverse' : 'flex-row'}`}>
-                                                        <div className={`flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOutbound ? 'flex-row-reverse' : ''}`}>
+                                                    <div className={`relative flex items-end gap-1 ${isOutbound ? 'flex-row' : 'flex-row-reverse'}`}>
+                                                        <div className={`chat-message-actions flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ${isOutbound ? 'chat-message-actions-out' : 'chat-message-actions-in'}`}>
                                                             <button
                                                                 onClick={() => setReplyingTo(message)}
-                                                                className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                                                                className="p-1 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
                                                                 title="Responder"
                                                             >
                                                                 <MessageSquare size={13} />
                                                             </button>
                                                             <button
                                                                 onClick={() => setThreadRootMessage(message)}
-                                                                className="p-1 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                                                                className="p-1 rounded-full text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
                                                                 title="Abrir hilo"
                                                             >
                                                                 <Hash size={13} />
@@ -1508,7 +1684,7 @@ const TeamChat = () => {
                                                                 role="button"
                                                                 tabIndex={0}
                                                                 className={cn(
-                                                                    'chat-bubble relative max-w-full px-3 py-2 text-[13px] leading-relaxed',
+                                                                    'chat-bubble relative max-w-full px-3.5 py-2 text-[14px] leading-[1.35]',
                                                                     isOutbound
                                                                         ? 'chat-bubble-out text-neutral-900'
                                                                         : 'chat-bubble-in text-neutral-900',
@@ -1601,8 +1777,8 @@ const TeamChat = () => {
 
                             <div
                                 ref={composerRef}
-                                className="shrink-0 chat-composer px-4 py-3"
-                                style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+                                className="shrink-0 chat-composer px-3 py-2 sm:px-4 sm:py-3"
+                                style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
                             >
                                 {replyingTo && (
                                     <div className="chat-reply-preview chat-animate-in flex items-center justify-between gap-2 px-3 py-2 mb-2 rounded-md">
@@ -1621,7 +1797,7 @@ const TeamChat = () => {
                                     </div>
                                 )}
                                 <div className="space-y-2">
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-end gap-1.5 sm:items-center">
                                         <input
                                             ref={fileInputRef}
                                             type="file"
@@ -1631,7 +1807,7 @@ const TeamChat = () => {
                                         />
                                         <button
                                             type="button"
-                                            className={`p-2 rounded-lg transition disabled:opacity-50 ${uploadingImage ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'}`}
+                                            className={`chat-composer-icon-button flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition disabled:opacity-50 sm:h-10 sm:w-10 ${uploadingImage ? 'text-neutral-400' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'}`}
                                             title="Adjuntar imagen"
                                             onClick={() => fileInputRef.current?.click()}
                                             disabled={uploadingImage || !selectedChannelId}
@@ -1642,9 +1818,9 @@ const TeamChat = () => {
                                             ref={textareaRef}
                                             value={messageText}
                                             onChange={(event) => setMessageText(event.target.value)}
-                                            placeholder="Escribe un mensaje... (@nombre para mencionar)"
+                                            placeholder="Escribe un mensaje"
                                             rows={1}
-                                            className="flex-1 rounded-xl bg-neutral-50 border border-neutral-200 px-4 py-2.5 text-base lg:text-[14px] focus:outline-none focus:border-neutral-300 focus:bg-white transition-all resize-none min-h-[44px] max-h-32 leading-normal custom-scrollbar"
+                                            className="chat-composer-input min-w-0 flex-1 rounded-full bg-neutral-50 border border-neutral-200 px-4 py-2 text-base lg:text-[14px] focus:outline-none focus:border-blue-300 focus:bg-white transition-all resize-none min-h-[40px] max-h-[40px] sm:min-h-[42px] sm:max-h-32 sm:py-2.5 leading-6 sm:leading-normal custom-scrollbar"
                                             onPaste={(event) => {
                                                 const items = event.clipboardData?.items;
                                                 if (!items || items.length === 0) return;
@@ -1663,7 +1839,7 @@ const TeamChat = () => {
                                             }}
                                         />
                                         <button
-                                            className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${isRecording ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'}`}
+                                            className={`chat-composer-icon-button flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50 sm:h-10 sm:w-10 ${isRecording ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100'}`}
                                             title={isRecording ? 'Detener grabación' : 'Grabar nota de voz'}
                                             onClick={() => isRecording ? stopRecording() : startRecording()}
                                             disabled={uploadingAudio}
@@ -1678,7 +1854,7 @@ const TeamChat = () => {
                                         <button
                                             onClick={handleSend}
                                             disabled={sending || !messageText.trim()}
-                                            className={`p-2.5 rounded-xl transition-all disabled:opacity-30 ${messageText.trim() ? 'bg-neutral-900 text-white hover:bg-neutral-800' : 'text-neutral-400'}`}
+                                            className={`chat-send-button flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all disabled:opacity-30 sm:h-10 sm:w-10 ${messageText.trim() ? 'text-white' : 'text-neutral-400'}`}
                                         >
                                             {sending ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
                                         </button>

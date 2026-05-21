@@ -198,7 +198,7 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                     }`}
                     style={{ transitionTimingFunction: NAVBAR_EASING }}
                 >
-                    <div className="mx-auto px-4 md:px-10 flex items-center justify-between min-h-[56px] md:min-h-[45px] max-w-[1350px]">
+                    <div className="mx-auto px-4 md:px-10 flex items-center justify-between min-h-[44px] md:min-h-[45px] max-w-[1350px]">
                         {/* Logo */}
                         <PrefetchLink to="/dashboard" className="flex items-center gap-2 group">
                             <OptimizedImage
@@ -206,7 +206,7 @@ const DashboardNavbar = ({ autoHideInStudio = false, onVisibilityChange }) => {
                                 alt="DTE Logo"
                                 width={70}
                                 height={24}
-                                className="h-3 w-auto "
+                                className="h-4 w-auto "
                             />
                             <span className="text-white/30 text-xs font-product tracking-widest pl-2 border-l border-white/10 ml-2 hidden sm:block">
                                 PLATFORM
