@@ -36,11 +36,32 @@ function FrameSkeletonLoader() {
   );
 }
 
-function FrameCard({ frame, selected, onSelect, loading, imageUrl }) {
-  const imageError = !imageUrl;
+function FrameCard({ frame, selected, onSelect, loading, imageUrl, status, onVisible }) {
+  const ref = useRef(null);
+  const reportedRef = useRef(false);
+
+  useEffect(() => {
+    if (!ref.current || reportedRef.current || imageUrl) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !reportedRef.current) {
+          reportedRef.current = true;
+          onVisible(frame.nodeId);
+        }
+      },
+      { rootMargin: '400px' } // Pre-load slightly before entering viewport
+    );
+
+    observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [frame.nodeId, onVisible, imageUrl]);
+
+  const hasError = status === 'error';
 
   return (
     <button
+      ref={ref}
       onClick={() => onSelect(frame)}
       disabled={loading}
       className={`group relative aspect-square rounded-lg border-2 transition-all overflow-hidden ${
@@ -54,6 +75,7 @@ function FrameCard({ frame, selected, onSelect, loading, imageUrl }) {
           <img
             src={imageUrl}
             alt={frame.name}
+            loading="lazy"
             className="w-full h-full object-cover"
           />
           {selected && (
@@ -64,15 +86,16 @@ function FrameCard({ frame, selected, onSelect, loading, imageUrl }) {
             </div>
           )}
         </>
-      ) : imageError ? (
+      ) : hasError ? (
         <div className="w-full h-full bg-white/5 flex items-center justify-center">
-          <div className="text-center text-xs text-white/40">
-            <p>Error</p>
+          <div className="text-center text-[10px] text-white/40 px-2">
+            <p className="truncate">{frame.name}</p>
+            <p className="text-rose-400/60 mt-1">No disponible</p>
           </div>
         </div>
       ) : (
         <div className="w-full h-full flex items-center justify-center">
-          <Loader2 size={16} className="text-white/40 animate-spin" />
+          <Loader2 size={16} className="text-white/30 animate-spin" />
         </div>
       )}
 
@@ -101,7 +124,10 @@ export function FigmaFramePicker({
   const [error, setError] = useState(null);
   const [pageDropdownOpen, setPageDropdownOpen] = useState(false);
   const [frameImages, setFrameImages] = useState({}); // { [nodeId]: imageUrl }
+  const [frameStatus, setFrameStatus] = useState({}); // { [nodeId]: 'pending' | 'loading' | 'loaded' | 'error' }
   const dropdownRef = useRef(null);
+  const queueRef = useRef(new Set()); // nodeIds waiting to be loaded
+  const processingRef = useRef(false);
 
   const fileKey = useMemo(() => extractFileKeyFromUrl(figmaInput), [figmaInput]);
   const nodeIdFromUrl = useMemo(() => extractNodeIdFromUrl(figmaInput), [figmaInput]);
@@ -134,46 +160,98 @@ export function FigmaFramePicker({
     loadProjectFigmaUrl();
   }, [open, projectId, figmaInput]);
 
-  // Load images for the selected page (in batches to avoid huge URLs)
+  // Reset image cache when page changes
   useEffect(() => {
-    if (!selectedPage || !fileKey) return;
+    setFrameImages({});
+    setFrameStatus({});
+    queueRef.current = new Set();
+  }, [selectedPage?.id]);
 
-    const loadPageImages = async () => {
-      if (selectedPage.frames.length === 0) {
-        setFrameImages({});
-        return;
-      }
+  // Queue processor: takes up to 5 nodeIds from queue, fetches them, waits, repeats
+  const processQueue = useCallback(async () => {
+    if (processingRef.current || !fileKey) return;
+    if (queueRef.current.size === 0) return;
 
-      setFrameImages({});
+    processingRef.current = true;
 
-      try {
-        // Batch in groups of 20 to avoid URL too long
-        const BATCH_SIZE = 20;
-        const allFrames = selectedPage.frames;
+    try {
+      while (queueRef.current.size > 0) {
+        // Take up to 5 at a time (small batches to avoid 429)
+        const batch = Array.from(queueRef.current).slice(0, 5);
+        batch.forEach(id => queueRef.current.delete(id));
 
-        for (let i = 0; i < allFrames.length; i += BATCH_SIZE) {
-          const batch = allFrames.slice(i, i + BATCH_SIZE);
-          const nodeIds = batch.map(f => f.nodeId).join(',');
+        // Mark as loading
+        setFrameStatus(prev => {
+          const next = { ...prev };
+          batch.forEach(id => { next[id] = 'loading'; });
+          return next;
+        });
 
+        try {
+          const nodeIds = batch.join(',');
           const response = await fetch(
             `/api/integrations?service=figma&action=export-images&fileKey=${encodeURIComponent(fileKey)}&nodeIds=${encodeURIComponent(nodeIds)}`
           );
 
-          if (!response.ok) {
-            console.warn('Failed to load image batch', i);
+          if (response.status === 429) {
+            // Rate limited - re-queue and wait longer
+            batch.forEach(id => queueRef.current.add(id));
+            setFrameStatus(prev => {
+              const next = { ...prev };
+              batch.forEach(id => { next[id] = 'pending'; });
+              return next;
+            });
+            await new Promise(r => setTimeout(r, 3000));
             continue;
           }
 
-          const data = await response.json();
-          setFrameImages(prev => ({ ...prev, ...(data.images || {}) }));
+          if (response.ok) {
+            const data = await response.json();
+            const images = data.images || {};
+            setFrameImages(prev => ({ ...prev, ...images }));
+            setFrameStatus(prev => {
+              const next = { ...prev };
+              batch.forEach(id => {
+                next[id] = images[id] ? 'loaded' : 'error';
+              });
+              return next;
+            });
+          } else {
+            setFrameStatus(prev => {
+              const next = { ...prev };
+              batch.forEach(id => { next[id] = 'error'; });
+              return next;
+            });
+          }
+        } catch (err) {
+          console.warn('Batch failed:', err);
+          setFrameStatus(prev => {
+            const next = { ...prev };
+            batch.forEach(id => { next[id] = 'error'; });
+            return next;
+          });
         }
-      } catch (err) {
-        console.error('Failed to load page images:', err);
-      }
-    };
 
-    loadPageImages();
-  }, [selectedPage, fileKey]);
+        // Throttle: wait ~600ms between batches (≈50 req/min, well under Figma's 120/min)
+        await new Promise(r => setTimeout(r, 600));
+      }
+    } finally {
+      processingRef.current = false;
+    }
+  }, [fileKey]);
+
+  // Called when a frame card scrolls into view
+  const handleFrameVisible = useCallback((nodeId) => {
+    // Already loaded or in-flight? Skip.
+    if (frameImages[nodeId]) return;
+    if (frameStatus[nodeId] === 'loading' || frameStatus[nodeId] === 'loaded') return;
+
+    queueRef.current.add(nodeId);
+    setFrameStatus(prev => prev[nodeId] ? prev : { ...prev, [nodeId]: 'pending' });
+
+    // Kick off processor (no-op if already running)
+    processQueue();
+  }, [frameImages, frameStatus, processQueue]);
 
   const handleLoadFrames = useCallback(async () => {
     if (!fileKey) {
@@ -406,12 +484,12 @@ export function FigmaFramePicker({
                 {/* Frames Grid */}
                 {selectedPage && selectedPage.frames.length > 0 ? (
                   <div>
-                    <label className="block text-xs font-medium text-white/60 mb-3">
-                      Frames ({selectedPage.frames.length})
+                    <label className="block text-xs font-medium text-white/60 mb-3 flex items-center justify-between">
+                      <span>Frames ({selectedPage.frames.length})</span>
+                      <span className="text-white/30 text-[10px] font-normal">
+                        {Object.keys(frameImages).length}/{selectedPage.frames.length} cargados
+                      </span>
                     </label>
-                    {Object.keys(frameImages).length === 0 && (
-                      <FrameSkeletonLoader />
-                    )}
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                       {selectedPage.frames.map(frame => (
                         <FrameCard
@@ -421,6 +499,8 @@ export function FigmaFramePicker({
                           onSelect={handleSelectFrame}
                           loading={loading}
                           imageUrl={frameImages[frame.nodeId]}
+                          status={frameStatus[frame.nodeId]}
+                          onVisible={handleFrameVisible}
                         />
                       ))}
                     </div>
