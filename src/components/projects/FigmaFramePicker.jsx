@@ -13,7 +13,13 @@ import { supabase } from '@/lib/supabaseClient';
 
 function extractFileKeyFromUrl(url) {
   if (!url) return null;
-  const match = url.match(/figma\.com\/design\/([a-zA-Z0-9]+)/);
+  const match = url.match(/figma\.com\/(?:design|file)\/([a-zA-Z0-9]+)/);
+  return match ? match[1] : null;
+}
+
+function extractNodeIdFromUrl(url) {
+  if (!url) return null;
+  const match = url.match(/[?&]node-id=([0-9A-Za-z-]+)/);
   return match ? match[1] : null;
 }
 
@@ -98,6 +104,7 @@ export function FigmaFramePicker({
   const dropdownRef = useRef(null);
 
   const fileKey = useMemo(() => extractFileKeyFromUrl(figmaInput), [figmaInput]);
+  const nodeIdFromUrl = useMemo(() => extractNodeIdFromUrl(figmaInput), [figmaInput]);
 
   // When opening the modal: load project's figma_url if available
   useEffect(() => {
@@ -181,8 +188,9 @@ export function FigmaFramePicker({
     setFrameImages({});
 
     try {
+      const nodeParam = nodeIdFromUrl ? `&nodeId=${encodeURIComponent(nodeIdFromUrl)}` : '';
       const response = await fetch(
-        `/api/figma?action=get-frames&fileKey=${encodeURIComponent(fileKey)}`
+        `/api/figma?action=get-frames&fileKey=${encodeURIComponent(fileKey)}${nodeParam}`
       );
 
       const data = await response.json().catch(() => ({}));
@@ -210,7 +218,7 @@ export function FigmaFramePicker({
     } finally {
       setLoading(false);
     }
-  }, [fileKey]);
+  }, [fileKey, nodeIdFromUrl]);
 
   const handleSelectFrame = useCallback(
     frame => {
@@ -314,7 +322,7 @@ export function FigmaFramePicker({
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="https://figma.com/design/abc123/Project-Name"
+                  placeholder="https://figma.com/design/abc123/...?node-id=1-23"
                   value={figmaInput}
                   onChange={e => setFigmaInput(e.target.value)}
                   onKeyDown={e => {
@@ -337,6 +345,14 @@ export function FigmaFramePicker({
                   Cargar
                 </button>
               </div>
+              <p className="mt-2 text-[11px] text-white/40 leading-relaxed">
+                💡 Tip: en Figma, click derecho en un frame o sección → <span className="text-white/60">Copy link to selection</span>. Así solo cargás los frames de esa parte, no todo el archivo.
+                {nodeIdFromUrl && (
+                  <span className="block mt-1 text-emerald-400">
+                    ✓ Frame específico detectado: {nodeIdFromUrl}
+                  </span>
+                )}
+              </p>
               {error && (
                 <p className="mt-2 text-xs text-red-400">{error}</p>
               )}

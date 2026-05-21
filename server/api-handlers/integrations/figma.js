@@ -171,42 +171,76 @@ function extractFileKeyFromUrl(url) {
 }
 
 async function handleGetFrames(req, res) {
-    const { fileKey } = req.query;
+    const { fileKey, nodeId } = req.query;
     const token = process.env.FIGMA_ACCESS_TOKEN;
 
     if (!token) return res.status(500).json({ error: 'FIGMA_ACCESS_TOKEN not configured' });
     if (!fileKey) return res.status(400).json({ error: 'fileKey is required' });
 
+    // Only consider top-level frame-like nodes (FRAME, COMPONENT, SECTION)
+    const isFrameLike = (node) => ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'SECTION'].includes(node.type);
+
+    const nodeToFrame = (node) => ({
+        nodeId: node.id,
+        name: node.name,
+        width: node.absoluteBoundingBox?.width || node.width || 0,
+        height: node.absoluteBoundingBox?.height || node.height || 0,
+    });
+
     try {
-        const response = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
+        // Mode 1: Specific node requested → fetch just that subtree
+        if (nodeId) {
+            // Figma URLs use "-" but API uses ":"
+            const normalizedNodeId = nodeId.replace(/-/g, ':');
+            const url = `https://api.figma.com/v1/files/${fileKey}/nodes?ids=${encodeURIComponent(normalizedNodeId)}&depth=2`;
+
+            const response = await fetch(url, { headers: { 'X-Figma-Token': token } });
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                return res.status(response.status).json({ error: data.err || data.error || 'Failed to fetch node' });
+            }
+
+            const nodeData = data.nodes?.[normalizedNodeId]?.document;
+            if (!nodeData) {
+                return res.status(404).json({ error: 'Node not found in file' });
+            }
+
+            // If the node itself is a frame-like, return it as a single-page result.
+            // If it's a page/section with children, return its frame-like children.
+            let frames = [];
+            if (isFrameLike(nodeData)) {
+                frames = [nodeToFrame(nodeData)];
+                // Also include its direct frame-like children (sections often contain frames)
+                if (nodeData.children) {
+                    frames = frames.concat(
+                        nodeData.children.filter(isFrameLike).map(nodeToFrame)
+                    );
+                }
+            } else if (nodeData.children) {
+                frames = nodeData.children.filter(isFrameLike).map(nodeToFrame);
+            }
+
+            return res.status(200).json({
+                pages: [{ id: nodeData.id, name: nodeData.name, frames }],
+            });
+        }
+
+        // Mode 2: No nodeId → fetch full file structure, but only TOP-LEVEL frame-like children per page
+        const response = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=2`, {
             headers: { 'X-Figma-Token': token },
         });
 
+        const data = await response.json().catch(() => ({}));
+
         if (!response.ok) {
-            return res.status(response.status).json({ error: 'Failed to fetch Figma file' });
+            return res.status(response.status).json({ error: data.err || data.error || 'Failed to fetch Figma file' });
         }
 
-        const data = await response.json();
-
-        function extractFrames(node, frames = []) {
-            if (node.type === 'FRAME') {
-                frames.push({
-                    nodeId: node.id,
-                    name: node.name,
-                    width: node.width,
-                    height: node.height,
-                });
-            }
-            if (node.children) {
-                node.children.forEach(child => extractFrames(child, frames));
-            }
-            return frames;
-        }
-
-        const pages = data.document.children.map(page => ({
+        const pages = (data.document?.children || []).map(page => ({
             id: page.id,
             name: page.name,
-            frames: extractFrames(page),
+            frames: (page.children || []).filter(isFrameLike).map(nodeToFrame),
         }));
 
         return res.status(200).json({ pages });
