@@ -170,6 +170,41 @@ function extractFileKeyFromUrl(url) {
     return match ? match[1] : null;
 }
 
+// In-memory cache (per serverless instance). Persists across warm invocations.
+const figmaCache = new Map();
+const FRAMES_TTL_MS = 10 * 60 * 1000;  // 10 min for file structure
+const IMAGES_TTL_MS = 30 * 60 * 1000;  // 30 min for image URLs (Figma signed URLs last ~30 days)
+
+function getCached(key) {
+    const entry = figmaCache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+        figmaCache.delete(key);
+        return null;
+    }
+    return entry.value;
+}
+
+function setCached(key, value, ttlMs) {
+    figmaCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+}
+
+// Fetch with automatic retry on 429 (Figma rate limit)
+async function figmaFetch(url, token, retries = 2) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        const response = await fetch(url, { headers: { 'X-Figma-Token': token } });
+
+        if (response.status !== 429 || attempt === retries) {
+            return response;
+        }
+
+        // Exponential backoff: 1s, 2s, 4s
+        const waitMs = 1000 * Math.pow(2, attempt);
+        console.warn(`[figma] 429 received, retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})`);
+        await new Promise(r => setTimeout(r, waitMs));
+    }
+}
+
 async function handleGetFrames(req, res) {
     const { fileKey, nodeId } = req.query;
     const token = process.env.FIGMA_ACCESS_TOKEN;
@@ -187,14 +222,20 @@ async function handleGetFrames(req, res) {
         height: node.absoluteBoundingBox?.height || node.height || 0,
     });
 
+    // Cache key includes mode (file or specific node)
+    const cacheKey = `frames:${fileKey}:${nodeId || 'all'}`;
+    const cached = getCached(cacheKey);
+    if (cached) {
+        return res.status(200).json({ ...cached, fromCache: true });
+    }
+
     try {
         // Mode 1: Specific node requested → fetch just that subtree
         if (nodeId) {
-            // Figma URLs use "-" but API uses ":"
             const normalizedNodeId = nodeId.replace(/-/g, ':');
             const url = `https://api.figma.com/v1/files/${fileKey}/nodes?ids=${encodeURIComponent(normalizedNodeId)}&depth=2`;
 
-            const response = await fetch(url, { headers: { 'X-Figma-Token': token } });
+            const response = await figmaFetch(url, token);
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
@@ -206,12 +247,9 @@ async function handleGetFrames(req, res) {
                 return res.status(404).json({ error: 'Node not found in file' });
             }
 
-            // If the node itself is a frame-like, return it as a single-page result.
-            // If it's a page/section with children, return its frame-like children.
             let frames = [];
             if (isFrameLike(nodeData)) {
                 frames = [nodeToFrame(nodeData)];
-                // Also include its direct frame-like children (sections often contain frames)
                 if (nodeData.children) {
                     frames = frames.concat(
                         nodeData.children.filter(isFrameLike).map(nodeToFrame)
@@ -221,16 +259,13 @@ async function handleGetFrames(req, res) {
                 frames = nodeData.children.filter(isFrameLike).map(nodeToFrame);
             }
 
-            return res.status(200).json({
-                pages: [{ id: nodeData.id, name: nodeData.name, frames }],
-            });
+            const result = { pages: [{ id: nodeData.id, name: nodeData.name, frames }] };
+            setCached(cacheKey, result, FRAMES_TTL_MS);
+            return res.status(200).json(result);
         }
 
-        // Mode 2: No nodeId → fetch full file structure, but only TOP-LEVEL frame-like children per page
-        const response = await fetch(`https://api.figma.com/v1/files/${fileKey}?depth=2`, {
-            headers: { 'X-Figma-Token': token },
-        });
-
+        // Mode 2: No nodeId → fetch full file structure
+        const response = await figmaFetch(`https://api.figma.com/v1/files/${fileKey}?depth=2`, token);
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok) {
@@ -243,7 +278,9 @@ async function handleGetFrames(req, res) {
             frames: (page.children || []).filter(isFrameLike).map(nodeToFrame),
         }));
 
-        return res.status(200).json({ pages });
+        const result = { pages };
+        setCached(cacheKey, result, FRAMES_TTL_MS);
+        return res.status(200).json(result);
     } catch (error) {
         console.error('[figma] get-frames error:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
@@ -262,22 +299,48 @@ async function handleExportImages(req, res) {
         const nodeIdList = String(nodeIds).split(',').filter(Boolean);
         if (nodeIdList.length === 0) return res.status(400).json({ error: 'nodeIds must be non-empty' });
 
+        // Check cache for each node, only fetch the missing ones
+        const cachedImages = {};
+        const missingIds = [];
+        for (const id of nodeIdList) {
+            const cached = getCached(`image:${fileKey}:${id}`);
+            if (cached) {
+                cachedImages[id] = cached;
+            } else {
+                missingIds.push(id);
+            }
+        }
+
+        // If everything is cached, return immediately
+        if (missingIds.length === 0) {
+            return res.status(200).json({ images: cachedImages, fromCache: true });
+        }
+
         const params = new URLSearchParams({
-            ids: nodeIdList.join(','),
+            ids: missingIds.join(','),
             format: 'png',
             scale: '2',
         });
 
-        const response = await fetch(`https://api.figma.com/v1/images/${fileKey}?${params}`, {
-            headers: { 'X-Figma-Token': token },
-        });
+        const response = await figmaFetch(`https://api.figma.com/v1/images/${fileKey}?${params}`, token);
 
         if (!response.ok) {
-            return res.status(response.status).json({ error: 'Failed to export Figma images' });
+            // If Figma rate-limited us but we have some cached, return what we have
+            if (response.status === 429 && Object.keys(cachedImages).length > 0) {
+                return res.status(200).json({ images: cachedImages, partial: true });
+            }
+            return res.status(response.status).json({ error: 'Rate limit exceeded' });
         }
 
         const data = await response.json();
-        return res.status(200).json({ images: data.images || {} });
+        const freshImages = data.images || {};
+
+        // Cache each successful URL individually
+        for (const [id, url] of Object.entries(freshImages)) {
+            if (url) setCached(`image:${fileKey}:${id}`, url, IMAGES_TTL_MS);
+        }
+
+        return res.status(200).json({ images: { ...cachedImages, ...freshImages } });
     } catch (error) {
         console.error('[figma] export-images error:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
