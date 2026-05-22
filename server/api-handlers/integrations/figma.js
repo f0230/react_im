@@ -295,43 +295,67 @@ async function handleExportImages(req, res) {
     if (!fileKey) return res.status(400).json({ error: 'fileKey is required' });
     if (!nodeIds) return res.status(400).json({ error: 'nodeIds is required' });
 
+    const scale = '2';
+    const format = 'png';
+    // Figma signed URLs last ~30 days; we cache for 25 to be safe
+    const EXPIRES_DAYS = 25;
+
     try {
         // Normalize dash-format node IDs (URL format) to colon-format (Figma API format)
         const nodeIdList = String(nodeIds).split(',').filter(Boolean).map(id => id.replace(/-/g, ':'));
         if (nodeIdList.length === 0) return res.status(400).json({ error: 'nodeIds must be non-empty' });
 
-        // Check cache for each node, only fetch the missing ones
-        // Cache key includes scale+format so different export settings don't collide
-        const scale = '2';
-        const format = 'png';
-        const cachedImages = {};
-        const missingIds = [];
+        // ── Layer 1: in-memory cache (fast, per-instance) ──────────────────────
+        const result = {};
+        const needsDb = [];
         for (const id of nodeIdList) {
-            const cached = getCached(`image:${fileKey}:${id}:${scale}:${format}`);
-            if (cached) {
-                cachedImages[id] = cached;
-            } else {
-                missingIds.push(id);
+            const mem = getCached(`image:${fileKey}:${id}:${scale}:${format}`);
+            if (mem) result[id] = mem;
+            else needsDb.push(id);
+        }
+
+        // ── Layer 2: Supabase persistent cache (shared across serverless instances) ──
+        if (needsDb.length > 0 && process.env.VITE_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            try {
+                const supabase = createClient(
+                    process.env.VITE_SUPABASE_URL,
+                    process.env.SUPABASE_SERVICE_ROLE_KEY,
+                    { auth: { autoRefreshToken: false, persistSession: false } }
+                );
+                const now = new Date().toISOString();
+                const { data: rows } = await supabase
+                    .from('figma_image_cache')
+                    .select('node_id, image_url')
+                    .eq('file_key', fileKey)
+                    .eq('scale', scale)
+                    .eq('format', format)
+                    .in('node_id', needsDb)
+                    .gt('expires_at', now);
+
+                for (const row of rows || []) {
+                    result[row.node_id] = row.image_url;
+                    // Warm the in-memory cache too
+                    setCached(`image:${fileKey}:${row.node_id}:${scale}:${format}`, row.image_url, IMAGES_TTL_MS);
+                }
+            } catch (dbErr) {
+                console.warn('[figma] Supabase cache read failed (non-fatal):', dbErr.message);
             }
         }
 
-        // If everything is cached, return immediately
+        const missingIds = nodeIdList.filter(id => !result[id]);
+
         if (missingIds.length === 0) {
-            return res.status(200).json({ images: cachedImages, fromCache: true });
+            return res.status(200).json({ images: result, fromCache: true });
         }
 
-        const params = new URLSearchParams({
-            ids: missingIds.join(','),
-            format,
-            scale,
-        });
-
+        // ── Layer 3: Figma API (only for truly uncached IDs) ───────────────────
+        const params = new URLSearchParams({ ids: missingIds.join(','), format, scale });
         const response = await figmaFetch(`https://api.figma.com/v1/images/${fileKey}?${params}`, token);
 
         if (!response.ok) {
-            // If Figma rate-limited us but we have some cached, return what we have
-            if (response.status === 429 && Object.keys(cachedImages).length > 0) {
-                return res.status(200).json({ images: cachedImages, partial: true });
+            // Rate-limited but we already have some from cache — return partial
+            if (response.status === 429 && Object.keys(result).length > 0) {
+                return res.status(200).json({ images: result, partial: true });
             }
             return res.status(response.status).json({ error: 'Rate limit exceeded' });
         }
@@ -339,12 +363,30 @@ async function handleExportImages(req, res) {
         const data = await response.json();
         const freshImages = data.images || {};
 
-        // Cache each successful URL individually (key includes scale+format)
+        // Persist fresh URLs to both caches
+        const expiresAt = new Date(Date.now() + EXPIRES_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        const rowsToUpsert = [];
         for (const [id, url] of Object.entries(freshImages)) {
-            if (url) setCached(`image:${fileKey}:${id}:${scale}:${format}`, url, IMAGES_TTL_MS);
+            if (!url) continue;
+            result[id] = url;
+            setCached(`image:${fileKey}:${id}:${scale}:${format}`, url, IMAGES_TTL_MS);
+            rowsToUpsert.push({ file_key: fileKey, node_id: id, scale, format, image_url: url, expires_at: expiresAt });
         }
 
-        return res.status(200).json({ images: { ...cachedImages, ...freshImages } });
+        if (rowsToUpsert.length > 0 && process.env.VITE_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            try {
+                const supabase = createClient(
+                    process.env.VITE_SUPABASE_URL,
+                    process.env.SUPABASE_SERVICE_ROLE_KEY,
+                    { auth: { autoRefreshToken: false, persistSession: false } }
+                );
+                await supabase.from('figma_image_cache').upsert(rowsToUpsert, { onConflict: 'file_key,node_id,scale,format' });
+            } catch (dbErr) {
+                console.warn('[figma] Supabase cache write failed (non-fatal):', dbErr.message);
+            }
+        }
+
+        return res.status(200).json({ images: result });
     } catch (error) {
         console.error('[figma] export-images error:', error);
         return res.status(500).json({ error: 'Internal Server Error' });
