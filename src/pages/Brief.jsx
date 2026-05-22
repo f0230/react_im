@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
 
 import logoDte from '@/assets/LOGODTE.svg';
 import { supabase } from '@/lib/supabaseClient';
 import { loadStoredBrief, saveStoredBrief } from '@/lib/briefStorage';
 
-const TOTAL = 8;
+const TOTAL = 9;
 
 const INITIAL = {
     etapa: '',
@@ -17,6 +17,9 @@ const INITIAL = {
     activosDigitales: '',
     presupuesto: '',
     urgencia: '',
+    nombre: '',
+    email: '',
+    whatsapp: '',
 };
 
 const getInitialData = () => {
@@ -101,8 +104,80 @@ function StepChoice({
     );
 }
 
+function StepContact({ step, value, onBack, onSubmit }) {
+    const [local, setLocal] = useState({
+        nombre: value.nombre || '',
+        email: value.email || '',
+        whatsapp: value.whatsapp || '',
+    });
+    const [errors, setErrors] = useState({});
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const nextErrors = {};
+        if (!local.nombre.trim()) nextErrors.nombre = true;
+        if (!local.email.trim() || !local.email.includes('@')) nextErrors.email = true;
+        if (Object.keys(nextErrors).length > 0) {
+            setErrors(nextErrors);
+            return;
+        }
+        onSubmit(local);
+    };
+
+    const inputClass = (hasError) =>
+        `w-full rounded-[22px] border bg-white/[0.03] px-5 py-4 text-white placeholder-white/30 outline-none transition-all text-[15px] ${hasError ? 'border-red-500' : 'border-white/10 focus:border-white/25'}`;
+
+    return (
+        <div className="flex w-full flex-col items-center gap-6 text-center">
+            <div className="space-y-3">
+                <StepMeta step={step} />
+                <h2 className="font-google-sans-flex text-[28px] font-semibold leading-[0.96] tracking-[-0.05em] text-white sm:text-[38px]">
+                    ¿Cómo te contactamos?
+                </h2>
+                <p className="text-sm leading-relaxed text-white/50">
+                    Lo usamos para confirmar la reunión.
+                </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="w-full space-y-3">
+                <input
+                    type="text"
+                    placeholder="Nombre"
+                    value={local.nombre}
+                    onChange={(e) => { setLocal((p) => ({ ...p, nombre: e.target.value })); setErrors((p) => ({ ...p, nombre: false })); }}
+                    className={inputClass(errors.nombre)}
+                />
+                <input
+                    type="email"
+                    placeholder="Email"
+                    value={local.email}
+                    onChange={(e) => { setLocal((p) => ({ ...p, email: e.target.value })); setErrors((p) => ({ ...p, email: false })); }}
+                    className={inputClass(errors.email)}
+                />
+                <input
+                    type="tel"
+                    placeholder="WhatsApp (opcional)"
+                    value={local.whatsapp}
+                    onChange={(e) => setLocal((p) => ({ ...p, whatsapp: e.target.value }))}
+                    className={inputClass(false)}
+                />
+                <button
+                    type="submit"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#0DD122] px-7 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-black transition-colors hover:bg-[#10f129]"
+                >
+                    Agendar llamada
+                    <ArrowRight className="h-4 w-4" />
+                </button>
+            </form>
+
+            <BackBtn onClick={onBack} />
+        </div>
+    );
+}
+
 const Brief = () => {
     const { bookingId } = useParams();
+    const navigate = useNavigate();
     const transitionTimerRef = useRef(null);
 
     const [step, setStep] = useState(getInitialStep);

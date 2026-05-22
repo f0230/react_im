@@ -31,7 +31,7 @@ import {
   addWeeks,
   subWeeks,
 } from 'date-fns';
-import { fetchProjectPosts, subscribeToProjectPosts, deleteDraftGroup } from '@/services/blotatoService';
+import { fetchProjectPosts, subscribeToProjectPosts, deleteDraftGroup, cancelPost, updatePost } from '@/services/blotatoService';
 import { supabase } from '@/lib/supabaseClient';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { usePostStatusPolling } from '@/hooks/usePostStatusPolling';
@@ -378,9 +378,140 @@ function MediaLightbox({ url, onClose }) {
   );
 }
 
-function PostModal({ post, onClose, onEdit, onDelete }) {
+function EditScheduledPostModal({ post, onClose, onSaved }) {
+  const [content, setContent] = useState(post.content_text || '');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (post.scheduled_time) {
+      const d = parsePostDate(post.scheduled_time);
+      if (d) {
+        setDate(format(d, 'yyyy-MM-dd'));
+        setTime(format(d, 'HH:mm'));
+      }
+    }
+  }, [post.scheduled_time]);
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  const handleSave = async () => {
+    if (!content.trim()) { setError('El texto no puede estar vacío.'); return; }
+    setSaving(true);
+    setError(null);
+    try {
+      const updates = { contentText: content.trim() };
+      if (date && time) {
+        updates.scheduledTime = new Date(`${date}T${time}`).toISOString();
+      }
+      const result = await updatePost(post.id, updates);
+      onSaved(result.post);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/50 z-[55]"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.97, y: 6 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 6 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
+        className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none"
+      >
+        <div
+          className="pointer-events-auto w-full max-w-sm bg-[#181818] border border-white/[0.1] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2">
+              <PlatformIcon platform={post.platform} size={13} />
+              <span className="text-xs font-semibold text-white/60">Editar publicación programada</span>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="px-4 py-3 space-y-3">
+            <textarea
+              value={content}
+              onChange={(e) => { setContent(e.target.value); setError(null); }}
+              rows={5}
+              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white/80 placeholder:text-white/20 resize-none outline-none focus:border-white/[0.18] transition-colors leading-relaxed"
+              placeholder="Escribe el texto del post..."
+            />
+
+            <div className="space-y-1.5">
+              <p className="text-[10px] text-white/30 uppercase tracking-wider font-medium">Hora programada</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="flex-1 bg-[#242424] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white/70 outline-none focus:border-white/[0.2] transition-colors"
+                />
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="bg-[#242424] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-xs text-white/70 outline-none focus:border-white/[0.2] transition-colors"
+                />
+              </div>
+            </div>
+
+            {error && (
+              <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl leading-relaxed">
+                {error}
+              </p>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-white/[0.06]">
+            <button
+              onClick={onClose}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-white/40 hover:text-white/70 hover:bg-white/[0.05] border border-white/[0.08] transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !content.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-teal-500 hover:bg-teal-400 text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+              {saving ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
+function PostModal({ post, onClose, onEdit, onDelete, onCancel }) {
   const [lightboxUrl, setLightboxUrl] = useState(null);
-  const [deleting, setDeleting] = useState(false);
+  const [actioning, setActioning] = useState(false);
 
   useEffect(() => {
     const handleKey = (e) => { if (e.key === 'Escape' && !lightboxUrl) onClose(); };
@@ -396,14 +527,26 @@ function PostModal({ post, onClose, onEdit, onDelete }) {
   const hasMedia      = post.media_urls?.length > 0;
 
   const handleDelete = async () => {
-    setDeleting(true);
+    setActioning(true);
     try {
       await onDelete(post);
       onClose();
     } catch (err) {
       console.error('Error deleting draft:', err);
     } finally {
-      setDeleting(false);
+      setActioning(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setActioning(true);
+    try {
+      await onCancel(post);
+      onClose();
+    } catch (err) {
+      console.error('Error cancelling post:', err);
+    } finally {
+      setActioning(false);
     }
   };
 
@@ -500,7 +643,7 @@ function PostModal({ post, onClose, onEdit, onDelete }) {
             ) : <div />}
 
             <div className="flex items-center gap-2">
-              {post.status === 'draft' && onEdit && (
+              {(post.status === 'draft' || post.status === 'scheduled') && onEdit && (
                 <button
                   onClick={() => onEdit(post)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.07] hover:bg-white/[0.12] text-white/60 hover:text-white/90 border border-white/[0.08] transition-colors"
@@ -512,11 +655,21 @@ function PostModal({ post, onClose, onEdit, onDelete }) {
               {post.status === 'draft' && (
                 <button
                   onClick={handleDelete}
-                  disabled={deleting}
+                  disabled={actioning}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-colors disabled:opacity-50"
                 >
-                  {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                  {actioning ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
                   Eliminar
+                </button>
+              )}
+              {post.status === 'scheduled' && onCancel && (
+                <button
+                  onClick={handleCancel}
+                  disabled={actioning}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-colors disabled:opacity-50"
+                >
+                  {actioning ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
+                  Cancelar
                 </button>
               )}
               <button
@@ -551,6 +704,7 @@ export function SocialCalendar({ projectId, canManage }) {
   const [preselectedDate, setPreselectedDate] = useState('');
   const [selectedPost, setSelectedPost] = useState(null);
   const [editingDraft, setEditingDraft] = useState(null);
+  const [editingScheduled, setEditingScheduled] = useState(null);
 
   // Filter state
   const [accountSearch, setAccountSearch]   = useState('');
@@ -703,11 +857,32 @@ export function SocialCalendar({ projectId, canManage }) {
     }
   }, []);
 
+  const handleCancelScheduled = useCallback(async (post) => {
+    setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, status: 'cancelled' } : p)));
+    setSelectedPost(null);
+    try {
+      await cancelPost(post.id);
+    } catch (err) {
+      console.error('Error cancelling post:', err);
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? post : p)));
+    }
+  }, []);
+
   const handleEditDraft = useCallback((post) => {
     setSelectedPost(null);
     setEditingDraft(post);
     setPreselectedDate('');
     setIsCreateOpen(true);
+  }, []);
+
+  const handleEditScheduled = useCallback((post) => {
+    setSelectedPost(null);
+    setEditingScheduled(post);
+  }, []);
+
+  const handleScheduledSaved = useCallback((updatedPost) => {
+    setPosts((prev) => prev.map((p) => (p.id === updatedPost.id ? updatedPost : p)));
+    setEditingScheduled(null);
   }, []);
 
   const handleDayClick = useCallback((day) => {
@@ -883,8 +1058,20 @@ export function SocialCalendar({ projectId, canManage }) {
           <PostModal
             post={selectedPost}
             onClose={() => setSelectedPost(null)}
-            onEdit={canManage ? handleEditDraft : null}
+            onEdit={canManage ? (selectedPost.status === 'scheduled' ? handleEditScheduled : handleEditDraft) : null}
             onDelete={handleDeleteDraft}
+            onCancel={canManage ? handleCancelScheduled : null}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit scheduled post modal */}
+      <AnimatePresence>
+        {editingScheduled && (
+          <EditScheduledPostModal
+            post={editingScheduled}
+            onClose={() => setEditingScheduled(null)}
+            onSaved={handleScheduledSaved}
           />
         )}
       </AnimatePresence>
