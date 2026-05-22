@@ -296,14 +296,18 @@ async function handleExportImages(req, res) {
     if (!nodeIds) return res.status(400).json({ error: 'nodeIds is required' });
 
     try {
-        const nodeIdList = String(nodeIds).split(',').filter(Boolean);
+        // Normalize dash-format node IDs (URL format) to colon-format (Figma API format)
+        const nodeIdList = String(nodeIds).split(',').filter(Boolean).map(id => id.replace(/-/g, ':'));
         if (nodeIdList.length === 0) return res.status(400).json({ error: 'nodeIds must be non-empty' });
 
         // Check cache for each node, only fetch the missing ones
+        // Cache key includes scale+format so different export settings don't collide
+        const scale = '2';
+        const format = 'png';
         const cachedImages = {};
         const missingIds = [];
         for (const id of nodeIdList) {
-            const cached = getCached(`image:${fileKey}:${id}`);
+            const cached = getCached(`image:${fileKey}:${id}:${scale}:${format}`);
             if (cached) {
                 cachedImages[id] = cached;
             } else {
@@ -318,8 +322,8 @@ async function handleExportImages(req, res) {
 
         const params = new URLSearchParams({
             ids: missingIds.join(','),
-            format: 'png',
-            scale: '2',
+            format,
+            scale,
         });
 
         const response = await figmaFetch(`https://api.figma.com/v1/images/${fileKey}?${params}`, token);
@@ -335,9 +339,9 @@ async function handleExportImages(req, res) {
         const data = await response.json();
         const freshImages = data.images || {};
 
-        // Cache each successful URL individually
+        // Cache each successful URL individually (key includes scale+format)
         for (const [id, url] of Object.entries(freshImages)) {
-            if (url) setCached(`image:${fileKey}:${id}`, url, IMAGES_TTL_MS);
+            if (url) setCached(`image:${fileKey}:${id}:${scale}:${format}`, url, IMAGES_TTL_MS);
         }
 
         return res.status(200).json({ images: { ...cachedImages, ...freshImages } });

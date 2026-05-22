@@ -272,11 +272,48 @@ export function FigmaFramePicker({
     setPages([]);
     setSelectedFrames(new Set());
     setFrameImages({});
+    setFrameStatus({});
 
+    // Direct path: URL has a node-id → skip GET /files entirely, fetch image directly
+    if (nodeIdFromUrl) {
+      const normalizedId = nodeIdFromUrl.replace(/-/g, ':');
+      try {
+        const response = await fetch(
+          `/api/integrations?service=figma&action=export-images&fileKey=${encodeURIComponent(fileKey)}&nodeIds=${encodeURIComponent(normalizedId)}`
+        );
+
+        if (response.status === 429) {
+          setCooldownSec(60);
+          throw new Error('Figma alcanzó el límite de requests. Esperá 60 segundos sin hacer clicks.');
+        }
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.error || `Error ${response.status}: No se pudo exportar el frame`);
+        }
+
+        const imageUrl = data.images?.[normalizedId];
+        if (!imageUrl) throw new Error('Figma no devolvió imagen para este node-id');
+
+        const syntheticFrame = { nodeId: normalizedId, name: `Frame ${nodeIdFromUrl}`, fileKey };
+        const syntheticPage = { id: 'direct', name: 'Frame seleccionado', frames: [syntheticFrame] };
+        setPages([syntheticPage]);
+        setSelectedPage(syntheticPage);
+        setFrameImages({ [normalizedId]: imageUrl });
+        setFrameStatus({ [normalizedId]: 'loaded' });
+      } catch (err) {
+        console.error('Error loading direct frame:', err);
+        setError(err.message || 'Error al cargar el frame');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Browse path: no node-id → fetch full file structure
     try {
-      const nodeParam = nodeIdFromUrl ? `&nodeId=${encodeURIComponent(nodeIdFromUrl)}` : '';
       const response = await fetch(
-        `/api/integrations?service=figma&action=get-frames&fileKey=${encodeURIComponent(fileKey)}${nodeParam}`
+        `/api/integrations?service=figma&action=get-frames&fileKey=${encodeURIComponent(fileKey)}`
       );
 
       const data = await response.json().catch(() => ({}));
@@ -297,7 +334,6 @@ export function FigmaFramePicker({
 
       setPages(pagesWithFileKey);
       if (pagesWithFileKey.length > 0) {
-        // Pick first page that has frames
         const firstWithFrames = pagesWithFileKey.find(p => p.frames.length > 0) || pagesWithFileKey[0];
         setSelectedPage(firstWithFrames);
       } else {
@@ -437,11 +473,14 @@ export function FigmaFramePicker({
                 </button>
               </div>
               <p className="mt-2 text-[11px] text-white/40 leading-relaxed">
-                💡 Tip: en Figma, click derecho en un frame o sección → <span className="text-white/60">Copy link to selection</span>. Así solo cargás los frames de esa parte, no todo el archivo.
-                {nodeIdFromUrl && (
-                  <span className="block mt-1 text-emerald-400">
-                    ✓ Frame específico detectado: {nodeIdFromUrl}
+                {nodeIdFromUrl ? (
+                  <span className="text-emerald-400">
+                    ✓ Frame específico detectado ({nodeIdFromUrl}) — se importará directo sin cargar el archivo completo.
                   </span>
+                ) : (
+                  <>
+                    💡 Tip: en Figma, click derecho en un frame → <span className="text-white/60">Copy link to selection</span> para importar un frame directo y ahorrar requests de API.
+                  </>
                 )}
               </p>
               {error && (
