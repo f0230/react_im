@@ -583,13 +583,21 @@ async function handleUpdatePost(req, res, supabase) {
         return res.status(400).json({ error: 'Cannot cancel post that is already publishing or published' });
       }
 
+      // Best-effort: try to cancel on Blotato but don't block if it fails
+      let blotatoWarning = null;
       if (post.blotato_submission_id && post.status === 'scheduled') {
-        const blotatoRes = await fetch(`${BLOTATO_API_BASE}/schedules/${post.blotato_submission_id}`, {
-          method: 'DELETE',
-          headers: { 'blotato-api-key': apiKey }
-        });
-        if (!blotatoRes.ok && blotatoRes.status !== 404) {
-          return res.status(blotatoRes.status).json({ error: 'Blotato API error', detail: await blotatoRes.text() });
+        try {
+          const blotatoRes = await fetch(`${BLOTATO_API_BASE}/schedules/${post.blotato_submission_id}`, {
+            method: 'DELETE',
+            headers: { 'blotato-api-key': apiKey }
+          });
+          if (!blotatoRes.ok && blotatoRes.status !== 404) {
+            blotatoWarning = `Blotato returned ${blotatoRes.status} — schedule may still be active`;
+            console.warn('Blotato cancel warning:', blotatoWarning, await blotatoRes.text().catch(() => ''));
+          }
+        } catch (blotatoErr) {
+          blotatoWarning = `Could not reach Blotato: ${blotatoErr.message}`;
+          console.warn('Blotato cancel warning:', blotatoWarning);
         }
       }
 
@@ -599,7 +607,7 @@ async function handleUpdatePost(req, res, supabase) {
         .eq('id', postId);
 
       if (updateError) throw updateError;
-      return res.status(200).json({ ok: true, status: 'cancelled' });
+      return res.status(200).json({ ok: true, status: 'cancelled', ...(blotatoWarning ? { warning: blotatoWarning } : {}) });
     } catch (error) {
       console.error('Blotato cancel error:', error);
       return res.status(500).json({ error: 'Failed to cancel post', detail: error.message });
@@ -622,6 +630,7 @@ async function handleUpdatePost(req, res, supabase) {
     if (mediaUrls !== undefined) { updates.media_urls = mediaUrls; needsBlotatoUpdate = true; }
     if (scheduledTime !== undefined) { updates.scheduled_time = scheduledTime; needsBlotatoUpdate = true; }
 
+    let blotatoWarning = null;
     if (needsBlotatoUpdate && post.blotato_submission_id) {
       const patchPayload = { patch: {} };
 
@@ -639,14 +648,21 @@ async function handleUpdatePost(req, res, supabase) {
 
       if (scheduledTime !== undefined) patchPayload.patch.scheduledTime = scheduledTime;
 
-      const blotatoRes = await fetch(`${BLOTATO_API_BASE}/schedules/${post.blotato_submission_id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'blotato-api-key': apiKey },
-        body: JSON.stringify(patchPayload)
-      });
+      try {
+        const blotatoRes = await fetch(`${BLOTATO_API_BASE}/schedules/${post.blotato_submission_id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', 'blotato-api-key': apiKey },
+          body: JSON.stringify(patchPayload)
+        });
 
-      if (!blotatoRes.ok) {
-        return res.status(blotatoRes.status).json({ error: 'Blotato API error', detail: await blotatoRes.json().catch(() => ({})) });
+        if (!blotatoRes.ok) {
+          const blotatoErr = await blotatoRes.json().catch(() => ({}));
+          blotatoWarning = `Blotato no pudo actualizar el schedule (${blotatoRes.status}): ${blotatoErr?.message || blotatoErr?.error || 'error desconocido'}`;
+          console.warn('Blotato patch warning:', blotatoWarning, blotatoErr);
+        }
+      } catch (blotatoErr) {
+        blotatoWarning = `No se pudo conectar con Blotato: ${blotatoErr.message}`;
+        console.warn('Blotato patch warning:', blotatoWarning);
       }
     }
 
@@ -654,7 +670,7 @@ async function handleUpdatePost(req, res, supabase) {
       .from('service_posts').update(updates).eq('id', postId).select().single();
     if (updateError) throw updateError;
 
-    return res.status(200).json({ ok: true, post: updatedPost });
+    return res.status(200).json({ ok: true, post: updatedPost, ...(blotatoWarning ? { warning: blotatoWarning } : {}) });
   } catch (error) {
     console.error('Blotato update error:', error);
     return res.status(500).json({ error: 'Failed to update post', detail: error.message });

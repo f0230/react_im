@@ -25,8 +25,8 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { createPost, deleteDraftGroup, getPlatformName, PLATFORM_CONFIG, saveDraftPost, uploadMediaFile } from '@/services/blotatoService';
+import { format, parseISO } from 'date-fns';
+import { createPost, deleteDraftGroup, getPlatformName, PLATFORM_CONFIG, saveDraftPost, updatePost, uploadMediaFile } from '@/services/blotatoService';
 import { generateProjectPostCopy } from '@/services/aiCopyService';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { useImageCompression } from '@/hooks/useImageCompression';
@@ -437,6 +437,7 @@ export function CreatePostModal({
   initialMediaUrls = [],
   draftGroupId = null,
   aiPlanning = null,
+  scheduledPostToEdit = null,
 }) {
   const { accountsForPosting: accounts, loading: accountsLoading } = useBlotatoAccounts(projectId);
   const { compress } = useImageCompression();
@@ -493,6 +494,8 @@ export function CreatePostModal({
   const draftGroupIdRef      = useRef(draftGroupId);
   const loadDraftRef         = useRef(loadDraft);
   const wasOpenRef           = useRef(false);
+  const scheduledPostToEditRef = useRef(scheduledPostToEdit);
+  const scheduledAccountPreselectedRef = useRef(false);
 
   // Keep refs up to date without triggering the reset effect
   useEffect(() => { initialContentRef.current = initialContent; }, [initialContent]);
@@ -500,15 +503,51 @@ export function CreatePostModal({
   useEffect(() => { initialMediaUrlsRef.current = initialMediaUrls; }, [initialMediaUrls]);
   useEffect(() => { draftGroupIdRef.current = draftGroupId; }, [draftGroupId]);
   useEffect(() => { loadDraftRef.current = loadDraft; }, [loadDraft]);
+  useEffect(() => { scheduledPostToEditRef.current = scheduledPostToEdit; }, [scheduledPostToEdit]);
 
   // Reset only when isOpen transitions from false → true (not on parent re-renders)
   useEffect(() => {
     if (!isOpen) {
       wasOpenRef.current = false;
+      scheduledAccountPreselectedRef.current = false;
       return;
     }
     if (wasOpenRef.current) return; // already initialized in this open session
     wasOpenRef.current = true;
+
+    const currentScheduledPost = scheduledPostToEditRef.current;
+
+    if (currentScheduledPost) {
+      // Edit mode: pre-fill from existing scheduled post
+      const scheduledDt = currentScheduledPost.scheduled_time
+        ? parseISO(currentScheduledPost.scheduled_time)
+        : null;
+      setContent(currentScheduledPost.content_text || '');
+      setMediaItems(
+        (currentScheduledPost.media_urls || []).map((url) => ({
+          id: `init-${++mediaIdCounter.current}`,
+          name: url.split('/').pop() || 'media',
+          file: null, previewUrl: url, url,
+          uploading: false, compressing: false, error: null,
+          isVideo: isVideoUrl(url), mimeType: '', sizeBytes: 0,
+        }))
+      );
+      setCoverImageUrl('');
+      setIsCoverUploading(false);
+      setCollaborators([]);
+      setCollaboratorInput('');
+      setFormatOverride(null);
+      setPageSelections({});
+      setSelectedAccountKeys(new Set());
+      setShowDatePicker(true);
+      setScheduledDate(scheduledDt ? format(scheduledDt, 'yyyy-MM-dd') : '');
+      setScheduledTime(scheduledDt ? format(scheduledDt, 'HH:mm') : '');
+      setIsGeneratingCopy(false);
+      setIsSavingDraft(false);
+      setError(null);
+      setDraftRestored(false);
+      return;
+    }
 
     const currentInitialContent   = initialContentRef.current;
     const currentInitialDate      = initialDateRef.current;
@@ -555,6 +594,15 @@ export function CreatePostModal({
     setError(null);
     setDraftRestored(!!savedDraft);
   }, [isOpen]);
+
+  // Pre-select the account matching the scheduled post once accounts load
+  useEffect(() => {
+    if (!isOpen) { scheduledAccountPreselectedRef.current = false; return; }
+    if (!scheduledPostToEdit || accounts.length === 0 || scheduledAccountPreselectedRef.current) return;
+    scheduledAccountPreselectedRef.current = true;
+    const match = accounts.find((a) => a.id === scheduledPostToEdit.account_id);
+    if (match) setSelectedAccountKeys(new Set([getAccountSelectionKey(match)]));
+  }, [isOpen, scheduledPostToEdit, accounts]);
 
   // Autosave draft (text-only) while modal is open
   useEffect(() => {
@@ -979,7 +1027,33 @@ export function CreatePostModal({
     return urls;
   }, [mediaItems]);
 
+  const handleUpdateScheduled = async () => {
+    if (validationError) { setError(validationError); return; }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const uploadedUrls = await uploadPendingMedia();
+      const scheduling = buildScheduling();
+      const updates = {
+        contentText: content.trim(),
+        mediaUrls: uploadedUrls,
+      };
+      if (scheduling.type === 'scheduled' && scheduling.time) {
+        updates.scheduledTime = scheduling.time;
+      }
+      await updatePost(scheduledPostToEdit.id, updates);
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
+    if (scheduledPostToEdit) return handleUpdateScheduled();
+
     if (validationError) { setError(validationError); return; }
     if (isSubmitting) return; // hard guard against double-submit
     setIsSubmitting(true);
@@ -1076,9 +1150,9 @@ export function CreatePostModal({
             <div className="min-w-0 flex-1 space-y-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-white/35">
-                  Publicar en
+                  {scheduledPostToEdit ? 'Editar publicación programada' : 'Publicar en'}
                 </p>
-                {!accountsLoading && accounts.length > 0 && (
+                {!scheduledPostToEdit && !accountsLoading && accounts.length > 0 && (
                   <span className="text-[11px] text-white/25">
                     {selectedAccounts.length}/{accounts.length} seleccionadas
                   </span>
@@ -1099,18 +1173,23 @@ export function CreatePostModal({
                       key={getAccountSelectionKey(account)}
                       account={account}
                       selected={effectiveSelectedAccountKeys.has(getAccountSelectionKey(account))}
-                      onToggle={() => toggleSelectedAccount(account)}
+                      onToggle={scheduledPostToEdit ? undefined : () => toggleSelectedAccount(account)}
                     />
                   ))}
                 </div>
               )}
-              {!accountsLoading && accounts.length > 0 && (
+              {!scheduledPostToEdit && !accountsLoading && accounts.length > 0 && (
                 <p className="text-[10px] text-white/25">
                   Tocá una cuenta para incluirla o excluirla de esta publicación.
                 </p>
               )}
+              {scheduledPostToEdit && !accountsLoading && (
+                <p className="text-[10px] text-white/25">
+                  La cuenta está fija para esta publicación. Podés editar el texto, la media y la hora.
+                </p>
+              )}
 
-              {draftRestored && (
+              {draftRestored && !scheduledPostToEdit && (
                 <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20 w-fit">
                   <RotateCcw size={11} className="text-teal-400" />
                   <span className="text-[10px] text-teal-400 font-medium">Borrador recuperado</span>
@@ -1394,32 +1473,35 @@ export function CreatePostModal({
               <div className="flex-1" />
               {validationError && !error && <span className="text-[11px] text-white/25 truncate max-w-[200px]">{validationError}</span>}
 
-              <button
-                onClick={handleSaveDraft}
-                disabled={!!draftValidationError || isSavingDraft || isSubmitting}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors border border-white/[0.1] text-white/45 hover:text-white/70 hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed"
-                title={draftValidationError || 'Guardar como borrador'}
-              >
-                {isSavingDraft ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
-                {isSavingDraft
-                  ? (mediaItems.some((m) => m.uploading) ? 'Subiendo...' : 'Guardando...')
-                  : 'Borrador'}
-              </button>
+              {!scheduledPostToEdit && (
+                <button
+                  onClick={handleSaveDraft}
+                  disabled={!!draftValidationError || isSavingDraft || isSubmitting}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors border border-white/[0.1] text-white/45 hover:text-white/70 hover:bg-white/[0.05] disabled:opacity-30 disabled:cursor-not-allowed"
+                  title={draftValidationError || 'Guardar como borrador'}
+                >
+                  {isSavingDraft ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+                  {isSavingDraft
+                    ? (mediaItems.some((m) => m.uploading) ? 'Subiendo...' : 'Guardando...')
+                    : 'Borrador'}
+                </button>
+              )}
 
               <button
                 onClick={handleSubmit}
                 disabled={!!validationError || isSubmitting}
                 className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold transition-all ${
                   validationError || isSubmitting ? 'bg-white/[0.06] text-white/25 cursor-not-allowed'
-                  : showDatePicker && scheduledDate && scheduledTime ? 'bg-teal-500 hover:bg-teal-400 text-white shadow-lg shadow-teal-500/20'
-                  : 'bg-white hover:bg-white/90 text-black shadow-md'
+                  : 'bg-teal-500 hover:bg-teal-400 text-white shadow-lg shadow-teal-500/20'
                 }`}
               >
                 {isSubmitting ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    {mediaItems.some((m) => m.uploading) ? 'Subiendo...' : 'Publicando...'}
+                    {mediaItems.some((m) => m.uploading) ? 'Subiendo...' : (scheduledPostToEdit ? 'Guardando...' : 'Publicando...')}
                   </>
+                ) : scheduledPostToEdit ? (
+                  <><Check size={14} /> Guardar cambios</>
                 ) : showDatePicker && scheduledDate && scheduledTime ? (
                   <><Calendar size={14} /> Programar</>
                 ) : (

@@ -135,6 +135,12 @@ export async function checkPostStatus(postId) {
     }
   });
 
+  if (res.status === 429) {
+    const err = new Error('Rate limited (429)');
+    err.status = 429;
+    throw err;
+  }
+
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to check status');
   return data;

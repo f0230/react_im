@@ -1,66 +1,86 @@
 /**
- * Hook para hacer polling del estado de posts en progreso
+ * Hook para hacer polling del estado de posts en progreso.
+ *
+ * Solo hace polling de posts en estado `publishing` (activamente publicándose).
+ * Posts `scheduled` no se pollan — están esperando su hora y no cambian de estado
+ * hasta que Blotato los procesa. Se usa un intervalo único compartido para serializar
+ * los requests y evitar saturar la API (429).
  */
 
 import { useEffect, useRef, useCallback } from 'react';
 import { checkPostStatus } from '@/services/blotatoService';
 
-export function usePostStatusPolling(posts, onUpdate) {
-  const pollingRef = useRef({});
-  const onUpdateRef = useRef(onUpdate);
+const POLL_INTERVAL_MS = 20_000; // 20s entre ciclos
+const BACKOFF_AFTER_429_MS = 60_000; // 1 min de pausa tras rate limit
 
-  // Mantener referencia actualizada del callback
+export function usePostStatusPolling(posts, onUpdate) {
+  const onUpdateRef = useRef(onUpdate);
+  const intervalRef = useRef(null);
+  const queueRef = useRef([]);
+  const backoffUntilRef = useRef(0);
+
   useEffect(() => {
     onUpdateRef.current = onUpdate;
   }, [onUpdate]);
 
-  const pollPost = useCallback(async (post) => {
-    try {
-      const result = await checkPostStatus(post.id);
+  // Only publishing posts need active polling
+  const getPostsToPoll = useCallback(() => {
+    return posts.filter((p) => p.status === 'publishing');
+  }, [posts]);
 
-      if (onUpdateRef.current) {
-        onUpdateRef.current(post.id, result.post);
-      }
+  const runPollCycle = useCallback(async () => {
+    if (Date.now() < backoffUntilRef.current) return;
 
-      // Si es estado final, detener polling
-      if (result.isFinal) {
-        if (pollingRef.current[post.id]) {
-          clearInterval(pollingRef.current[post.id]);
-          delete pollingRef.current[post.id];
+    const toPoll = getPostsToPoll();
+    if (toPoll.length === 0) return;
+
+    for (const post of toPoll) {
+      if (Date.now() < backoffUntilRef.current) break;
+      try {
+        const result = await checkPostStatus(post.id);
+        if (onUpdateRef.current) {
+          onUpdateRef.current(post.id, result.post);
         }
+      } catch (err) {
+        if (err?.message?.includes('429') || String(err?.status) === '429') {
+          backoffUntilRef.current = Date.now() + BACKOFF_AFTER_429_MS;
+          console.warn('Blotato rate limited — pausing polling for 60s');
+          break;
+        }
+        console.error('Polling error for post', post.id, err);
       }
-    } catch (err) {
-      console.error('Polling error for post', post.id, err);
     }
-  }, []);
+  }, [getPostsToPoll]);
 
   useEffect(() => {
-    // Filtrar posts que necesitan polling
-    const postsToPoll = posts.filter(p =>
-      ['publishing', 'scheduled'].includes(p.status)
-    );
+    const toPoll = getPostsToPoll();
 
-    // Iniciar polling para cada post
-    postsToPoll.forEach(post => {
-      if (pollingRef.current[post.id]) return;
-
-      // Poll inmediatamente y luego cada 15 segundos
-      pollPost(post);
-      pollingRef.current[post.id] = setInterval(() => pollPost(post), 15000);
-    });
-
-    // Limpiar polling de posts que ya no necesitan
-    Object.keys(pollingRef.current).forEach(postId => {
-      if (!postsToPoll.find(p => p.id === postId)) {
-        clearInterval(pollingRef.current[postId]);
-        delete pollingRef.current[postId];
+    if (toPoll.length === 0) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
       }
-    });
+      return;
+    }
 
+    if (!intervalRef.current) {
+      // Small delay before first poll so initial render settles
+      const t = setTimeout(() => runPollCycle(), 3000);
+      intervalRef.current = setInterval(runPollCycle, POLL_INTERVAL_MS);
+      return () => {
+        clearTimeout(t);
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      };
+    }
+  }, [getPostsToPoll, runPollCycle]);
+
+  useEffect(() => {
     return () => {
-      Object.values(pollingRef.current).forEach(clearInterval);
-      pollingRef.current = {};
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-  }, [posts, pollPost]);
+  }, []);
 }
-
