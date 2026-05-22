@@ -152,12 +152,11 @@ function AccountItem({ account, selected, onToggle }) {
       type="button"
       aria-pressed={selected}
       onClick={onToggle}
-      title={name}
-      className={`relative isolate w-full select-none flex items-center justify-center py-1.5 rounded-xl transition-all ${
-        selected ? 'opacity-100' : 'opacity-35 hover:opacity-60'
+      className={`relative isolate w-full select-none text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
+        selected ? 'bg-white/[0.05]' : 'opacity-40 hover:opacity-65 hover:bg-white/[0.03]'
       }`}
     >
-      <div className="relative">
+      <div className="relative shrink-0">
         <div className="w-8 h-8 rounded-full bg-[#222] flex items-center justify-center overflow-hidden ring-1 ring-white/10">
           {account.profileImageUrl ? (
             <img src={account.profileImageUrl} alt={name} className="w-full h-full object-cover" />
@@ -165,15 +164,18 @@ function AccountItem({ account, selected, onToggle }) {
             <span className="text-xs font-bold text-white/80">{initial}</span>
           )}
         </div>
-        <div className="absolute -bottom-0.5 -right-0.5 w-[16px] h-[16px] rounded-full bg-[#0c0c0c] flex items-center justify-center ring-1 ring-white/10">
-          <PlatformIcon platform={account.platform} size={9} />
+        <div className="absolute -bottom-0.5 -right-0.5 w-[15px] h-[15px] rounded-full bg-[#0c0c0c] flex items-center justify-center ring-1 ring-white/10">
+          <PlatformIcon platform={account.platform} size={8} />
         </div>
         {selected && (
-          <div className="absolute -top-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center">
+          <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center">
             <Check size={7} className="text-white" strokeWidth={3} />
           </div>
         )}
       </div>
+      <span className="flex-1 text-xs text-white/70 font-medium truncate leading-tight">
+        {name}
+      </span>
     </button>
   );
 }
@@ -735,17 +737,18 @@ export function SocialCalendar({ projectId, canManage }) {
     <div className="flex h-full bg-[#0c0c0c] overflow-hidden rounded-[24px] md:rounded-[32px]">
 
       {/* ── Left sidebar ────────────────────────────────── */}
-      <aside className="w-14 shrink-0 flex flex-col border-r border-white/[0.05] overflow-hidden">
+      <aside className="w-44 shrink-0 flex flex-col border-r border-white/[0.05] overflow-hidden">
 
         {/* Account list */}
-        <div className="flex-1 overflow-y-auto px-1 py-2 no-scrollbar space-y-1">
+        <div className="flex-1 overflow-y-auto px-2 py-2 no-scrollbar space-y-0.5">
           {accountsLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 size={14} className="animate-spin text-white/20" />
             </div>
           ) : filteredAccounts.length === 0 ? (
-            <div className="flex items-center justify-center py-8">
-              <Share2 size={16} className="text-white/15" />
+            <div className="flex flex-col items-center justify-center py-8 text-center px-3">
+              <Share2 size={16} className="text-white/15 mb-2" />
+              <p className="text-[10px] text-white/20">Sin cuentas conectadas</p>
             </div>
           ) : (
             filteredAccounts.map((account) => (
@@ -760,14 +763,14 @@ export function SocialCalendar({ projectId, canManage }) {
         </div>
 
         {/* Add account */}
-        <div className="px-1 pb-3">
+        <div className="px-2 pb-3">
           <button
             type="button"
             onClick={() => setIsBlotatoConfigOpen(true)}
-            title="Añadir cuenta"
-            className="w-full flex items-center justify-center py-2.5 rounded-xl border border-white/[0.08] text-white/30 hover:text-white/70 hover:bg-white/[0.05] hover:border-white/[0.16] transition-all"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-white/[0.08] text-[11px] text-white/30 hover:text-white/60 hover:bg-white/[0.04] hover:border-white/[0.14] transition-all"
           >
-            <UserPlus size={14} />
+            <UserPlus size={12} />
+            Añadir cuenta
           </button>
         </div>
       </aside>
