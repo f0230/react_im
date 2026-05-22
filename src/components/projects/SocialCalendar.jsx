@@ -253,23 +253,23 @@ function WeekPostCard({ post, onClick }) {
 
 function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
   const today = isToday(day);
-  const dayName = format(day, 'EEEE');
+  const dayName = format(day, 'EEE');
   const dateLabel = format(day, 'MMM d');
 
   return (
     <div
-      className="flex-1 flex flex-col border-r border-white/[0.05] last:border-r-0 min-w-0"
+      className="flex flex-col border-r border-white/[0.05] last:border-r-0 min-w-[100px] sm:min-w-0 sm:flex-1"
     >
       {/* Column header */}
-      <div className="px-3 pt-3 pb-2 shrink-0">
-        <p className="text-[11px] font-medium text-white/30 tracking-wide mb-1.5">{dayName}</p>
+      <div className="px-2 sm:px-3 pt-3 pb-2 shrink-0">
+        <p className="text-[10px] font-medium text-white/30 tracking-wide mb-1.5 uppercase">{dayName}</p>
         <div className="inline-flex">
           {today ? (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-500 text-white">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-500 text-white">
               {dateLabel}
             </span>
           ) : (
-            <span className="text-sm font-medium text-white/60">{dateLabel}</span>
+            <span className="text-xs font-medium text-white/60">{dateLabel}</span>
           )}
         </div>
       </div>
@@ -277,7 +277,7 @@ function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
       {/* Posts area */}
       <div
         onClick={() => canManage && onDayClick(day)}
-        className={`flex-1 overflow-y-auto px-2.5 py-2 no-scrollbar ${
+        className={`flex-1 overflow-y-auto px-1.5 sm:px-2.5 py-2 no-scrollbar ${
           canManage ? 'cursor-pointer group' : ''
         }`}
       >
@@ -285,7 +285,6 @@ function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
           <WeekPostCard key={post.id} post={post} onClick={onPostClick} />
         ))}
 
-        {/* Hover add hint */}
         {canManage && posts.length === 0 && (
           <div className="h-full flex items-start pt-4 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <Plus size={16} className="text-white/20" />
@@ -294,59 +293,52 @@ function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
       </div>
 
       {/* Footer: calendar icon */}
-      <div className="shrink-0 px-3 pb-3 pt-1 flex justify-start">
+      <div className="shrink-0 px-2 sm:px-3 pb-3 pt-1 flex justify-start">
         <button
           onClick={(e) => { e.stopPropagation(); if (canManage) onDayClick(day); }}
           className="p-1.5 rounded-lg hover:bg-white/[0.05] transition-colors group/cal"
           title={`Crear publicación para ${dateLabel}`}
         >
-          <CalendarDays size={14} className="text-white/15 group-hover/cal:text-white/40 transition-colors" />
+          <CalendarDays size={13} className="text-white/15 group-hover/cal:text-white/40 transition-colors" />
         </button>
       </div>
     </div>
   );
 }
 
-function MediaThumb({ url, onClick }) {
-  const [errored, setErrored] = useState(false);
-  const isVideo = isVideoUrl(url);
-  return (
-    <button type="button" onClick={() => onClick(url)} className="block focus:outline-none">
-      <div className="w-20 h-20 rounded-xl overflow-hidden bg-white/[0.05] border border-white/[0.06] flex items-center justify-center hover:border-white/20 transition-colors">
-        {isVideo ? (
-          <video
-            src={url}
-            className="w-full h-full object-cover"
-            muted playsInline autoPlay
-            onCanPlay={(e) => e.currentTarget.pause()}
-          />
-        ) : errored ? (
-          <span className="text-[9px] text-white/25 text-center px-1 leading-relaxed">
-            Sin<br/>preview
-          </span>
-        ) : (
-          <img
-            src={url}
-            alt=""
-            className="w-full h-full object-cover"
-            onError={() => setErrored(true)}
-          />
-        )}
-      </div>
-    </button>
-  );
-}
-
-function MediaGrid({ urls, onMediaClick }) {
+function InlineMedia({ urls, onExpand }) {
   if (!urls?.length) return null;
+  const single = urls.length === 1;
+
   return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/25 mb-2">
-        Archivos
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {urls.map((url, i) => <MediaThumb key={i} url={url} onClick={onMediaClick} />)}
-      </div>
+    <div className={`overflow-hidden rounded-xl ${single ? '' : 'flex gap-1.5 overflow-x-auto no-scrollbar'}`}>
+      {urls.map((url, i) => {
+        const isVideo = isVideoUrl(url);
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onExpand(url)}
+            className={`relative block overflow-hidden rounded-xl bg-white/[0.04] shrink-0 group/media
+              ${single ? 'w-full h-48' : 'w-40 h-40'}`}
+          >
+            {isVideo ? (
+              <video
+                src={url}
+                className="w-full h-full object-cover"
+                muted playsInline autoPlay
+                onCanPlay={(e) => e.currentTarget.pause()}
+              />
+            ) : (
+              <img src={url} alt="" className="w-full h-full object-cover" />
+            )}
+            {/* expand hint */}
+            <div className="absolute inset-0 bg-black/0 group-hover/media:bg-black/30 transition-colors flex items-center justify-center">
+              <ExternalLink size={16} className="text-white opacity-0 group-hover/media:opacity-100 transition-opacity drop-shadow" />
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -364,7 +356,7 @@ function MediaLightbox({ url, onClose }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/92 z-[60] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <button
@@ -373,7 +365,7 @@ function MediaLightbox({ url, onClose }) {
       >
         <X size={18} />
       </button>
-      <div onClick={(e) => e.stopPropagation()} className="max-w-4xl max-h-[90vh] flex items-center justify-center">
+      <div onClick={(e) => e.stopPropagation()} className="max-w-4xl max-h-[90vh]">
         {isVideo ? (
           <video src={url} controls className="max-w-full max-h-[85vh] rounded-xl" autoPlay />
         ) : (
@@ -399,6 +391,7 @@ function PostModal({ post, onClose, onEdit, onDelete }) {
   const createdAt     = parsePostDate(post.created_at);
   const scheduledTime = parsePostDate(post.scheduled_time);
   const publishedAt   = getPublishedDisplayDate(post);
+  const hasMedia      = post.media_urls?.length > 0;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -414,111 +407,123 @@ function PostModal({ post, onClose, onEdit, onDelete }) {
 
   return (
     <>
+      {/* Light backdrop — doesn't dominate the screen */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+        className="fixed inset-0 bg-black/40 z-40"
         onClick={onClose}
       />
+
+      {/* Popover card */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        initial={{ opacity: 0, scale: 0.97, y: 6 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: 8 }}
-        transition={{ duration: 0.18 }}
+        exit={{ opacity: 0, scale: 0.97, y: 6 }}
+        transition={{ duration: 0.15, ease: 'easeOut' }}
         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
       >
         <div
-          className="pointer-events-auto w-full max-w-md bg-[#141414] border border-white/[0.08] rounded-2xl shadow-2xl flex flex-col max-h-[85vh]"
+          className="pointer-events-auto w-full max-w-sm bg-[#181818] border border-white/[0.1] rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden max-h-[88dvh]"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
-            <div className="flex items-center gap-2">
-              <PlatformIcon platform={post.platform} size={16} />
-              <span className="text-sm font-semibold text-white/80 capitalize">{post.platform}</span>
+          {/* Media — full bleed at top if present */}
+          {hasMedia && (
+            <div className="shrink-0 p-3 pb-0">
+              <InlineMedia urls={post.media_urls} onExpand={setLightboxUrl} />
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-white/30 hover:text-white/70"
-            >
-              <X size={15} />
-            </button>
-          </div>
+          )}
 
-          {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar">
-            <div className="flex items-center justify-between">
-              <PostStatusBadge status={post.status} size="md" />
-              {post.status === 'draft' && (
-                <div className="flex items-center gap-2">
-                  {onEdit && (
-                    <button
-                      onClick={() => onEdit(post)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.07] hover:bg-white/[0.12] text-white/60 hover:text-white/90 border border-white/[0.08] transition-colors"
-                    >
-                      <Pencil size={12} />
-                      Editar
-                    </button>
-                  )}
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-colors disabled:opacity-50"
-                  >
-                    {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
-                    Eliminar
-                  </button>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 no-scrollbar">
+
+            {/* Platform + status row */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <PlatformIcon platform={post.platform} size={13} />
+                <span className="text-xs font-semibold text-white/50 capitalize">{post.platform}</span>
+              </div>
+              <PostStatusBadge status={post.status} size="sm" />
+            </div>
+
+            {/* Post text */}
+            {post.content_text && (
+              <p className="text-sm text-white/80 leading-relaxed whitespace-pre-wrap">
+                {post.content_text}
+              </p>
+            )}
+
+            {/* Meta */}
+            <div className="space-y-1.5">
+              {scheduledTime && (
+                <div className="flex items-center gap-1.5 text-xs text-white/35">
+                  <Clock size={11} />
+                  <span>Programado {format(scheduledTime, "d MMM · HH:mm")}</span>
+                </div>
+              )}
+              {post.status === 'published' && publishedAt && (
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400/80">
+                  <CheckCircle2 size={11} />
+                  <span>Publicado {format(publishedAt, "d MMM · HH:mm")}</span>
+                </div>
+              )}
+              {!scheduledTime && !publishedAt && createdAt && (
+                <div className="flex items-center gap-1.5 text-xs text-white/35">
+                  <CalendarDays size={11} />
+                  <span>Creado {format(createdAt, "d MMM · HH:mm")}</span>
                 </div>
               )}
             </div>
 
-            <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
-              {post.content_text}
-            </p>
-
-            {scheduledTime && (
-              <div className="flex items-center gap-2 text-xs text-white/35">
-                <Clock size={12} />
-                <span>Programado {format(scheduledTime, "d 'de' MMMM · HH:mm")}</span>
-              </div>
+            {post.error_message && (
+              <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-xl leading-relaxed">
+                {post.error_message}
+              </p>
             )}
+          </div>
 
-            {post.status === 'published' && publishedAt && (
-              <div className="flex items-center gap-2 text-xs text-emerald-400">
-                <CheckCircle2 size={12} />
-                <span>Publicado {format(publishedAt, "d 'de' MMMM · HH:mm")}</span>
-              </div>
-            )}
-
-            {!scheduledTime && !publishedAt && createdAt && (
-              <div className="flex items-center gap-2 text-xs text-white/35">
-                <CalendarDays size={12} />
-                <span>Creado {format(createdAt, "d 'de' MMMM · HH:mm")}</span>
-              </div>
-            )}
-
-            {post.public_url && (
+          {/* Footer actions */}
+          <div className="shrink-0 flex items-center justify-between gap-2 px-4 py-3 border-t border-white/[0.06]">
+            {post.public_url ? (
               <a
                 href={post.public_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 text-xs font-semibold text-teal-400 hover:text-teal-300 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold text-teal-400 hover:text-teal-300 transition-colors"
               >
                 <ExternalLink size={12} />
                 Ver publicación
               </a>
-            )}
+            ) : <div />}
 
-            {post.error_message && (
-              <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl leading-relaxed">
-                {post.error_message}
-              </p>
-            )}
-
-            {post.media_urls?.length > 0 && (
-              <MediaGrid urls={post.media_urls} onMediaClick={setLightboxUrl} />
-            )}
+            <div className="flex items-center gap-2">
+              {post.status === 'draft' && onEdit && (
+                <button
+                  onClick={() => onEdit(post)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.07] hover:bg-white/[0.12] text-white/60 hover:text-white/90 border border-white/[0.08] transition-colors"
+                >
+                  <Pencil size={11} />
+                  Editar
+                </button>
+              )}
+              {post.status === 'draft' && (
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-colors disabled:opacity-50"
+                >
+                  {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
+                  Eliminar
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -680,9 +685,13 @@ export function SocialCalendar({ projectId, canManage }) {
     postsByDay.get(format(day, 'yyyy-MM-dd')) || [];
 
   const handleDeleteDraft = useCallback(async (post) => {
+    // Optimistic update — remove from local state immediately so UI is instant
+    // (realtime DELETE also handles this once REPLICA IDENTITY FULL migration is applied)
     if (post.post_group_id) {
+      setPosts((prev) => prev.filter((p) => p.post_group_id !== post.post_group_id || p.status !== 'draft'));
       await deleteDraftGroup(post.post_group_id);
     } else {
+      setPosts((prev) => prev.filter((p) => p.id !== post.id));
       const { error } = await supabase
         .from('service_posts')
         .delete()
@@ -767,10 +776,10 @@ export function SocialCalendar({ projectId, canManage }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
-        <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-white/[0.05]">
+        <div className="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/[0.05]">
 
           {/* Week range label */}
-          <span className="text-sm font-semibold text-white/70 tabular-nums w-32 shrink-0">
+          <span className="text-xs sm:text-sm font-semibold text-white/70 tabular-nums shrink-0">
             {weekRangeLabel}
           </span>
 
@@ -780,11 +789,11 @@ export function SocialCalendar({ projectId, canManage }) {
               onClick={prevWeek}
               className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/80 transition-colors"
             >
-              <ChevronLeft size={15} />
+              <ChevronLeft size={14} />
             </button>
             <button
               onClick={goToday}
-              className="px-3 py-1 rounded-lg text-xs font-medium text-white/50 hover:text-white/90 hover:bg-white/[0.06] transition-colors border border-white/[0.08]"
+              className="px-2 sm:px-3 py-1 rounded-lg text-xs font-medium text-white/50 hover:text-white/90 hover:bg-white/[0.06] transition-colors border border-white/[0.08]"
             >
               Hoy
             </button>
@@ -792,14 +801,12 @@ export function SocialCalendar({ projectId, canManage }) {
               onClick={nextWeek}
               className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/80 transition-colors"
             >
-              <ChevronRight size={15} />
+              <ChevronRight size={14} />
             </button>
           </div>
 
-          <div className="w-px h-4 bg-white/[0.08] mx-1" />
-
-          {/* Post search */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.06] flex-1 max-w-xs">
+          {/* Post search — hidden on mobile */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.06] flex-1 max-w-xs">
             <Search size={12} className="text-white/25 shrink-0" />
             <input
               type="text"
@@ -815,28 +822,27 @@ export function SocialCalendar({ projectId, canManage }) {
             )}
           </div>
 
-          {/* Status filter */}
-          <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
+          {/* Status filter — hidden on mobile */}
+          <div className="hidden sm:block">
+            <StatusFilterDropdown value={statusFilter} onChange={setStatusFilter} />
+          </div>
 
-          {/* Sort / filter icons */}
+          {/* Actions */}
           <div className="flex items-center gap-1 ml-auto">
-            <button className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-colors">
+            <button className="hidden sm:flex p-1.5 rounded-lg hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-colors">
               <SlidersHorizontal size={14} />
-            </button>
-            <button className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-colors">
-              <ArrowUpDown size={14} />
             </button>
 
             {/* New post button */}
             {canManage && (
               <>
-                <div className="w-px h-4 bg-white/[0.08] mx-1" />
+                <div className="hidden sm:block w-px h-4 bg-white/[0.08] mx-1" />
                 <button
                   onClick={handleNewPost}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-white/90 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-white/90 transition-colors"
                 >
                   <Plus size={13} />
-                  Nueva
+                  <span className="hidden sm:inline">Nueva</span>
                 </button>
               </>
             )}
@@ -844,23 +850,25 @@ export function SocialCalendar({ projectId, canManage }) {
         </div>
 
         {/* Week grid */}
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative">
           {loadingPosts ? (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center h-full">
               <Loader2 size={20} className="animate-spin text-white/20" />
             </div>
           ) : (
-            <div className="flex-1 flex overflow-hidden">
-              {weekDays.map((day) => (
-                <DayColumn
-                  key={day.toISOString()}
-                  day={day}
-                  posts={getPostsForDay(day)}
-                  canManage={canManage}
-                  onDayClick={handleDayClick}
-                  onPostClick={setSelectedPost}
-                />
-              ))}
+            <div className="flex h-full overflow-x-auto overflow-y-hidden no-scrollbar">
+              <div className="flex h-full min-w-full">
+                {weekDays.map((day) => (
+                  <DayColumn
+                    key={day.toISOString()}
+                    day={day}
+                    posts={getPostsForDay(day)}
+                    canManage={canManage}
+                    onDayClick={handleDayClick}
+                    onPostClick={setSelectedPost}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </div>
