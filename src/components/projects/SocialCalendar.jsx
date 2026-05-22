@@ -19,6 +19,7 @@ import {
   X,
   ExternalLink,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 import {
   format,
@@ -30,7 +31,8 @@ import {
   addWeeks,
   subWeeks,
 } from 'date-fns';
-import { fetchProjectPosts, subscribeToProjectPosts } from '@/services/blotatoService';
+import { fetchProjectPosts, subscribeToProjectPosts, deleteDraftGroup } from '@/services/blotatoService';
+import { supabase } from '@/lib/supabaseClient';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { usePostStatusPolling } from '@/hooks/usePostStatusPolling';
 import { CreatePostModal } from './CreatePostModal';
@@ -150,34 +152,28 @@ function AccountItem({ account, selected, onToggle }) {
       type="button"
       aria-pressed={selected}
       onClick={onToggle}
-      className={`relative isolate w-full select-none text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-        selected ? 'bg-white/[0.06]' : 'opacity-45 hover:opacity-70 hover:bg-white/[0.03]'
+      title={name}
+      className={`relative isolate w-full select-none flex items-center justify-center py-1.5 rounded-xl transition-all ${
+        selected ? 'opacity-100' : 'opacity-35 hover:opacity-60'
       }`}
     >
-      {/* Avatar */}
-      <div className="relative shrink-0 pointer-events-none">
-        <div className="w-9 h-9 rounded-full bg-[#222] flex items-center justify-center overflow-hidden ring-1 ring-white/10">
+      <div className="relative">
+        <div className="w-8 h-8 rounded-full bg-[#222] flex items-center justify-center overflow-hidden ring-1 ring-white/10">
           {account.profileImageUrl ? (
             <img src={account.profileImageUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
-            <span className="text-sm font-bold text-white/80">{initial}</span>
+            <span className="text-xs font-bold text-white/80">{initial}</span>
           )}
         </div>
-        {/* Platform badge */}
-        <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-[#0c0c0c] flex items-center justify-center ring-1 ring-white/10">
-          <PlatformIcon platform={account.platform} size={10} />
+        <div className="absolute -bottom-0.5 -right-0.5 w-[16px] h-[16px] rounded-full bg-[#0c0c0c] flex items-center justify-center ring-1 ring-white/10">
+          <PlatformIcon platform={account.platform} size={9} />
         </div>
-        {/* Selected check */}
         {selected && (
-          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
-            <Check size={8} className="text-white" strokeWidth={3} />
+          <div className="absolute -top-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center">
+            <Check size={7} className="text-white" strokeWidth={3} />
           </div>
         )}
       </div>
-
-      <span className="pointer-events-none flex-1 text-sm text-white/75 font-medium truncate text-left leading-tight">
-        {name}
-      </span>
     </button>
   );
 }
@@ -311,12 +307,12 @@ function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
   );
 }
 
-function MediaThumb({ url }) {
+function MediaThumb({ url, onClick }) {
   const [errored, setErrored] = useState(false);
   const isVideo = isVideoUrl(url);
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
-      <div className="w-20 h-20 rounded-xl overflow-hidden bg-white/[0.05] border border-white/[0.06] flex items-center justify-center">
+    <button type="button" onClick={() => onClick(url)} className="block focus:outline-none">
+      <div className="w-20 h-20 rounded-xl overflow-hidden bg-white/[0.05] border border-white/[0.06] flex items-center justify-center hover:border-white/20 transition-colors">
         {isVideo ? (
           <video
             src={url}
@@ -337,11 +333,11 @@ function MediaThumb({ url }) {
           />
         )}
       </div>
-    </a>
+    </button>
   );
 }
 
-function MediaGrid({ urls }) {
+function MediaGrid({ urls, onMediaClick }) {
   if (!urls?.length) return null;
   return (
     <div>
@@ -349,102 +345,190 @@ function MediaGrid({ urls }) {
         Archivos
       </p>
       <div className="flex flex-wrap gap-2">
-        {urls.map((url, i) => <MediaThumb key={i} url={url} />)}
+        {urls.map((url, i) => <MediaThumb key={i} url={url} onClick={onMediaClick} />)}
       </div>
     </div>
   );
 }
 
-function PostDrawer({ post, onClose, onEdit }) {
-  if (!post) return null;
-
-  const createdAt    = parsePostDate(post.created_at);
-  const scheduledTime = parsePostDate(post.scheduled_time);
-  const publishedAt  = getPublishedDisplayDate(post);
+function MediaLightbox({ url, onClose }) {
+  const isVideo = isVideoUrl(url);
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: 24 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 24 }}
-      transition={{ duration: 0.18 }}
-      className="absolute inset-y-0 right-0 w-80 bg-[#141414] border-l border-white/[0.06] shadow-2xl z-20 flex flex-col"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4"
+      onClick={onClose}
     >
-      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2">
-          <PlatformIcon platform={post.platform} size={16} />
-          <span className="text-sm font-semibold text-white/80 capitalize">{post.platform}</span>
-        </div>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-white/30 hover:text-white/70"
-        >
-          <X size={15} />
-        </button>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar">
-        <div className="flex items-center justify-between">
-          <PostStatusBadge status={post.status} size="md" />
-          {post.status === 'draft' && onEdit && (
-            <button
-              onClick={() => onEdit(post)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.07] hover:bg-white/[0.12] text-white/60 hover:text-white/90 border border-white/[0.08] transition-colors"
-            >
-              <Pencil size={12} />
-              Editar
-            </button>
-          )}
-        </div>
-
-        <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
-          {post.content_text}
-        </p>
-
-        {scheduledTime && (
-          <div className="flex items-center gap-2 text-xs text-white/35">
-            <Clock size={12} />
-            <span>Programado {format(scheduledTime, "d 'de' MMMM · HH:mm")}</span>
-          </div>
-        )}
-
-        {post.status === 'published' && publishedAt && (
-          <div className="flex items-center gap-2 text-xs text-emerald-400">
-            <CheckCircle2 size={12} />
-            <span>Publicado {format(publishedAt, "d 'de' MMMM · HH:mm")}</span>
-          </div>
-        )}
-
-        {!scheduledTime && !publishedAt && createdAt && (
-          <div className="flex items-center gap-2 text-xs text-white/35">
-            <CalendarDays size={12} />
-            <span>Creado {format(createdAt, "d 'de' MMMM · HH:mm")}</span>
-          </div>
-        )}
-
-        {post.public_url && (
-          <a
-            href={post.public_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-xs font-semibold text-teal-400 hover:text-teal-300 transition-colors"
-          >
-            <ExternalLink size={12} />
-            Ver publicación
-          </a>
-        )}
-
-        {post.error_message && (
-          <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl leading-relaxed">
-            {post.error_message}
-          </p>
-        )}
-
-        {post.media_urls?.length > 0 && (
-          <MediaGrid urls={post.media_urls} />
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+      >
+        <X size={18} />
+      </button>
+      <div onClick={(e) => e.stopPropagation()} className="max-w-4xl max-h-[90vh] flex items-center justify-center">
+        {isVideo ? (
+          <video src={url} controls className="max-w-full max-h-[85vh] rounded-xl" autoPlay />
+        ) : (
+          <img src={url} alt="" className="max-w-full max-h-[85vh] rounded-xl object-contain" />
         )}
       </div>
     </motion.div>
+  );
+}
+
+function PostModal({ post, onClose, onEdit, onDelete }) {
+  const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    const handleKey = (e) => { if (e.key === 'Escape' && !lightboxUrl) onClose(); };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose, lightboxUrl]);
+
+  if (!post) return null;
+
+  const createdAt     = parsePostDate(post.created_at);
+  const scheduledTime = parsePostDate(post.scheduled_time);
+  const publishedAt   = getPublishedDisplayDate(post);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await onDelete(post);
+      onClose();
+    } catch (err) {
+      console.error('Error deleting draft:', err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8 }}
+        transition={{ duration: 0.18 }}
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
+      >
+        <div
+          className="pointer-events-auto w-full max-w-md bg-[#141414] border border-white/[0.08] rounded-2xl shadow-2xl flex flex-col max-h-[85vh]"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] shrink-0">
+            <div className="flex items-center gap-2">
+              <PlatformIcon platform={post.platform} size={16} />
+              <span className="text-sm font-semibold text-white/80 capitalize">{post.platform}</span>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors text-white/30 hover:text-white/70"
+            >
+              <X size={15} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 no-scrollbar">
+            <div className="flex items-center justify-between">
+              <PostStatusBadge status={post.status} size="md" />
+              {post.status === 'draft' && (
+                <div className="flex items-center gap-2">
+                  {onEdit && (
+                    <button
+                      onClick={() => onEdit(post)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.07] hover:bg-white/[0.12] text-white/60 hover:text-white/90 border border-white/[0.08] transition-colors"
+                    >
+                      <Pencil size={12} />
+                      Editar
+                    </button>
+                  )}
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 border border-rose-500/20 transition-colors disabled:opacity-50"
+                  >
+                    {deleting ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
+                    Eliminar
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
+              {post.content_text}
+            </p>
+
+            {scheduledTime && (
+              <div className="flex items-center gap-2 text-xs text-white/35">
+                <Clock size={12} />
+                <span>Programado {format(scheduledTime, "d 'de' MMMM · HH:mm")}</span>
+              </div>
+            )}
+
+            {post.status === 'published' && publishedAt && (
+              <div className="flex items-center gap-2 text-xs text-emerald-400">
+                <CheckCircle2 size={12} />
+                <span>Publicado {format(publishedAt, "d 'de' MMMM · HH:mm")}</span>
+              </div>
+            )}
+
+            {!scheduledTime && !publishedAt && createdAt && (
+              <div className="flex items-center gap-2 text-xs text-white/35">
+                <CalendarDays size={12} />
+                <span>Creado {format(createdAt, "d 'de' MMMM · HH:mm")}</span>
+              </div>
+            )}
+
+            {post.public_url && (
+              <a
+                href={post.public_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-xs font-semibold text-teal-400 hover:text-teal-300 transition-colors"
+              >
+                <ExternalLink size={12} />
+                Ver publicación
+              </a>
+            )}
+
+            {post.error_message && (
+              <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl leading-relaxed">
+                {post.error_message}
+              </p>
+            )}
+
+            {post.media_urls?.length > 0 && (
+              <MediaGrid urls={post.media_urls} onMediaClick={setLightboxUrl} />
+            )}
+          </div>
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {lightboxUrl && (
+          <MediaLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -595,6 +679,19 @@ export function SocialCalendar({ projectId, canManage }) {
   const getPostsForDay = (day) =>
     postsByDay.get(format(day, 'yyyy-MM-dd')) || [];
 
+  const handleDeleteDraft = useCallback(async (post) => {
+    if (post.post_group_id) {
+      await deleteDraftGroup(post.post_group_id);
+    } else {
+      const { error } = await supabase
+        .from('service_posts')
+        .delete()
+        .eq('id', post.id)
+        .eq('status', 'draft');
+      if (error) throw error;
+    }
+  }, []);
+
   const handleEditDraft = useCallback((post) => {
     setSelectedPost(null);
     setEditingDraft(post);
@@ -629,57 +726,39 @@ export function SocialCalendar({ projectId, canManage }) {
     <div className="flex h-full bg-[#0c0c0c] overflow-hidden rounded-[24px] md:rounded-[32px]">
 
       {/* ── Left sidebar ────────────────────────────────── */}
-      <aside className="w-56 xl:w-64 shrink-0 flex flex-col border-r border-white/[0.05] overflow-hidden">
-
-        {/* Sidebar search */}
-        <div className="px-3 pt-3 pb-2">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.06]">
-            <Search size={13} className="text-white/30 shrink-0" />
-            <input
-              type="text"
-              value={accountSearch}
-              onChange={(e) => setAccountSearch(e.target.value)}
-              placeholder="Buscar"
-              className="flex-1 bg-transparent text-xs text-white/70 placeholder:text-white/25 outline-none min-w-0"
-            />
-          </div>
-        </div>
+      <aside className="w-14 shrink-0 flex flex-col border-r border-white/[0.05] overflow-hidden">
 
         {/* Account list */}
-        <div className="flex-1 overflow-y-auto px-2 py-1 no-scrollbar space-y-0.5">
+        <div className="flex-1 overflow-y-auto px-1 py-2 no-scrollbar space-y-1">
           {accountsLoading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 size={16} className="animate-spin text-white/20" />
+              <Loader2 size={14} className="animate-spin text-white/20" />
             </div>
           ) : filteredAccounts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-center px-4">
-              <Share2 size={18} className="text-white/15 mb-2" />
-              <p className="text-[11px] text-white/25">Sin cuentas conectadas</p>
+            <div className="flex items-center justify-center py-8">
+              <Share2 size={16} className="text-white/15" />
             </div>
           ) : (
-            <>
-              {filteredAccounts.map((account) => (
-                <AccountItem
-                  key={getAccountSelectionKey(account)}
-                  account={account}
-                  selected={isAccountSelected(account)}
-                  onToggle={() => toggleAccount(account)}
-                />
-              ))}
-              <div className="h-px bg-white/[0.05] mx-2 my-2" />
-            </>
+            filteredAccounts.map((account) => (
+              <AccountItem
+                key={getAccountSelectionKey(account)}
+                account={account}
+                selected={isAccountSelected(account)}
+                onToggle={() => toggleAccount(account)}
+              />
+            ))
           )}
         </div>
 
         {/* Add account */}
-        <div className="px-3 pb-3">
+        <div className="px-1 pb-3">
           <button
             type="button"
             onClick={() => setIsBlotatoConfigOpen(true)}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-white/[0.1] text-xs font-medium text-white/50 hover:text-white/80 hover:bg-white/[0.05] hover:border-white/[0.18] transition-all"
+            title="Añadir cuenta"
+            className="w-full flex items-center justify-center py-2.5 rounded-xl border border-white/[0.08] text-white/30 hover:text-white/70 hover:bg-white/[0.05] hover:border-white/[0.16] transition-all"
           >
-            <UserPlus size={13} />
-            Añadir cuenta
+            <UserPlus size={14} />
           </button>
         </div>
       </aside>
@@ -784,19 +863,20 @@ export function SocialCalendar({ projectId, canManage }) {
               ))}
             </div>
           )}
-
-          {/* Post detail drawer */}
-          <AnimatePresence>
-            {selectedPost && (
-              <PostDrawer
-                post={selectedPost}
-                onClose={() => setSelectedPost(null)}
-                onEdit={canManage ? handleEditDraft : null}
-              />
-            )}
-          </AnimatePresence>
         </div>
       </div>
+
+      {/* Post detail modal */}
+      <AnimatePresence>
+        {selectedPost && (
+          <PostModal
+            post={selectedPost}
+            onClose={() => setSelectedPost(null)}
+            onEdit={canManage ? handleEditDraft : null}
+            onDelete={handleDeleteDraft}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Create post modal */}
       <CreatePostModal
