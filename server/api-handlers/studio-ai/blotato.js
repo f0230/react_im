@@ -115,6 +115,32 @@ function ensurePlatformConsistency(contentPlatform, targetType) {
   }
 }
 
+async function findBlotatoScheduleId(apiKey, accountId, scheduledTime) {
+  if (!scheduledTime) return null;
+  const ourTime = new Date(scheduledTime).getTime();
+  if (Number.isNaN(ourTime)) return null;
+
+  let cursor = null;
+  for (let page = 0; page < 5; page++) {
+    const url = cursor
+      ? `${BLOTATO_API_BASE}/schedules?cursor=${encodeURIComponent(cursor)}`
+      : `${BLOTATO_API_BASE}/schedules`;
+    const res = await fetch(url, { headers: { 'blotato-api-key': apiKey } });
+    if (!res.ok) break;
+    const data = await res.json();
+    const items = data.items || [];
+    for (const s of items) {
+      const matchesAccount = String(s.account?.id) === String(accountId);
+      const theirTime = new Date(s.scheduledAt).getTime();
+      const matchesTime = !Number.isNaN(theirTime) && Math.abs(ourTime - theirTime) < 60_000;
+      if (matchesAccount && matchesTime) return s.id;
+    }
+    if (!data.cursor) break;
+    cursor = data.cursor;
+  }
+  return null;
+}
+
 function getQueryParam(req, name) {
   const value = req?.query?.[name];
   if (value === null || value === undefined) return '';
@@ -585,15 +611,23 @@ async function handleUpdatePost(req, res, supabase) {
 
       // Best-effort: try to cancel on Blotato but don't block if it fails
       let blotatoWarning = null;
-      if (post.blotato_submission_id && post.status === 'scheduled') {
+      if (post.status === 'scheduled') {
         try {
-          const blotatoRes = await fetch(`${BLOTATO_API_BASE}/schedules/${post.blotato_submission_id}`, {
-            method: 'DELETE',
-            headers: { 'blotato-api-key': apiKey }
-          });
-          if (!blotatoRes.ok && blotatoRes.status !== 404) {
-            blotatoWarning = `Blotato returned ${blotatoRes.status} — schedule may still be active`;
-            console.warn('Blotato cancel warning:', blotatoWarning, await blotatoRes.text().catch(() => ''));
+          // Schedule IDs use sch_xxx format — different from postSubmissionId.
+          // Resolve the real schedule ID by listing Blotato schedules.
+          const scheduleId = await findBlotatoScheduleId(apiKey, post.account_id, post.scheduled_time);
+          if (scheduleId) {
+            const blotatoRes = await fetch(`${BLOTATO_API_BASE}/schedules/${scheduleId}`, {
+              method: 'DELETE',
+              headers: { 'blotato-api-key': apiKey }
+            });
+            if (!blotatoRes.ok && blotatoRes.status !== 204 && blotatoRes.status !== 404) {
+              blotatoWarning = `Blotato returned ${blotatoRes.status} — schedule may still be active`;
+              console.warn('Blotato cancel warning:', blotatoWarning, await blotatoRes.text().catch(() => ''));
+            }
+          } else {
+            blotatoWarning = 'Schedule not found in Blotato — may have already been processed';
+            console.warn('Blotato cancel warning:', blotatoWarning);
           }
         } catch (blotatoErr) {
           blotatoWarning = `Could not reach Blotato: ${blotatoErr.message}`;
@@ -631,7 +665,7 @@ async function handleUpdatePost(req, res, supabase) {
     if (scheduledTime !== undefined) { updates.scheduled_time = scheduledTime; needsBlotatoUpdate = true; }
 
     let blotatoWarning = null;
-    if (needsBlotatoUpdate && post.blotato_submission_id) {
+    if (needsBlotatoUpdate && post.status === 'scheduled') {
       const patchPayload = { patch: {} };
 
       if (contentText !== undefined || mediaUrls !== undefined) {
@@ -649,16 +683,23 @@ async function handleUpdatePost(req, res, supabase) {
       if (scheduledTime !== undefined) patchPayload.patch.scheduledTime = scheduledTime;
 
       try {
-        const blotatoRes = await fetch(`${BLOTATO_API_BASE}/schedules/${post.blotato_submission_id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', 'blotato-api-key': apiKey },
-          body: JSON.stringify(patchPayload)
-        });
+        // Schedule IDs use sch_xxx format — resolve the real ID before patching.
+        const scheduleId = await findBlotatoScheduleId(apiKey, post.account_id, post.scheduled_time);
+        if (scheduleId) {
+          const blotatoRes = await fetch(`${BLOTATO_API_BASE}/schedules/${scheduleId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'blotato-api-key': apiKey },
+            body: JSON.stringify(patchPayload)
+          });
 
-        if (!blotatoRes.ok) {
-          const blotatoErr = await blotatoRes.json().catch(() => ({}));
-          blotatoWarning = `Blotato no pudo actualizar el schedule (${blotatoRes.status}): ${blotatoErr?.message || blotatoErr?.error || 'error desconocido'}`;
-          console.warn('Blotato patch warning:', blotatoWarning, blotatoErr);
+          if (!blotatoRes.ok) {
+            const blotatoErr = await blotatoRes.json().catch(() => ({}));
+            blotatoWarning = `Blotato no pudo actualizar el schedule (${blotatoRes.status}): ${blotatoErr?.message || blotatoErr?.error || 'error desconocido'}`;
+            console.warn('Blotato patch warning:', blotatoWarning, blotatoErr);
+          }
+        } else {
+          blotatoWarning = 'Schedule no encontrado en Blotato — los cambios se guardaron solo en DTE';
+          console.warn('Blotato patch warning:', blotatoWarning);
         }
       } catch (blotatoErr) {
         blotatoWarning = `No se pudo conectar con Blotato: ${blotatoErr.message}`;

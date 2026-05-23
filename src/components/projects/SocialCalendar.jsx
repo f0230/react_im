@@ -31,7 +31,7 @@ import {
   addWeeks,
   subWeeks,
 } from 'date-fns';
-import { fetchProjectPosts, subscribeToProjectPosts, deleteDraftGroup, cancelPost } from '@/services/blotatoService';
+import { fetchProjectPosts, subscribeToProjectPosts, deleteDraftGroup, cancelPost, resetPostToDraft } from '@/services/blotatoService';
 import { supabase } from '@/lib/supabaseClient';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { usePostStatusPolling } from '@/hooks/usePostStatusPolling';
@@ -378,7 +378,7 @@ function MediaLightbox({ url, onClose }) {
   );
 }
 
-function PostModal({ post, onClose, onEdit, onDelete, onCancel }) {
+function PostModal({ post, onClose, onEdit, onDelete, onCancel, onMoveToDraft }) {
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [actioning, setActioning] = useState(false);
 
@@ -414,6 +414,18 @@ function PostModal({ post, onClose, onEdit, onDelete, onCancel }) {
       onClose();
     } catch (err) {
       console.error('Error cancelling post:', err);
+    } finally {
+      setActioning(false);
+    }
+  };
+
+  const handleMoveToDraftAction = async () => {
+    setActioning(true);
+    try {
+      await onMoveToDraft(post);
+      onClose();
+    } catch (err) {
+      console.error('Error moving post to draft:', err);
     } finally {
       setActioning(false);
     }
@@ -539,6 +551,16 @@ function PostModal({ post, onClose, onEdit, onDelete, onCancel }) {
                 >
                   {actioning ? <Loader2 size={11} className="animate-spin" /> : <XCircle size={11} />}
                   Cancelar
+                </button>
+              )}
+              {['cancelled', 'failed'].includes(post.status) && onMoveToDraft && (
+                <button
+                  onClick={handleMoveToDraftAction}
+                  disabled={actioning}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.07] hover:bg-white/[0.12] text-white/60 hover:text-white/90 border border-white/[0.08] transition-colors disabled:opacity-50"
+                >
+                  {actioning ? <Loader2 size={11} className="animate-spin" /> : <Pencil size={11} />}
+                  Mover a borrador
                 </button>
               )}
               <button
@@ -737,6 +759,17 @@ export function SocialCalendar({ projectId, canManage }) {
     }
   }, []);
 
+  const handleMoveToDraft = useCallback(async (post) => {
+    setPosts((prev) => prev.map((p) => (p.id === post.id ? { ...p, status: 'draft', scheduled_time: null } : p)));
+    setSelectedPost(null);
+    try {
+      await resetPostToDraft(post.id);
+    } catch (err) {
+      console.error('Error moving post to draft:', err);
+      setPosts((prev) => prev.map((p) => (p.id === post.id ? post : p)));
+    }
+  }, []);
+
   const handleEditDraft = useCallback((post) => {
     setSelectedPost(null);
     setEditingDraft(post);
@@ -929,6 +962,7 @@ export function SocialCalendar({ projectId, canManage }) {
             onEdit={canManage ? (selectedPost.status === 'scheduled' ? handleEditScheduled : handleEditDraft) : null}
             onDelete={handleDeleteDraft}
             onCancel={canManage ? handleCancelScheduled : null}
+            onMoveToDraft={canManage ? handleMoveToDraft : null}
           />
         )}
       </AnimatePresence>

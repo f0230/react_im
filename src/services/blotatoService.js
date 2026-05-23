@@ -116,6 +116,22 @@ export async function saveDraftPost({ serviceId, projectId, contentText, mediaUr
   return data;
 }
 
+export async function resetPostToDraft(postId) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from('service_posts')
+    .update({
+      status: 'draft',
+      blotato_submission_id: null,
+      scheduled_time: null,
+      error_message: null,
+      updated_at: new Date().toISOString(),
+      updated_by: user?.id
+    })
+    .eq('id', postId);
+  if (error) throw error;
+}
+
 export async function deleteDraftGroup(postGroupId) {
   const { error } = await supabase
     .from('service_posts')
