@@ -62,6 +62,7 @@ const ClientChat = () => {
     const messagesContainerRef = useRef(null);
     const inputRef = useRef(null);
     const lastReadRef = useRef({});
+    const messagesRequestRef = useRef(0);
 
     const reactionTable = 'client_message_reactions';
 
@@ -241,6 +242,8 @@ const ClientChat = () => {
 
     const loadMessages = useCallback(async (clientId, background = false) => {
         if (!clientId || !isAllowed) return;
+        const requestId = messagesRequestRef.current + 1;
+        messagesRequestRef.current = requestId;
         if (!background) setLoadingMessages(true);
         setSendError('');
 
@@ -251,8 +254,12 @@ const ClientChat = () => {
             .order('created_at', { ascending: false })
             .limit(100);
 
+        const isCurrentRequest =
+            requestId === messagesRequestRef.current &&
+            selectedClientIdRef.current === clientId;
+
         if (supaError) {
-            if (!background) {
+            if (!background && isCurrentRequest) {
                 if (isMissingRelationError(supaError)) {
                     setMigrationPending(true);
                     setError('Falta crear la tabla de mensajería de clientes (ver supabase/client-messaging.sql).');
@@ -260,10 +267,14 @@ const ClientChat = () => {
                     setError(supaError.message || 'No se pudieron cargar los mensajes.');
                 }
             }
-            setMessages([]);
+            if (isCurrentRequest) setMessages([]);
         } else {
-            setMigrationPending(false);
             const nextMessages = (data || []).reverse();
+            if (!isCurrentRequest || selectedClientIdRef.current !== clientId) {
+                return;
+            }
+
+            setMigrationPending(false);
             setMessages(nextMessages);
 
             // Mark read immediately after fetching to keep unread badges in sync
@@ -277,7 +288,7 @@ const ClientChat = () => {
             }
         }
 
-        if (!background) setLoadingMessages(false);
+        if (!background && isCurrentRequest) setLoadingMessages(false);
     }, [isAllowed, markClientRead]);
 
     const handleSend = useCallback(async () => {
@@ -321,9 +332,11 @@ const ClientChat = () => {
 
 
     useEffect(() => {
+        setMessages([]);
+        setReplyingTo(null);
+        setSendError('');
         if (!selectedClientId || !isAllowed) return;
 
-        setMessages([]);
         loadMessages(selectedClientId);
 
         const subscription = supabase
@@ -337,6 +350,7 @@ const ClientChat = () => {
                     filter: `client_id=eq.${selectedClientId}`,
                 },
                 (payload) => {
+                    if (selectedClientIdRef.current !== selectedClientId) return;
                     setMessages((prev) => {
                         if (prev.some((message) => message.id === payload.new.id)) return prev;
                         return [...prev, payload.new];

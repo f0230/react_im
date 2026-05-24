@@ -81,7 +81,7 @@ const Section5 = ({ onScheduleClick }) => {
                             exit={{ opacity: 0, scale: 0.96, y: 14, filter: "blur(8px)" }}
                             transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                             style={{ backdropFilter: "blur(50px)", WebkitBackdropFilter: "blur(50px)" }}
-                            className="fixed bottom-4 left-4 w-[250px] min-h-[120px] overflow-hidden rounded-[20px] bg-black/40 shadow-[0_24px_80px_rgba(0,0,0,0.2)] saturate-[1] p-4 flex flex-col justify-between z-50 md:bottom-[44px] md:left-4 md:w-[389px]"
+                            className="fixed bottom-4 left-4 right-4 w-auto min-h-[120px] max-w-[calc(100vw-32px)] overflow-hidden rounded-[20px] bg-black/40 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.2)] saturate-[1] flex flex-col justify-between z-40 md:bottom-[44px] md:left-4 md:right-auto md:w-[389px] lg:left-[96px] lg:max-w-[calc(100vw-112px)]"
                             role="dialog"
                             aria-label={t("section5.aria.popup")}
                         >
@@ -96,10 +96,10 @@ const Section5 = ({ onScheduleClick }) => {
                                 }}
                             />
                             <div className="relative z-10 font-google-sans-flex text-[12px] text-white mix-blend-difference">
-                                <h2 className="text-[16px] font-normal leading-none whitespace-nowrap md:text-[29px]">
+                                <h2 className="pr-6 text-[clamp(16px,7vw,29px)] font-normal leading-none md:text-[29px]">
                                     {t("section5.popupTitle")}
                                 </h2>
-                                <p className="mt-2 text-[10px] font-normal whitespace-nowrap md:text-[17px]">
+                                <p className="mt-2 text-[clamp(10px,4vw,17px)] font-normal md:text-[17px]">
                                     {t("section5.popupSubtitle")}
                                 </p>
                                 <button

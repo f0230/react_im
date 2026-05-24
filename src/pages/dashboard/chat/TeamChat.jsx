@@ -258,6 +258,7 @@ const TeamChat = () => {
     const streamRef = useRef(null);
     const audioChunksRef = useRef([]);
     const lastReadRef = useRef({});
+    const messagesRequestRef = useRef(0);
 
     const messagesEndRef = useRef(null);
     const messagesContainerRef = useRef(null);
@@ -484,6 +485,8 @@ const TeamChat = () => {
 
     const loadMessages = useCallback(async (channelId, background = false) => {
         if (!channelId || !isAllowed) return;
+        const requestId = messagesRequestRef.current + 1;
+        messagesRequestRef.current = requestId;
         if (!background) setLoadingMessages(true);
         setSendError('');
 
@@ -494,14 +497,20 @@ const TeamChat = () => {
             .order('created_at', { ascending: false })
             .limit(100);
 
+        const isCurrentRequest = () =>
+            requestId === messagesRequestRef.current &&
+            selectedChannelIdRef.current === channelId;
+
         if (supaError) {
-            if (!background) setError(supaError.message || 'No se pudieron cargar los mensajes.');
+            if (!background && isCurrentRequest()) setError(supaError.message || 'No se pudieron cargar los mensajes.');
         } else {
             const hydrated = await hydrateMediaMessages((data || []).reverse());
-            setMessages(hydrated);
+            if (isCurrentRequest()) {
+                setMessages(hydrated);
+            }
         }
 
-        if (!background) setLoadingMessages(false);
+        if (!background && isCurrentRequest()) setLoadingMessages(false);
     }, [hydrateMediaMessages, isAllowed]);
 
     const loadProjects = useCallback(async () => {
@@ -1107,10 +1116,14 @@ const TeamChat = () => {
     }, [isMembersOpen, selectedChannel]);
 
     useEffect(() => {
+        setMessages([]);
+        setReplyingTo(null);
+        setThreadRootMessage(null);
+        setProjectMenu(null);
+        setSendError('');
+        setThreadCounts(new Map());
         if (!selectedChannelId || !isAllowed) return;
 
-        setMessages([]);
-        setThreadCounts(new Map());
         loadMessages(selectedChannelId);
         loadThreadCounts(selectedChannelId);
 
@@ -1126,6 +1139,7 @@ const TeamChat = () => {
                 },
                 async (payload) => {
                     const fullMessage = await fetchMessageById(payload.new.id);
+                    if (selectedChannelIdRef.current !== selectedChannelId) return;
                     const incoming = fullMessage || payload.new;
 
                     if (incoming.thread_root_id) {

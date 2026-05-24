@@ -44,22 +44,33 @@ const ThreadPanel = ({ rootMessage, onClose, channelId }) => {
     const [reactionsByMessage, setReactionsByMessage] = useState({});
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
+    const repliesRequestRef = useRef(0);
+    const rootMessageIdRef = useRef(rootMessage?.id);
+
+    rootMessageIdRef.current = rootMessage?.id;
 
     const authorName = rootMessage?.author_name || rootMessage?.author?.full_name || 'Equipo';
 
     const loadReplies = useCallback(async () => {
         if (!rootMessage?.id) return;
+        const rootId = rootMessage.id;
+        const requestId = repliesRequestRef.current + 1;
+        repliesRequestRef.current = requestId;
         setLoading(true);
         const { data, error } = await supabase
             .from('team_messages')
             .select(THREAD_MESSAGE_COLUMNS)
-            .eq('thread_root_id', rootMessage.id)
+            .eq('thread_root_id', rootId)
             .order('created_at', { ascending: true });
-        if (!error) setReplies(data || []);
-        setLoading(false);
+        const isCurrentRequest = requestId === repliesRequestRef.current && rootMessage?.id === rootId;
+        if (!error && isCurrentRequest) setReplies(data || []);
+        if (isCurrentRequest) setLoading(false);
     }, [rootMessage?.id]);
 
     useEffect(() => {
+        setReplies([]);
+        setMessageText('');
+        setSendError('');
         loadReplies();
     }, [loadReplies]);
 
@@ -78,6 +89,7 @@ const ThreadPanel = ({ rootMessage, onClose, channelId }) => {
                     .select(THREAD_MESSAGE_COLUMNS)
                     .eq('id', payload.new.id)
                     .single();
+                if (rootMessageIdRef.current !== payload.new.thread_root_id) return;
                 if (data) {
                     setReplies((prev) => prev.some((r) => r.id === data.id) ? prev : [...prev, data]);
                 }
