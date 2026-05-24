@@ -6,7 +6,7 @@ import PopoverPanel from '../components/ui/PopoverPanel';
 import { MOBILE_POPOVER_BACKDROP_CLASS, POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
 import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
 
-const ProfileMenu = ({ isOpen, onClose }) => {
+const ProfileMenu = ({ isOpen, onClose, panelClassName = '' }) => {
     const { user, profile, signOut } = useAuth();
     const navigate = useNavigate();
     const [imgError, setImgError] = useState(false);
@@ -34,7 +34,7 @@ const ProfileMenu = ({ isOpen, onClose }) => {
         <PopoverPanel
             isOpen={isOpen}
             onClose={onClose}
-            className={`${POPOVER_PANEL_CLASS} font-product`}
+            className={`${POPOVER_PANEL_CLASS} font-product ${panelClassName}`}
             backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
         >
 

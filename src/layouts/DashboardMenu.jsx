@@ -5,7 +5,7 @@ import PopoverPanel from '../components/ui/PopoverPanel';
 import { MOBILE_POPOVER_BACKDROP_CLASS, POPOVER_PANEL_CLASS } from '../components/ui/popoverStyles';
 import { PrefetchNavLink } from '@/components/navigation/PrefetchLink';
 
-const DashboardMenu = ({ isOpen, onClose }) => {
+const DashboardMenu = ({ isOpen, onClose, panelClassName = '' }) => {
     const { profile } = useAuth();
     const role = profile?.role || 'client';
     const isClientLeader = profile?.is_client_leader;
@@ -64,7 +64,7 @@ const DashboardMenu = ({ isOpen, onClose }) => {
         <PopoverPanel
             isOpen={isOpen}
             onClose={onClose}
-            className={`${POPOVER_PANEL_CLASS} dashboard-menu-panel`}
+            className={`${POPOVER_PANEL_CLASS} dashboard-menu-panel ${panelClassName}`}
             backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
         >
             <div className="p-2 space-y-0.5">

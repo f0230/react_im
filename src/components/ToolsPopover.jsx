@@ -44,7 +44,7 @@ const ICONS = {
     LinkIcon
 };
 
-const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onClose }) => {
+const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onClose, panelClassName = '', iconSize = 20 }) => {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const [tools, setTools] = useState([]);
     const [isAdding, setIsAdding] = useState(false);
@@ -177,13 +177,13 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
                 )}
                 title="Tools"
             >
-                <LayoutGrid size={20} />
+                <LayoutGrid size={iconSize} />
             </button>
 
             <PopoverPanel
                 isOpen={isOpen}
                 onClose={closePopover}
-                className={`${POPOVER_PANEL_CLASS} lg:w-[380px]`}
+                className={`${POPOVER_PANEL_CLASS} lg:w-[380px] ${panelClassName}`}
                 backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
                 initial={{ opacity: 0, scale: 0.92, y: -8 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}

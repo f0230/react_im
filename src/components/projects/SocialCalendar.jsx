@@ -28,7 +28,9 @@ import {
   eachDayOfInterval,
   isToday,
   parseISO,
+  addDays,
   addWeeks,
+  subDays,
   subWeeks,
 } from 'date-fns';
 import { fetchProjectPosts, subscribeToProjectPosts, deleteDraftGroup, cancelPost, resetPostToDraft } from '@/services/blotatoService';
@@ -60,6 +62,7 @@ const STATUS_FILTER_OPTIONS = [
   { id: 'draft',     label: 'Borradores' },
   { id: 'failed',    label: 'Fallidas' },
 ];
+const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)';
 
 function parsePostDate(value) {
   if (!value || typeof value !== 'string') return null;
@@ -143,37 +146,92 @@ function doesPostMatchAccount(post, account) {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function AccountItem({ account, selected, onToggle }) {
+function getProjectImage(project) {
+  if (!project) return '';
+  return (
+    project.logo ||
+    project.logoUrl ||
+    project.image ||
+    project.imageUrl ||
+    project.avatar ||
+    project.avatarUrl ||
+    project.profileImage ||
+    project.profileImageUrl ||
+    project.projectLogo ||
+    project.brandLogo ||
+    project.picture ||
+    project.profile_image_url ||
+    project.avatar_url ||
+    ''
+  );
+}
+
+function AccountAvatar({ imageUrl, name, initial }) {
+  const [failed, setFailed] = useState(false);
+  const shouldShowImage = imageUrl && !failed;
+
+  useEffect(() => {
+    setFailed(false);
+  }, [imageUrl]);
+
+  return (
+    <div className="w-11 h-11 lg:w-12 lg:h-12 rounded-full bg-[#222] flex items-center justify-center overflow-hidden ring-1 ring-white/12">
+      {shouldShowImage ? (
+        <img
+          src={imageUrl}
+          alt={name}
+          className="w-full h-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span className="text-sm font-bold text-white/85">{initial}</span>
+      )}
+    </div>
+  );
+}
+
+function AccountItem({ account, selected, onToggle, projectImage }) {
   const name = account.fullname || (account.username ? `@${account.username}` : account.id);
   const initial = (account.fullname || account.username || 'A')[0].toUpperCase();
+  const imageUrl = (
+    projectImage ||
+    account.logo ||
+    account.logoUrl ||
+    account.image ||
+    account.imageUrl ||
+    account.avatar ||
+    account.avatarUrl ||
+    account.profileImage ||
+    account.profileImageUrl ||
+    account.brandLogo ||
+    account.projectLogo ||
+    account.picture ||
+    account.profile_image_url ||
+    account.avatar_url
+  );
 
   return (
     <button
       type="button"
       aria-pressed={selected}
       onClick={onToggle}
-      className={`relative isolate w-full select-none text-left flex items-center gap-2.5 px-2.5 py-2 rounded-xl transition-all ${
-        selected ? 'bg-white/[0.05]' : 'opacity-40 hover:opacity-65 hover:bg-white/[0.03]'
+      className={`relative isolate w-full select-none text-left flex items-center gap-3 px-3 py-3 rounded-2xl transition-all ${
+        selected ? 'bg-white/[0.075] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]' : 'opacity-55 hover:opacity-80 hover:bg-white/[0.04]'
       }`}
+      title={name}
     >
       <div className="relative shrink-0">
-        <div className="w-8 h-8 rounded-full bg-[#222] flex items-center justify-center overflow-hidden ring-1 ring-white/10">
-          {account.profileImageUrl ? (
-            <img src={account.profileImageUrl} alt={name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-xs font-bold text-white/80">{initial}</span>
-          )}
-        </div>
-        <div className="absolute -bottom-0.5 -right-0.5 w-[15px] h-[15px] rounded-full bg-[#0c0c0c] flex items-center justify-center ring-1 ring-white/10">
-          <PlatformIcon platform={account.platform} size={8} />
+        <AccountAvatar imageUrl={imageUrl} name={name} initial={initial} />
+        <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-[#0c0c0c] flex items-center justify-center ring-1 ring-white/10">
+          <PlatformIcon platform={account.platform} size={10} />
         </div>
         {selected && (
-          <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center">
-            <Check size={7} className="text-white" strokeWidth={3} />
+          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+            <Check size={8} className="text-white" strokeWidth={3} />
           </div>
         )}
       </div>
-      <span className="flex-1 text-xs text-white/70 font-medium truncate leading-tight">
+      <span className="flex-1 text-sm text-white font-semibold truncate leading-snug">
         {name}
       </span>
     </button>
@@ -196,10 +254,10 @@ function StatusFilterDropdown({ value, onChange }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-xs text-white/70 hover:bg-white/[0.08] transition-colors"
+        className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-sm text-zinc-100 hover:bg-white/[0.08] transition-colors"
       >
         {current.label}
-        <ChevronDown size={12} className="text-white/40" />
+        <ChevronDown size={14} className="text-white/40" />
       </button>
 
       <AnimatePresence>
@@ -209,14 +267,14 @@ function StatusFilterDropdown({ value, onChange }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.1 }}
-            className="absolute top-full left-0 mt-1 w-52 rounded-xl bg-[#1a1a1a] border border-white/[0.08] shadow-2xl z-50 overflow-hidden"
+            className="absolute top-full left-0 mt-1 w-60 rounded-2xl bg-[#1a1a1a] border border-white/[0.08] shadow-2xl z-50 overflow-hidden"
           >
             {STATUS_FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt.id}
                 onClick={() => { onChange(opt.id); setOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3.5 py-2.5 text-xs text-left transition-colors ${
-                  opt.id === value ? 'bg-white/[0.08] text-white' : 'text-white/60 hover:bg-white/[0.05]'
+                className={`w-full flex items-center gap-2 px-4 py-3 text-sm text-left transition-colors ${
+                  opt.id === value ? 'bg-white/[0.08] text-white' : 'text-zinc-300 hover:bg-white/[0.05] hover:text-white'
                 }`}
               >
                 {opt.id === value && <Check size={11} className="text-emerald-400 shrink-0" />}
@@ -237,16 +295,16 @@ function WeekPostCard({ post, onClick }) {
   return (
     <button
       onClick={(e) => { e.stopPropagation(); onClick(post); }}
-      className="w-full text-left px-2.5 py-2 rounded-lg bg-white/[0.05] border border-white/[0.06] hover:bg-white/[0.09] transition-colors mb-1.5 last:mb-0"
+      className="w-full text-left px-3 py-3 lg:px-3.5 lg:py-3.5 rounded-xl bg-white/[0.055] border border-white/[0.075] hover:bg-white/[0.1] transition-colors mb-2 last:mb-0 shadow-[0_10px_28px_rgba(0,0,0,0.14)]"
     >
-      <div className="flex items-center gap-1.5 mb-0.5">
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[post.status] || STATUS_DOT.draft}`} />
-        <PlatformIcon platform={post.platform} size={10} className="shrink-0" />
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[post.status] || STATUS_DOT.draft}`} />
+        <PlatformIcon platform={post.platform} size={13} className="shrink-0" />
         {timeLabel && (
-          <span className="ml-auto text-[9px] text-white/35 font-medium tabular-nums">{timeLabel}</span>
+          <span className="ml-auto text-[11px] text-zinc-300 font-semibold tabular-nums">{timeLabel}</span>
         )}
       </div>
-      <p className="text-[10px] text-white/60 line-clamp-2 leading-relaxed">
+      <p className="text-xs lg:text-[13px] text-white line-clamp-3 leading-relaxed">
         {post.content_text || '—'}
       </p>
     </button>
@@ -260,18 +318,22 @@ function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
 
   return (
     <div
-      className="flex flex-col border-r border-white/[0.05] last:border-r-0 min-w-[100px] sm:min-w-0 sm:flex-1"
+      className={`flex flex-col border-r last:border-r-0 min-w-[155px] sm:min-w-0 sm:flex-1 transition-colors ${
+        today
+          ? 'border-emerald-400/25 bg-emerald-400/[0.035] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.16),inset_0_0_34px_rgba(16,185,129,0.035)]'
+          : 'border-white/[0.06]'
+      }`}
     >
       {/* Column header */}
-      <div className="px-2 sm:px-3 pt-3 pb-2 shrink-0">
-        <p className="text-[10px] font-medium text-white/30 tracking-wide mb-1.5 uppercase">{dayName}</p>
+      <div className="px-3 lg:px-4 pt-4 pb-3 shrink-0">
+        <p className={`text-[11px] lg:text-xs font-semibold tracking-wide mb-2 uppercase ${today ? 'text-emerald-200/80' : 'text-zinc-400'}`}>{dayName}</p>
         <div className="inline-flex">
           {today ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-teal-500 text-white">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-400 text-black shadow-[0_0_24px_rgba(52,211,153,0.24)]">
               {dateLabel}
             </span>
           ) : (
-            <span className="text-xs font-medium text-white/60">{dateLabel}</span>
+            <span className="text-sm font-semibold text-zinc-300">{dateLabel}</span>
           )}
         </div>
       </div>
@@ -279,7 +341,7 @@ function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
       {/* Posts area */}
       <div
         onClick={() => canManage && onDayClick(day)}
-        className={`flex-1 overflow-y-auto px-1.5 sm:px-2.5 py-2 no-scrollbar ${
+        className={`flex-1 overflow-y-auto px-2.5 lg:px-3 py-2.5 no-scrollbar ${
           canManage ? 'cursor-pointer group' : ''
         }`}
       >
@@ -289,19 +351,19 @@ function DayColumn({ day, posts, canManage, onDayClick, onPostClick }) {
 
         {canManage && posts.length === 0 && (
           <div className="h-full flex items-start pt-4 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <Plus size={16} className="text-white/20" />
+            <Plus size={20} className="text-white/20" />
           </div>
         )}
       </div>
 
       {/* Footer: calendar icon */}
-      <div className="shrink-0 px-2 sm:px-3 pb-3 pt-1 flex justify-start">
+      <div className="shrink-0 px-3 lg:px-4 pb-3 pt-1 flex justify-start">
         <button
           onClick={(e) => { e.stopPropagation(); if (canManage) onDayClick(day); }}
-          className="p-1.5 rounded-lg hover:bg-white/[0.05] transition-colors group/cal"
+          className="p-2 rounded-lg hover:bg-white/[0.05] transition-colors group/cal"
           title={`Crear publicación para ${dateLabel}`}
         >
-          <CalendarDays size={13} className="text-white/15 group-hover/cal:text-white/40 transition-colors" />
+          <CalendarDays size={15} className="text-white/15 group-hover/cal:text-white/40 transition-colors" />
         </button>
       </div>
     </div>
@@ -585,7 +647,7 @@ function PostModal({ post, onClose, onEdit, onDelete, onCancel, onMoveToDraft })
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function SocialCalendar({ projectId, canManage }) {
+export function SocialCalendar({ projectId, canManage, project }) {
   // Posts state
   const [currentDate, setCurrentDate]   = useState(new Date());
   const [posts, setPosts]               = useState([]);
@@ -596,6 +658,10 @@ export function SocialCalendar({ projectId, canManage }) {
   const [selectedPost, setSelectedPost] = useState(null);
   const [editingDraft, setEditingDraft] = useState(null);
   const [scheduledPostToEdit, setScheduledPostToEdit] = useState(null);
+  const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
+  });
 
   // Filter state
   const [accountSearch, setAccountSearch]   = useState('');
@@ -605,6 +671,26 @@ export function SocialCalendar({ projectId, canManage }) {
 
   // Accounts
   const { accountsForPosting, loading: accountsLoading } = useBlotatoAccounts(projectId);
+  const projectImage = getProjectImage(project);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return undefined;
+    }
+
+    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+    const syncViewport = () => setIsDesktopViewport(mediaQuery.matches);
+
+    syncViewport();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncViewport);
+      return () => mediaQuery.removeEventListener('change', syncViewport);
+    }
+
+    mediaQuery.addListener(syncViewport);
+    return () => mediaQuery.removeListener(syncViewport);
+  }, []);
 
   // Load posts
   const loadPosts = useCallback(async () => {
@@ -647,8 +733,8 @@ export function SocialCalendar({ projectId, canManage }) {
   usePostStatusPolling(posts, handlePostStatusUpdate);
 
   // Week helpers
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
-  const weekEnd   = endOfWeek(currentDate,   { weekStartsOn: 1 });
+  const weekStart = isDesktopViewport ? subDays(currentDate, 3) : startOfWeek(currentDate, { weekStartsOn: 1 });
+  const weekEnd   = isDesktopViewport ? addDays(currentDate, 3) : endOfWeek(currentDate,   { weekStartsOn: 1 });
   const weekDays  = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   const weekRangeLabel = `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d')}`;
@@ -810,13 +896,13 @@ export function SocialCalendar({ projectId, canManage }) {
     STATUS_FILTER_OPTIONS.find((o) => o.id === statusFilter)?.label || 'Todas las publicaciones';
 
   return (
-    <div className="flex h-full bg-[#0c0c0c] overflow-hidden rounded-[24px] md:rounded-[32px]">
+    <div className="flex h-full bg-[#080808] overflow-hidden rounded-[24px] md:rounded-[32px] border border-white/[0.06] shadow-[0_24px_80px_rgba(0,0,0,0.34)]">
 
       {/* ── Left sidebar ────────────────────────────────── */}
-      <aside className="w-44 shrink-0 flex flex-col border-r border-white/[0.05] overflow-hidden">
+      <aside className="w-52 lg:w-60 shrink-0 flex flex-col border-r border-white/[0.06] overflow-hidden bg-[#0d0d0d]">
 
         {/* Account list */}
-        <div className="flex-1 overflow-y-auto px-2 py-2 no-scrollbar space-y-0.5">
+        <div className="flex-1 overflow-y-auto px-3 py-3 no-scrollbar space-y-1.5">
           {accountsLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 size={14} className="animate-spin text-white/20" />
@@ -833,17 +919,18 @@ export function SocialCalendar({ projectId, canManage }) {
                 account={account}
                 selected={isAccountSelected(account)}
                 onToggle={() => toggleAccount(account)}
+                projectImage={projectImage}
               />
             ))
           )}
         </div>
 
         {/* Add account */}
-        <div className="px-2 pb-3">
+        <div className="px-3 pb-3">
           <button
             type="button"
             onClick={() => setIsBlotatoConfigOpen(true)}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-white/[0.08] text-[11px] text-white/30 hover:text-white/60 hover:bg-white/[0.04] hover:border-white/[0.14] transition-all"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-white/[0.08] text-xs text-white/35 hover:text-white/65 hover:bg-white/[0.04] hover:border-white/[0.14] transition-all"
           >
             <UserPlus size={12} />
             Añadir cuenta
@@ -855,10 +942,10 @@ export function SocialCalendar({ projectId, canManage }) {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
         {/* Top bar */}
-        <div className="shrink-0 flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-white/[0.05]">
+        <div className="shrink-0 flex items-center gap-2.5 px-4 lg:px-5 py-3.5 lg:py-4 border-b border-white/[0.06] bg-[#0b0b0b]">
 
           {/* Week range label */}
-          <span className="text-xs sm:text-sm font-semibold text-white/70 tabular-nums shrink-0">
+          <span className="text-sm lg:text-base font-semibold text-white tabular-nums shrink-0">
             {weekRangeLabel}
           </span>
 
@@ -866,33 +953,33 @@ export function SocialCalendar({ projectId, canManage }) {
           <div className="flex items-center gap-1">
             <button
               onClick={prevWeek}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/80 transition-colors"
+              className="p-2 rounded-xl hover:bg-white/[0.06] text-white/40 hover:text-white/80 transition-colors"
             >
-              <ChevronLeft size={14} />
+              <ChevronLeft size={17} />
             </button>
             <button
               onClick={goToday}
-              className="px-2 sm:px-3 py-1 rounded-lg text-xs font-medium text-white/50 hover:text-white/90 hover:bg-white/[0.06] transition-colors border border-white/[0.08]"
+              className="px-3 py-2 rounded-xl text-sm font-medium text-zinc-200 hover:text-white hover:bg-white/[0.06] transition-colors border border-white/[0.08]"
             >
               Hoy
             </button>
             <button
               onClick={nextWeek}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-white/40 hover:text-white/80 transition-colors"
+              className="p-2 rounded-xl hover:bg-white/[0.06] text-white/40 hover:text-white/80 transition-colors"
             >
-              <ChevronRight size={14} />
+              <ChevronRight size={17} />
             </button>
           </div>
 
           {/* Post search — hidden on mobile */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.06] flex-1 max-w-xs">
-            <Search size={12} className="text-white/25 shrink-0" />
+          <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.07] flex-1 max-w-md">
+            <Search size={15} className="text-white/25 shrink-0" />
             <input
               type="text"
               value={postSearch}
               onChange={(e) => setPostSearch(e.target.value)}
               placeholder="Buscar posts"
-              className="flex-1 bg-transparent text-xs text-white/65 placeholder:text-white/25 outline-none min-w-0"
+              className="flex-1 bg-transparent text-sm text-white placeholder:text-zinc-500 outline-none min-w-0"
             />
             {postSearch && (
               <button onClick={() => setPostSearch('')} className="text-white/25 hover:text-white/60">
@@ -908,8 +995,8 @@ export function SocialCalendar({ projectId, canManage }) {
 
           {/* Actions */}
           <div className="flex items-center gap-1 ml-auto">
-            <button className="hidden sm:flex p-1.5 rounded-lg hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-colors">
-              <SlidersHorizontal size={14} />
+            <button className="hidden sm:flex p-2 rounded-xl hover:bg-white/[0.06] text-white/25 hover:text-white/60 transition-colors">
+              <SlidersHorizontal size={16} />
             </button>
 
             {/* New post button */}
@@ -918,9 +1005,9 @@ export function SocialCalendar({ projectId, canManage }) {
                 <div className="hidden sm:block w-px h-4 bg-white/[0.08] mx-1" />
                 <button
                   onClick={handleNewPost}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold hover:bg-white/90 transition-colors"
+                  className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-white text-black text-sm font-bold hover:bg-white/90 transition-colors"
                 >
-                  <Plus size={13} />
+                  <Plus size={15} />
                   <span className="hidden sm:inline">Nueva</span>
                 </button>
               </>
@@ -978,6 +1065,7 @@ export function SocialCalendar({ projectId, canManage }) {
         initialMediaUrls={editingDraft?.media_urls ?? []}
         draftGroupId={editingDraft?.post_group_id ?? null}
         scheduledPostToEdit={scheduledPostToEdit}
+        projectImage={projectImage}
       />
 
       <BlotatoConfigModal

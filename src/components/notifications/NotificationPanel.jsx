@@ -32,6 +32,7 @@ const NotificationPanel = ({
     clientItems = [],
     onMarkAllRead,
     onMarkRead,
+    panelClassName = '',
 }) => {
     const navigate = useNavigate();
 
@@ -102,7 +103,7 @@ const NotificationPanel = ({
         <PopoverPanel
             isOpen={isOpen}
             onClose={onClose}
-            className={POPOVER_PANEL_CLASS}
+            className={`${POPOVER_PANEL_CLASS} ${panelClassName}`}
             backdropClassName={MOBILE_POPOVER_BACKDROP_CLASS}
         >
             <div className="px-4 pt-4 pb-3 border-b border-white/10 flex items-center justify-between bg-white/5">

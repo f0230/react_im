@@ -592,7 +592,7 @@ const ScheduleCall = () => {
 
     if (bookingPhase === 'success') {
         return (
-            <div className="min-h-screen bg-black">
+            <div className="min-h-screen bg-black lg:pl-[80px]">
                 <Navbar />
                 <div className="mx-auto w-full max-w-[1440px] px-4 pb-10 pt-[72px] sm:px-6 sm:pt-[84px]">
                     <motion.div
@@ -619,7 +619,7 @@ const ScheduleCall = () => {
     }
 
     return (
-        <div className="min-h-screen bg-black">
+        <div className="min-h-screen bg-black lg:pl-[80px]">
             <Navbar />
             <div className="mx-auto w-full max-w-[1440px] px-3 pb-8 pt-[64px] sm:px-6 sm:pb-12 sm:pt-[84px] lg:px-8">
                 <motion.div

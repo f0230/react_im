@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import OptimizedImage from "./OptimizedImage";
 import HamburgerButton from "./ui/HamburgerButton";
 import logo from "../assets/Group 255.svg";
+import sidebarLogo from "../assets/LOGO GRUPO DTE - LOGO.webp";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { User, LayoutDashboard, LogOut, ChevronDown, ShieldCheck, Users } from "lucide-react";
+import { Briefcase, ChevronDown, Languages, User, LayoutDashboard, LogOut, ShieldCheck, Users } from "lucide-react";
 
 import { menuItems } from "@/config/nav";
 import LoginModal from "./LoginModal";
@@ -28,7 +29,8 @@ const Navbar = () => {
     const navigate = useNavigate();
     const { setIsNavbarOpen, isLoginModalOpen, setIsLoginModalOpen } = useUI();
     const { user, profile, signOut } = useAuth();
-    const userMenuRef = useRef(null);
+    const desktopUserMenuRef = useRef(null);
+    const headerUserMenuRef = useRef(null);
     const gsapRef = useRef(null);
 
     const ensureGsap = useCallback(async () => {
@@ -82,7 +84,10 @@ const Navbar = () => {
     // Close user menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+            const clickedDesktopMenu = desktopUserMenuRef.current?.contains(event.target);
+            const clickedHeaderMenu = headerUserMenuRef.current?.contains(event.target);
+
+            if (!clickedDesktopMenu && !clickedHeaderMenu) {
                 setIsUserMenuOpen(false);
             }
         };
@@ -278,12 +283,122 @@ const Navbar = () => {
         void preloadRoute('/admin');
         navigate('/admin');
     };
+    const toggleLanguage = () => setLanguage(currentLang === "es" ? "en" : "es");
 
     return (
         <>
+            {/* Sidebar desktop */}
+            <aside className="fixed left-0 top-0 z-50 hidden h-screen w-[80px] flex-col bg-black px-2 py-4 text-white shadow-[1px_0_0_rgba(255,255,255,0.08)] lg:flex">
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <PrefetchLink
+                        to="/"
+                        className="mx-auto mb-7 flex h-12 w-12 items-center justify-center rounded-2xl transition-colors hover:bg-white/10"
+                        aria-label="DTE Home"
+                        title="DTE"
+                    >
+                        <OptimizedImage
+                            src={sidebarLogo}
+                            alt="Logo DTE"
+                            width={40}
+                            height={40}
+                            className="h-10 w-10 object-contain"
+                        />
+                    </PrefetchLink>
+
+                    <nav className="flex-1 space-y-2 font-google-sans-flex" aria-label="Navegacion principal">
+                        {menuItems?.map((item, i) => (
+                            <PrefetchLink
+                                key={i}
+                                to={item.url}
+                                className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl text-white/72 transition-colors hover:bg-white/10 hover:text-white"
+                                aria-label={t(item.key)}
+                                title={t(item.key)}
+                            >
+                                <Briefcase size={24} aria-hidden="true" />
+                            </PrefetchLink>
+                        ))}
+                    </nav>
+
+                    <div className="space-y-2 border-t border-white/10 pt-3 font-google-sans-flex">
+                        <button
+                            type="button"
+                            className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.04] text-white/72 transition-colors hover:bg-white/10 hover:text-white"
+                            onClick={toggleLanguage}
+                            aria-label={t("nav.languageLabel")}
+                            title={`${t("nav.languageLabel")}: ${currentLang.toUpperCase()}`}
+                        >
+                            <Languages size={24} aria-hidden="true" />
+                        </button>
+
+                        {(profile?.role === 'admin' || profile?.role === 'worker') && (
+                            <div className="mx-auto h-12 w-12 rounded-2xl bg-white/[0.04] [&>div>button]:h-12 [&>div>button]:w-12 [&>div>button]:text-white/70 [&>div>button:hover]:bg-white/10 [&>div>button:hover]:text-white">
+                                <ToolsPopover
+                                    iconSize={24}
+                                    panelClassName="lg:!left-full lg:!right-auto lg:!top-auto lg:!bottom-0 lg:!ml-2 lg:!mt-0 lg:origin-bottom-left"
+                                />
+                            </div>
+                        )}
+
+                        <div className="relative" ref={desktopUserMenuRef}>
+                            {user ? (
+                                <>
+                                    <button
+                                        onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                                        className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white transition-colors hover:bg-white/10"
+                                        aria-label="User"
+                                        title="User"
+                                    >
+                                        <User size={24} aria-hidden="true" />
+                                    </button>
+
+                                    {isUserMenuOpen && (
+                                        <div className="absolute bottom-0 left-full ml-2 w-48 overflow-hidden rounded-2xl border border-white/10 bg-[#111111] py-1 shadow-2xl">
+                                            <PrefetchLink
+                                                to="/dashboard"
+                                                className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-200 transition-colors hover:bg-white/10"
+                                                onClick={() => setIsUserMenuOpen(false)}
+                                            >
+                                                <LayoutDashboard size={16} />
+                                                Dashboard
+                                            </PrefetchLink>
+                                            <button
+                                                onClick={handleSignOut}
+                                                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-400 transition-colors hover:bg-white/10"
+                                            >
+                                                <LogOut size={16} />
+                                                Logout
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="grid gap-2">
+                                    <button
+                                        onClick={() => setIsLoginModalOpen(true)}
+                                        className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white transition-colors hover:bg-white/10"
+                                        aria-label={t("nav.portalClients")}
+                                        title={t("nav.portalClients")}
+                                    >
+                                        <Users size={24} aria-hidden="true" />
+                                    </button>
+                                    <button
+                                        onClick={handleAdminAccess}
+                                        className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-black transition-colors hover:bg-green"
+                                        aria-label={t("nav.teamAccess")}
+                                        title={t("nav.teamAccess")}
+                                    >
+                                        <ShieldCheck size={24} aria-hidden="true" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
             {/* Navbar principal */}
             <div
-                className={`fixed top-0 left-0 w-full bg-black z-50 transition-all duration-300 transform ${hasScrolled ? "shadow-md" : ""
+                className={`fixed top-0 left-0 z-50 w-full bg-black transition-all duration-300 transform lg:hidden ${hasScrolled ? "shadow-md" : ""
                     } ${showNavbar ? "translate-y-0" : "-translate-y-full"}`}
             >
                 <nav
@@ -341,7 +456,7 @@ const Navbar = () => {
                         )}
 
                         {/* Login Button / User Menu Desktop */}
-                        <li className="relative" ref={userMenuRef}>
+                        <li className="relative" ref={headerUserMenuRef}>
                             {user ? (
                                 <>
                                     <button

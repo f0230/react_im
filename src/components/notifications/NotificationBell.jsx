@@ -1,7 +1,7 @@
 import React from 'react';
 import { Bell } from 'lucide-react';
 
-const NotificationBell = ({ unreadCount = 0, isOpen, onClick }) => {
+const NotificationBell = ({ unreadCount = 0, isOpen, onClick, iconSize = 18 }) => {
     const displayCount = unreadCount > 99 ? '99+' : unreadCount;
     return (
         <button
@@ -10,7 +10,7 @@ const NotificationBell = ({ unreadCount = 0, isOpen, onClick }) => {
             aria-label="Notificaciones"
             className={`relative flex items-center justify-center p-2 rounded-full transition-colors ${isOpen ? 'text-skyblue' : 'text-white hover:text-skyblue'}`}
         >
-            <Bell size={18} />
+            <Bell size={iconSize} />
             {unreadCount > 0 && (
                 <span
                     className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center"

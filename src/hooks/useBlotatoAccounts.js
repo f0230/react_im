@@ -13,6 +13,23 @@ import {
   saveAssignedAccounts
 } from '@/services/blotatoService';
 
+const pickAccountImage = (account = {}) => (
+  account.logo ||
+  account.logoUrl ||
+  account.image ||
+  account.imageUrl ||
+  account.avatar ||
+  account.avatarUrl ||
+  account.profileImage ||
+  account.profileImageUrl ||
+  account.brandLogo ||
+  account.projectLogo ||
+  account.picture ||
+  account.profile_image_url ||
+  account.avatar_url ||
+  ''
+);
+
 export function useBlotatoAccounts(projectId) {
   const [allAccounts, setAllAccounts] = useState([]);
   const [assignedAccountIds, setAssignedAccountIds] = useState([]);
@@ -31,11 +48,21 @@ export function useBlotatoAccounts(projectId) {
         assignedAccountIds: assigned,
         assignedAccounts: assignedTargets
       } = await fetchProjectConfig(projectId);
+      const allById = new Map((all || []).map((account) => [String(account.id), account]));
       setAllAccounts(all);
       setAssignedAccountIds(assigned);
       setAssignedAccounts(
         assignedTargets?.length
-          ? assignedTargets
+          ? assignedTargets.map((target) => {
+              const source = allById.get(String(target?.id));
+              return {
+                ...target,
+                username: target?.username || source?.username || '',
+                fullname: target?.fullname || source?.fullname || '',
+                profileImageUrl: pickAccountImage(target) || pickAccountImage(source),
+                platform: target?.platform || source?.platform || '',
+              };
+            })
           : all.filter((account) => assigned.includes(account.id)).map((account) => ({
               id: account.id,
               platform: account.platform,

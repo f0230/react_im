@@ -29,7 +29,7 @@ const LandingDespega = () => {
                 url="/despega"
                 robots="noindex, follow"
             />
-            <div className="font-product">
+            <div className="font-product lg:pl-[80px]">
                 <Navbar />
 
             {/* Hero Section */}

@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { createPost, deleteDraftGroup, getPlatformName, PLATFORM_CONFIG, saveDraftPost, updatePost, uploadMediaFile } from '@/services/blotatoService';
-import { generateProjectPostCopy } from '@/services/aiCopyService';
+import { generateProjectPostCopy, refineProjectPostCopy } from '@/services/aiCopyService';
 import { useBlotatoAccounts } from '@/hooks/useBlotatoAccounts';
 import { useImageCompression } from '@/hooks/useImageCompression';
 import { useMediaDraft } from '@/hooks/useMediaDraft';
@@ -73,13 +73,20 @@ function getAccountHelperLabel(account) {
 
 // ─── Shared account avatar ────────────────────────────────────────────────────
 
-function AccountAvatar({ account, size = 36 }) {
+function AccountAvatar({ account, size = 36, projectImage = '' }) {
+  const [failed, setFailed] = useState(false);
   const initial = (account.fullname || account.username || '?')[0].toUpperCase();
+  const imageUrl = projectImage || account.profileImageUrl;
+
+  useEffect(() => {
+    setFailed(false);
+  }, [imageUrl]);
+
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div className="w-full h-full rounded-full bg-[#2a2a2a] flex items-center justify-center overflow-hidden ring-2 ring-[#1c1c1e]">
-        {account.profileImageUrl
-          ? <img src={account.profileImageUrl} alt={getAccountLabel(account)} className="w-full h-full object-cover" />
+        {imageUrl && !failed
+          ? <img src={imageUrl} alt={getAccountLabel(account)} className="w-full h-full object-cover" onError={() => setFailed(true)} />
           : <span className="text-xs font-bold text-white/70">{initial}</span>}
       </div>
       <div className="absolute -bottom-0.5 -right-0.5 w-[15px] h-[15px] rounded-full bg-[#1c1c1e] flex items-center justify-center">
@@ -89,7 +96,7 @@ function AccountAvatar({ account, size = 36 }) {
   );
 }
 
-function AccountToggleChip({ account, selected, onToggle }) {
+function AccountToggleChip({ account, selected, onToggle, projectImage = '' }) {
   return (
     <button
       type="button"
@@ -101,7 +108,7 @@ function AccountToggleChip({ account, selected, onToggle }) {
           : 'border-white/[0.08] bg-white/[0.03] text-white/45 hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-white/70'
       }`}
     >
-      <AccountAvatar account={account} size={28} />
+      <AccountAvatar account={account} size={28} projectImage={projectImage} />
       <div className="min-w-0 flex-1">
         <p className={`truncate text-xs font-semibold ${selected ? 'text-white/85' : 'text-white/55'}`}>
           {getAccountLabel(account)}
@@ -438,6 +445,7 @@ export function CreatePostModal({
   draftGroupId = null,
   aiPlanning = null,
   scheduledPostToEdit = null,
+  projectImage = '',
 }) {
   const { accountsForPosting: accounts, loading: accountsLoading } = useBlotatoAccounts(projectId);
   const { compress } = useImageCompression();
@@ -476,6 +484,9 @@ export function CreatePostModal({
 
   // Submit
   const [isGeneratingCopy, setIsGeneratingCopy] = useState(false);
+  const [aiEditInstruction, setAiEditInstruction] = useState('');
+  const [isRefiningCopy, setIsRefiningCopy] = useState(false);
+  const [aiEditStatus, setAiEditStatus] = useState('idle');
   const [isSubmitting, setIsSubmitting]         = useState(false);
   const [isSavingDraft, setIsSavingDraft]       = useState(false);
   const [error, setError]                       = useState(null);
@@ -586,6 +597,8 @@ export function CreatePostModal({
     setFormatOverride(null);
     setPageSelections({});
     setSelectedAccountKeys(new Set());
+    setAiEditInstruction('');
+    setAiEditStatus('idle');
     setShowDatePicker(restoredShowPicker);
     setScheduledDate(restoredDate);
     setScheduledTime(restoredTime);
@@ -943,6 +956,67 @@ export function CreatePostModal({
     uploadedVideos.length,
   ]);
 
+  const handleRefineCopy = useCallback(async () => {
+    const instruction = aiEditInstruction.trim();
+    if (!instruction) {
+      setError('Escribe una instruccion para editar el copy con IA.');
+      setAiEditStatus('error');
+      return;
+    }
+
+    if (!projectId) {
+      setError('No encontramos el proyecto de esta publicacion.');
+      setAiEditStatus('error');
+      return;
+    }
+
+    setIsRefiningCopy(true);
+    setAiEditStatus('loading');
+    setError(null);
+
+    try {
+      const output = await refineProjectPostCopy({
+        projectId,
+        serviceId,
+        currentCopy: content,
+        userInstruction: instruction,
+        selectedPlatforms,
+        format: effectiveFormat,
+        mediaContext: {
+          totalAssets: uploadedMediaItems.length,
+          imageCount: uploadedImages.length,
+          videoCount: uploadedVideos.length,
+          hasMedia: uploadedMediaItems.length > 0,
+          hasVideo: uploadedVideos.length > 0,
+        },
+        selectedAccounts,
+        aiPlanning,
+      });
+
+      setContent(output.copy);
+      setAiEditInstruction('');
+      setAiEditStatus('success');
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    } catch (err) {
+      setAiEditStatus('error');
+      setError(`No se pudo editar el copy con IA: ${err.message}`);
+    } finally {
+      setIsRefiningCopy(false);
+    }
+  }, [
+    aiEditInstruction,
+    aiPlanning,
+    content,
+    effectiveFormat,
+    projectId,
+    selectedAccounts,
+    selectedPlatforms,
+    serviceId,
+    uploadedImages.length,
+    uploadedMediaItems.length,
+    uploadedVideos.length,
+  ]);
+
   // ── Submit ────────────────────────────────────────────────────────────────
 
   const buildScheduling = () => {
@@ -1131,7 +1205,7 @@ export function CreatePostModal({
         key="overlay"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
-        className="fixed inset-0 z-[220] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[220] flex items-end sm:items-center justify-center sm:p-3 lg:p-4 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       >
         <motion.div
@@ -1141,8 +1215,8 @@ export function CreatePostModal({
           exit={{ opacity: 0, y: 16, scale: 0.98 }}
           transition={{ duration: 0.18 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-5xl bg-[#1c1c1e] rounded-t-[28px] sm:rounded-[20px] flex flex-col overflow-hidden"
-          style={{ maxHeight: 'calc(100dvh - 2rem)', minHeight: 'min(600px, 90dvh)' }}
+          className="w-full h-full sm:h-[calc(100dvh-1.5rem)] sm:max-w-[calc(100vw-1.5rem)] lg:max-w-[calc(100vw-112px)] xl:max-w-[1500px] bg-[#1c1c1e] rounded-t-[28px] sm:rounded-[22px] flex flex-col overflow-hidden"
+          style={{ maxHeight: 'calc(100dvh - 1.5rem)' }}
         >
 
           {/* ── Header ─────────────────────────────── */}
@@ -1172,6 +1246,7 @@ export function CreatePostModal({
                     <AccountToggleChip
                       key={getAccountSelectionKey(account)}
                       account={account}
+                      projectImage={projectImage}
                       selected={effectiveSelectedAccountKeys.has(getAccountSelectionKey(account))}
                       onToggle={scheduledPostToEdit ? undefined : () => toggleSelectedAccount(account)}
                     />
@@ -1222,6 +1297,44 @@ export function CreatePostModal({
                 className="flex-1 w-full bg-transparent text-[15px] text-white/85 placeholder:text-white/20 leading-relaxed resize-none outline-none px-5 pt-4 pb-2 min-h-[140px]"
               />
 
+              <div className="mx-4 mb-3 rounded-2xl border border-white/[0.08] bg-black/20 p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-white/55">
+                    <Sparkles size={13} className="text-teal-300" />
+                    Editar con IA
+                  </div>
+                  {aiEditStatus === 'success' && (
+                    <span className="text-[10px] font-medium text-teal-300">Cambio aplicado</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={aiEditInstruction}
+                    onChange={(e) => {
+                      setAiEditInstruction(e.target.value);
+                      if (aiEditStatus !== 'loading') setAiEditStatus('idle');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (!isRefiningCopy) handleRefineCopy();
+                      }
+                    }}
+                    placeholder="Ej: Hacelo mas corto, mas premium, con CTA..."
+                    className="min-w-0 flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white/85 outline-none placeholder:text-white/25 focus:border-teal-400/35 focus:bg-white/[0.06]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRefineCopy}
+                    disabled={isRefiningCopy || isGeneratingCopy || !aiEditInstruction.trim()}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-black transition-colors hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    {isRefiningCopy ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                    {isRefiningCopy ? 'Editando...' : 'Aplicar cambio'}
+                  </button>
+                </div>
+              </div>
+
               {/* Toolbar */}
               <div className="flex items-center gap-1 px-4 pb-3">
                 <button onClick={() => insertAtCursor('#')} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/75 hover:bg-white/[0.06] transition-colors">
@@ -1229,7 +1342,7 @@ export function CreatePostModal({
                 </button>
                 <button
                   onClick={handleGenerateCopy}
-                  disabled={isGeneratingCopy}
+                  disabled={isGeneratingCopy || isRefiningCopy}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/75 hover:bg-white/[0.06] transition-colors disabled:cursor-wait disabled:opacity-70"
                   title="Generar copy con IA usando el texto actual como brief"
                 >
@@ -1392,7 +1505,7 @@ export function CreatePostModal({
                   <p className="text-[10px] text-white/30 uppercase tracking-wider font-medium">Página de Facebook</p>
                   {facebookAccountsNeedingPage.map((account) => (
                     <div key={getAccountSelectionKey(account)} className="flex items-center gap-2">
-                      <AccountAvatar account={account} size={24} />
+                      <AccountAvatar account={account} size={24} projectImage={projectImage} />
                       <select
                         value={pageSelections[getAccountSelectionKey(account)] || ''}
                         onChange={(e) => setPageSelections((prev) => ({ ...prev, [getAccountSelectionKey(account)]: e.target.value }))}

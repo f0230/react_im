@@ -8,8 +8,6 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 
 const PANEL_SPRING = { type: 'spring', stiffness: 230, damping: 28, mass: 0.9 };
-const DESKTOP_CONTENT_ZOOM = 0.65;
-const DESKTOP_MEDIA_QUERY = '(min-width: 1024px)';
 
 const ProjectContentPlanning = () => {
   const navigate = useNavigate();
@@ -19,31 +17,8 @@ const ProjectContentPlanning = () => {
 
   const [selectedProject, setSelectedProject] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-    return window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
-  });
 
   const canManage = profile?.role === 'admin' || profile?.role === 'worker';
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return undefined;
-    }
-
-    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
-    const syncViewport = () => setIsDesktopViewport(mediaQuery.matches);
-
-    syncViewport();
-
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', syncViewport);
-      return () => mediaQuery.removeEventListener('change', syncViewport);
-    }
-
-    mediaQuery.addListener(syncViewport);
-    return () => mediaQuery.removeListener(syncViewport);
-  }, []);
 
   const fetchProject = useCallback(async () => {
     if (!queryProjectId) {
@@ -56,7 +31,7 @@ const ProjectContentPlanning = () => {
 
     const { data, error } = await supabase
       .from('projects')
-      .select('id, title, name, project_name, avatar_url, profile_image_url')
+      .select('*')
       .eq('id', queryProjectId)
       .maybeSingle();
 
@@ -115,31 +90,16 @@ const ProjectContentPlanning = () => {
     );
   }
 
-  const contentZoom = isDesktopViewport ? DESKTOP_CONTENT_ZOOM : 1;
-  const isScaledLayout = contentZoom !== 1;
-
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.99 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={PANEL_SPRING}
-      className="h-[calc(100dvh-70px)] w-full overflow-hidden md:h-[calc(100dvh-96px)]"
+      className="h-[calc(100dvh-var(--dashboard-navbar-offset)-12px)] w-full overflow-hidden bg-black md:h-[calc(100dvh-var(--dashboard-navbar-offset)-16px)] lg:h-screen"
     >
-      <div className="mx-auto h-full w-full px-3 py-3 md:px-4 md:py-4">
+      <div className="mx-auto h-full w-full px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4">
         <div className="relative h-full w-full overflow-hidden">
-          <div className={`h-full w-full ${isScaledLayout ? 'absolute inset-0 flex items-start justify-center overflow-hidden' : ''}`}>
-            <div
-              className="h-full shrink-0"
-              style={isScaledLayout ? {
-                width: `${100 / contentZoom}%`,
-                height: `${100 / contentZoom}%`,
-                transform: `scale(${contentZoom})`,
-                transformOrigin: 'top center',
-              } : undefined}
-            >
-              <SocialCalendar projectId={queryProjectId} canManage={canManage} />
-            </div>
-          </div>
+          <SocialCalendar projectId={queryProjectId} canManage={canManage} project={selectedProject} />
         </div>
       </div>
     </motion.div>

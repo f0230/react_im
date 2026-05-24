@@ -277,6 +277,49 @@ function buildSystemPrompt(brandDocs = []) {
   return base.join('\n');
 }
 
+function buildRefineSystemPrompt(brandDocs = []) {
+  const base = [
+    'Sos un editor senior de contenido para redes sociales.',
+    'Vas a recibir un copy actual y una instruccion de mejora del usuario.',
+    'Tu tarea es devolver una nueva version mejorada del copy, respetando la intencion original, la marca, la plataforma y el contexto del post.',
+    '',
+    MODO_STYLE_GUIDE,
+    '',
+    'Responde SIEMPRE en JSON valido, sin markdown.',
+    'Output obligatorio:',
+    '{',
+    '  "copy": string,',
+    '  "hook": string,',
+    '  "cta": string,',
+    '  "hashtags": string[],',
+    '  "tone_used": string',
+    '}',
+    '',
+    'Reglas criticas:',
+    '- No expliques los cambios.',
+    '- No devuelvas opciones ni alternativas multiples.',
+    '- El campo "copy" debe ser el copy final listo para publicar.',
+    '- Si existe copy_actual, editalo: no arranques desde cero ni ignores su idea central.',
+    '- Si copy_actual esta vacio, usa la instruccion del usuario como brief inicial.',
+    '- Respeta plataforma, cuentas seleccionadas, tono de marca y contexto operativo.',
+    '- No inventes datos, precios, resultados, promociones, horarios, ubicaciones ni testimonios.',
+    '- Usa espanol rioplatense neutro y profesional.',
+  ];
+
+  const docsText = formatBrandDocsForPrompt(brandDocs);
+  if (docsText) {
+    base.push(
+      '',
+      '## CONOCIMIENTO DE MARCA DEL PROYECTO',
+      'PRIORIZA esta informacion por encima de las reglas generales cuando haya conflicto.',
+      '',
+      docsText,
+    );
+  }
+
+  return base.join('\n');
+}
+
 function buildUserPayload({
   project,
   service,
@@ -319,6 +362,54 @@ function buildUserPayload({
       destinos_seleccionados: selectedAccounts,
       objetivo_del_copy:
         'Generar un copy social listo para publicar, alineado a la marca del proyecto y a la publicacion actual.',
+    },
+  };
+}
+
+function buildRefineUserPayload({
+  project,
+  service,
+  aiPlanning,
+  currentCopy,
+  userInstruction,
+  selectedPlatforms,
+  format,
+  mediaContext,
+  selectedAccounts,
+}) {
+  return {
+    proyecto: {
+      id: project.id,
+      nombre: getProjectDisplayName(project),
+      descripcion: sanitizeText(project.description),
+      objetivo: sanitizeText(project.objective),
+      tipo_necesidad: sanitizeText(project.need_type),
+      urgencia: sanitizeText(project.urgency),
+      presupuesto: sanitizeText(project.budget_range),
+    },
+    servicio: service ? {
+      id: service.id,
+      titulo: sanitizeText(service.title),
+      descripcion: sanitizeText(service.description),
+      requerimientos: sanitizeText(service.requirements),
+      entregables: sanitizeText(service.deliverables),
+    } : null,
+    identidad_de_marca: {
+      resumen: [
+        sanitizeText(project.description),
+        sanitizeText(project.objective),
+      ].filter(Boolean).join(' | '),
+      planning: aiPlanning,
+    },
+    publicacion: {
+      copy_actual: sanitizeText(currentCopy),
+      instruccion_usuario: sanitizeText(userInstruction),
+      plataformas: normalizeStringArray(selectedPlatforms, 8),
+      formato: sanitizeText(format, 'post'),
+      media: mediaContext && typeof mediaContext === 'object' ? mediaContext : {},
+      destinos_seleccionados: selectedAccounts,
+      objetivo_del_copy:
+        'Editar iterativamente el copy actual y devolver una nueva version final lista para publicar.',
     },
   };
 }
@@ -583,9 +674,12 @@ export default async function handler(req, res) {
     return handleGenerateBrandDocs(req, res, supabase, user);
   }
 
+  const isRefineCopy = action === 'refine-copy';
   const projectId = sanitizeText(body.projectId);
   const serviceId = sanitizeText(body.serviceId);
   const brief = sanitizeText(body.brief);
+  const currentCopy = sanitizeText(body.currentCopy);
+  const userInstruction = sanitizeText(body.userInstruction);
   const selectedPlatforms = normalizeStringArray(body.selectedPlatforms, 8);
   const format = sanitizeText(body.format, 'post');
   const mediaContext = body.mediaContext && typeof body.mediaContext === 'object' ? body.mediaContext : {};
@@ -596,7 +690,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'projectId is required' });
   }
 
-  if (!brief) {
+  if (isRefineCopy && !userInstruction) {
+    return res.status(400).json({ error: 'userInstruction is required' });
+  }
+
+  if (!isRefineCopy && !brief) {
     return res.status(400).json({ error: 'brief is required' });
   }
 
@@ -681,21 +779,33 @@ export default async function handler(req, res) {
   }
 
   try {
-    const payload = buildUserPayload({
-      project,
-      service,
-      aiPlanning: resolvedAiPlanning,
-      brief,
-      selectedPlatforms,
-      format,
-      mediaContext,
-      selectedAccounts,
-    });
+    const payload = isRefineCopy
+      ? buildRefineUserPayload({
+          project,
+          service,
+          aiPlanning: resolvedAiPlanning,
+          currentCopy,
+          userInstruction,
+          selectedPlatforms,
+          format,
+          mediaContext,
+          selectedAccounts,
+        })
+      : buildUserPayload({
+          project,
+          service,
+          aiPlanning: resolvedAiPlanning,
+          brief,
+          selectedPlatforms,
+          format,
+          mediaContext,
+          selectedAccounts,
+        });
 
     const rawOutput = await callOpenAiJson({
       apiKey,
       model,
-      systemPrompt: buildSystemPrompt(brandDocs),
+      systemPrompt: isRefineCopy ? buildRefineSystemPrompt(brandDocs) : buildSystemPrompt(brandDocs),
       userPayload: payload,
     });
 
@@ -709,9 +819,9 @@ export default async function handler(req, res) {
       output,
     });
   } catch (error) {
-    console.error('post-copywriter failed:', error);
+    console.error(isRefineCopy ? 'refine-copy failed:' : 'post-copywriter failed:', error);
     return res.status(500).json({
-      error: 'Failed to generate copy',
+      error: isRefineCopy ? 'Failed to refine copy' : 'Failed to generate copy',
       detail: error?.message || String(error),
     });
   }

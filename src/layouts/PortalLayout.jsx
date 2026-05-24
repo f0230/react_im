@@ -37,6 +37,7 @@ const PortalLayout = () => {
         '/dashboard/inbox',
         '/dashboard/messages',
     ].some((path) => location.pathname.startsWith(path));
+    const isContentPlanningRoute = location.pathname.startsWith('/dashboard/content-planning');
     const [isChatDark, setIsChatDark] = useState(() => {
         if (typeof window === 'undefined') return false;
         try {
@@ -47,7 +48,7 @@ const PortalLayout = () => {
     });
     const [isDesktopViewport, setIsDesktopViewport] = useState(() => {
         if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
-        return window.matchMedia('(min-width: 768px)').matches;
+        return window.matchMedia('(min-width: 1024px)').matches;
     });
     const [supportsHoverReveal, setSupportsHoverReveal] = useState(() => detectHoverRevealSupport());
     const [isStudioNavbarVisible, setIsStudioNavbarVisible] = useState(() => {
@@ -107,7 +108,7 @@ const PortalLayout = () => {
             return undefined;
         }
 
-        const mediaQuery = window.matchMedia('(min-width: 768px)');
+        const mediaQuery = window.matchMedia('(min-width: 1024px)');
         const syncViewport = () => setIsDesktopViewport(mediaQuery.matches);
 
         syncViewport();
@@ -239,12 +240,12 @@ const PortalLayout = () => {
     }
 
     const dashboardNavbarOffset = shouldAutoHideStudioNavbar
-        ? (isStudioNavbarVisible ? (isDesktopViewport ? 45 : 44) : 0)
-        : (isDesktopViewport ? 45 : 44);
+        ? (isDesktopViewport ? 0 : (isStudioNavbarVisible ? 44 : 0))
+        : (isDesktopViewport ? 0 : 44);
 
     return (
         <div
-            className={`min-h-screen font-product ${isStudioRoute || (isChatRoute && isChatDark) ? 'bg-black' : 'bg-[#f2f2f2]'}`}
+            className={`min-h-screen font-product lg:pl-[80px] ${isStudioRoute || isContentPlanningRoute || (isChatRoute && isChatDark) ? 'bg-black' : 'bg-[#f2f2f2]'}`}
             style={{ '--dashboard-navbar-offset': `${dashboardNavbarOffset}px` }}
         >
             <UnreadCountsProvider>
@@ -255,7 +256,7 @@ const PortalLayout = () => {
 
                 <main
                     className={`relative animate-fade-in ${
-                        isStudioRoute
+                        isStudioRoute || isContentPlanningRoute
                             ? 'w-full max-w-none px-0'
                             : 'max-w-[1440px] px-4 md:px-10 mx-auto'
                     }`}

@@ -41,18 +41,20 @@ const Layout = ({ children, noFooter = false, seo = {} }) => {
             />
 
             <Navbar />
-            <main className="flex-grow md:pt-[45px]" role="main">{children}</main>
+            <div className="flex min-h-screen flex-col lg:pl-[80px]">
+                <main className="flex-grow md:pt-[45px] lg:pt-0" role="main">{children}</main>
 
-            {!noFooter && (
-                <>
-                    <div ref={ref} className="absolute bottom-0 w-full h-10 pointer-events-none" />
-                    {footerVisible && (
-                        <Suspense fallback={<div className="text-center py-10">{t("layout.footerLoading")}</div>}>
-                            <Footer />
-                        </Suspense>
-                    )}
-                </>
-            )}
+                {!noFooter && (
+                    <>
+                        <div ref={ref} className="absolute bottom-0 w-full h-10 pointer-events-none" />
+                        {footerVisible && (
+                            <Suspense fallback={<div className="text-center py-10">{t("layout.footerLoading")}</div>}>
+                                <Footer />
+                            </Suspense>
+                        )}
+                    </>
+                )}
+            </div>
         </div>
     );
 };

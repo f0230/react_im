@@ -51,6 +51,50 @@ export async function generateProjectPostCopy({
   return data.output;
 }
 
+export async function refineProjectPostCopy({
+  projectId,
+  serviceId = null,
+  currentCopy = '',
+  userInstruction,
+  selectedPlatforms = [],
+  format = 'post',
+  mediaContext = {},
+  selectedAccounts = [],
+  aiPlanning = null,
+}) {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE}/post-copywriter`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      action: 'refine-copy',
+      projectId,
+      serviceId,
+      currentCopy,
+      userInstruction,
+      selectedPlatforms,
+      format,
+      mediaContext,
+      selectedAccounts,
+      aiPlanning,
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data?.detail || data?.error || 'No se pudo editar el copy');
+  }
+
+  if (!data?.output?.copy) {
+    throw new Error('La IA no devolviÃ³ un copy vÃ¡lido');
+  }
+
+  return data.output;
+}
+
 export async function generateBrandDocs({ projectId, extraContext = '' }) {
   const token = await getToken();
   const res = await fetch(`${API_BASE}/generate-brand-docs`, {

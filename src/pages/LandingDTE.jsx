@@ -24,7 +24,7 @@ const LandingDTE = () => {
                     ]),
                 ]}
             />
-            <div className="font-product bg-black text-white selection:bg-violet-500 selection:text-white">
+            <div className="font-product bg-black text-white selection:bg-violet-500 selection:text-white lg:pl-[80px]">
                 <Navbar />
 
             {/* 1. SECCIÓN HERO (El Gancho Irresistible) */}
