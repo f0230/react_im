@@ -256,10 +256,10 @@ const PortalLayout = () => {
 
                 <main
                     className={`relative animate-fade-in ${
-                        isStudioRoute || isContentPlanningRoute
+                        isStudioRoute || isContentPlanningRoute || isChatRoute
                             ? 'w-full max-w-none px-0'
                             : 'max-w-[1440px] px-4 md:px-10 mx-auto'
-                    }`}
+                    } ${isChatRoute ? 'h-[calc(var(--app-height,100dvh)-var(--dashboard-navbar-offset))] overflow-hidden' : ''}`}
                     style={{
                         paddingTop: 'var(--dashboard-navbar-offset)',
                         transition: `padding-top 360ms ${NAVBAR_EASING}`,

@@ -31,12 +31,8 @@ const ChatShell = ({
 
     return (
         <div
-            className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white"
+            className="font-product text-neutral-900 relative z-10 h-full w-full flex flex-col overflow-hidden overscroll-none bg-white"
             data-chat-dark={isDark ? 'true' : undefined}
-            style={{
-                top: '45px',
-                height: 'calc(var(--app-height, 100dvh) + var(--app-viewport-offset-top, 0px) - 45px)',
-            }}
         >
             <div
                 className={`flex-1 grid grid-cols-1 min-h-0 ${

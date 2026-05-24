@@ -1292,12 +1292,8 @@ const TeamChat = () => {
 
     return (
         <div
-            className="font-product text-neutral-900 fixed inset-x-0 z-10 mx-auto w-full max-w-[1440px] flex flex-col overflow-hidden overscroll-none bg-white chat-shell-ios"
+            className="font-product text-neutral-900 relative z-10 h-full w-full flex flex-col overflow-hidden overscroll-none bg-white chat-shell-ios"
             data-chat-dark={isDarkChat ? 'true' : undefined}
-            style={{
-                top: '45px',
-                height: 'calc(var(--app-height, 100dvh) + var(--app-viewport-offset-top, 0px) - 45px)',
-            }}
         >
             <div className={`flex-1 grid grid-cols-1 min-h-0 ${threadRootMessage ? 'lg:grid-cols-[260px_1fr_340px]' : 'lg:grid-cols-[260px_1fr]'}`}>
                 <div className={`flex flex-col min-h-0 h-full overflow-hidden border-r border-neutral-100 bg-white chat-sidebar-ios ${selectedChannelId ? 'hidden lg:flex' : 'flex'}`}>
