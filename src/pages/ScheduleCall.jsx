@@ -475,21 +475,21 @@ const ScheduleCall = () => {
     };
 
     const renderScheduleHero = () => (
-        <div className="relative overflow-hidden rounded-t-[32px] bg-[#1F1F1F] px-5 py-5 text-white sm:px-8 sm:py-6 lg:px-10 lg:py-7">
+        <div className="relative overflow-hidden rounded-t-[28px] bg-[#1F1F1F] px-5 py-3 text-white sm:px-8 sm:py-4 lg:px-10">
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
                 <div className="absolute -left-8 top-0 h-40 w-40 rounded-full bg-white/[0.06] blur-[95px]" />
                 <div className="absolute right-0 top-6 h-44 w-44 rounded-full bg-black/20 blur-[120px]" />
                 <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.045)_0%,rgba(255,255,255,0.02)_30%,transparent_62%)]" />
             </div>
 
-            <div className="relative flex h-[2.5rem] items-center justify-center overflow-hidden text-white">
+            <div className="relative flex h-[2rem] items-center justify-center overflow-hidden text-white">
                 {bookingPhase === 'form' && (
                     <button
                         type="button"
                         onClick={() => setBookingPhase('slots')}
-                        className="absolute left-0 flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white/85 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
+                        className="absolute left-0 flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-xs text-white/85 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
                     >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft className="h-3.5 w-3.5" />
                         <span className="uppercase">{t('calendar.back')}</span>
                     </button>
                 )}
@@ -500,7 +500,7 @@ const ScheduleCall = () => {
                         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                         exit={{ opacity: 0, y: -10, filter: 'blur(8px)' }}
                         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-                        className="font-google-sans-flex text-[30px] font-normal lowercase tracking-[-0.04em] text-white"
+                        className="font-google-sans-flex text-[22px] font-normal lowercase tracking-[-0.04em] text-white sm:text-[26px]"
                     >
                         {heroTexts[heroTextIndex] || ''}
                     </motion.div>
@@ -619,18 +619,18 @@ const ScheduleCall = () => {
     }
 
     return (
-        <div className="min-h-screen bg-black lg:pl-[80px]">
+        <div className="h-screen overflow-hidden bg-black lg:pl-[80px]">
             <Navbar />
-            <div className="mx-auto w-full max-w-[1440px] px-3 pb-8 pt-[64px] sm:px-6 sm:pb-12 sm:pt-[84px] lg:px-8">
+            <div className="mx-auto flex h-[calc(100vh-64px)] w-full max-w-[1440px] flex-col px-3 pb-3 sm:h-[calc(100vh-80px)] sm:px-6 sm:pb-4 lg:px-8" style={{ marginTop: 'clamp(64px, 8vw, 80px)' }}>
                 <motion.div
                     initial="hidden"
                     animate="visible"
                     variants={containerVariants}
-                    className="mx-auto w-full max-w-6xl overflow-hidden rounded-[32px] bg-[#1F1F1F] font-product shadow-[0_24px_60px_-35px_rgba(0,0,0,0.35)] ring-0"
+                    className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-[28px] bg-[#1F1F1F] font-product shadow-[0_24px_60px_-35px_rgba(0,0,0,0.35)] ring-0 max-w-6xl"
                 >
                     {renderScheduleHero()}
 
-                    <div className="bg-white px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
                         <AnimatePresence mode="wait">
                             {bookingPhase === 'slots' ? (
                                 <motion.div
@@ -639,17 +639,17 @@ const ScheduleCall = () => {
                                     animate={{ opacity: 1, x: 0 }}
                                     exit={{ opacity: 0, x: -12 }}
                                     transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-                                    className="flex h-full min-h-[420px] flex-col"
+                                    className="flex min-h-0 flex-1 flex-col"
                                 >
-                                    <div className="relative rounded-3xl bg-gray-50 px-2 py-5 ring-1 ring-gray-200 sm:p-6">
-                                        <div className="relative flex flex-col">
+                                    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl bg-gray-50 px-2 py-3 ring-1 ring-gray-200 sm:px-4 sm:py-4">
+                                        <div className="relative flex min-h-0 flex-1 flex-col">
 
                                             {loadingBookingRules ? (
-                                                <div className="mb-2 flex gap-2.5 overflow-hidden">
+                                                <div className="mb-2 flex gap-2 overflow-hidden">
                                                     {Array.from({ length: 6 }).map((_, index) => (
                                                         <motion.div
                                                             key={index}
-                                                            className="h-[108px] min-w-[86px] rounded-3xl border border-gray-200 bg-gray-100"
+                                                            className="h-[86px] min-w-[70px] rounded-3xl border border-gray-200 bg-gray-100"
                                                             initial={{ opacity: 0, y: 8 }}
                                                             animate={{ opacity: 1, y: 0 }}
                                                             transition={{ duration: 0.28, delay: index * 0.04 }}
@@ -658,7 +658,7 @@ const ScheduleCall = () => {
                                                 </div>
                                             ) : selectableDates.length > 0 ? (
                                                 <>
-                                                    <div className="dte-date-strip mb-4">
+                                                    <div className="dte-date-strip mb-2">
                                                         <div className="dte-date-strip__edge dte-date-strip__edge--left" />
                                                         <div className="dte-date-strip__edge dte-date-strip__edge--right" />
                                                         <div ref={dateStripRef} className="dte-date-strip__viewport">
@@ -727,26 +727,23 @@ const ScheduleCall = () => {
                                                                 animate={{ opacity: 1, y: 0 }}
                                                                 exit={{ opacity: 0, y: 6 }}
                                                                 transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-                                                                className="border-t border-gray-200 pt-4"
+                                                                className="flex min-h-0 flex-1 flex-col border-t border-gray-200 pt-3"
                                                             >
-                                                                <div className="mb-3 flex flex-wrap items-center justify-center gap-3 text-center">
+                                                                <div className="mb-2 flex flex-wrap items-center justify-center gap-2 text-center">
                                                                     <div>
-                                                                        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-gray-400">
-                                                                            {t('calendar.availableSlotsLabel')}
-                                                                        </p>
-                                                                        <p className="mt-0.5 text-[0.62rem] font-medium uppercase tracking-[0.14em] text-gray-400">
-                                                                            {SCHEDULE_TIME_ZONE_LABEL}
+                                                                        <p className="text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                                                                            {t('calendar.availableSlotsLabel')} · {SCHEDULE_TIME_ZONE_LABEL}
                                                                         </p>
                                                                     </div>
                                                                 </div>
 
                                                                 {fieldErrors.slot && (
-                                                                    <p className="mb-3 rounded-2xl border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-600">
+                                                                    <p className="mb-2 rounded-2xl border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-600">
                                                                         {fieldErrors.slot}
                                                                     </p>
                                                                 )}
 
-                                                                <div className="dte-slot-list custom-scrollbar overflow-y-auto pt-1 pr-1">
+                                                                <div className="dte-slot-list min-h-0 flex-1 overflow-y-auto pr-1 pt-0.5">
                                                                     {loadingSlots ? (
                                                                         <div className="grid grid-cols-1 gap-[5px] sm:grid-cols-2 xl:grid-cols-3">
                                                                             {Array.from({ length: 6 }).map((_, idx) => (
@@ -813,22 +810,22 @@ const ScheduleCall = () => {
                                     </div>
                                 </motion.div>
                             ) : (
-                                <motion.div key="form" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="font-google-sans-flex text-center">
-                                    <div className="mb-5 flex flex-wrap items-center justify-center gap-3 sm:mb-6 sm:gap-4">
-                                        <h2 className="text-lg font-bold sm:text-xl">{t('calendar.enterDetails')}</h2>
+                                <motion.div key="form" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="flex min-h-0 flex-1 flex-col overflow-y-auto font-google-sans-flex text-center">
+                                    <div className="mb-3 flex flex-wrap items-center justify-center">
+                                        <h2 className="text-base font-bold sm:text-lg">{t('calendar.enterDetails')}</h2>
                                     </div>
 
-                                    <div className="mb-6 rounded-xl bg-gray-50 p-4 text-center">
-                                        <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+                                    <div className="mb-3 rounded-xl bg-gray-50 px-4 py-3 text-center">
+                                        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 sm:text-sm">
                                             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0DD122]/15 text-[#0DD122]">
                                                 <Check className="h-3.5 w-3.5" strokeWidth={3} />
                                             </span>
                                             <p>{t('calendar.selectedTimeLabel')} · {SCHEDULE_TIME_ZONE_LABEL}</p>
                                         </div>
                                         {selectedSlot?.start ? (
-                                            <div className="mt-3 flex flex-col items-center gap-2 text-black">
-                                                <div className="flex items-center justify-center gap-2 text-base font-normal capitalize">
-                                                    <CalendarDays className="h-4 w-4 text-black/60" strokeWidth={2.2} />
+                                            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-black">
+                                                <div className="flex items-center justify-center gap-1.5 text-sm font-normal capitalize">
+                                                    <CalendarDays className="h-3.5 w-3.5 text-black/60" strokeWidth={2.2} />
                                                     <span>
                                                         {formatScheduleDateTime(selectedSlot.start, {
                                                             weekday: 'long',
@@ -839,8 +836,8 @@ const ScheduleCall = () => {
                                                         })}
                                                     </span>
                                                 </div>
-                                                <div className="flex items-center justify-center gap-2 text-base font-normal">
-                                                    <Clock3 className="h-4 w-4 text-black/60" strokeWidth={2.2} />
+                                                <div className="flex items-center justify-center gap-1.5 text-sm font-normal">
+                                                    <Clock3 className="h-3.5 w-3.5 text-black/60" strokeWidth={2.2} />
                                                     <span>{formatScheduleTime(selectedSlot.start)}</span>
                                                 </div>
                                             </div>
@@ -848,20 +845,20 @@ const ScheduleCall = () => {
                                     </div>
 
                                     {briefSummary ? (
-                                        <div className="mb-6 rounded-xl border border-[#0DD122]/20 bg-[#0DD122]/[0.06] p-4 text-left">
+                                        <div className="mb-3 rounded-xl border border-[#0DD122]/20 bg-[#0DD122]/[0.06] p-3 text-left">
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0DD122]">
                                                 {t('calendar.briefLoaded')}
                                             </p>
-                                            <p className="mt-2 text-sm leading-relaxed text-black/70">
+                                            <p className="mt-1 text-xs leading-relaxed text-black/70">
                                                 {briefSummary}
                                             </p>
                                         </div>
                                     ) : null}
 
-                                    <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-[550px] space-y-4">
+                                    <form onSubmit={handleFormSubmit} className="mx-auto w-full max-w-[550px] space-y-3">
                                         {projects.length > 0 && (
                                             <div>
-                                                <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('calendar.projectLabel')}</label>
+                                                <label className="mb-1 block text-center text-xs font-bold text-gray-700">{t('calendar.projectLabel')}</label>
                                                 <MultiUseSelect
                                                     options={projects}
                                                     value={selectedProjectId}
@@ -870,62 +867,62 @@ const ScheduleCall = () => {
                                                     getOptionValue={(p) => p.id}
                                                     getOptionLabel={(p) => p.name}
                                                     getDisplayLabel={(p) => p.name}
-                                                    buttonClassName="h-[50px] rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-bold text-gray-900 focus:ring-2 focus:ring-black/15"
+                                                    buttonClassName="h-[42px] rounded-xl border border-gray-300 bg-white px-4 py-2 text-center font-bold text-gray-900 focus:ring-2 focus:ring-black/15"
                                                     className="w-full"
                                                 />
                                             </div>
                                         )}
                                         <div>
-                                            <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('form.fullName')}</label>
+                                            <label className="mb-1 block text-center text-xs font-bold text-gray-700">{t('form.fullName')}</label>
                                             <input
                                                 type="text"
                                                 required
                                                 value={formData.name}
                                                 onChange={e => handleFieldChange('name', e.target.value)}
-                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
+                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <div>
-                                            <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('form.email')}</label>
+                                            <label className="mb-1 block text-center text-xs font-bold text-gray-700">{t('form.email')}</label>
                                             <input
                                                 type="email"
                                                 required
                                                 value={formData.email}
                                                 onChange={e => handleFieldChange('email', e.target.value)}
-                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
+                                                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-2 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <div>
-                                            <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('form.phone')}</label>
+                                            <label className="mb-1 block text-center text-xs font-bold text-gray-700">{t('form.phone')}</label>
                                             <input
                                                 type="tel"
                                                 required={requiresPhone}
                                                 value={formData.phone}
                                                 onChange={e => handleFieldChange('phone', e.target.value)}
-                                                className={`w-full rounded-xl bg-white px-4 py-3 text-center font-bold outline-none focus:ring-2 focus:ring-black/15 ${fieldErrors.phone ? 'border border-red-400' : 'border border-gray-300'}`}
+                                                className={`w-full rounded-xl bg-white px-4 py-2 text-center font-bold outline-none focus:ring-2 focus:ring-black/15 ${fieldErrors.phone ? 'border border-red-400' : 'border border-gray-300'}`}
                                             />
                                             {fieldErrors.phone ? (
-                                                <p className="mt-2 text-center text-sm text-red-600">{fieldErrors.phone}</p>
+                                                <p className="mt-1 text-center text-xs text-red-600">{fieldErrors.phone}</p>
                                             ) : requiresPhone ? (
-                                                <p className="mt-2 text-center text-sm text-gray-500">{t('calendar.phoneHelp')}</p>
+                                                <p className="mt-1 text-center text-xs text-gray-500">{t('calendar.phoneHelp')}</p>
                                             ) : null}
                                         </div>
                                         <div>
-                                            <label className="mb-1 block text-center text-sm font-bold text-gray-700">{t('form.notes')}</label>
+                                            <label className="mb-1 block text-center text-xs font-bold text-gray-700">{t('form.notes')}</label>
                                             <textarea
-                                                rows="3"
+                                                rows="2"
                                                 value={formData.notes}
                                                 onChange={e => handleFieldChange('notes', e.target.value)}
-                                                className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-3 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
+                                                className="w-full resize-none rounded-xl border border-gray-300 bg-white px-4 py-2 text-center font-bold outline-none focus:ring-2 focus:ring-black/15"
                                             />
                                         </div>
                                         <button
                                             type="submit"
                                             disabled={submitting}
-                                            className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0DD122] py-4 font-semibold text-black transition-colors hover:bg-[#0bc11f] disabled:opacity-70"
+                                            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#0DD122] py-3 font-semibold text-black transition-colors hover:bg-[#0bc11f] disabled:opacity-70"
                                         >
-                                            <CalendarDays className="h-5 w-5" />
-                                            {submitting && <Loader2 className="h-5 w-5 animate-spin" />}
+                                            <CalendarDays className="h-4 w-4" />
+                                            {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                                             {t('calendar.confirmBooking')}
                                         </button>
                                     </form>
