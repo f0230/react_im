@@ -657,7 +657,8 @@
     "invalidPhone": "Enter a valid phone or WhatsApp number.",
     "phoneHelp": "Use an area code or international prefix when needed.",
     "bookingSuccess": "Appointment scheduled successfully!",
-    "bookingError": "Error scheduling appointment. Please try again."
+    "bookingError": "Error scheduling appointment. Please try again.",
+    "briefLoaded": "Brief loaded"
   },
   "form": {
     "fullName": "Full Name",

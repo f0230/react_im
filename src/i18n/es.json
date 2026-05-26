@@ -657,7 +657,8 @@
     "invalidPhone": "Ingresa un teléfono o WhatsApp válido.",
     "phoneHelp": "Usa un número con característica o prefijo internacional si corresponde.",
     "bookingSuccess": "¡Cita agendada con éxito!",
-    "bookingError": "Error al agendar la cita. Inténtalo nuevamente."
+    "bookingError": "Error al agendar la cita. Inténtalo nuevamente.",
+    "briefLoaded": "Brief cargado"
   },
   "form": {
     "fullName": "Nombre completo",

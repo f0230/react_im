@@ -458,19 +458,19 @@ const ScheduleCall = () => {
         hidden: {},
         visible: {
             transition: {
-                staggerChildren: 0.05,
-                delayChildren: 0.04,
+                staggerChildren: 0.03,
+                delayChildren: 0.02,
             },
         },
     };
 
     const dateItemVariants = {
-        hidden: { opacity: 0, y: 14, scale: 0.96 },
+        hidden: { opacity: 0, y: 10, scale: 0.97 },
         visible: {
             opacity: 1,
             y: 0,
             scale: 1,
-            transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] },
+            transition: { duration: 0.26, ease: [0.22, 1, 0.36, 1] },
         },
     };
 
@@ -490,7 +490,7 @@ const ScheduleCall = () => {
                         className="absolute left-0 flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-sm text-white/85 transition-colors hover:border-white/30 hover:bg-white/10 hover:text-white"
                     >
                         <ArrowLeft className="h-4 w-4" />
-                        <span className="uppercase">ATRAS</span>
+                        <span className="uppercase">{t('calendar.back')}</span>
                     </button>
                 )}
                 <AnimatePresence mode="wait" initial={false}>
@@ -582,11 +582,11 @@ const ScheduleCall = () => {
     };
 
     const containerVariants = {
-        hidden: { opacity: 0, y: 10 },
+        hidden: { opacity: 0, y: 8 },
         visible: {
             opacity: 1,
             y: 0,
-            transition: { duration: 1.2, ease: [0.22, 1, 0.36, 1] }
+            transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
         }
     };
 
@@ -635,9 +635,10 @@ const ScheduleCall = () => {
                             {bookingPhase === 'slots' ? (
                                 <motion.div
                                     key="slots"
-                                    initial={{ opacity: 0, x: 20 }}
+                                    initial={{ opacity: 0, x: 12 }}
                                     animate={{ opacity: 1, x: 0 }}
-                                    exit={{ opacity: 0, x: -20 }}
+                                    exit={{ opacity: 0, x: -12 }}
+                                    transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
                                     className="flex h-full min-h-[420px] flex-col"
                                 >
                                     <div className="relative rounded-3xl bg-gray-50 px-2 py-5 ring-1 ring-gray-200 sm:p-6">
@@ -746,7 +747,19 @@ const ScheduleCall = () => {
                                                                 )}
 
                                                                 <div className="dte-slot-list custom-scrollbar overflow-y-auto pt-1 pr-1">
-                                                                    {slots.length > 0 ? (
+                                                                    {loadingSlots ? (
+                                                                        <div className="grid grid-cols-1 gap-[5px] sm:grid-cols-2 xl:grid-cols-3">
+                                                                            {Array.from({ length: 6 }).map((_, idx) => (
+                                                                                <motion.div
+                                                                                    key={idx}
+                                                                                    className="h-[54px] rounded-[7px] border border-gray-200 bg-gray-100"
+                                                                                    initial={{ opacity: 0 }}
+                                                                                    animate={{ opacity: [0.4, 0.8, 0.4] }}
+                                                                                    transition={{ duration: 1.2, repeat: Infinity, delay: idx * 0.08, ease: 'easeInOut' }}
+                                                                                />
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : slots.length > 0 ? (
                                                                         <div className="grid grid-cols-1 gap-[5px] sm:grid-cols-2 xl:grid-cols-3">
                                                                             {slots.map((slot, idx) => (
                                                                                 <motion.button
@@ -800,7 +813,7 @@ const ScheduleCall = () => {
                                     </div>
                                 </motion.div>
                             ) : (
-                                <motion.div key="form" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="font-google-sans-flex text-center">
+                                <motion.div key="form" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }} className="font-google-sans-flex text-center">
                                     <div className="mb-5 flex flex-wrap items-center justify-center gap-3 sm:mb-6 sm:gap-4">
                                         <h2 className="text-lg font-bold sm:text-xl">{t('calendar.enterDetails')}</h2>
                                     </div>
@@ -837,7 +850,7 @@ const ScheduleCall = () => {
                                     {briefSummary ? (
                                         <div className="mb-6 rounded-xl border border-[#0DD122]/20 bg-[#0DD122]/[0.06] p-4 text-left">
                                             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0DD122]">
-                                                Brief cargado
+                                                {t('calendar.briefLoaded')}
                                             </p>
                                             <p className="mt-2 text-sm leading-relaxed text-black/70">
                                                 {briefSummary}
