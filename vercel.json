@@ -193,6 +193,30 @@
       "destination": "/api/messaging?type=chat"
     },
     {
+      "source": "/api/agent/context",
+      "destination": "/api/agent?action=context"
+    },
+    {
+      "source": "/api/agent/buffer-update",
+      "destination": "/api/agent?action=buffer-update"
+    },
+    {
+      "source": "/api/agent/post-message",
+      "destination": "/api/agent?action=post-message"
+    },
+    {
+      "source": "/api/agent/log-run",
+      "destination": "/api/agent?action=log-run"
+    },
+    {
+      "source": "/api/agent/complete-run",
+      "destination": "/api/agent?action=complete-run"
+    },
+    {
+      "source": "/api/agent/pending-channels",
+      "destination": "/api/agent?action=pending-channels"
+    },
+    {
       "source": "/api/notifications",
       "destination": "/api/messaging?type=notifications"
     },
