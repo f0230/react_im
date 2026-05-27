@@ -24,6 +24,7 @@ const ProjectDetailLayout = () => {
           ...(canSeeBrandDocs
             ? [{ to: `${basePath}/brand-docs`, label: 'Brand Docs' }]
             : []),
+          { to: `${basePath}/hermes`, label: 'Hermes ✦' },
         ].map((tab) => (
           <NavLink
             key={tab.to}

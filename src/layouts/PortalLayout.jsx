@@ -7,6 +7,7 @@ import { BRAND_LOADER_CYCLE_MS } from '../components/ui/loadingFallback.constant
 import { AlertCircle } from 'lucide-react';
 import useCycleLockedVisibility from '../hooks/useCycleLockedVisibility';
 import { UnreadCountsProvider } from '@/context/UnreadCountsContext';
+import HermesPopup from '@/components/HermesPopup';
 
 const detectHoverRevealSupport = () => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
@@ -267,6 +268,8 @@ const PortalLayout = () => {
                 >
                     <Outlet />
                 </main>
+
+                <HermesPopup />
             </UnreadCountsProvider>
         </div>
     );

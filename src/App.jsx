@@ -37,6 +37,7 @@ const ProjectTasks = lazyRoute(routeKeys.projectTasks);
 const ProjectContentPlanning = lazyRoute(routeKeys.projectContentPlanning);
 const ProjectReports = lazyRoute(routeKeys.projectReports);
 const ProjectBrandDocs    = lazyRoute(routeKeys.projectBrandDocs);
+const ProjectHermes = lazy(() => import('@/pages/dashboard/projects/ProjectHermes'));
 const ClientAppointments = lazyRoute(routeKeys.clientAppointments);
 const Invoices = lazyRoute(routeKeys.invoices);
 const FinancesDashboard = lazyRoute(routeKeys.financesDashboard);
@@ -230,6 +231,7 @@ const AppContent = () => {
             <Route path="projects/:projectId/integrations" element={<ProjectIntegrationsRedirect />} />
             <Route path="projects/:projectId/brand-docs" element={<ProjectBrandDocs />} />
             <Route path="projects/:projectId/invoices" element={<Navigate to="/dashboard/invoices" replace />} />
+            <Route path="projects/:projectId/hermes" element={<ProjectHermes />} />
             <Route path="inbox" element={<Inbox />} />
             <Route path="team-chat" element={<TeamChat />} />
             <Route path="client-chat" element={<ClientChat />} />

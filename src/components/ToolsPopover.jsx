@@ -33,6 +33,13 @@ const DEFAULT_TOOLS = [
         action: 'client-message-ai',
         icon: 'MessageSquareText',
         color: 'from-[#2f80ed] to-[#7b2ff7]'
+    },
+    {
+        id: 'hermes',
+        name: 'Hermes',
+        action: 'hermes',
+        icon: 'Sparkles',
+        color: 'from-neutral-800 to-black'
     }
 ];
 
@@ -129,6 +136,10 @@ const ToolsPopover = ({ inline = false, isOpen: controlledIsOpen, onToggle, onCl
     const openToolAction = (tool) => {
         if (tool.action === 'client-message-ai') {
             window.dispatchEvent(new CustomEvent('dte:open-client-message-ai'));
+            closePopover();
+        }
+        if (tool.action === 'hermes') {
+            window.dispatchEvent(new CustomEvent('dte:open-hermes'));
             closePopover();
         }
     };
