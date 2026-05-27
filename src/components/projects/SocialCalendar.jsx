@@ -99,6 +99,49 @@ function getPostSortTime(post) {
 function sortPostsAsc(a, b)  { return getPostSortTime(a) - getPostSortTime(b); }
 function sortPostsDesc(a, b) { return getPostSortTime(b) - getPostSortTime(a); }
 
+function normalizeGroupText(value = '') {
+  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function getPostGroupKey(post) {
+  if (post.post_group_id) return `group:${post.post_group_id}`;
+
+  const timeline = getPostTimeline(post);
+  const timeKey = timeline?.date ? format(timeline.date, 'yyyy-MM-dd-HH-mm') : 'no-date';
+  const textKey = normalizeGroupText(post.content_text || '');
+  const mediaKey = Array.isArray(post.media_urls) ? post.media_urls.join('|') : '';
+
+  return `fallback:${timeKey}:${textKey}:${mediaKey}`;
+}
+
+function combinePostsForCalendar(posts) {
+  const groups = new Map();
+
+  posts.forEach((post) => {
+    const key = getPostGroupKey(post);
+    const current = groups.get(key);
+    if (!current) {
+      groups.set(key, [post]);
+      return;
+    }
+    current.push(post);
+  });
+
+  return Array.from(groups.values())
+    .map((groupPosts) => {
+      const sorted = [...groupPosts].sort(sortPostsAsc);
+      const base = sorted[0];
+      const platforms = Array.from(new Set(sorted.map((post) => post.platform).filter(Boolean)));
+
+      return {
+        ...base,
+        groupedPosts: sorted,
+        platforms,
+      };
+    })
+    .sort(sortPostsAsc);
+}
+
 function getPostDateLabel(post) {
   const publishedAt  = getPublishedDisplayDate(post);
   const scheduledTime = parsePostDate(post.scheduled_time);
@@ -291,6 +334,7 @@ function StatusFilterDropdown({ value, onChange }) {
 function WeekPostCard({ post, onClick }) {
   const timeline = getPostTimeline(post);
   const timeLabel = timeline?.date ? format(timeline.date, 'HH:mm') : null;
+  const platforms = post.platforms?.length ? post.platforms : [post.platform].filter(Boolean);
 
   return (
     <button
@@ -299,7 +343,11 @@ function WeekPostCard({ post, onClick }) {
     >
       <div className="flex items-center gap-2 mb-1.5">
         <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[post.status] || STATUS_DOT.draft}`} />
-        <PlatformIcon platform={post.platform} size={13} className="shrink-0" />
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          {platforms.map((platform) => (
+            <PlatformIcon key={platform} platform={platform} size={13} className="shrink-0" />
+          ))}
+        </div>
         {timeLabel && (
           <span className="ml-auto text-[11px] text-zinc-300 font-semibold tabular-nums">{timeLabel}</span>
         )}
@@ -456,6 +504,7 @@ function PostModal({ post, onClose, onEdit, onDelete, onCancel, onMoveToDraft })
   const scheduledTime = parsePostDate(post.scheduled_time);
   const publishedAt   = getPublishedDisplayDate(post);
   const hasMedia      = post.media_urls?.length > 0;
+  const platforms     = post.platforms?.length ? post.platforms : [post.platform].filter(Boolean);
 
   const handleDelete = async () => {
     setActioning(true);
@@ -528,9 +577,13 @@ function PostModal({ post, onClose, onEdit, onDelete, onCancel, onMoveToDraft })
 
             {/* Platform + status row */}
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5">
-                <PlatformIcon platform={post.platform} size={13} />
-                <span className="text-xs font-semibold text-white/50 capitalize">{post.platform}</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                {platforms.map((platform) => (
+                  <span key={platform} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-2 py-1">
+                    <PlatformIcon platform={platform} size={13} />
+                    <span className="text-xs font-semibold text-white/50 capitalize">{platform}</span>
+                  </span>
+                ))}
               </div>
               <PostStatusBadge status={post.status} size="sm" />
             </div>
@@ -809,7 +862,7 @@ export function SocialCalendar({ projectId, canManage, project }) {
       grouped.get(key).push(post);
     });
     grouped.forEach((items, key) => {
-      grouped.set(key, [...items].sort(sortPostsAsc));
+      grouped.set(key, combinePostsForCalendar(items));
     });
     return grouped;
   }, [filteredPosts]);
