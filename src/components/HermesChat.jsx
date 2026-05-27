@@ -181,13 +181,25 @@ function TypingDots() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function HermesChat({ channelId, userId, placeholder = 'Escribí tu mensaje…', className = '' }) {
-  const [messages, setMessages] = useState([]);
+export function HermesChat({ channelId, userId, storageKey, placeholder = 'Escribí tu mensaje…', className = '' }) {
+  const [messages, setMessages] = useState(() => {
+    if (!storageKey) return [];
+    try {
+      const saved = localStorage.getItem(`hermes_msgs_${storageKey}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // Persist messages to localStorage
+  useEffect(() => {
+    if (!storageKey) return;
+    try { localStorage.setItem(`hermes_msgs_${storageKey}`, JSON.stringify(messages)); } catch {}
+  }, [messages, storageKey]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
