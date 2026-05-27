@@ -348,74 +348,84 @@ const Projects = () => {
             {typeof document !== 'undefined' && createPortal((
             <AnimatePresence>
                 {ctxMenu && (
-                    <div className="fixed inset-0 z-[190] flex items-stretch justify-center bg-white px-0 py-0 sm:items-center sm:bg-transparent sm:px-5 sm:py-8">
+                    <div className="fixed inset-x-0 bottom-0 top-[44px] z-30 flex items-stretch justify-center bg-[#EDEDED] px-0 py-0 sm:items-center sm:px-5 sm:py-6 lg:inset-y-0 lg:left-[80px] lg:z-40 lg:px-8">
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.18 }}
-                            className="absolute inset-0 hidden bg-black/0 backdrop-blur-[50px] sm:block"
+                            className="absolute inset-0 hidden bg-[#EDEDED]/86 backdrop-blur-3xl sm:block"
                             onClick={() => setCtxMenu(null)}
                         />
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 18 }}
+                            initial={{ opacity: 0, scale: 0.96, y: 18 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.92, y: 14 }}
-                            transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-                            className="relative z-[200] flex h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-white shadow-none sm:h-auto sm:max-h-[90vh] sm:max-w-2xl md:max-w-4xl lg:max-w-5xl sm:rounded-3xl sm:border sm:border-white/[0.14] sm:shadow-[0_40px_120px_rgba(0,0,0,0.35)]"
+                            exit={{ opacity: 0, scale: 0.97, y: 14 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                            className="relative z-[200] flex h-[100dvh] w-full max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#EDEDED] shadow-none sm:h-[calc(100dvh-3rem)] sm:max-h-[920px] sm:max-w-[1500px] sm:rounded-[34px] sm:border sm:border-white/70 sm:shadow-[0_34px_110px_rgba(28,28,30,0.18)]"
                         >
-                            <div className="flex min-h-0 flex-col overflow-y-auto bg-[#f5f5f7] sm:bg-white">
-                                <div className="relative overflow-visible bg-neutral-950 px-4 pb-6 pt-[calc(env(safe-area-inset-top)+16px)] text-white sm:overflow-hidden sm:px-8 sm:py-8 md:px-12 md:py-10">
-                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_10%,rgba(255,255,255,0.18),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.10),transparent_28%)]" />
-                                    <div className="relative flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:text-left md:gap-5">
-                                        <div className="flex min-w-0 flex-1 flex-col items-center gap-3 sm:items-start sm:gap-4 md:gap-6 md:flex-row md:items-center">
+                            <div className="flex min-h-0 flex-col overflow-y-auto bg-[#EDEDED]">
+                                <div className="sticky top-0 z-20 m-0 overflow-visible border-b border-black/[0.04] bg-[#EDEDED]/95 px-3 pb-2.5 pt-[calc(env(safe-area-inset-top)+8px)] text-neutral-950 backdrop-blur-xl sm:relative sm:m-4 sm:flex sm:min-h-[180px] sm:items-center sm:rounded-[28px] sm:border sm:border-white/80 sm:bg-[#f8f8f6] sm:px-8 sm:py-7 sm:shadow-[0_18px_45px_rgba(28,28,30,0.06)] md:px-10 md:py-8 lg:px-12">
+                                    <div className="relative flex w-full items-center justify-between gap-2 text-left sm:gap-6">
+                                        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-6">
                                             {ctxAvatar ? (
-                                                <img src={ctxAvatar} alt={ctxTitle} className="h-24 w-24 shrink-0 rounded-full border-4 border-white/[0.14] object-cover shadow-2xl sm:h-28 sm:w-28 md:h-40 md:w-40" />
+                                                <img src={ctxAvatar} alt={ctxTitle} className="h-12 w-12 shrink-0 rounded-full border-2 border-white object-cover shadow-[0_10px_20px_rgba(28,28,30,0.12)] sm:h-28 sm:w-28 sm:border-4 md:h-32 md:w-32" />
                                             ) : (
-                                                <div className={`h-24 w-24 shrink-0 rounded-full border-4 border-white/[0.14] bg-gradient-to-br ${ctxColorClass} flex items-center justify-center text-2xl font-black text-black shadow-2xl sm:h-28 sm:w-28 sm:text-3xl md:h-40 md:w-40 md:text-5xl`}>
+                                                <div className={`h-12 w-12 shrink-0 rounded-full border-2 border-white bg-gradient-to-br ${ctxColorClass} flex items-center justify-center text-sm font-semibold text-black shadow-[0_10px_20px_rgba(28,28,30,0.12)] sm:h-28 sm:w-28 sm:border-4 sm:text-3xl md:h-32 md:w-32 md:text-4xl`}>
                                                     {getInitials(ctxTitle)}
                                                 </div>
                                             )}
                                             <div className="min-w-0 max-w-full">
-                                                <p className="mb-1 text-[9px] font-bold uppercase tracking-[0.2em] text-white/45 sm:mb-2 sm:text-xs sm:tracking-[0.24em]">Proyecto</p>
-                                                <h2 className="max-w-full break-words text-2xl font-black leading-[0.95] tracking-tight text-white sm:text-3xl md:text-5xl lg:text-6xl">{ctxTitle}</h2>
-                                                <div className="mt-3 flex flex-wrap items-center justify-center gap-2 sm:mt-4 sm:gap-3 sm:justify-start">
+                                                <p className="mb-0 text-[8px] font-semibold uppercase tracking-[0.2em] text-neutral-400 sm:mb-2 sm:text-xs">Proyecto</p>
+                                                <h2 className="max-w-full truncate text-base font-semibold leading-tight text-neutral-950 sm:break-words sm:text-4xl md:text-5xl">{ctxTitle}</h2>
+                                                <div className="mt-1 flex flex-wrap items-center gap-1.5 sm:mt-4 sm:gap-2 md:hidden">
                                                     {(isAdmin || isClientLeader) && (
                                                         <button
                                                             onClick={() => { setCtxMenu(null); setProjectToEdit(ctxProject); }}
-                                                            className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-bold text-black shadow-lg transition-transform hover:scale-105 sm:px-4 sm:py-2.5 sm:text-sm md:px-5 md:py-3 md:text-base"
+                                                            className="inline-flex items-center gap-1 rounded-full bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-white shadow-[0_8px_18px_rgba(28,28,30,0.14)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-[0_16px_34px_rgba(28,28,30,0.20)] active:scale-[0.98] sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
                                                         >
-                                                            <Pencil size={14} className="sm:w-4 sm:h-4" />
+                                                            <Pencil size={11} className="sm:h-[15px] sm:w-[15px]" />
                                                             <span className="truncate">Editar</span>
                                                         </button>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => setCtxMenu(null)}
-                                            className="absolute right-2 top-[calc(env(safe-area-inset-top)+8px)] flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors active:scale-95 hover:bg-white hover:text-black sm:static sm:h-10 sm:w-10 md:h-12 md:w-12"
-                                            title="Cerrar"
-                                        >
-                                            <X size={18} className="sm:w-5 sm:h-5 md:w-6 md:h-6" />
-                                        </button>
+                                        <div className="flex shrink-0 items-center gap-3">
+                                            {(isAdmin || isClientLeader) && (
+                                                <button
+                                                    onClick={() => { setCtxMenu(null); setProjectToEdit(ctxProject); }}
+                                                    className="hidden items-center gap-2 rounded-full bg-neutral-950 px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_26px_rgba(28,28,30,0.16)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-[0_16px_34px_rgba(28,28,30,0.20)] active:scale-[0.98] md:inline-flex"
+                                                >
+                                                    <Pencil size={15} />
+                                                    <span>Editar</span>
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setCtxMenu(null)}
+                                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/78 text-neutral-700 shadow-[0_8px_18px_rgba(28,28,30,0.08)] ring-1 ring-black/[0.04] transition-all duration-300 hover:rotate-90 hover:bg-white hover:text-neutral-950 hover:shadow-[0_12px_26px_rgba(28,28,30,0.12)] active:scale-95 sm:h-11 sm:w-11 md:h-12 md:w-12"
+                                                title="Cerrar"
+                                            >
+                                                <X size={20} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="grid gap-4 px-4 py-4 sm:gap-6 sm:px-8 sm:py-8 md:gap-8 md:grid-cols-[1fr_1fr] md:px-12 lg:gap-10">
+                                <div className="grid gap-2.5 px-2.5 py-2.5 sm:gap-5 sm:px-8 sm:py-4 md:grid-cols-[1fr_1fr] md:px-12 lg:px-16">
                                     {(ctxTeam.length > 0 || (ctxProject?.project_clients || []).length > 0) && (
-                                        <div className="rounded-[26px] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)] sm:rounded-3xl sm:bg-neutral-50 sm:p-6 sm:shadow-none">
-                                            <h3 className="mb-4 text-lg font-black text-neutral-950 sm:mb-5 sm:text-xl md:text-base">Personas</h3>
-                                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:gap-3">
+                                        <div className="rounded-[22px] border border-white/80 bg-[#f8f8f6] p-3 shadow-[0_12px_28px_rgba(28,28,30,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(28,28,30,0.09)] sm:rounded-[28px] sm:p-6 lg:p-7">
+                                            <h3 className="mb-2 text-base font-semibold text-neutral-950 sm:mb-5 sm:text-lg">Personas</h3>
+                                            <div className="grid grid-cols-2 gap-2 sm:gap-5">
                                                 {ctxTeam.length > 0 && (
-                                                    <div>
-                                                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">Equipo</span>
-                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                    <div className="min-w-0 rounded-[18px] bg-white/70 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9)] sm:rounded-3xl sm:p-4">
+                                                        <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-neutral-400 sm:text-[11px] sm:tracking-[0.2em]">Equipo</span>
+                                                        <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2.5">
                                                             {ctxTeam.slice(0, 8).map((m) => (
                                                                 <div
                                                                     key={m.id}
                                                                     title={m.full_name || m.email}
-                                                                    className="h-10 w-10 rounded-full border-2 border-white bg-neutral-200 flex items-center justify-center overflow-hidden text-xs font-bold text-neutral-700 shadow-sm sm:h-12 sm:w-12 sm:text-sm"
+                                                                    className="h-9 w-9 rounded-full border border-white bg-neutral-200 flex items-center justify-center overflow-hidden text-[10px] font-semibold text-neutral-700 shadow-[0_6px_14px_rgba(28,28,30,0.09)] ring-1 ring-black/5 sm:h-12 sm:w-12 sm:text-xs"
                                                                 >
                                                                     {m.avatar_url
                                                                         ? <img src={m.avatar_url} alt="" className="h-full w-full object-cover" />
@@ -427,9 +437,9 @@ const Projects = () => {
                                                     </div>
                                                 )}
                                                 {(ctxProject?.project_clients || []).length > 0 && (
-                                                    <div>
-                                                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-neutral-400">Clientes</span>
-                                                        <div className="mt-3 flex flex-wrap gap-2">
+                                                    <div className="min-w-0 rounded-[18px] bg-white/70 p-2 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9)] sm:rounded-3xl sm:p-4">
+                                                        <span className="text-[9px] font-semibold uppercase tracking-[0.18em] text-neutral-400 sm:text-[11px] sm:tracking-[0.2em]">Clientes</span>
+                                                        <div className="mt-2 flex flex-wrap gap-1.5 sm:mt-4 sm:gap-2.5">
                                                             {(ctxProject.project_clients || []).slice(0, 8).map((pc) => {
                                                                 const c = pc.clients || pc.client;
                                                                 if (!c) return null;
@@ -437,7 +447,7 @@ const Projects = () => {
                                                                     <div
                                                                         key={pc.client_id}
                                                                         title={c.company_name || c.full_name}
-                                                                        className="h-10 w-10 rounded-full border-2 border-white bg-neutral-900 flex items-center justify-center text-xs font-bold text-white shadow-sm sm:h-12 sm:w-12 sm:text-sm"
+                                                                        className="h-9 w-9 rounded-full border border-white bg-neutral-950 flex items-center justify-center text-[10px] font-semibold text-white shadow-[0_6px_14px_rgba(28,28,30,0.10)] ring-1 ring-black/5 sm:h-12 sm:w-12 sm:text-xs"
                                                                     >
                                                                         {getInitials(c.company_name || c.full_name)}
                                                                     </div>
@@ -451,17 +461,17 @@ const Projects = () => {
                                     )}
 
                                     {(ctxProject?.figma_url || ctxProject?.jam_url || ctxProject?.drive_url) && (
-                                        <div className="rounded-[26px] bg-white p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)] sm:rounded-3xl sm:bg-neutral-50 sm:p-6 sm:shadow-none">
-                                            <h3 className="mb-4 text-lg font-black text-neutral-950 sm:mb-5 sm:text-xl md:text-base">Archivos</h3>
-                                            <div className="grid gap-2 sm:gap-3">
+                                        <div className="rounded-[26px] border border-white/80 bg-[#f8f8f6] p-4 shadow-[0_16px_36px_rgba(28,28,30,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_60px_rgba(28,28,30,0.09)] sm:rounded-[28px] sm:p-6 lg:p-7">
+                                            <h3 className="mb-4 text-lg font-semibold text-neutral-950 sm:mb-5">Archivos</h3>
+                                            <div className="grid gap-3">
                                                 {ctxProject?.figma_url && (
                                                     <a
                                                         href={ctxProject.figma_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center gap-2 rounded-lg bg-[#f5f5f7] px-3 py-2.5 text-sm font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-3 sm:rounded-xl sm:bg-white sm:px-4 sm:py-3 sm:text-base sm:shadow-sm md:gap-4"
+                                                        className="flex items-center gap-3 rounded-[20px] border border-black/[0.04] bg-white/82 px-4 py-3.5 text-sm font-semibold text-neutral-900 shadow-[0_8px_22px_rgba(28,28,30,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_30px_rgba(28,28,30,0.09)] active:scale-[0.98] sm:gap-4 sm:rounded-2xl sm:py-4 sm:text-base"
                                                     >
-                                                        <img src={figmaIcon} alt="Figma" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                                        <img src={figmaIcon} alt="Figma" className="h-6 w-6" />
                                                         <span className="truncate">Figma Design</span>
                                                     </a>
                                                 )}
@@ -470,9 +480,9 @@ const Projects = () => {
                                                         href={ctxProject.jam_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center gap-2 rounded-lg bg-[#f5f5f7] px-3 py-2.5 text-sm font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-3 sm:rounded-xl sm:bg-white sm:px-4 sm:py-3 sm:text-base sm:shadow-sm md:gap-4"
+                                                        className="flex items-center gap-3 rounded-[20px] border border-black/[0.04] bg-white/82 px-4 py-3.5 text-sm font-semibold text-neutral-900 shadow-[0_8px_22px_rgba(28,28,30,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_30px_rgba(28,28,30,0.09)] active:scale-[0.98] sm:gap-4 sm:rounded-2xl sm:py-4 sm:text-base"
                                                     >
-                                                        <img src={figmaIcon} alt="Figma JAM" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                                        <img src={figmaIcon} alt="Figma JAM" className="h-6 w-6" />
                                                         <span className="truncate">Figma JAM</span>
                                                     </a>
                                                 )}
@@ -481,9 +491,9 @@ const Projects = () => {
                                                         href={ctxProject.drive_url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="flex items-center gap-2 rounded-lg bg-[#f5f5f7] px-3 py-2.5 text-sm font-bold text-neutral-900 transition-transform active:scale-[0.98] hover:scale-[1.02] sm:gap-3 sm:rounded-xl sm:bg-white sm:px-4 sm:py-3 sm:text-base sm:shadow-sm md:gap-4"
+                                                        className="flex items-center gap-3 rounded-[20px] border border-black/[0.04] bg-white/82 px-4 py-3.5 text-sm font-semibold text-neutral-900 shadow-[0_8px_22px_rgba(28,28,30,0.05)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_14px_30px_rgba(28,28,30,0.09)] active:scale-[0.98] sm:gap-4 sm:rounded-2xl sm:py-4 sm:text-base"
                                                     >
-                                                        <img src={driveLogo} alt="Google Drive" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                                        <img src={driveLogo} alt="Google Drive" className="h-6 w-6" />
                                                         <span className="truncate">Google Drive</span>
                                                     </a>
                                                 )}
@@ -492,9 +502,9 @@ const Projects = () => {
                                     )}
                                 </div>
 
-                                <div className="px-4 pb-[calc(env(safe-area-inset-bottom)+24px)] sm:px-8 sm:pb-10 md:px-12">
-                                    <h3 className="mb-4 text-lg font-black text-neutral-950 sm:text-xl md:text-2xl">Secciones</h3>
-                                    <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4">
+                                <div className="px-3 pb-[calc(env(safe-area-inset-bottom)+18px)] sm:px-8 sm:pb-10 md:px-12 lg:px-16">
+                                    <h3 className="mb-3 px-1 text-xl font-semibold text-neutral-950 sm:mb-4 sm:px-0 sm:text-2xl">Secciones</h3>
+                                    <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
                                         {actionCards.map(({ key, label, icon: Icon, suffix }) => {
                                             const href = suffix === 'tasks'
                                                 ? getProjectServicesHref(ctxProject?.id)
@@ -503,15 +513,15 @@ const Projects = () => {
                                                 <button
                                                     key={key}
                                                     onClick={() => { if (href) navigate(href); setCtxMenu(null); }}
-                                                    className="group flex min-h-[60px] items-center justify-between gap-2 rounded-xl bg-neutral-950 px-3 py-3 text-left text-white shadow-[0_8px_20px_rgba(0,0,0,0.12)] transition-transform active:scale-[0.98] hover:-translate-y-0.5 hover:scale-[1.02] sm:min-h-[90px] sm:gap-3 sm:rounded-2xl sm:px-5 sm:py-4 lg:min-h-[110px] lg:gap-4 lg:rounded-3xl lg:px-6 lg:py-5"
+                                                    className="group flex min-h-[66px] items-center justify-between gap-3 rounded-[24px] border border-white/80 bg-[#f8f8f6] px-4 py-3 text-left text-neutral-950 shadow-[0_12px_28px_rgba(28,28,30,0.06)] transition-all duration-300 hover:-translate-y-1 hover:bg-white hover:shadow-[0_24px_50px_rgba(28,28,30,0.11)] active:scale-[0.985] sm:min-h-[98px] sm:px-5 sm:py-4 lg:min-h-[112px] lg:px-6"
                                                 >
-                                                    <div className="flex min-w-0 items-center gap-2 sm:gap-3 lg:gap-4">
-                                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-black sm:h-12 sm:w-12 lg:h-14 lg:w-14">
-                                                            <Icon size={18} className="sm:w-5 sm:h-5 lg:w-6 lg:h-6" />
+                                                    <div className="flex min-w-0 items-center gap-3 lg:gap-4">
+                                                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] bg-white text-neutral-950 shadow-[0_8px_18px_rgba(28,28,30,0.07)] ring-1 ring-black/[0.04] transition-all duration-300 group-hover:scale-105 group-hover:shadow-[0_12px_26px_rgba(28,28,30,0.10)] sm:h-12 sm:w-12 sm:rounded-2xl lg:h-14 lg:w-14">
+                                                            <Icon size={20} className="sm:h-[22px] sm:w-[22px]" />
                                                         </span>
-                                                        <span className="truncate text-sm font-black sm:text-base lg:text-lg">{label}</span>
+                                                        <span className="truncate text-[15px] font-semibold sm:text-lg">{label}</span>
                                                     </div>
-                                                    <ChevronRight size={18} className="shrink-0 text-white/45 transition-transform group-hover:translate-x-0.5 sm:h-5 sm:w-5 lg:h-6 lg:w-6" />
+                                                    <ChevronRight size={20} className="shrink-0 text-neutral-400 transition-all duration-300 group-hover:translate-x-1 group-hover:text-neutral-700" />
                                                 </button>
                                             );
                                         })}
