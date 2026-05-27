@@ -32,7 +32,7 @@ const HermesPopup = () => {
   if (!user) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[55] flex flex-col items-end gap-3 font-product">
+    <div className="fixed bottom-5 right-5 z-[55] font-product">
       {/* Chat popup */}
       <div
         ref={popupRef}
@@ -84,34 +84,6 @@ const HermesPopup = () => {
         />
       </div>
 
-      {/* Toggle button */}
-      <button
-        type="button"
-        onClick={() => {
-          if (isOpen && isMinimized) {
-            setIsMinimized(false);
-          } else {
-            setIsOpen((prev) => !prev);
-            setIsMinimized(false);
-          }
-        }}
-        className={`w-13 h-13 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 ${
-          isOpen ? 'bg-neutral-800 rotate-0' : 'bg-black hover:bg-neutral-800 hover:scale-105'
-        }`}
-        style={{ width: 52, height: 52 }}
-        aria-label="Hermes IA"
-        title="Hermes IA"
-      >
-        <span
-          className={`transition-all duration-200 ${isOpen ? 'rotate-0 opacity-100' : 'rotate-0 opacity-100'}`}
-        >
-          {isOpen ? (
-            <Minus size={20} className="text-white" />
-          ) : (
-            <Sparkles size={20} className="text-white" />
-          )}
-        </span>
-      </button>
     </div>
   );
 };
