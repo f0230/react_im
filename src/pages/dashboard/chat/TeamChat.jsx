@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { ArrowLeft, BarChart3, BookOpen, CalendarDays, ChevronRight, Circle, FileText, Folder, Hash, Image, MessageSquare, Mic, Moon, Plus, RefreshCw, Search, Send, Square, Sun } from 'lucide-react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
@@ -1756,9 +1757,7 @@ const TeamChat = () => {
                                                                 ) : message?.message_type === 'image' ? (
                                                                     <p className="text-xs text-neutral-400">Imagen no disponible.</p>
                                                                 ) : (
-                                                                    <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                                                                        {renderTextWithLinks(message.body)}
-                                                                    </p>
+                                                                    <MarkdownRenderer text={message.body} />
                                                                 )}
                                                             </ChatBubbleMessage>
                                                         </ReactionPickerPopover>

@@ -1,167 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Send } from 'lucide-react';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 
 const HERMES_URL = (import.meta.env.VITE_HERMES_URL || 'https://hermes.grupodte.com').replace(/\/$/, '');
 const HERMES_SECRET = import.meta.env.VITE_HERMES_SECRET || '';
-
-// ─── Markdown renderer ────────────────────────────────────────────────────────
-
-function renderInline(text, key = 0) {
-  const parts = [];
-  let remaining = text;
-  let k = key * 1000;
-
-  while (remaining.length > 0) {
-    const bold = remaining.match(/\*\*([\s\S]*?)\*\*/);
-    const italic = remaining.match(/(?<!\*)\*(?!\*)([\s\S]*?)(?<!\*)\*(?!\*)/);
-    const code = remaining.match(/`([^`]+)`/);
-
-    const candidates = [bold, italic, code].filter(Boolean);
-    if (candidates.length === 0) {
-      parts.push(<span key={k++}>{remaining}</span>);
-      break;
-    }
-
-    const first = candidates.reduce((a, b) => (a.index <= b.index ? a : b));
-    const before = remaining.slice(0, first.index);
-    if (before) parts.push(<span key={k++}>{before}</span>);
-
-    if (first === bold) {
-      parts.push(<strong key={k++} className="font-semibold text-neutral-900">{first[1]}</strong>);
-    } else if (first === italic) {
-      parts.push(<em key={k++} className="italic">{first[1]}</em>);
-    } else {
-      parts.push(
-        <code key={k++} className="rounded-md bg-neutral-200 px-1.5 py-0.5 font-mono text-[11px] text-neutral-800">
-          {first[1]}
-        </code>
-      );
-    }
-    remaining = remaining.slice(first.index + first[0].length);
-  }
-  return parts;
-}
-
-function MarkdownMessage({ text }) {
-  const lines = text.split('\n');
-  const elements = [];
-  let i = 0;
-
-  while (i < lines.length) {
-    const raw = lines[i];
-    const line = raw.trim();
-
-    // blank line → small gap token (collapse multiple)
-    if (line === '') {
-      if (elements.length > 0 && elements[elements.length - 1]?.type !== 'gap') {
-        elements.push({ type: 'gap', key: `gap-${i}` });
-      }
-      i++;
-      continue;
-    }
-
-    // Horizontal rule —— / --- / ***
-    if (/^([-—_*]{3,})$/.test(line)) {
-      elements.push({ type: 'hr', key: `hr-${i}` });
-      i++;
-      continue;
-    }
-
-    // Heading
-    const headingMatch = line.match(/^(#{1,3})\s+(.*)/);
-    if (headingMatch) {
-      elements.push({ type: 'heading', level: headingMatch[1].length, content: headingMatch[2], key: `h-${i}` });
-      i++;
-      continue;
-    }
-
-    // Collect list items (supports leading spaces)
-    if (/^[-*+]\s/.test(line)) {
-      const items = [];
-      while (i < lines.length && /^\s*[-*+]\s/.test(lines[i])) {
-        items.push(lines[i].replace(/^\s*[-*+]\s/, ''));
-        i++;
-      }
-      elements.push({ type: 'ul', items, key: `ul-${i}` });
-      continue;
-    }
-
-    if (/^\d+\.\s/.test(line)) {
-      const items = [];
-      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-        items.push(lines[i].replace(/^\s*\d+\.\s/, ''));
-        i++;
-      }
-      elements.push({ type: 'ol', items, key: `ol-${i}` });
-      continue;
-    }
-
-    // Regular line — group consecutive into a paragraph
-    const paraLines = [];
-    while (
-      i < lines.length &&
-      lines[i].trim() !== '' &&
-      !/^#{1,3}\s/.test(lines[i].trim()) &&
-      !/^\s*[-*+]\s/.test(lines[i]) &&
-      !/^\d+\.\s/.test(lines[i].trim()) &&
-      !/^([-—_*]{3,})$/.test(lines[i].trim())
-    ) {
-      paraLines.push(lines[i]);
-      i++;
-    }
-    elements.push({ type: 'p', content: paraLines.join(' '), key: `p-${i}` });
-  }
-
-  return (
-    <div className="space-y-1.5 text-sm leading-relaxed text-neutral-800">
-      {elements.map((el) => {
-        if (el.type === 'gap') return <div key={el.key} className="h-1" />;
-        if (el.type === 'hr') return <hr key={el.key} className="border-neutral-300 my-1" />;
-
-        if (el.type === 'heading') {
-          const cls = el.level === 1
-            ? 'text-[15px] font-bold text-neutral-900 mt-1'
-            : el.level === 2
-            ? 'text-sm font-bold text-neutral-900 mt-0.5'
-            : 'text-sm font-semibold text-neutral-800';
-          return <p key={el.key} className={cls}>{renderInline(el.content, el.key)}</p>;
-        }
-
-        if (el.type === 'ul') {
-          return (
-            <ul key={el.key} className="space-y-1 pl-1">
-              {el.items.map((item, j) => (
-                <li key={j} className="flex items-start gap-2">
-                  <span className="mt-[7px] w-1 h-1 rounded-full bg-neutral-400 shrink-0" />
-                  <span>{renderInline(item, j)}</span>
-                </li>
-              ))}
-            </ul>
-          );
-        }
-
-        if (el.type === 'ol') {
-          return (
-            <ol key={el.key} className="space-y-1 pl-1">
-              {el.items.map((item, j) => (
-                <li key={j} className="flex items-start gap-2">
-                  <span className="text-[11px] font-semibold text-neutral-400 shrink-0 mt-0.5 min-w-[14px]">{j + 1}.</span>
-                  <span>{renderInline(item, j)}</span>
-                </li>
-              ))}
-            </ol>
-          );
-        }
-
-        if (el.type === 'p') {
-          return <p key={el.key}>{renderInline(el.content, el.key)}</p>;
-        }
-
-        return null;
-      })}
-    </div>
-  );
-}
 
 // ─── Typing indicator ─────────────────────────────────────────────────────────
 
@@ -276,7 +118,7 @@ export function HermesChat({ channelId, userId, storageKey, placeholder = 'Escri
               {msg.role === 'user' ? (
                 <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
               ) : (
-                <MarkdownMessage text={msg.text} />
+                <MarkdownRenderer text={msg.text} />
               )}
             </div>
           </div>

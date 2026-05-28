@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { Hash, RefreshCw, Send, X } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { cn } from '@/lib/utils';
@@ -170,9 +171,7 @@ const ThreadPanel = ({ rootMessage, onClose, channelId }) => {
                             <span className={`text-[12px] font-semibold ${getUserColor(authorName)}`}>{authorName}</span>
                             <span className="text-[10px] text-neutral-400">{formatShortDateTime(rootMessage?.created_at)}</span>
                         </div>
-                        <p className="text-[13px] text-neutral-800 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                            {rootMessage?.body}
-                        </p>
+                        <MarkdownRenderer text={rootMessage?.body} />
                     </div>
                 </div>
             </div>
@@ -215,7 +214,7 @@ const ThreadPanel = ({ rootMessage, onClose, channelId }) => {
                                         ) : reply.message_type === 'image' && reply.media_url ? (
                                             <img src={reply.media_url} alt={reply.file_name} className="max-h-48 rounded-lg object-cover" loading="lazy" />
                                         ) : (
-                                            <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{renderTextWithLinks(reply.body)}</p>
+                                            <MarkdownRenderer text={reply.body} />
                                         )}
                                     </ChatBubbleMessage>
                                 </ReactionPickerPopover>
