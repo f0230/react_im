@@ -33,6 +33,10 @@ const AdminLogin = () => {
     const [message, setMessage] = useState(null);
     const [error, setError] = useState(null);
 
+    // Destino post-login: respeta ?redirect= (p. ej. al venir de un link corto /s/:code).
+    const redirectParam = searchParams.get('redirect');
+    const postLoginPath = redirectParam && redirectParam.startsWith('/') ? redirectParam : '/dashboard';
+
     // Detectar error de OAuth en la URL (?error=...)
     useEffect(() => {
         const oauthError = searchParams.get('error');
@@ -53,7 +57,7 @@ const AdminLogin = () => {
             const { error } = await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: `${getAppUrl()}/dashboard`,
+                    emailRedirectTo: `${getAppUrl()}${postLoginPath}`,
                     shouldCreateUser: false,
                 },
             });
@@ -74,7 +78,7 @@ const AdminLogin = () => {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'figma',
                 options: {
-                    redirectTo: `${getAppUrl()}/dashboard`,
+                    redirectTo: `${getAppUrl()}${postLoginPath}`,
                 },
             });
             if (error) throw error;

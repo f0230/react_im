@@ -20,15 +20,22 @@ const getProjectTitle = (project, fallback = 'Proyecto') => {
   return project?.title || project?.name || project?.project_name || fallback;
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (value) => typeof value === 'string' && UUID_RE.test(value);
+
 const ProjectTasks = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { projectId: routeProjectId } = useParams();
+  const { user, profile } = useAuth();
+  const canEditNotion = profile?.role === 'admin';
+  const { projectId: routeProjectId, pageId: routePageId } = useParams();
   const [searchParams] = useSearchParams();
 
   const queryProjectId = searchParams.get('projectId');
   const activeProjectId = routeProjectId || queryProjectId;
+  const notionBasePath = activeProjectId
+    ? `/dashboard/projects/${activeProjectId}/services`
+    : null;
 
   const [selectedProject, setSelectedProject] = useState(null);
   const [loading, setLoading] = useState(() => !selectedProject);
@@ -42,30 +49,22 @@ const ProjectTasks = () => {
 
     setLoading(true);
 
-    const { data: hasAccess, error: accessError } = await supabase.rpc('fn_has_project_access', {
-      p_id: activeProjectId,
-      u_id: user.id,
-    });
-
-    if (accessError || !hasAccess) {
-      setSelectedProject(null);
-      setLoading(false);
-      return;
-    }
-
+    // El identificador de la URL puede ser el UUID o el slug del proyecto.
+    // La RLS de `projects` ya filtra por acceso, así que un row encontrado = acceso concedido.
+    const lookupColumn = isUuid(activeProjectId) ? 'id' : 'slug';
     const { data, error } = await supabase
       .from('projects')
       .select('*')
-      .eq('id', activeProjectId)
+      .eq(lookupColumn, activeProjectId)
       .maybeSingle();
 
-    if (error) {
+    if (error || !data) {
       setSelectedProject(null);
       setLoading(false);
       return;
     }
 
-    setSelectedProject(data || null);
+    setSelectedProject(data);
     setLoading(false);
   }, [activeProjectId, user?.id]);
 
@@ -73,6 +72,14 @@ const ProjectTasks = () => {
     if (!user?.id) return;
     void fetchProject();
   }, [fetchProject, user?.id]);
+
+  // URL canónica: si entramos por UUID y el proyecto tiene slug, redirigir a la versión legible.
+  useEffect(() => {
+    const slug = selectedProject?.slug;
+    if (!slug || !routeProjectId || routeProjectId === slug) return;
+    const tail = routePageId ? `/${routePageId}` : '';
+    navigate(`/dashboard/projects/${slug}/services${tail}`, { replace: true });
+  }, [selectedProject?.slug, routeProjectId, routePageId, navigate]);
 
   if (loading) return <LoadingFallback type="spinner" />;
 
@@ -130,37 +137,6 @@ const ProjectTasks = () => {
   return (
     <div className="min-h-screen bg-[#f2f2f2] px-6 py-8 font-product md:px-10 md:py-10">
       <div className="mx-auto max-w-[1280px]">
-        <motion.div
-          initial={{ opacity: 0, y: -18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={PANEL_SPRING}
-          className="mb-12 flex flex-col gap-6 md:flex-row md:items-start md:justify-between"
-        >
-          <div className="flex items-start gap-4">
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard/projects')}
-              className="mt-1 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/70 text-neutral-500 shadow-sm backdrop-blur transition hover:text-black"
-              title={t('dashboard.projects.servicesHub.backToProjects')}
-            >
-              <ArrowLeft size={18} />
-            </button>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-neutral-400">
-                {projectTitle}
-              </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-neutral-700 md:text-4xl">
-                {t('dashboard.projects.detail.tabs.services')}
-              </h1>
-            </div>
-          </div>
-
-          <p className="max-w-lg text-left text-xl font-medium tracking-tight text-neutral-400 md:pt-4 md:text-right">
-            {t('dashboard.projects.servicesHub.subtitle')}
-          </p>
-        </motion.div>
-
         {/* Contenido principal */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -168,7 +144,14 @@ const ProjectTasks = () => {
           transition={PANEL_SPRING}
         >
           {hasNotionPage ? (
-            <NotionPageView projectId={activeProjectId} />
+            <NotionPageView
+              projectId={selectedProject.id}
+              pageId={routePageId || null}
+              basePath={notionBasePath}
+              projectTitle={projectTitle}
+              onBackToProjects={() => navigate('/dashboard/projects')}
+              canEdit={canEditNotion}
+            />
           ) : (
             <div className="rounded-[28px] border border-neutral-200 bg-[#fafafa] p-6 md:p-8">
               <div className="flex flex-col items-center justify-center py-12 text-center">

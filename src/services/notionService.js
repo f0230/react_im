@@ -79,6 +79,21 @@ export async function fetchNotionSubPage(projectId, pageId, cursor = null) {
     return notionFetch(params);
 }
 
+export async function toggleNotionTodo(projectId, blockId, checked) {
+    const params = new URLSearchParams({ action: 'toggle-todo', projectId });
+    return notionPost(params, { blockId, checked });
+}
+
+export async function updateNotionStatus(projectId, { pageId, property, propertyType, value }) {
+    const params = new URLSearchParams({ action: 'update-status', projectId });
+    return notionPost(params, { pageId, property, propertyType, value });
+}
+
+export async function createNotionTask(projectId, payload) {
+    const params = new URLSearchParams({ action: 'create-task', projectId });
+    return notionPost(params, payload);
+}
+
 export async function saveNotionSettings(projectId, settings) {
     const params = new URLSearchParams({ action: 'save-settings', projectId });
     return notionPost(params, settings);

@@ -101,6 +101,34 @@ function extractRichText(arr) {
     return arr.map((r) => r.plain_text || '').join('');
 }
 
+// Preserva el formato inline (negrita, itálica, código, color, links) para el portal.
+function extractRichTextSegments(arr) {
+    if (!Array.isArray(arr) || arr.length === 0) return [];
+    return arr
+        .map((r) => {
+            const text = r.plain_text || '';
+            if (!text) return null;
+            const ann = r.annotations || {};
+            return {
+                text,
+                bold: Boolean(ann.bold),
+                italic: Boolean(ann.italic),
+                strikethrough: Boolean(ann.strikethrough),
+                underline: Boolean(ann.underline),
+                code: Boolean(ann.code),
+                color: ann.color && ann.color !== 'default' ? ann.color : null,
+                href: r.href || null,
+            };
+        })
+        .filter(Boolean);
+}
+
+function extractIconEmoji(icon) {
+    if (!icon) return null;
+    if (icon.type === 'emoji') return icon.emoji || null;
+    return null;
+}
+
 async function readJsonBody(req) {
     if (req.body && typeof req.body === 'object') return req.body;
     if (typeof req.body === 'string') return JSON.parse(req.body || '{}');
@@ -189,6 +217,27 @@ function formatPageSummary(page) {
     };
 }
 
+// Un resultado de /search puede ser una página o una base de datos (wiki).
+// Las databases guardan su título en `title` (array) en vez de en properties.
+function formatSearchResult(result) {
+    if (result?.object === 'database') {
+        return {
+            id: result.id,
+            title: extractRichText(result.title || []) || 'Base de datos sin título',
+            url: result.url || null,
+            lastEditedTime: result.last_edited_time || null,
+            kind: 'database',
+        };
+    }
+    return {
+        id: result.id,
+        title: extractPageTitle(result),
+        url: result.url || null,
+        lastEditedTime: result.last_edited_time || null,
+        kind: 'page',
+    };
+}
+
 function getProperty(properties, names) {
     return names.map((name) => properties?.[name]).find(Boolean);
 }
@@ -235,9 +284,11 @@ function formatBlock(block) {
         type,
         hasChildren: Boolean(block.has_children),
         text,
+        richText: extractRichTextSegments(rawRichText),
         caption,
         checked: data.checked ?? null,
         language: data.language ?? null,
+        icon: extractIconEmoji(data.icon),
         url:
             data.url ??
             data.external?.url ??
@@ -369,12 +420,14 @@ function formatDatabaseRowProperty(prop) {
         case 'status':
             return {
                 type: 'badge',
+                notionType: 'status',
                 value: prop.status?.name || null,
                 color: prop.status?.color || 'gray',
             };
         case 'select':
             return {
                 type: 'badge',
+                notionType: 'select',
                 value: prop.select?.name || null,
                 color: prop.select?.color || 'gray',
             };
@@ -534,16 +587,14 @@ async function handleSearchPages(req, res, token, userId) {
 
     const query = String(body.query || '').trim();
     const cursor = body.cursor || null;
+    // Sin filtro `object` → la búsqueda devuelve tanto páginas como bases de datos
+    // (los wikis de Notion son databases y antes quedaban excluidos).
     const data = await notionRequest('/search', token, {
         method: 'POST',
         body: {
             ...(query ? { query } : {}),
             page_size: 20,
             ...(cursor ? { start_cursor: cursor } : {}),
-            filter: {
-                property: 'object',
-                value: 'page',
-            },
             sort: {
                 direction: 'descending',
                 timestamp: 'last_edited_time',
@@ -552,7 +603,7 @@ async function handleSearchPages(req, res, token, userId) {
     });
 
     return res.status(200).json({
-        pages: (data.results || []).map(formatPageSummary),
+        pages: (data.results || []).map(formatSearchResult),
         nextCursor: data.next_cursor ?? null,
         hasMore: data.has_more ?? false,
     });
@@ -569,21 +620,37 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
         return { type: 'page', page, children };
     } catch (pageError) {
         if (pageError.message?.includes('is a database')) {
-            const [db, dbQuery] = await Promise.all([
-                notionRequest(`/databases/${resourceId}`, token),
-                queryNotionDb(resourceId, token, cursor, null),
-            ]);
+            const db = await notionRequest(`/databases/${resourceId}`, token);
+            const dbPage = {
+                id: db.id,
+                title: extractRichText(db.title || []) || 'Base de datos sin título',
+                url: db.url || null,
+                last_edited_time: db.last_edited_time || null,
+            };
 
+            // Una base de datos "wiki" / página completa tiene cuerpo propio de bloques
+            // (intro, links a páginas, sub-bases). En ese caso mostramos ese cuerpo
+            // navegable —es lo que el usuario espera ver— en vez de volcar todas las
+            // filas como tabla. Una base de datos de datos pura devuelve 0 bloques aquí.
+            let body = null;
+            try {
+                body = await notionRequest(`/blocks/${resourceId}/children?page_size=25${cursorSuffix}`, token);
+            } catch {
+                body = null;
+            }
+
+            if (body && Array.isArray(body.results) && body.results.length > 0) {
+                return { type: 'page', page: dbPage, children: body };
+            }
+
+            const dbQuery = await queryNotionDb(resourceId, token, cursor, null);
             const dbRows = (dbQuery.results || []).map(formatDatabaseRow);
 
             return {
                 type: 'database',
-                page: {
-                    id: db.id,
-                    title: extractRichText(db.title || []) || 'Base de datos sin título',
-                    url: db.url || null,
-                    last_edited_time: db.last_edited_time || null,
-                },
+                page: dbPage,
+                propertySchema: extractDbPropertySchema(db),
+                titleProperty: Object.entries(db.properties || {}).find(([, p]) => p?.type === 'title')?.[0] || null,
                 children: {
                     results: dbRows,
                     next_cursor: dbQuery.next_cursor ?? null,
@@ -593,6 +660,26 @@ async function tryLoadPageOrDatabase(resourceId, token, cursor) {
         }
         throw pageError;
     }
+}
+
+// Opciones disponibles de cada propiedad status/select de una base de datos,
+// para poder ofrecer un dropdown editable de estado en el portal.
+function extractDbPropertySchema(db) {
+    const schema = {};
+    Object.entries(db?.properties || {}).forEach(([name, prop]) => {
+        if (prop?.type === 'status') {
+            schema[name] = {
+                type: 'status',
+                options: (prop.status?.options || []).map((o) => ({ name: o.name, color: o.color })),
+            };
+        } else if (prop?.type === 'select') {
+            schema[name] = {
+                type: 'select',
+                options: (prop.select?.options || []).map((o) => ({ name: o.name, color: o.color })),
+            };
+        }
+    });
+    return schema;
 }
 
 async function fetchAllBlockChildren(blockId, token, pageSize = 100) {
@@ -611,17 +698,51 @@ async function fetchAllBlockChildren(blockId, token, pageSize = 100) {
     return results;
 }
 
-async function formatBlocksWithTableRows(blocks, token) {
+const MAX_BLOCK_DEPTH = 6;
+
+// No expandimos páginas/bases anidadas: se muestran como tarjetas navegables
+// (cada una con su propia URL). El resto de bloques con hijos sí se bajan inline.
+const NON_RECURSIVE_BLOCKS = new Set(['child_page', 'child_database']);
+
+// Formatea bloques y resuelve recursivamente los hijos que el portal necesita
+// renderizar inline: filas de tabla, columnas, y cualquier bloque anidado
+// (toggles, synced blocks, transcripciones de reunión, párrafos con sub-contenido…).
+async function formatBlocksWithChildren(blocks, token, depth = 0) {
     return Promise.all((blocks || []).map(async (block) => {
         const formatted = formatBlock(block);
 
-        if (block.type === 'table' && block.has_children) {
+        if (depth >= MAX_BLOCK_DEPTH || !block.has_children || NON_RECURSIVE_BLOCKS.has(block.type)) {
+            return formatted;
+        }
+
+        if (block.type === 'table') {
             const children = await fetchAllBlockChildren(block.id, token);
             formatted.rows = children
                 .filter((child) => child.type === 'table_row')
                 .map(formatBlock);
+            return formatted;
         }
 
+        if (block.type === 'column_list') {
+            const columnBlocks = await fetchAllBlockChildren(block.id, token);
+            formatted.columns = await Promise.all(
+                columnBlocks
+                    .filter((col) => col.type === 'column')
+                    .map(async (col) => {
+                        const colChildren = col.has_children
+                            ? await fetchAllBlockChildren(col.id, token)
+                            : [];
+                        return {
+                            id: col.id,
+                            blocks: await formatBlocksWithChildren(colChildren, token, depth + 1),
+                        };
+                    })
+            );
+            return formatted;
+        }
+
+        const children = await fetchAllBlockChildren(block.id, token);
+        formatted.children = await formatBlocksWithChildren(children, token, depth + 1);
         return formatted;
     }));
 }
@@ -638,18 +759,22 @@ async function handleProjectPage(req, res, projectId, token) {
     const cursor = req.query?.cursor
         ?? new URL(req.url, 'http://localhost').searchParams.get('cursor');
 
-    const { page, children } = await tryLoadPageOrDatabase(settings.notion_page_id, token, cursor);
-    const blocks = await formatBlocksWithTableRows(children.results || [], token);
+    const result = await tryLoadPageOrDatabase(settings.notion_page_id, token, cursor);
+    const blocks = result.type === 'database'
+        ? result.children.results
+        : await formatBlocksWithChildren(result.children.results || [], token);
 
     return res.status(200).json({
         page: {
-            ...formatPageSummary(page),
-            title: settings.notion_page_title || extractPageTitle(page),
-            url: settings.notion_page_url || page.url || null,
+            ...formatPageSummary(result.page),
+            title: settings.notion_page_title || extractPageTitle(result.page),
+            url: settings.notion_page_url || result.page.url || null,
         },
         blocks,
-        nextCursor: children.next_cursor ?? null,
-        hasMore: children.has_more ?? false,
+        propertySchema: result.propertySchema || null,
+        titleProperty: result.titleProperty || null,
+        nextCursor: result.children.next_cursor ?? null,
+        hasMore: result.children.has_more ?? false,
     });
 }
 
@@ -668,11 +793,13 @@ async function handleSubPage(req, res, projectId, token) {
 
     const blocks = result.type === 'database'
         ? result.children.results
-        : await formatBlocksWithTableRows(result.children.results || [], token);
+        : await formatBlocksWithChildren(result.children.results || [], token);
 
     return res.status(200).json({
         page: formatPageSummary(result.page),
         blocks: blocks,
+        propertySchema: result.propertySchema || null,
+        titleProperty: result.titleProperty || null,
         nextCursor: result.children.next_cursor ?? null,
         hasMore: result.children.has_more ?? false,
     });
@@ -716,6 +843,100 @@ async function handleSaveDbIds(req, res, projectId, userId) {
     if (error) return res.status(500).json({ error: error.message });
 
     return res.status(200).json({ ok: true, updated: updates });
+}
+
+// ─── Admin: edición (escritura a Notion) ──────────────────────────────────────
+
+async function handleToggleTodo(req, res, token, userId) {
+    try {
+        await assertAdmin(userId);
+    } catch (err) {
+        return res.status(403).json({ error: err.message });
+    }
+
+    let body;
+    try {
+        body = await readJsonBody(req);
+    } catch {
+        return res.status(400).json({ error: 'Invalid JSON body' });
+    }
+
+    const { blockId, checked } = body;
+    if (!blockId) return res.status(400).json({ error: 'blockId is required' });
+
+    await notionRequest(`/blocks/${blockId}`, token, {
+        method: 'PATCH',
+        body: { to_do: { checked: Boolean(checked) } },
+    });
+
+    return res.status(200).json({ ok: true, blockId, checked: Boolean(checked) });
+}
+
+async function handleUpdateStatus(req, res, token, userId) {
+    try {
+        await assertAdmin(userId);
+    } catch (err) {
+        return res.status(403).json({ error: err.message });
+    }
+
+    let body;
+    try {
+        body = await readJsonBody(req);
+    } catch {
+        return res.status(400).json({ error: 'Invalid JSON body' });
+    }
+
+    const { pageId, property, propertyType, value } = body;
+    if (!pageId || !property) {
+        return res.status(400).json({ error: 'pageId and property are required' });
+    }
+
+    const propPayload = propertyType === 'select'
+        ? { select: value ? { name: value } : null }
+        : { status: value ? { name: value } : null };
+
+    await notionRequest(`/pages/${pageId}`, token, {
+        method: 'PATCH',
+        body: { properties: { [property]: propPayload } },
+    });
+
+    return res.status(200).json({ ok: true, pageId, property, value: value || null });
+}
+
+async function handleCreateTask(req, res, token, userId) {
+    try {
+        await assertAdmin(userId);
+    } catch (err) {
+        return res.status(403).json({ error: err.message });
+    }
+
+    let body;
+    try {
+        body = await readJsonBody(req);
+    } catch {
+        return res.status(400).json({ error: 'Invalid JSON body' });
+    }
+
+    const { databaseId, title, titleProperty, status, statusProperty, statusType } = body;
+    if (!databaseId || !titleProperty) {
+        return res.status(400).json({ error: 'databaseId and titleProperty are required' });
+    }
+
+    const properties = {
+        [titleProperty]: { title: [{ text: { content: String(title || 'Nueva tarea') } }] },
+    };
+    if (statusProperty && status) {
+        properties[statusProperty] = statusType === 'select'
+            ? { select: { name: status } }
+            : { status: { name: status } };
+    }
+
+    const created = await notionRequest('/pages', token, {
+        method: 'POST',
+        body: { parent: { database_id: databaseId }, properties },
+    });
+
+    return res.status(200).json({ ok: true, row: formatDatabaseRow(created) });
 }
 
 // ─── Main router ─────────────────────────────────────────────────────────────
@@ -763,9 +984,18 @@ export default async function handler(req, res) {
         if ((action === 'save-settings' || action === 'save-db-ids') && req.method === 'POST') {
             return await handleSaveDbIds(req, res, projectId, user.id);
         }
+        if (action === 'toggle-todo' && req.method === 'POST') {
+            return await handleToggleTodo(req, res, notionToken, user.id);
+        }
+        if (action === 'update-status' && req.method === 'POST') {
+            return await handleUpdateStatus(req, res, notionToken, user.id);
+        }
+        if (action === 'create-task' && req.method === 'POST') {
+            return await handleCreateTask(req, res, notionToken, user.id);
+        }
 
         return res.status(400).json({
-            error: 'Missing or unknown ?action param. Valid: meetings, tasks, campaigns, page, sub-page, search-pages, save-settings',
+            error: 'Missing or unknown ?action param. Valid: meetings, tasks, campaigns, page, sub-page, search-pages, save-settings, toggle-todo, update-status, create-task',
         });
     } catch (err) {
         console.error('[notion] handler error:', err);

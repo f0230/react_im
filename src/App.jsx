@@ -51,6 +51,7 @@ const AdminAppointments = lazyRoute(routeKeys.adminAppointments);
 const Studio = lazyRoute(routeKeys.studio);
 const StudioDTE = lazyRoute(routeKeys.studioDte);
 const HeroPanchoPreview = lazy(() => import('@/pages/HeroPanchoPreview'));
+const ShortLinkRedirect = lazy(() => import('@/pages/ShortLinkRedirect'));
 const PortalLayout = lazy(() => import('@/layouts/PortalLayout'));
 
 const FinancesPeriodRedirect = () => {
@@ -205,6 +206,7 @@ const AppContent = () => {
           <Route path="/complete-profile" element={<CompleteProfile />} />
           <Route path="/meet/:projectId?" element={<ScheduleCall />} />
           <Route path="/hero-pancho" element={<HeroPanchoPreview />} />
+          <Route path="/s/:code" element={<ShortLinkRedirect />} />
 
           {/* Private Portal Routes */}
           <Route path="/dashboard" element={<PortalLayout />}>
@@ -226,6 +228,7 @@ const AppContent = () => {
             <Route path="projects" element={<Projects />} />
             <Route path="projects/:projectId" element={<Navigate to="services" replace />} />
             <Route path="projects/:projectId/services" element={<ProjectTasks />} />
+            <Route path="projects/:projectId/services/:pageId" element={<ProjectTasks />} />
             <Route path="services" element={<ProjectTasks />} />
             <Route path="projects/:projectId/reports" element={<Navigate to="/dashboard/reports" replace />} />
             <Route path="projects/:projectId/integrations" element={<ProjectIntegrationsRedirect />} />
