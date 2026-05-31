@@ -379,7 +379,7 @@
       },
       "createdAt": "Created: {{date}}",
       "cards": {
-        "services": "Services, deliverables, and next steps.",
+        "services": "Project's Notion page: deliverables and next steps.",
         "reports": "Progress and results reports.",
         "contentPlanning": "Editorial calendar, publishing flow, and Blotato scheduling.",
         "invoices": "Invoice history and payments."
@@ -387,7 +387,7 @@
       "servicesHub": {
         "subtitle": "Track the projects currently in progress",
         "selectProjectTitle": "Select a project",
-        "selectProjectDescription": "Open the services view from the project card you want to review.",
+        "selectProjectDescription": "Open the Notion view from the project card you want to review.",
         "notFoundTitle": "We couldn't find this project",
         "notFoundDescription": "It may no longer exist or you may not have access to this view.",
         "backToProjects": "Go to projects",
@@ -515,7 +515,7 @@
         "title": "Project details",
         "back": "Back to project",
         "tabs": {
-          "services": "Services",
+          "services": "Notion",
           "reports": "Reports",
           "contentPlanning": "Content",
           "invoices": "Invoices"

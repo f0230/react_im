@@ -379,7 +379,7 @@
       },
       "createdAt": "Creado: {{date}}",
       "cards": {
-        "services": "Servicios, entregables y próximos pasos.",
+        "services": "Página de Notion del proyecto: entregables y próximos pasos.",
         "reports": "Reportes de avances y resultados.",
         "contentPlanning": "Calendario editorial, publicaciones y programación con Blotato.",
         "invoices": "Historial de facturas y pagos."
@@ -387,7 +387,7 @@
       "servicesHub": {
         "subtitle": "Seguimiento de tus proyectos en curso",
         "selectProjectTitle": "Seleccioná un proyecto",
-        "selectProjectDescription": "Abrí la vista de servicios desde la tarjeta del proyecto que quieras revisar.",
+        "selectProjectDescription": "Abrí la vista de Notion desde la tarjeta del proyecto que quieras revisar.",
         "notFoundTitle": "No encontramos este proyecto",
         "notFoundDescription": "Puede que ya no exista o que no tengas acceso a esta vista.",
         "backToProjects": "Ir a proyectos",
@@ -515,7 +515,7 @@
         "title": "Detalle del proyecto",
         "back": "Volver al proyecto",
         "tabs": {
-          "services": "Servicios",
+          "services": "Notion",
           "reports": "Informes",
           "contentPlanning": "Contenido",
           "invoices": "Facturas"
